@@ -71,17 +71,21 @@ const stats = {
   totalVisitors: 0,
   currentVisitors: 0,
   projectViews: {
-    "project-alpha": 0,
-    "project-beta": 0,
-    "project-gamma": 0,
+    "ku-lang-compiler": 0,
+    "options-pricing": 0,
+    "statistical-arbitrage": 0,
+    "8bit-computer": 0,
   },
   skillInteractions: {
-    javascript: 0,
-    react: 0,
-    nodejs: 0,
     python: 0,
-    typescript: 0,
-    css: 0,
+    c: 0,
+    java: 0,
+    sql: 0,
+    machinelearning: 0,
+    optionspricing: 0,
+    statisticalarbitrage: 0,
+    llvm: 0,
+    pandas: 0,
     git: 0,
   },
   messages: [],
@@ -155,11 +159,11 @@ io.on("connection", (socket) => {
   // Handle real-time typing effect requests
   socket.on("request-typing-text", (callback) => {
     const texts = [
-      "Software Developer",
-      "Creative Problem Solver",
-      "Full-Stack Engineer",
-      "Digital Innovator",
-      "Code Architect",
+      "Data Science Student",
+      "Quantitative Finance Enthusiast",
+      "Compiler Designer",
+      "Financial Modeler",
+      "Systems Programmer",
     ];
     const randomText = texts[Math.floor(Math.random() * texts.length)];
     callback(randomText);
@@ -322,40 +326,57 @@ app.post("/api/contact", async (req, res) => {
 app.get("/api/projects", (req, res) => {
   const projects = [
     {
-      id: "project-alpha",
-      title: "Project Alpha",
+      id: "ku-lang-compiler",
+      title: "Ku-Lang Compiler",
       description:
-        "A modern web application built with React and Node.js, featuring real-time data visualization and responsive design.",
-      technologies: ["React", "Node.js", "Socket.IO", "MongoDB"],
+        "Custom programming language and compiler with lexical analysis, parsing, semantic checks, and LLVM IR code generation. Complete compilation pipeline supporting control flow, functions, and typed expressions.",
+      technologies: ["C", "LLVM", "Flex", "Bison", "CMake"],
       demoUrl: "#",
       codeUrl: "#",
-      views: stats.projectViews["project-alpha"],
-      status: "completed",
-      featured: true,
-    },
-    {
-      id: "project-beta",
-      title: "Project Beta",
-      description:
-        "An innovative mobile-first application that solves complex user problems with elegant UX/UI design and seamless functionality.",
-      technologies: ["React Native", "Express", "PostgreSQL", "Redis"],
-      demoUrl: "#",
-      codeUrl: "#",
-      views: stats.projectViews["project-beta"],
+      views: stats.projectViews["ku-lang-compiler"],
       status: "in-progress",
       featured: true,
     },
     {
-      id: "project-gamma",
-      title: "Project Gamma",
+      id: "options-pricing",
+      title: "Options Pricing & Greeks",
       description:
-        "A full-stack solution with advanced features including authentication, database management, and API integration.",
-      technologies: ["Vue.js", "Python", "Django", "Docker"],
+        "Implemented Black-Scholes model in Python for European options pricing and Greeks computation. Validated with Monte Carlo simulations and built interactive visualization dashboard.",
+      technologies: ["Python", "NumPy", "Pandas", "Matplotlib", "Jupyter"],
       demoUrl: "#",
       codeUrl: "#",
-      views: stats.projectViews["project-gamma"],
+      views: stats.projectViews["options-pricing"],
       status: "completed",
-      featured: false,
+      featured: true,
+    },
+    {
+      id: "statistical-arbitrage",
+      title: "Statistical Arbitrage Strategy",
+      description:
+        "Python-based pairs trading strategy using co-integration and z-score signals. Backtested over 2 years achieving Sharpe ratio of 1.8. Enhanced time series modeling and quantitative trading skills.",
+      technologies: ["Python", "Pandas", "NumPy", "Statsmodels", "Matplotlib"],
+      demoUrl: "#",
+      codeUrl: "#",
+      views: stats.projectViews["statistical-arbitrage"],
+      status: "completed",
+      featured: true,
+    },
+    {
+      id: "8bit-computer",
+      title: "8-Bit Breadboard Computer",
+      description:
+        "Built an 8-bit breadboard computer from scratch using discrete TTL logic. Designed ALU, control unit, and memory with custom instruction set. Validated execution with logic analyzer.",
+      technologies: [
+        "TTL Logic",
+        "Assembly",
+        "Digital Design",
+        "Logic Analyzer",
+      ],
+      demoUrl: "#",
+      codeUrl: "#",
+      views: stats.projectViews["8bit-computer"],
+      status: "in-progress",
+      featured: true,
     },
   ];
 
@@ -368,38 +389,55 @@ app.get("/api/projects", (req, res) => {
 // Skills data with progress
 app.get("/api/skills", (req, res) => {
   const skills = {
-    frontend: [
-      {
-        name: "JavaScript",
-        level: 90,
-        interactions: stats.skillInteractions["javascript"],
-      },
-      {
-        name: "React",
-        level: 85,
-        interactions: stats.skillInteractions["react"],
-      },
-      {
-        name: "TypeScript",
-        level: 80,
-        interactions: stats.skillInteractions["typescript"],
-      },
-      { name: "CSS", level: 88, interactions: stats.skillInteractions["css"] },
-    ],
-    backend: [
-      {
-        name: "Node.js",
-        level: 85,
-        interactions: stats.skillInteractions["nodejs"],
-      },
+    programming: [
       {
         name: "Python",
-        level: 82,
+        level: 90,
         interactions: stats.skillInteractions["python"],
+      },
+      {
+        name: "C",
+        level: 85,
+        interactions: stats.skillInteractions["c"],
+      },
+      {
+        name: "Java",
+        level: 80,
+        interactions: stats.skillInteractions["java"],
+      },
+      { name: "SQL", level: 75, interactions: stats.skillInteractions["sql"] },
+    ],
+    datascience: [
+      {
+        name: "Machine Learning",
+        level: 85,
+        interactions: stats.skillInteractions["machinelearning"],
+      },
+      {
+        name: "Pandas",
+        level: 88,
+        interactions: stats.skillInteractions["pandas"],
+      },
+    ],
+    finance: [
+      {
+        name: "Options Pricing",
+        level: 85,
+        interactions: stats.skillInteractions["optionspricing"],
+      },
+      {
+        name: "Statistical Arbitrage",
+        level: 82,
+        interactions: stats.skillInteractions["statisticalarbitrage"],
       },
     ],
     tools: [
       { name: "Git", level: 90, interactions: stats.skillInteractions["git"] },
+      {
+        name: "LLVM",
+        level: 75,
+        interactions: stats.skillInteractions["llvm"],
+      },
     ],
   };
 
