@@ -347,3 +347,4 @@ storybook-static/
 
 # Generated documentation
 docs/build/
+.vercel
