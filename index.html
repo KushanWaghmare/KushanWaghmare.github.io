@@ -3,12 +3,15 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Kushan Waghmare</title>
+        <meta name="description" content="Kushan Waghmare - Software Developer & Creative Problem Solver. Modern portfolio showcasing projects, skills, and contact information." />
+        <meta name="keywords" content="portfolio, software developer, web development, JavaScript, React, Node.js" />
+        <meta name="author" content="Kushan Waghmare" />
+        <title>Kushan Waghmare - Portfolio</title>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
             rel="stylesheet"
         />
-        <script src="/socket.io/socket.io.js"></script>
+        
         <style>
             :root {
                 --black: #0a0a0a;
@@ -789,7 +792,7 @@
                     interesting projects.
                 </p>
                 <form
-                    id="contact-form"
+                    action="https://formspree.io/f/YOUR_FORM_ID" method="POST" id="contact-form"
                     style="max-width: 400px; margin: 2rem auto"
                 >
                     <div style="margin-bottom: 1rem">
@@ -877,7 +880,9 @@
                         onmouseover="this.style.opacity='0.8'"
                         onmouseout="this.style.opacity='1'"
                     >
-                        Send Message
+                        Send Message</button>
+                    <p style="font-size: 0.8rem; color: var(--gray-medium); margin-top: 1rem;">
+                        📝 Update form action with your Formspree endpoint
                     </button>
                 </form>
 
@@ -1024,6 +1029,6 @@
                 }
             });
         </script>
-        <script src="/public/js/app.js"></script>
+        <script src="js/portfolio-static.js"></script>
     </body>
 </html>
