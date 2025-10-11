@@ -8,6 +8,7 @@
             href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
             rel="stylesheet"
         />
+        <script src="/socket.io/socket.io.js"></script>
         <style>
             :root {
                 --black: #0a0a0a;
@@ -787,6 +788,99 @@
                     I'm always open to discussing new opportunities and
                     interesting projects.
                 </p>
+                <form
+                    id="contact-form"
+                    style="max-width: 400px; margin: 2rem auto"
+                >
+                    <div style="margin-bottom: 1rem">
+                        <input
+                            type="text"
+                            name="name"
+                            placeholder="Your Name"
+                            required
+                            style="
+                                width: 100%;
+                                padding: 0.75rem;
+                                border: 1px solid var(--gray-medium);
+                                border-radius: 4px;
+                                background: var(--white);
+                                color: var(--black);
+                                font-family: inherit;
+                            "
+                        />
+                    </div>
+                    <div style="margin-bottom: 1rem">
+                        <input
+                            type="email"
+                            name="email"
+                            placeholder="Your Email"
+                            required
+                            style="
+                                width: 100%;
+                                padding: 0.75rem;
+                                border: 1px solid var(--gray-medium);
+                                border-radius: 4px;
+                                background: var(--white);
+                                color: var(--black);
+                                font-family: inherit;
+                            "
+                        />
+                    </div>
+                    <div style="margin-bottom: 1rem">
+                        <input
+                            type="text"
+                            name="subject"
+                            placeholder="Subject (optional)"
+                            style="
+                                width: 100%;
+                                padding: 0.75rem;
+                                border: 1px solid var(--gray-medium);
+                                border-radius: 4px;
+                                background: var(--white);
+                                color: var(--black);
+                                font-family: inherit;
+                            "
+                        />
+                    </div>
+                    <div style="margin-bottom: 1.5rem">
+                        <textarea
+                            name="message"
+                            placeholder="Your Message"
+                            required
+                            rows="5"
+                            style="
+                                width: 100%;
+                                padding: 0.75rem;
+                                border: 1px solid var(--gray-medium);
+                                border-radius: 4px;
+                                background: var(--white);
+                                color: var(--black);
+                                font-family: inherit;
+                                resize: vertical;
+                            "
+                        ></textarea>
+                    </div>
+                    <button
+                        type="submit"
+                        style="
+                            width: 100%;
+                            padding: 0.75rem 1.5rem;
+                            background: var(--black);
+                            color: var(--white);
+                            border: none;
+                            border-radius: 4px;
+                            font-family: inherit;
+                            font-weight: 500;
+                            cursor: pointer;
+                            transition: var(--transition);
+                        "
+                        onmouseover="this.style.opacity='0.8'"
+                        onmouseout="this.style.opacity='1'"
+                    >
+                        Send Message
+                    </button>
+                </form>
+
                 <a href="mailto:kushan@example.com" class="contact-email"
                     >kushan@example.com</a
                 >
@@ -930,5 +1024,6 @@
                 }
             });
         </script>
+        <script src="/public/js/app.js"></script>
     </body>
 </html>
