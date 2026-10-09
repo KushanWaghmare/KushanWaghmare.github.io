@@ -52,7 +52,6 @@
                 color: var(--black);
                 background: var(--white);
                 overflow-x: hidden;
-                cursor: none;
                 transition: var(--transition);
             }
 
@@ -66,7 +65,7 @@
                 background: var(--white);
                 display: flex;
                 justify-content: center;
-                ''align-items: center;
+                align-items: center;
                 z-index: 9999;
                 animation: fadeOut 0.5s ease-in-out 2s forwards;
                 transition: var(--transition);
@@ -525,29 +524,6 @@
                 transition: var(--transition);
             }
 
-            /* Custom cursor */
-            .cursor {
-                width: 20px;
-                height: 20px;
-                border: 1px solid var(--black);
-                border-radius: 50%;
-                position: fixed;
-                pointer-events: none;
-                z-index: 9999;
-                transition: all 0.1s ease;
-                transform: translate(-50%, -50%);
-            }
-
-            .cursor.hover {
-                width: 40px;
-                height: 40px;
-                background: rgba(0, 0, 0, 0.1);
-            }
-
-            [data-theme="dark"] .cursor.hover {
-                background: rgba(255, 255, 255, 0.1);
-            }
-
             /* Theme transition overlay */
             .theme-transition {
                 position: fixed;
@@ -611,14 +587,6 @@
 
             /* Responsive Design */
             @media (max-width: 768px) {
-                body {
-                    cursor: auto;
-                }
-
-                .cursor {
-                    display: none;
-                }
-
                 .theme-toggle {
                     right: 1rem;
                     width: 50px;
@@ -660,9 +628,6 @@
         </style>
     </head>
     <body>
-        <!-- Custom Cursor -->
-        <div class="cursor"></div>
-
         <!-- Theme Transition Overlay -->
         <div class="theme-transition"></div>
 
@@ -978,30 +943,6 @@
                     }, 300);
                 }, 300);
             });
-
-            // Custom cursor
-            const cursor = document.querySelector(".cursor");
-            let mouseX = 0,
-                mouseY = 0;
-
-            document.addEventListener("mousemove", (e) => {
-                mouseX = e.clientX;
-                mouseY = e.clientY;
-                cursor.style.left = mouseX + "px";
-                cursor.style.top = mouseY + "px";
-            });
-
-            // Hover effects
-            document
-                .querySelectorAll("a, button, .project-card, .theme-toggle")
-                .forEach((el) => {
-                    el.addEventListener("mouseenter", () =>
-                        cursor.classList.add("hover"),
-                    );
-                    el.addEventListener("mouseleave", () =>
-                        cursor.classList.remove("hover"),
-                    );
-                });
 
             // Scroll animations
             const observerOptions = {
