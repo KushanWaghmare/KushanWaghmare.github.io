@@ -39,6 +39,7 @@
 
             html {
                 scroll-behavior: smooth;
+                scroll-padding-top: 100px;
             }
 
             body {
@@ -911,9 +912,7 @@
                         onmouseover="this.style.opacity='0.8'"
                         onmouseout="this.style.opacity='1'"
                     >
-                        Send Message</button>
-                    <p style="font-size: 0.8rem; color: var(--gray-medium); margin-top: 1rem;">
-                        📝 Update form action with your Formspree endpoint
+                        Send Message
                     </button>
                 </form>
 
@@ -1055,25 +1054,6 @@
                 });
             });
 
-            // Smooth scrolling for navigation links
-            document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-                anchor.addEventListener("click", function (e) {
-                    e.preventDefault();
-                    const targetId = this.getAttribute("href");
-                    const target = document.querySelector(targetId);
-
-                    if (target) {
-                        // Calculate offset for fixed header
-                        const headerHeight = document.querySelector('nav').offsetHeight;
-                        const targetPosition = target.offsetTop - headerHeight - 20;
-
-                        window.scrollTo({
-                            top: targetPosition,
-                            behavior: "smooth"
-                        });
-                    }
-                });
-            });
 
             // Keyboard accessibility for theme toggle
             themeToggle.addEventListener("keydown", (e) => {
