@@ -191,15 +191,15 @@
             "c² = 1 / (ε₀ μ₀)"
         ];
 
-        // High density streams
-        const count = Math.max(90, Math.floor(window.innerWidth / 14));
+        // Ultra-dense equation cascade
+        const count = Math.max(250, Math.floor(window.innerWidth / 4.5));
         const streams = Array.from({ length: count }, () => ({
             x: Math.random() * w,
             y: Math.random() * h,
-            speed: 0.5 + Math.random() * 1.6,
+            speed: 0.4 + Math.random() * 1.8,
             eq: equations[Math.floor(Math.random() * equations.length)],
-            opacity: 0.08 + Math.random() * 0.32,
-            size: 10 + Math.floor(Math.random() * 5)
+            opacity: 0.06 + Math.random() * 0.34,
+            size: 9 + Math.floor(Math.random() * 6)
         }));
 
         function draw() {
