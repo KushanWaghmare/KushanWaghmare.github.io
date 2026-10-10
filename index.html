@@ -84,6 +84,7 @@
 </head>
 <body>
     <canvas id="physics-canvas"></canvas>
+    <canvas id="rain-canvas"></canvas>
     
     <nav class="nav">
         <a href="#home">Home</a>
@@ -97,8 +98,7 @@
             <h1>Kushan Waghmare</h1>
             <p>Data Science & Quantitative Finance Student at IIT Madras.<br>Building complex systems from compilers to statistical arbitrage models.</p>
             <div class="equation">
-                F = -k(x - x₀) <br>
-                x_{t+1} = x_t + v_t Δt + ½(F/m)Δt²
+                iℏ ∂Ψ(<b>r</b>, t)/∂t = - (ℏ²/2m)∇²Ψ(<b>r</b>, t) + V(<b>r</b>, t)Ψ(<b>r</b>, t)
             </div>
         </section>
 
@@ -307,9 +307,87 @@
             camera.position.y += (mouse.y * 50 - camera.position.y) * 0.05;
             camera.lookAt(scene.position);
 
+            // Falling physics equations
+            rCtx.clearRect(0, 0, rW, rH);
+            for (let i = 0; i < streams.length; i++) {
+                const s = streams[i];
+                rCtx.font = `${s.size}px monospace, serif`;
+                rCtx.fillStyle = `rgba(74, 222, 128, ${s.opacity})`;
+                rCtx.fillText(s.eq, s.x, s.y);
+                s.y += s.speed;
+                if (s.y > rH + 30) {
+                    s.y = -20 - Math.random() * 80;
+                    s.x = Math.random() * rW;
+                    s.eq = equations[Math.floor(Math.random() * equations.length)];
+                    s.speed = 0.6 + Math.random() * 1.5;
+                    s.opacity = 0.12 + Math.random() * 0.28;
+                }
+            }
+
             renderer.render(scene, camera);
             requestAnimationFrame(update);
         }
+
+        // Falling Physics Equations Setup
+        const rainCanvas = document.getElementById('rain-canvas');
+        const rCtx = rainCanvas.getContext('2d');
+        let rW, rH;
+        function resizeRain() {
+            rW = rainCanvas.width = window.innerWidth;
+            rH = rainCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeRain);
+        resizeRain();
+
+        const equations = [
+            "iℏ ∂Ψ/∂t = ĤΨ",
+            "G_μν + Λg_μν = 8πG/c⁴ T_μν",
+            "∇ · E = ρ / ε₀",
+            "∇ × B = μ₀J + μ₀ε₀ ∂E/∂t",
+            "∇ · B = 0",
+            "∇ × E = -∂B/∂t",
+            "(iγ^μ ∂_μ - m)ψ = 0",
+            "∂V/∂t + ½σ²S² ∂²V/∂S² + rS ∂V/∂S - rV = 0",
+            "ρ(∂u/∂t + u·∇u) = -∇p + μ∇²u + f",
+            "Δx Δp ≥ ℏ/2",
+            "F = dp/dt = ma",
+            "F = G(m₁m₂)/r²",
+            "S = k_B ln Ω",
+            "d²x^μ/dτ² + Γ^μ_αβ (dx^α/dτ)(dx^β/dτ) = 0",
+            "F = -k(x - x₀)",
+            "d/dt(∂L/∂q̇) - ∂L/∂q = 0",
+            "q̇ = ∂H/∂p, ṗ = -∂H/∂q",
+            "E = mc²",
+            "E² = (pc)² + (m₀c²)²",
+            "E = ℏω",
+            "F = q(E + v × B)",
+            "dU = TdS - pdV + μdN",
+            "j* = σT⁴",
+            "2d sin θ = nλ",
+            "(ȧ/a)² = 8πGρ/3 - kc²/a² + Λc²/3",
+            "λ = h/p",
+            "S = 1/μ₀ (E × B)",
+            "PV = Nk_B T",
+            "p + ½ρv² + ρgh = C",
+            "(□ + m²)ϕ = 0",
+            "df = (∂f/∂t + μ∂f/∂x + ½σ²∂²f/∂x²)dt + σ(∂f/∂x)dW_t",
+            "∂u/∂t = α∇²u",
+            "H = p²/2m + V(x)",
+            "∇²Φ = 4πGρ",
+            "Z = ∑ e^{-β E_i}",
+            "iℏ ∂Ψ/∂t = - (ℏ²/2m)∇²Ψ + VΨ",
+            "c² = 1 / (ε₀ μ₀)"
+        ];
+
+        const streamCount = Math.max(16, Math.floor(window.innerWidth / 55));
+        const streams = Array.from({ length: streamCount }, (_, i) => ({
+            x: (i + Math.random() * 0.5) * (window.innerWidth / streamCount),
+            y: Math.random() * window.innerHeight,
+            speed: 0.6 + Math.random() * 1.5,
+            eq: equations[Math.floor(Math.random() * equations.length)],
+            opacity: 0.12 + Math.random() * 0.28,
+            size: 11 + Math.floor(Math.random() * 4)
+        }));
         
         update();
     </script>
