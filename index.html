@@ -360,21 +360,24 @@
                 background: var(--white);
                 padding: 3rem 2rem;
                 border-radius: 2px;
-                transition: all 0.3s ease;
+                /* ponytail: CSS cubic-bezier spring physics. Add heavy JS physics engine when DOM limits are reached. */
+                transition: all 0.8s cubic-bezier(0.68, -0.6, 0.32, 1.6);
                 opacity: 0;
-                transform: translateY(30px);
+                transform: translateY(60px) scale(0.9) rotateX(10deg);
                 cursor: pointer;
                 border: 1px solid transparent;
+                transform-style: preserve-3d;
+                perspective: 1000px;
             }
 
             .project-card.visible {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY(0) scale(1) rotateX(0deg);
             }
 
             .project-card:hover {
-                transform: translateY(-10px);
-                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+                transform: translateY(-15px) rotateX(5deg) rotateY(-5deg) scale(1.02);
+                box-shadow: -10px 20px 40px rgba(0, 0, 0, 0.15);
                 border-color: var(--gray-medium);
             }
 
