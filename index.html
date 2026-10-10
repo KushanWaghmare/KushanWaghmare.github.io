@@ -34,21 +34,33 @@
         h2 { font-size: 2.5rem; color: var(--accent); margin-bottom: 2rem; }
         p { font-size: 1.2rem; line-height: 1.6; color: #a3a3a3; max-width: 600px; }
         
-        .projects-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+        .project-section {
+            min-height: 100vh;
+            display: flex; flex-direction: column; 
+            justify-content: center; position: relative;
         }
         .project-card { 
-            background: var(--surface); padding: 2.5rem; 
+            background: var(--surface); padding: 3rem; 
             border-radius: 12px; backdrop-filter: blur(10px); 
             border: 1px solid var(--border);
             transition: transform 0.3s ease, border-color 0.3s ease;
+            max-width: 600px;
         }
         .project-card:hover {
             transform: translateY(-5px);
             border-color: var(--accent);
         }
-        .project-card h3 { margin-top: 0; font-size: 1.5rem; }
-        .project-card p { font-size: 1rem; margin-bottom: 0; }
+        .project-card h3 { margin-top: 0; font-size: 2rem; }
+        .project-card p { font-size: 1.1rem; margin-bottom: 0; color: #a3a3a3; line-height: 1.6; }
+        
+        .equation {
+            font-family: "Cambria Math", "Times New Roman", serif;
+            font-size: 1.5rem;
+            color: rgba(74, 222, 128, 0.6);
+            letter-spacing: 2px;
+            margin-top: 1rem;
+            font-style: italic;
+        }
         
         .nav { 
             position: fixed; top: 2rem; right: 2rem; z-index: 10; 
@@ -75,7 +87,7 @@
     
     <nav class="nav">
         <a href="#home">Home</a>
-        <a href="#projects">Work</a>
+        <a href="#proj1">Work</a>
         <a href="#contact">Contact</a>
     </nav>
 
@@ -84,29 +96,45 @@
             <div id="anchor-hero" class="anchor"></div>
             <h1>Kushan Waghmare</h1>
             <p>Data Science & Quantitative Finance Student at IIT Madras.<br>Building complex systems from compilers to statistical arbitrage models.</p>
+            <div class="equation">
+                F = -k(x - x₀) <br>
+                x_{t+1} = x_t + v_t Δt + ½(F/m)Δt²
+            </div>
         </section>
 
-        <section id="projects">
-            <h2>Selected Work</h2>
-            <div class="projects-grid">
-                <div class="project-card">
-                    <div id="anchor-proj1" class="anchor"></div>
-                    <h3>Ku-Lang Compiler</h3>
-                    <p>Custom programming language and compiler with lexical analysis, parsing, semantic checks, and LLVM IR generation.</p>
-                </div>
-                <div class="project-card">
-                    <h3>Options Pricing & Greeks</h3>
-                    <p>Implemented Black-Scholes model in Python for European options pricing and Greeks computation. Validated with Monte Carlo.</p>
-                </div>
-                <div class="project-card">
-                    <div id="anchor-proj2" class="anchor"></div>
-                    <h3>Statistical Arbitrage</h3>
-                    <p>Python-based pairs trading strategy using co-integration and z-score signals. Backtested over 2 years.</p>
-                </div>
-                <div class="project-card">
-                    <h3>8-Bit Breadboard PC</h3>
-                    <p>Built an 8-bit breadboard computer from scratch using discrete TTL logic. Designed ALU and control unit.</p>
-                </div>
+        <section id="proj1" class="project-section">
+            <div id="anchor-proj1" class="anchor"></div>
+            <div class="project-card">
+                <h3>Ku-Lang Compiler</h3>
+                <p>Custom programming language and compiler with lexical analysis, parsing, semantic checks, and LLVM IR generation.</p>
+                <div class="equation">ast → ir → obj</div>
+            </div>
+        </section>
+
+        <section id="proj2" class="project-section">
+            <div id="anchor-proj2" class="anchor"></div>
+            <div class="project-card" style="margin-left: auto;">
+                <h3>Options Pricing & Greeks</h3>
+                <p>Implemented Black-Scholes model in Python for European options pricing and Greeks computation. Validated with Monte Carlo.</p>
+                <div class="equation">dV = ΔdS + ½ΓdS² + Θdt</div>
+            </div>
+        </section>
+
+        <section id="proj3" class="project-section">
+            <div id="anchor-proj3" class="anchor"></div>
+            <div class="project-card">
+                <h3>Statistical Arbitrage</h3>
+                <p>Python-based pairs trading strategy using co-integration and z-score signals. Backtested over 2 years.</p>
+                <div class="equation">y_t = βx_t + ε_t</div>
+            </div>
+        </section>
+
+        <section id="proj4" class="project-section">
+            <div id="anchor-proj4" class="anchor"></div>
+            <div class="project-card" style="margin-left: auto;">
+                <h3>8-Bit Breadboard PC</h3>
+                <p>Built an 8-bit breadboard computer from scratch using discrete TTL logic. Designed ALU and control unit.</p>
+                <div class="equation">A ⊕ B</div>
             </div>
         </section>
 
