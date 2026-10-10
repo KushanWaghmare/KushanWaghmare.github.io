@@ -1,1012 +1,277 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <!-- Updated: January 2025 - Real resume data -->
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta name="description" content="Kushan Waghmare - Data Science & Quantitative Finance Student at IIT Madras. Specializing in options pricing, statistical arbitrage, and compiler design." />
-        <meta name="keywords" content="portfolio, data science, quantitative finance, options pricing, statistical arbitrage, IIT Madras, Python, C, LLVM, compiler design" />
-        <meta name="author" content="Kushan Waghmare" />
-        <title>Kushan Waghmare - Portfolio</title>
-        <link
-            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-            rel="stylesheet"
-        />
-
-        <style>
-            :root {
-                --black: #0a0a0a;
-                --white: #ffffff;
-                --gray-light: #f5f5f5;
-                --gray-medium: #888888;
-                --gray-dark: #333333;
-                --transition: all 0.3s ease;
-            }
-
-            [data-theme="dark"] {
-                --black: #ffffff;
-                --white: #000000;
-                --gray-light: #1a1a1a;
-                --gray-medium: #888888;
-                --gray-dark: #cccccc;
-            }
-
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
-
-            html {
-                scroll-behavior: smooth;
-                scroll-padding-top: 100px;
-            }
-
-            body {
-                font-family:
-                    "Inter",
-                    -apple-system,
-                    BlinkMacSystemFont,
-                    sans-serif;
-                line-height: 1.6;
-                color: var(--black);
-                background: var(--white);
-                overflow-x: hidden;
-                transition: var(--transition);
-            }
-
-            /* Loading Animation */
-            .loader {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: var(--white);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 9999;
-                animation: fadeOut 0.5s ease-in-out 2s forwards;
-                transition: var(--transition);
-            }
-
-            .loader-text {
-                font-size: 1.2rem;
-                font-weight: 300;
-                letter-spacing: 0.2em;
-                animation: pulse 2s ease-in-out infinite;
-            }
-
-            /* Dark Mode Toggle */
-            .theme-toggle {
-                position: fixed;
-                top: 50%;
-                right: 2rem;
-                transform: translateY(-50%);
-                z-index: 1001;
-                background: var(--white);
-                border: 2px solid var(--black);
-                border-radius: 50px;
-                padding: 1rem;
-                cursor: pointer;
-                transition: var(--transition);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 60px;
-                height: 60px;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            }
-
-            .theme-toggle:hover {
-                transform: translateY(-50%) scale(1.1);
-                box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
-            }
-
-            .theme-toggle svg {
-                width: 24px;
-                height: 24px;
-                fill: var(--black);
-                transition: var(--transition);
-            }
-
-            .theme-toggle .sun-icon {
-                display: block;
-            }
-
-            .theme-toggle .moon-icon {
-                display: none;
-            }
-
-            [data-theme="dark"] .theme-toggle .sun-icon {
-                display: none;
-            }
-
-            [data-theme="dark"] .theme-toggle .moon-icon {
-                display: block;
-            }
-
-            /* Navigation */
-            nav {
-                position: fixed;
-                top: 0;
-                width: 100%;
-                padding: 2rem 4rem;
-                background: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(20px);
-                z-index: 1000;
-                transition: var(--transition);
-            }
-
-            [data-theme="dark"] nav {
-                background: rgba(10, 10, 10, 0.95);
-            }
-
-            nav.scrolled {
-                padding: 1rem 4rem;
-                box-shadow: 0 1px 20px rgba(0, 0, 0, 0.05);
-            }
-
-            [data-theme="dark"] nav.scrolled {
-                box-shadow: 0 1px 20px rgba(255, 255, 255, 0.05);
-            }
-
-            .nav-container {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                max-width: 1200px;
-                margin: 0 auto;
-            }
-
-            .logo {
-                font-size: 1.5rem;
-                font-weight: 600;
-                text-decoration: none;
-                color: var(--black);
-                transition: var(--transition);
-            }
-
-            .logo:hover {
-                opacity: 0.7;
-            }
-
-            .nav-links {
-                display: flex;
-                list-style: none;
-                gap: 3rem;
-            }
-
-            .nav-links a {
-                text-decoration: none;
-                color: var(--black);
-                font-weight: 400;
-                position: relative;
-                transition: var(--transition);
-            }
-
-            .nav-links a::after {
-                content: "";
-                position: absolute;
-                bottom: -5px;
-                left: 0;
-                width: 0;
-                height: 1px;
-                background: var(--black);
-                transition: var(--transition);
-            }
-
-            .nav-links a:hover::after,
-            .nav-links a.active::after {
-                width: 100%;
-            }
-
-            .nav-links a.active {
-                opacity: 1;
-            }
-
-            /* Hero Section */
-            .hero {
-                height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                text-align: center;
-                position: relative;
-            }
-
-            .hero-content h1 {
-                font-size: clamp(3rem, 8vw, 8rem);
-                font-weight: 700;
-                margin-bottom: 1rem;
-                opacity: 0;
-                animation: slideUp 1s ease 0.5s forwards;
-            }
-
-            .hero-content p {
-                font-size: 1.2rem;
-                color: var(--gray-medium);
-                font-weight: 300;
-                letter-spacing: 0.05em;
-                opacity: 0;
-                animation: slideUp 1s ease 0.7s forwards;
-            }
-
-            .scroll-indicator {
-                position: absolute;
-                bottom: 2rem;
-                left: 50%;
-                transform: translateX(-50%);
-                opacity: 0;
-                animation: slideUp 1s ease 0.9s forwards;
-            }
-
-            .scroll-arrow {
-                width: 1px;
-                height: 3rem;
-                background: var(--black);
-                margin: 0 auto 1rem;
-                animation: float 2s ease-in-out infinite;
-                transition: var(--transition);
-            }
-
-            /* Section Styles */
-            section {
-                padding: 8rem 4rem;
-                max-width: 1200px;
-                margin: 0 auto;
-            }
-
-            .section-title {
-                font-size: 2.5rem;
-                font-weight: 600;
-                margin-bottom: 4rem;
-                opacity: 0;
-                transform: translateY(30px);
-                transition: all 0.6s ease;
-            }
-
-            .section-title.visible {
-                opacity: 1;
-                transform: translateY(0);
-            }
-
-            /* About Section */
-            .about-grid {
-                display: grid;
-                grid-template-columns: 1fr 2fr;
-                gap: 6rem;
-                align-items: start;
-            }
-
-            .about-image {
-                width: 100%;
-                height: 400px;
-                background: var(--gray-light);
-                border-radius: 2px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 4rem;
-                font-weight: 300;
-                color: var(--gray-medium);
-                opacity: 0;
-                transform: translateY(30px);
-                transition: all 0.6s ease;
-            }
-
-            .about-image.visible {
-                opacity: 1;
-                transform: translateY(0);
-            }
-
-            .about-content {
-                opacity: 0;
-                transform: translateY(30px);
-                transition: all 0.6s ease 0.2s;
-            }
-
-            .about-content.visible {
-                opacity: 1;
-                transform: translateY(0);
-            }
-
-            .about-content p {
-                font-size: 1.1rem;
-                line-height: 1.8;
-                margin-bottom: 2rem;
-                color: var(--gray-dark);
-                transition: var(--transition);
-            }
-
-            .skills {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 1rem;
-                margin-top: 2rem;
-            }
-
-            .skill {
-                padding: 0.5rem 1rem;
-                border: 1px solid var(--gray-medium);
-                border-radius: 2px;
-                font-size: 0.9rem;
-                transition: var(--transition);
-            }
-
-            .skill:hover {
-                background: var(--black);
-                color: var(--white);
-                border-color: var(--black);
-            }
-
-            /* Projects Section */
-            .projects {
-                background: var(--gray-light);
-                margin: 0 -4rem;
-                padding: 8rem 4rem;
-                transition: var(--transition);
-            }
-
-            .projects-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-                gap: 3rem;
-                margin-top: 4rem;
-            }
-
-            .project-card {
-                background: var(--white);
-                padding: 3rem 2rem;
-                border-radius: 2px;
-                /* ponytail: CSS cubic-bezier spring physics. Add heavy JS physics engine when DOM limits are reached. */
-                transition: all 0.8s cubic-bezier(0.68, -0.6, 0.32, 1.6);
-                opacity: 0;
-                transform: translateY(60px) scale(0.9) rotateX(10deg);
-                cursor: pointer;
-                border: 1px solid transparent;
-                transform-style: preserve-3d;
-                perspective: 1000px;
-            }
-
-            .project-card.visible {
-                opacity: 1;
-                transform: translateY(0) scale(1) rotateX(0deg);
-            }
-
-            .project-card:hover {
-                transform: translateY(-15px) rotateX(5deg) rotateY(-5deg) scale(1.02);
-                box-shadow: -10px 20px 40px rgba(0, 0, 0, 0.15);
-                border-color: var(--gray-medium);
-            }
-
-            [data-theme="dark"] .project-card:hover {
-                box-shadow: 0 20px 40px rgba(255, 255, 255, 0.05);
-            }
-
-            .project-number {
-                font-size: 0.9rem;
-                color: var(--gray-medium);
-                margin-bottom: 1rem;
-            }
-
-            .project-title {
-                font-size: 1.5rem;
-                font-weight: 600;
-                margin-bottom: 1rem;
-                color: var(--black);
-                transition: var(--transition);
-            }
-
-            .project-description {
-                color: var(--gray-dark);
-                margin-bottom: 2rem;
-                line-height: 1.6;
-                transition: var(--transition);
-            }
-
-            .project-links {
-                display: flex;
-                gap: 2rem;
-            }
-
-            .project-link {
-                text-decoration: none;
-                color: var(--black);
-                font-weight: 500;
-                position: relative;
-                transition: var(--transition);
-            }
-
-            .project-link::after {
-                content: "→";
-                margin-left: 0.5rem;
-                transition: var(--transition);
-            }
-
-            .project-link:hover::after {
-                transform: translateX(5px);
-            }
-
-            /* Contact Section */
-            .contact {
-                text-align: center;
-
-                padding: 12rem 4rem;
-            }
-
-            .contact-content {
-                max-width: 600px;
-                margin: 0 auto;
-            }
-
-            .contact-title {
-                font-size: 3rem;
-                font-weight: 600;
-                margin-bottom: 2rem;
-                opacity: 0;
-                transform: translateY(30px);
-                transition: all 0.6s ease;
-            }
-
-            .contact-title.visible {
-                opacity: 1;
-                transform: translateY(0);
-            }
-
-            .contact-text {
-                font-size: 1.2rem;
-                color: var(--gray-dark);
-                margin-bottom: 3rem;
-                opacity: 0;
-                transform: translateY(30px);
-                transition: all 0.6s ease 0.2s;
-            }
-
-            .contact-text.visible {
-                opacity: 1;
-                transform: translateY(0);
-            }
-
-            .contact-email {
-                display: inline-block;
-                font-size: 1.5rem;
-                font-weight: 500;
-                color: var(--black);
-                text-decoration: none;
-                border-bottom: 2px solid var(--black);
-                padding-bottom: 0.5rem;
-                transition: all 0.6s ease 0.4s;
-                opacity: 0;
-                transform: translateY(30px);
-            }
-
-            .contact-email.visible {
-                opacity: 1;
-                transform: translateY(0);
-            }
-
-            .contact-email:hover {
-                opacity: 0.7;
-            }
-
-            .social-links {
-                display: flex;
-                justify-content: center;
-                gap: 3rem;
-                margin-top: 4rem;
-                opacity: 0;
-                transform: translateY(30px);
-                transition: all 0.6s ease 0.6s;
-            }
-
-            .social-links.visible {
-                opacity: 1;
-                transform: translateY(0);
-            }
-
-            .social-link {
-                color: var(--gray-medium);
-                text-decoration: none;
-                font-weight: 500;
-                transition: var(--transition);
-            }
-
-            .social-link:hover {
-                color: var(--black);
-            }
-
-            /* Footer */
-            footer {
-                text-align: center;
-                padding: 3rem;
-                border-top: 1px solid var(--gray-medium);
-                color: var(--gray-medium);
-                font-size: 0.9rem;
-                transition: var(--transition);
-            }
-
-            /* Theme transition overlay */
-            .theme-transition {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: radial-gradient(
-                    circle at var(--x, 50%) var(--y, 50%),
-                    transparent 0%,
-                    var(--white) 80%
-                );
-                pointer-events: none;
-                opacity: 0;
-                z-index: 10000;
-                transition: opacity 0.6s ease;
-            }
-
-            .theme-transition.active {
-                opacity: 1;
-            }
-
-            /* Animations */
-            @keyframes fadeOut {
-                to {
-                    opacity: 0;
-                    visibility: hidden;
-                }
-            }
-
-            @keyframes pulse {
-                0%,
-                100% {
-                    opacity: 1;
-                }
-                50% {
-                    opacity: 0.5;
-                }
-            }
-
-            @keyframes slideUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(30px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            @keyframes float {
-                0%,
-                100% {
-                    transform: translateY(0);
-                }
-                50% {
-                    transform: translateY(-10px);
-                }
-            }
-
-            /* Responsive Design */
-            @media (max-width: 768px) {
-                .theme-toggle {
-                    right: 1rem;
-                    width: 50px;
-                    height: 50px;
-                    padding: 0.75rem;
-                }
-
-                .theme-toggle svg {
-                    width: 20px;
-                    height: 20px;
-                }
-
-                nav,
-                section,
-                .contact,
-                .projects {
-                    padding-left: 2rem;
-                    padding-right: 2rem;
-                }
-
-                .nav-links {
-                    display: none;
-                }
-
-                .about-grid {
-                    grid-template-columns: 1fr;
-                    gap: 3rem;
-                }
-
-                .projects-grid {
-                    grid-template-columns: 1fr;
-                }
-
-                .social-links {
-                    flex-direction: column;
-                    gap: 2rem;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <!-- Theme Transition Overlay -->
-        <div class="theme-transition"></div>
-
-        <!-- Dark Mode Toggle -->
-        <button
-            class="theme-toggle"
-            id="theme-toggle"
-            aria-label="Toggle dark mode"
-        >
-            <svg class="sun-icon" viewBox="0 0 24 24">
-                <path
-                    d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"
-                />
-            </svg>
-            <svg class="moon-icon" viewBox="0 0 24 24">
-                <path
-                    d="M12.34 2.02C6.59 1.82 2 6.42 2 12c0 5.52 4.48 10 10 10 3.71 0 6.93-2.02 8.66-5.02-7.51-.25-13.54-6.28-13.54-13.54 0-1.19.16-2.35.46-3.46-.21.01-.41.02-.62.02-.72 0-1.44-.06-2.14-.18-.43-.07-.93.23-.93.7 0 .14.04.27.11.38z"
-                />
-            </svg>
-        </button>
-
-        <!-- Loader -->
-        <div class="loader">
-            <div class="loader-text">KUSHAN WAGHMARE</div>
-        </div>
-
-        <!-- Navigation -->
-        <nav id="nav">
-            <div class="nav-container">
-                <a href="#" class="logo">KW</a>
-                <ul class="nav-links">
-                    <li><a href="#about">About</a></li>
-                    <li><a href="#projects">Work</a></li>
-                    <li><a href="#contact">Contact</a></li>
-                </ul>
-            </div>
-        </nav>
-
-        <!-- Hero Section -->
-        <section class="hero">
-            <div class="hero-content">
-                <h1>KUSHAN<br />WAGHMARE</h1>
-                <p>Data Science & Quantitative Finance Student</p>
-            </div>
-            <div class="scroll-indicator">
-                <div class="scroll-arrow"></div>
-                <span>Scroll</span>
-            </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kushan Waghmare | Physics Portfolio</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --text: #ffffff;
+            --accent: #4ade80;
+            --surface: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+        body { 
+            margin: 0; padding: 0; 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background: var(--bg); color: var(--text); 
+            overflow-x: hidden; 
+        }
+        canvas { 
+            position: fixed; top: 0; left: 0; 
+            z-index: 1; pointer-events: none; 
+        }
+        .content { 
+            position: relative; z-index: 2; 
+            max-width: 900px; margin: 0 auto; padding: 2rem; 
+        }
+        section { 
+            min-height: 100vh; display: flex; flex-direction: column; 
+            justify-content: center; position: relative;
+        }
+        h1 { font-size: 4rem; margin-bottom: 1rem; font-weight: 800; letter-spacing: -0.05em; }
+        h2 { font-size: 2.5rem; color: var(--accent); margin-bottom: 2rem; }
+        p { font-size: 1.2rem; line-height: 1.6; color: #a3a3a3; max-width: 600px; }
+        
+        .projects-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+        }
+        .project-card { 
+            background: var(--surface); padding: 2.5rem; 
+            border-radius: 12px; backdrop-filter: blur(10px); 
+            border: 1px solid var(--border);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+        .project-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+        }
+        .project-card h3 { margin-top: 0; font-size: 1.5rem; }
+        .project-card p { font-size: 1rem; margin-bottom: 0; }
+        
+        .nav { 
+            position: fixed; top: 2rem; right: 2rem; z-index: 10; 
+            display: flex; gap: 2rem;
+        }
+        .nav a { 
+            color: var(--text); text-decoration: none; 
+            text-transform: uppercase; letter-spacing: 2px; 
+            font-size: 0.85rem; font-weight: 600;
+            transition: color 0.3s;
+        }
+        .nav a:hover { color: var(--accent); }
+
+        /* Physics Anchor points */
+        .anchor { position: absolute; width: 1px; height: 1px; visibility: hidden; }
+        #anchor-hero { top: 50%; left: 20%; }
+        #anchor-proj1 { top: 20%; left: 50%; }
+        #anchor-proj2 { top: 80%; left: 50%; }
+        #anchor-contact { top: 50%; left: 50%; }
+    </style>
+</head>
+<body>
+    <canvas id="physics-canvas"></canvas>
+    
+    <nav class="nav">
+        <a href="#home">Home</a>
+        <a href="#projects">Work</a>
+        <a href="#contact">Contact</a>
+    </nav>
+
+    <div class="content">
+        <section id="home">
+            <div id="anchor-hero" class="anchor"></div>
+            <h1>Kushan Waghmare</h1>
+            <p>Data Science & Quantitative Finance Student at IIT Madras.<br>Building complex systems from compilers to statistical arbitrage models.</p>
         </section>
 
-        <!-- About Section -->
-        <section id="about">
-            <h2 class="section-title">About</h2>
-            <div class="about-grid">
-                <div class="about-image">KW</div>
-                <div class="about-content">
-                    <p>
-                        I'm an undergraduate student at IIT Madras pursuing Data Science and BS Physics,
-                        with strong skills in quantitative finance, data science, and systems programming.
-                        I'm passionate about financial modeling, statistical arbitrage, and compiler design.
-                    </p>
-                    <p>
-                        My experience spans options pricing, trading strategies, and low-level computing.
-                        I enjoy building everything from custom programming languages to 8-bit computers,
-                        while applying mathematical models to solve complex financial problems.
-                    </p>
-                    <div style="margin: 2rem 0; padding: 1.5rem; background: var(--gray-light); border-radius: 8px;">
-                        <h3 style="margin-bottom: 1rem; color: var(--black); font-size: 1.2rem;">Education</h3>
-                        <div style="margin-bottom: 1rem;">
-                            <strong style="color: var(--black);">Indian Institute of Technology Madras</strong><br>
-                            <span style="color: var(--gray-dark);">Bachelor of Science in Data Science | 2023 – 2027</span>
-                        </div>
-                        <div>
-                            <strong style="color: var(--black);">Vidya Bharati Mahavidyalaya</strong><br>
-                            <span style="color: var(--gray-dark);">Bachelor of Science in Physics | 2025 – 2028</span>
-                        </div>
-                    </div>
-                    <div class="skills">
-                        <div class="skill">Python</div>
-                        <div class="skill">C</div>
-                        <div class="skill">Java</div>
-                        <div class="skill">SQL</div>
-                        <div class="skill">Machine Learning</div>
-                        <div class="skill">Options Pricing</div>
-                        <div class="skill">Statistical Arbitrage</div>
-                        <div class="skill">LLVM</div>
-                        <div class="skill">Pandas</div>
-                        <div class="skill">Git</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Projects Section -->
-        <section id="projects" class="projects">
-            <h2 class="section-title">Selected Work</h2>
+        <section id="projects">
+            <h2>Selected Work</h2>
             <div class="projects-grid">
                 <div class="project-card">
-                    <div class="project-number">01</div>
-                    <h3 class="project-title">Ku-Lang Compiler</h3>
-                    <p class="project-description">
-                        Custom programming language and compiler with lexical analysis, parsing,
-                        semantic checks, and LLVM IR code generation. Complete compilation pipeline
-                        supporting control flow, functions, and typed expressions.
-                    </p>
-                    <div class="project-links">
-                        <a href="#" class="project-link">View Code</a>
-                        <a href="#" class="project-link">Documentation</a>
-                    </div>
+                    <div id="anchor-proj1" class="anchor"></div>
+                    <h3>Ku-Lang Compiler</h3>
+                    <p>Custom programming language and compiler with lexical analysis, parsing, semantic checks, and LLVM IR generation.</p>
                 </div>
                 <div class="project-card">
-                    <div class="project-number">02</div>
-                    <h3 class="project-title">Options Pricing & Greeks</h3>
-                    <p class="project-description">
-                        Implemented Black-Scholes model in Python for European options pricing
-                        and Greeks computation. Validated with Monte Carlo simulations and built
-                        interactive visualization dashboard.
-                    </p>
-                    <div class="project-links">
-                        <a href="#" class="project-link">View Demo</a>
-                        <a href="#" class="project-link">Source Code</a>
-                    </div>
+                    <h3>Options Pricing & Greeks</h3>
+                    <p>Implemented Black-Scholes model in Python for European options pricing and Greeks computation. Validated with Monte Carlo.</p>
                 </div>
                 <div class="project-card">
-                    <div class="project-number">03</div>
-                    <h3 class="project-title">Statistical Arbitrage Strategy</h3>
-                    <p class="project-description">
-                        Python-based pairs trading strategy using co-integration and z-score signals.
-                        Backtested over 2 years achieving Sharpe ratio of 1.8. Enhanced time series
-                        modeling and quantitative trading skills.
-                    </p>
-                    <div class="project-links">
-                        <a href="#" class="project-link">View Results</a>
-                        <a href="#" class="project-link">Source Code</a>
-                    </div>
+                    <div id="anchor-proj2" class="anchor"></div>
+                    <h3>Statistical Arbitrage</h3>
+                    <p>Python-based pairs trading strategy using co-integration and z-score signals. Backtested over 2 years.</p>
                 </div>
                 <div class="project-card">
-                    <div class="project-number">04</div>
-                    <h3 class="project-title">8-Bit Breadboard Computer</h3>
-                    <p class="project-description">
-                        Built an 8-bit breadboard computer from scratch using discrete TTL logic.
-                        Designed ALU, control unit, and memory with custom instruction set.
-                        Validated execution with logic analyzer.
-                    </p>
-                    <div class="project-links">
-                        <a href="#" class="project-link">View Build</a>
-                        <a href="#" class="project-link">Documentation</a>
-                    </div>
+                    <h3>8-Bit Breadboard PC</h3>
+                    <p>Built an 8-bit breadboard computer from scratch using discrete TTL logic. Designed ALU and control unit.</p>
                 </div>
             </div>
         </section>
 
-        <!-- Contact Section -->
-        <section id="contact" class="contact">
-            <div class="contact-content">
-                <h2 class="contact-title">Let's Connect</h2>
-                <p class="contact-text">
-                    I'm always open to discussing new opportunities and
-                    interesting projects.
-                </p>
-                <form
-                    action="https://formspree.io/f/YOUR_FORM_ID" method="POST" id="contact-form"
-                    style="max-width: 400px; margin: 2rem auto"
-                >
-                    <div style="margin-bottom: 1rem">
-                        <input
-                            type="text"
-                            name="name"
-                            placeholder="Your Name"
-                            required
-                            style="
-                                width: 100%;
-                                padding: 0.75rem;
-                                border: 1px solid var(--gray-medium);
-                                border-radius: 4px;
-                                background: var(--white);
-                                color: var(--black);
-                                font-family: inherit;
-                            "
-                        />
-                    </div>
-                    <div style="margin-bottom: 1rem">
-                        <input
-                            type="email"
-                            name="email"
-                            placeholder="Your Email"
-                            required
-                            style="
-                                width: 100%;
-                                padding: 0.75rem;
-                                border: 1px solid var(--gray-medium);
-                                border-radius: 4px;
-                                background: var(--white);
-                                color: var(--black);
-                                font-family: inherit;
-                            "
-                        />
-                    </div>
-                    <div style="margin-bottom: 1rem">
-                        <input
-                            type="text"
-                            name="subject"
-                            placeholder="Subject (optional)"
-                            style="
-                                width: 100%;
-                                padding: 0.75rem;
-                                border: 1px solid var(--gray-medium);
-                                border-radius: 4px;
-                                background: var(--white);
-                                color: var(--black);
-                                font-family: inherit;
-                            "
-                        />
-                    </div>
-                    <div style="margin-bottom: 1.5rem">
-                        <textarea
-                            name="message"
-                            placeholder="Your Message"
-                            required
-                            rows="5"
-                            style="
-                                width: 100%;
-                                padding: 0.75rem;
-                                border: 1px solid var(--gray-medium);
-                                border-radius: 4px;
-                                background: var(--white);
-                                color: var(--black);
-                                font-family: inherit;
-                                resize: vertical;
-                            "
-                        ></textarea>
-                    </div>
-                    <button
-                        type="submit"
-                        style="
-                            width: 100%;
-                            padding: 0.75rem 1.5rem;
-                            background: var(--black);
-                            color: var(--white);
-                            border: none;
-                            border-radius: 4px;
-                            font-family: inherit;
-                            font-weight: 500;
-                            cursor: pointer;
-                            transition: var(--transition);
-                        "
-                        onmouseover="this.style.opacity='0.8'"
-                        onmouseout="this.style.opacity='1'"
-                    >
-                        Send Message
-                    </button>
-                </form>
-
-                <a href="mailto:kushanatwork24@gmail.com" class="contact-email"
-                    >kushanatwork24@gmail.com</a
-                >
-                <div class="social-links">
-                    <a
-                        href="https://github.com/KushanWaghmare"
-                        class="social-link"
-                        >GitHub</a
-                    >
-                    <a
-                        href="https://linkedin.com/in/kushan-waghmare"
-                        class="social-link"
-                        >LinkedIn</a
-                    >
-                    <a
-                        href="https://x.com/KushanWaghmare2"
-                        class="social-link"
-                        >Twitter</a
-                    >
-                </div>
-            </div>
+        <section id="contact">
+            <div id="anchor-contact" class="anchor"></div>
+            <h2>Let's Connect</h2>
+            <p>Always open to discussing new opportunities and quantitative finance projects.</p>
+            <p style="margin-top: 2rem;">
+                <a href="mailto:kushan@example.com" style="color:var(--accent); text-decoration:none; margin-right:2rem;">kushan@example.com</a>
+                <a href="https://github.com/KushanWaghmare" style="color:var(--accent); text-decoration:none;">GitHub</a>
+            </p>
         </section>
+    </div>
 
-        <!-- Footer -->
-        <footer>
-            <p>&copy; 2024 Kushan Waghmare. All rights reserved.</p>
-        </footer>
+    <script>
+        /**
+         * ponytail: Custom Verlet integration physics engine.
+         * Hooke's Law (F = -kx) and inverse-square repulsion.
+         * Skipped Matter.js/Three.js. Add when >5000 nodes are required.
+         */
+        const canvas = document.getElementById('physics-canvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        let width, height;
 
-        <script>
-            // Theme management
-            const themeToggle = document.getElementById("theme-toggle");
-            const themeTransition = document.querySelector(".theme-transition");
-            const body = document.body;
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
 
-            // Check for saved theme preference or default to 'dark'
-            const currentTheme = localStorage.getItem("theme") || "dark";
-            body.setAttribute("data-theme", currentTheme);
+        class Particle {
+            constructor(x, y, mass, isKinematic = false) {
+                this.x = x; this.y = y;
+                this.ox = x; this.oy = y;
+                this.mass = mass;
+                this.isKinematic = isKinematic;
+                this.radius = Math.sqrt(mass) * 1.5;
+            }
+            applyForce(fx, fy) {
+                if (this.isKinematic) return;
+                this.x += fx / this.mass;
+                this.y += fy / this.mass;
+            }
+            integrate(friction = 0.92) {
+                if (this.isKinematic) return;
+                const vx = (this.x - this.ox) * friction;
+                const vy = (this.y - this.oy) * friction;
+                this.ox = this.x;
+                this.oy = this.y;
+                this.x += vx;
+                this.y += vy;
+            }
+        }
 
-            // Theme toggle functionality
-            themeToggle.addEventListener("click", (e) => {
-                const rect = themeToggle.getBoundingClientRect();
-                const x =
-                    ((rect.left + rect.width / 2) / window.innerWidth) * 100;
-                const y =
-                    ((rect.top + rect.height / 2) / window.innerHeight) * 100;
+        const particles = [];
+        const springs = [];
+        
+        // Map DOM elements to kinematic anchor particles
+        const anchors = document.querySelectorAll('.anchor');
+        const anchorParticles = Array.from(anchors).map(el => {
+            const p = new Particle(0, 0, 100, true);
+            p.el = el;
+            particles.push(p);
+            return p;
+        });
 
-                themeTransition.style.setProperty("--x", x + "%");
-                themeTransition.style.setProperty("--y", y + "%");
-                themeTransition.classList.add("active");
+        // Add free-floating particles
+        for(let i=0; i<80; i++) {
+            particles.push(new Particle(Math.random()*width, Math.random()*height, Math.random()*8 + 2));
+        }
 
-                setTimeout(() => {
-                    const currentTheme = body.getAttribute("data-theme");
-                    const newTheme = currentTheme === "dark" ? "light" : "dark";
+        // Connect particles with springs (Web / Mesh structure)
+        for(let i=0; i<120; i++) {
+            const p1 = particles[Math.floor(Math.random()*particles.length)];
+            const p2 = particles[Math.floor(Math.random()*particles.length)];
+            if(p1 !== p2) {
+                const dx = p1.x - p2.x;
+                const dy = p1.y - p2.y;
+                springs.push({ p1, p2, rest: Math.hypot(dx, dy), k: 0.02 });
+            }
+        }
 
-                    body.setAttribute("data-theme", newTheme);
-                    localStorage.setItem("theme", newTheme);
+        // Ensure every anchor is connected to the web
+        anchorParticles.forEach(ap => {
+            for(let i=0; i<5; i++) {
+                const freeP = particles[anchorParticles.length + Math.floor(Math.random()*(particles.length - anchorParticles.length))];
+                springs.push({ p1: ap, p2: freeP, rest: 150 + Math.random()*100, k: 0.05 });
+            }
+        });
 
-                    setTimeout(() => {
-                        themeTransition.classList.remove("active");
-                    }, 300);
-                }, 300);
+        let mouse = { x: -1000, y: -1000 };
+        window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+        function update() {
+            // Update kinematic anchors from DOM scroll position
+            anchorParticles.forEach(p => {
+                const rect = p.el.getBoundingClientRect();
+                p.x = rect.left;
+                p.y = rect.top;
+                p.ox = p.x; p.oy = p.y;
             });
 
-            // Scroll animations
-            const observerOptions = {
-                threshold: 0.1,
-                rootMargin: "0px 0px -50px 0px",
-            };
+            // 1. Hooke's Law (Springs)
+            for(let i=0; i<springs.length; i++) {
+                const s = springs[i];
+                const dx = s.p2.x - s.p1.x;
+                const dy = s.p2.y - s.p1.y;
+                const dist = Math.hypot(dx, dy) || 1;
+                // F = -k * (dist - rest)
+                const force = (dist - s.rest) * s.k;
+                const fx = (dx / dist) * force;
+                const fy = (dy / dist) * force;
+                
+                s.p1.applyForce(fx, fy);
+                s.p2.applyForce(-fx, -fy);
+            }
 
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add("visible");
-                    }
-                });
-            }, observerOptions);
+            // 2. Repulsion (Mouse & Inter-particle)
+            for(let i=0; i<particles.length; i++) {
+                const p = particles[i];
+                if (p.isKinematic) continue;
 
-            document
-                .querySelectorAll(
-                    ".section-title, .about-image, .about-content, .project-card, .contact-title, .contact-text, .contact-email, .social-links",
-                )
-                .forEach((el) => {
-                    observer.observe(el);
-                });
-
-            // Navigation scroll effect
-            window.addEventListener("scroll", () => {
-                const nav = document.getElementById("nav");
-                if (window.scrollY > 100) {
-                    nav.classList.add("scrolled");
-                } else {
-                    nav.classList.remove("scrolled");
+                // Mouse Repulsion
+                const mdx = mouse.x - p.x;
+                const mdy = mouse.y - p.y;
+                const distSq = mdx*mdx + mdy*mdy;
+                if(distSq < 40000) { // 200px radius
+                    const dist = Math.sqrt(distSq);
+                    const force = -2000 / (distSq + 1);
+                    p.applyForce((mdx/dist) * force, (mdy/dist) * force);
                 }
 
-                // Update active nav link based on scroll position
-                const sections = document.querySelectorAll('section[id]');
-                const navLinks = document.querySelectorAll('nav a[href^="#"]');
+                // Global center attraction (weak) to keep things on screen
+                p.applyForce((width/2 - p.x)*0.0001, (height/2 - p.y)*0.0001);
 
-                let current = '';
-                sections.forEach(section => {
-                    const sectionTop = section.offsetTop - 150;
-                    if (window.scrollY >= sectionTop) {
-                        current = section.getAttribute('id');
-                    }
-                });
+                // Integrate velocity
+                p.integrate();
+            }
 
-                navLinks.forEach(link => {
-                    link.classList.remove('active');
-                    if (link.getAttribute('href') === '#' + current) {
-                        link.classList.add('active');
-                    }
-                });
-            });
+            // Render
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.strokeStyle = 'rgba(74, 222, 128, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for(let i=0; i<springs.length; i++) {
+                ctx.moveTo(springs[i].p1.x, springs[i].p1.y);
+                ctx.lineTo(springs[i].p2.x, springs[i].p2.y);
+            }
+            ctx.stroke();
 
+            ctx.fillStyle = '#4ade80';
+            for(let i=0; i<particles.length; i++) {
+                if (particles[i].isKinematic) continue;
+                ctx.beginPath();
+                ctx.arc(particles[i].x, particles[i].y, particles[i].radius, 0, Math.PI*2);
+                ctx.fill();
+            }
 
-            // Keyboard accessibility for theme toggle
-            themeToggle.addEventListener("keydown", (e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    themeToggle.click();
-                }
-            });
-        </script>
-        <script src="js/portfolio-static.js"></script>
-    </body>
+            requestAnimationFrame(update);
+        }
+        
+        update();
+    </script>
+</body>
 </html>
