@@ -121,153 +121,165 @@
         </section>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
         /**
-         * ponytail: Custom Verlet integration physics engine.
-         * Hooke's Law (F = -kx) and inverse-square repulsion.
-         * Skipped Matter.js/Three.js. Add when >5000 nodes are required.
+         * ponytail: User insisted on Three.js 3D structure.
+         * Implementing 3D Verlet physics engine with Three.js rendering.
          */
-        const canvas = document.getElementById('physics-canvas');
-        const ctx = canvas.getContext('2d', { alpha: false });
-        let width, height;
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050505, 0.002);
 
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 200;
 
-        class Particle {
-            constructor(x, y, mass, isKinematic = false) {
-                this.x = x; this.y = y;
-                this.ox = x; this.oy = y;
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('physics-canvas'), alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Physics Engine (3D)
+        class Particle3D {
+            constructor(x, y, z, mass, isKinematic = false) {
+                this.x = x; this.y = y; this.z = z;
+                this.ox = x; this.oy = y; this.oz = z;
                 this.mass = mass;
                 this.isKinematic = isKinematic;
-                this.radius = Math.sqrt(mass) * 1.5;
+                
+                if (!isKinematic) {
+                    const geo = new THREE.SphereGeometry(Math.cbrt(mass) * 1.5, 8, 8);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.8 });
+                    this.mesh = new THREE.Mesh(geo, mat);
+                    scene.add(this.mesh);
+                }
             }
-            applyForce(fx, fy) {
+            applyForce(fx, fy, fz) {
                 if (this.isKinematic) return;
                 this.x += fx / this.mass;
                 this.y += fy / this.mass;
+                this.z += fz / this.mass;
             }
             integrate(friction = 0.92) {
                 if (this.isKinematic) return;
                 const vx = (this.x - this.ox) * friction;
                 const vy = (this.y - this.oy) * friction;
-                this.ox = this.x;
-                this.oy = this.y;
-                this.x += vx;
-                this.y += vy;
+                const vz = (this.z - this.oz) * friction;
+                this.ox = this.x; this.oy = this.y; this.oz = this.z;
+                this.x += vx; this.y += vy; this.z += vz;
+                
+                this.mesh.position.set(this.x, this.y, this.z);
             }
         }
 
         const particles = [];
         const springs = [];
-        
-        // Map DOM elements to kinematic anchor particles
         const anchors = document.querySelectorAll('.anchor');
-        const anchorParticles = Array.from(anchors).map(el => {
-            const p = new Particle(0, 0, 100, true);
+        
+        // Map DOM scroll sections to kinematic 3D anchors
+        const anchorParticles = Array.from(anchors).map((el, i) => {
+            const p = new Particle3D(0, 0, 0, 100, true);
             p.el = el;
+            p.baseZ = -i * 100; // Stagger in Z depth
             particles.push(p);
             return p;
         });
 
-        // Add free-floating particles
-        for(let i=0; i<80; i++) {
-            particles.push(new Particle(Math.random()*width, Math.random()*height, Math.random()*8 + 2));
+        for(let i=0; i<60; i++) {
+            particles.push(new Particle3D((Math.random()-0.5)*400, (Math.random()-0.5)*400, (Math.random()-0.5)*400, Math.random()*8 + 2));
         }
 
-        // Connect particles with springs (Web / Mesh structure)
-        for(let i=0; i<120; i++) {
+        for(let i=0; i<100; i++) {
             const p1 = particles[Math.floor(Math.random()*particles.length)];
             const p2 = particles[Math.floor(Math.random()*particles.length)];
             if(p1 !== p2) {
-                const dx = p1.x - p2.x;
-                const dy = p1.y - p2.y;
-                springs.push({ p1, p2, rest: Math.hypot(dx, dy), k: 0.02 });
+                const dx = p1.x - p2.x; const dy = p1.y - p2.y; const dz = p1.z - p2.z;
+                springs.push({ p1, p2, rest: Math.hypot(dx, dy, dz), k: 0.015 });
             }
         }
 
-        // Ensure every anchor is connected to the web
         anchorParticles.forEach(ap => {
-            for(let i=0; i<5; i++) {
+            for(let i=0; i<4; i++) {
                 const freeP = particles[anchorParticles.length + Math.floor(Math.random()*(particles.length - anchorParticles.length))];
-                springs.push({ p1: ap, p2: freeP, rest: 150 + Math.random()*100, k: 0.05 });
+                springs.push({ p1: ap, p2: freeP, rest: 50 + Math.random()*50, k: 0.03 });
             }
         });
 
-        let mouse = { x: -1000, y: -1000 };
-        window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        // 3D Line Rendering
+        const lineGeo = new THREE.BufferGeometry();
+        const linePositions = new Float32Array(springs.length * 6);
+        lineGeo.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.2 });
+        const linesMesh = new THREE.LineSegments(lineGeo, lineMat);
+        scene.add(linesMesh);
+
+        let mouse = { x: 0, y: 0 };
+        window.addEventListener('mousemove', e => { 
+            // Normalize mouse coordinates to -1 to +1
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1; 
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1; 
+        });
 
         function update() {
-            // Update kinematic anchors from DOM scroll position
+            // Map DOM elements to 3D space
+            const scrollY = window.scrollY;
             anchorParticles.forEach(p => {
                 const rect = p.el.getBoundingClientRect();
-                p.x = rect.left;
-                p.y = rect.top;
-                p.ox = p.x; p.oy = p.y;
+                // Map viewport coordinates to approximate 3D world coordinates
+                p.x = (rect.left / window.innerWidth) * 400 - 200;
+                p.y = -(rect.top / window.innerHeight) * 400 + 200;
+                p.z = p.baseZ + (scrollY * 0.2); // Scroll moves anchors forward
+                p.ox = p.x; p.oy = p.y; p.oz = p.z;
             });
 
-            // 1. Hooke's Law (Springs)
+            // Physics loop
             for(let i=0; i<springs.length; i++) {
                 const s = springs[i];
-                const dx = s.p2.x - s.p1.x;
-                const dy = s.p2.y - s.p1.y;
-                const dist = Math.hypot(dx, dy) || 1;
-                // F = -k * (dist - rest)
+                const dx = s.p2.x - s.p1.x; const dy = s.p2.y - s.p1.y; const dz = s.p2.z - s.p1.z;
+                const dist = Math.hypot(dx, dy, dz) || 1;
                 const force = (dist - s.rest) * s.k;
-                const fx = (dx / dist) * force;
-                const fy = (dy / dist) * force;
+                const fx = (dx / dist) * force; const fy = (dy / dist) * force; const fz = (dz / dist) * force;
+                s.p1.applyForce(fx, fy, fz);
+                s.p2.applyForce(-fx, -fy, -fz);
                 
-                s.p1.applyForce(fx, fy);
-                s.p2.applyForce(-fx, -fy);
+                // Update line geometry buffer
+                const idx = i * 6;
+                linePositions[idx] = s.p1.x; linePositions[idx+1] = s.p1.y; linePositions[idx+2] = s.p1.z;
+                linePositions[idx+3] = s.p2.x; linePositions[idx+4] = s.p2.y; linePositions[idx+5] = s.p2.z;
             }
+            lineGeo.attributes.position.needsUpdate = true;
 
-            // 2. Repulsion (Mouse & Inter-particle)
+            // Repulsion & Integration
+            // Map mouse to 3D plane at z=0
+            const mx = mouse.x * 200;
+            const my = mouse.y * 200;
+
             for(let i=0; i<particles.length; i++) {
                 const p = particles[i];
                 if (p.isKinematic) continue;
 
-                // Mouse Repulsion
-                const mdx = mouse.x - p.x;
-                const mdy = mouse.y - p.y;
-                const distSq = mdx*mdx + mdy*mdy;
-                if(distSq < 40000) { // 200px radius
+                const mdx = mx - p.x; const mdy = my - p.y; const mdz = 0 - p.z;
+                const distSq = mdx*mdx + mdy*mdy + mdz*mdz;
+                if(distSq < 10000) { 
                     const dist = Math.sqrt(distSq);
-                    const force = -2000 / (distSq + 1);
-                    p.applyForce((mdx/dist) * force, (mdy/dist) * force);
+                    const force = -1500 / (distSq + 1);
+                    p.applyForce((mdx/dist) * force, (mdy/dist) * force, (mdz/dist) * force);
                 }
 
-                // Global center attraction (weak) to keep things on screen
-                p.applyForce((width/2 - p.x)*0.0001, (height/2 - p.y)*0.0001);
-
-                // Integrate velocity
+                p.applyForce(-p.x*0.0005, -p.y*0.0005, -p.z*0.0005);
                 p.integrate();
             }
 
-            // Render
-            ctx.fillStyle = '#050505';
-            ctx.fillRect(0, 0, width, height);
-            
-            ctx.strokeStyle = 'rgba(74, 222, 128, 0.15)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            for(let i=0; i<springs.length; i++) {
-                ctx.moveTo(springs[i].p1.x, springs[i].p1.y);
-                ctx.lineTo(springs[i].p2.x, springs[i].p2.y);
-            }
-            ctx.stroke();
+            // Slight camera rotation based on scroll and mouse
+            camera.position.x += (mouse.x * 50 - camera.position.x) * 0.05;
+            camera.position.y += (mouse.y * 50 - camera.position.y) * 0.05;
+            camera.lookAt(scene.position);
 
-            ctx.fillStyle = '#4ade80';
-            for(let i=0; i<particles.length; i++) {
-                if (particles[i].isKinematic) continue;
-                ctx.beginPath();
-                ctx.arc(particles[i].x, particles[i].y, particles[i].radius, 0, Math.PI*2);
-                ctx.fill();
-            }
-
+            renderer.render(scene, camera);
             requestAnimationFrame(update);
         }
         
