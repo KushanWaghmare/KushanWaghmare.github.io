@@ -73,17 +73,9 @@
             transition: color 0.3s;
         }
         .nav a:hover { color: var(--accent); }
-
-        /* Physics Anchor points */
-        .anchor { position: absolute; width: 1px; height: 1px; visibility: hidden; }
-        #anchor-hero { top: 50%; left: 20%; }
-        #anchor-proj1 { top: 20%; left: 50%; }
-        #anchor-proj2 { top: 80%; left: 50%; }
-        #anchor-contact { top: 50%; left: 50%; }
     </style>
 </head>
 <body>
-    <canvas id="physics-canvas"></canvas>
     <canvas id="rain-canvas"></canvas>
     
     <nav class="nav">
@@ -94,7 +86,6 @@
 
     <div class="content">
         <section id="home">
-            <div id="anchor-hero" class="anchor"></div>
             <h1>Kushan Waghmare</h1>
             <p>Data Science & Quantitative Finance Student at IIT Madras.<br>Building complex systems from compilers to statistical arbitrage models.</p>
             <div class="equation">
@@ -103,7 +94,6 @@
         </section>
 
         <section id="proj1" class="project-section">
-            <div id="anchor-proj1" class="anchor"></div>
             <div class="project-card">
                 <h3>Ku-Lang Compiler</h3>
                 <p>Custom programming language and compiler with lexical analysis, parsing, semantic checks, and LLVM IR generation.</p>
@@ -112,7 +102,6 @@
         </section>
 
         <section id="proj2" class="project-section">
-            <div id="anchor-proj2" class="anchor"></div>
             <div class="project-card" style="margin-left: auto;">
                 <h3>Options Pricing & Greeks</h3>
                 <p>Implemented Black-Scholes model in Python for European options pricing and Greeks computation. Validated with Monte Carlo.</p>
@@ -121,7 +110,6 @@
         </section>
 
         <section id="proj3" class="project-section">
-            <div id="anchor-proj3" class="anchor"></div>
             <div class="project-card">
                 <h3>Statistical Arbitrage</h3>
                 <p>Python-based pairs trading strategy using co-integration and z-score signals. Backtested over 2 years.</p>
@@ -130,7 +118,6 @@
         </section>
 
         <section id="proj4" class="project-section">
-            <div id="anchor-proj4" class="anchor"></div>
             <div class="project-card" style="margin-left: auto;">
                 <h3>8-Bit Breadboard PC</h3>
                 <p>Built an 8-bit breadboard computer from scratch using discrete TTL logic. Designed ALU and control unit.</p>
@@ -139,7 +126,6 @@
         </section>
 
         <section id="contact">
-            <div id="anchor-contact" class="anchor"></div>
             <h2>Let's Connect</h2>
             <p>Always open to discussing new opportunities and quantitative finance projects.</p>
             <p style="margin-top: 2rem;">
@@ -149,195 +135,21 @@
         </section>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
         /**
-         * ponytail: User insisted on Three.js 3D structure.
-         * Implementing 3D Verlet physics engine with Three.js rendering.
+         * ponytail: Native canvas animation. Removed Three.js dependency and 3D net mesh.
+         * Dense physics equation stream cascade.
          */
-        const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x050505, 0.002);
+        const canvas = document.getElementById('rain-canvas');
+        const ctx = canvas.getContext('2d');
+        let w, h;
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 200;
-
-        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('physics-canvas'), alpha: true, antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // Physics Engine (3D)
-        class Particle3D {
-            constructor(x, y, z, mass, isKinematic = false) {
-                this.x = x; this.y = y; this.z = z;
-                this.ox = x; this.oy = y; this.oz = z;
-                this.mass = mass;
-                this.isKinematic = isKinematic;
-                
-                if (!isKinematic) {
-                    const geo = new THREE.SphereGeometry(Math.cbrt(mass) * 1.5, 8, 8);
-                    const mat = new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.8 });
-                    this.mesh = new THREE.Mesh(geo, mat);
-                    scene.add(this.mesh);
-                }
-            }
-            applyForce(fx, fy, fz) {
-                if (this.isKinematic) return;
-                this.x += fx / this.mass;
-                this.y += fy / this.mass;
-                this.z += fz / this.mass;
-            }
-            integrate(friction = 0.92) {
-                if (this.isKinematic) return;
-                const vx = (this.x - this.ox) * friction;
-                const vy = (this.y - this.oy) * friction;
-                const vz = (this.z - this.oz) * friction;
-                this.ox = this.x; this.oy = this.y; this.oz = this.z;
-                this.x += vx; this.y += vy; this.z += vz;
-                
-                this.mesh.position.set(this.x, this.y, this.z);
-            }
+        function resize() {
+            w = canvas.width = window.innerWidth;
+            h = canvas.height = window.innerHeight;
         }
-
-        const particles = [];
-        const springs = [];
-        const anchors = document.querySelectorAll('.anchor');
-        
-        // Map DOM scroll sections to kinematic 3D anchors
-        const anchorParticles = Array.from(anchors).map((el, i) => {
-            const p = new Particle3D(0, 0, 0, 100, true);
-            p.el = el;
-            p.baseZ = -i * 100; // Stagger in Z depth
-            particles.push(p);
-            return p;
-        });
-
-        for(let i=0; i<60; i++) {
-            particles.push(new Particle3D((Math.random()-0.5)*400, (Math.random()-0.5)*400, (Math.random()-0.5)*400, Math.random()*8 + 2));
-        }
-
-        for(let i=0; i<100; i++) {
-            const p1 = particles[Math.floor(Math.random()*particles.length)];
-            const p2 = particles[Math.floor(Math.random()*particles.length)];
-            if(p1 !== p2) {
-                const dx = p1.x - p2.x; const dy = p1.y - p2.y; const dz = p1.z - p2.z;
-                springs.push({ p1, p2, rest: Math.hypot(dx, dy, dz), k: 0.015 });
-            }
-        }
-
-        anchorParticles.forEach(ap => {
-            for(let i=0; i<4; i++) {
-                const freeP = particles[anchorParticles.length + Math.floor(Math.random()*(particles.length - anchorParticles.length))];
-                springs.push({ p1: ap, p2: freeP, rest: 50 + Math.random()*50, k: 0.03 });
-            }
-        });
-
-        // 3D Line Rendering
-        const lineGeo = new THREE.BufferGeometry();
-        const linePositions = new Float32Array(springs.length * 6);
-        lineGeo.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
-        const lineMat = new THREE.LineBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.2 });
-        const linesMesh = new THREE.LineSegments(lineGeo, lineMat);
-        scene.add(linesMesh);
-
-        let mouse = { x: 0, y: 0 };
-        window.addEventListener('mousemove', e => { 
-            // Normalize mouse coordinates to -1 to +1
-            mouse.x = (e.clientX / window.innerWidth) * 2 - 1; 
-            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1; 
-        });
-
-        function update() {
-            // Map DOM elements to 3D space
-            const scrollY = window.scrollY;
-            anchorParticles.forEach(p => {
-                const rect = p.el.getBoundingClientRect();
-                // Map viewport coordinates to approximate 3D world coordinates
-                p.x = (rect.left / window.innerWidth) * 400 - 200;
-                p.y = -(rect.top / window.innerHeight) * 400 + 200;
-                p.z = p.baseZ + (scrollY * 0.2); // Scroll moves anchors forward
-                p.ox = p.x; p.oy = p.y; p.oz = p.z;
-            });
-
-            // Physics loop
-            for(let i=0; i<springs.length; i++) {
-                const s = springs[i];
-                const dx = s.p2.x - s.p1.x; const dy = s.p2.y - s.p1.y; const dz = s.p2.z - s.p1.z;
-                const dist = Math.hypot(dx, dy, dz) || 1;
-                const force = (dist - s.rest) * s.k;
-                const fx = (dx / dist) * force; const fy = (dy / dist) * force; const fz = (dz / dist) * force;
-                s.p1.applyForce(fx, fy, fz);
-                s.p2.applyForce(-fx, -fy, -fz);
-                
-                // Update line geometry buffer
-                const idx = i * 6;
-                linePositions[idx] = s.p1.x; linePositions[idx+1] = s.p1.y; linePositions[idx+2] = s.p1.z;
-                linePositions[idx+3] = s.p2.x; linePositions[idx+4] = s.p2.y; linePositions[idx+5] = s.p2.z;
-            }
-            lineGeo.attributes.position.needsUpdate = true;
-
-            // Repulsion & Integration
-            // Map mouse to 3D plane at z=0
-            const mx = mouse.x * 200;
-            const my = mouse.y * 200;
-
-            for(let i=0; i<particles.length; i++) {
-                const p = particles[i];
-                if (p.isKinematic) continue;
-
-                const mdx = mx - p.x; const mdy = my - p.y; const mdz = 0 - p.z;
-                const distSq = mdx*mdx + mdy*mdy + mdz*mdz;
-                if(distSq < 10000) { 
-                    const dist = Math.sqrt(distSq);
-                    const force = -1500 / (distSq + 1);
-                    p.applyForce((mdx/dist) * force, (mdy/dist) * force, (mdz/dist) * force);
-                }
-
-                p.applyForce(-p.x*0.0005, -p.y*0.0005, -p.z*0.0005);
-                p.integrate();
-            }
-
-            // Slight camera rotation based on scroll and mouse
-            camera.position.x += (mouse.x * 50 - camera.position.x) * 0.05;
-            camera.position.y += (mouse.y * 50 - camera.position.y) * 0.05;
-            camera.lookAt(scene.position);
-
-            // Falling physics equations
-            rCtx.clearRect(0, 0, rW, rH);
-            for (let i = 0; i < streams.length; i++) {
-                const s = streams[i];
-                rCtx.font = `${s.size}px monospace, serif`;
-                rCtx.fillStyle = `rgba(74, 222, 128, ${s.opacity})`;
-                rCtx.fillText(s.eq, s.x, s.y);
-                s.y += s.speed;
-                if (s.y > rH + 30) {
-                    s.y = -20 - Math.random() * 80;
-                    s.x = Math.random() * rW;
-                    s.eq = equations[Math.floor(Math.random() * equations.length)];
-                    s.speed = 0.6 + Math.random() * 1.5;
-                    s.opacity = 0.12 + Math.random() * 0.28;
-                }
-            }
-
-            renderer.render(scene, camera);
-            requestAnimationFrame(update);
-        }
-
-        // Falling Physics Equations Setup
-        const rainCanvas = document.getElementById('rain-canvas');
-        const rCtx = rainCanvas.getContext('2d');
-        let rW, rH;
-        function resizeRain() {
-            rW = rainCanvas.width = window.innerWidth;
-            rH = rainCanvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeRain);
-        resizeRain();
+        window.addEventListener('resize', resize);
+        resize();
 
         const equations = [
             "iℏ ∂Ψ/∂t = ĤΨ",
@@ -379,17 +191,37 @@
             "c² = 1 / (ε₀ μ₀)"
         ];
 
-        const streamCount = Math.max(16, Math.floor(window.innerWidth / 55));
-        const streams = Array.from({ length: streamCount }, (_, i) => ({
-            x: (i + Math.random() * 0.5) * (window.innerWidth / streamCount),
-            y: Math.random() * window.innerHeight,
-            speed: 0.6 + Math.random() * 1.5,
+        // High density streams
+        const count = Math.max(90, Math.floor(window.innerWidth / 14));
+        const streams = Array.from({ length: count }, () => ({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            speed: 0.5 + Math.random() * 1.6,
             eq: equations[Math.floor(Math.random() * equations.length)],
-            opacity: 0.12 + Math.random() * 0.28,
-            size: 11 + Math.floor(Math.random() * 4)
+            opacity: 0.08 + Math.random() * 0.32,
+            size: 10 + Math.floor(Math.random() * 5)
         }));
-        
-        update();
+
+        function draw() {
+            ctx.clearRect(0, 0, w, h);
+            for (let i = 0; i < streams.length; i++) {
+                const s = streams[i];
+                ctx.font = `${s.size}px monospace, serif`;
+                ctx.fillStyle = `rgba(74, 222, 128, ${s.opacity})`;
+                ctx.fillText(s.eq, s.x, s.y);
+                s.y += s.speed;
+                if (s.y > h + 30) {
+                    s.y = -20 - Math.random() * 60;
+                    s.x = Math.random() * w;
+                    s.eq = equations[Math.floor(Math.random() * equations.length)];
+                    s.speed = 0.5 + Math.random() * 1.6;
+                    s.opacity = 0.08 + Math.random() * 0.32;
+                }
+            }
+            requestAnimationFrame(draw);
+        }
+
+        draw();
     </script>
 </body>
 </html>
