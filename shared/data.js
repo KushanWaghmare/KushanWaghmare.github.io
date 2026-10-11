@@ -9,7 +9,7 @@ const SITE = {
             label: "Mathematics · Topological & geometric models",
             blurb: "Topology, differential geometry and analysis: the surfaces and spectra behind the models on the rest of this site.",
             eq: r`\iint_M K\,dA+\oint_{\partial M}k_g\,ds=2\pi\,\chi(M)`,
-            tag: "",
+            tag: "Möbius immersion · non-orientable topological manifold · cursor controls twist & angle",
         },
         physics: {
             name: "Physics", short: "Physics", file: "physics.html",

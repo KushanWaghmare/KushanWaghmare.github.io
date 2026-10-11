@@ -10,7 +10,7 @@ async function main() {
         "--use-angle=swiftshader",
         "--enable-unsafe-swiftshader",
         "--no-sandbox",
-        "http://localhost:8765/datascience.html"
+        "http://localhost:8765/index.html"
     ]);
 
     // Wait for Chrome to bind port 9222
@@ -66,16 +66,11 @@ async function main() {
         expression: `JSON.stringify({
             hasThree: typeof THREE !== 'undefined',
             hasSIMS: typeof SIMS !== 'undefined',
-            hasDataScienceSim: typeof SIMS !== 'undefined' && typeof SIMS.datascience === 'function',
-            webgl: (() => {
-                const c = document.createElement('canvas');
-                const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
-                return gl ? { vendor: gl.getParameter(gl.VENDOR), renderer: gl.getParameter(gl.RENDERER) } : null;
-            })(),
             canvasCount: document.querySelectorAll('canvas').length,
-            heroEqText: document.querySelector('.hero-eq') ? document.querySelector('.hero-eq').textContent : null,
-            heroEqHtml: document.querySelector('.hero-eq') ? document.querySelector('.hero-eq').innerHTML : null,
-            tagText: document.querySelector('.sim-tag') ? document.querySelector('.sim-tag').textContent : null
+            snapSectionCount: document.querySelectorAll('.snap-section').length,
+            snapDotCount: document.querySelectorAll('.snap-dot').length,
+            hasNavContact: !!document.querySelector('.nav-contact-link'),
+            sectionIds: Array.from(document.querySelectorAll('.snap-section')).map(s => s.id)
         })`,
         returnByValue: true
     });

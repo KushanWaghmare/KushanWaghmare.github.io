@@ -53,7 +53,7 @@ SIMS.physics = (c) => {
         cx = W * (W > 900 ? 0.68 : 0.5); cy = Hh * 0.5;
         if (!ready) { for (let i = 0; i < N; i++) spawn(i); accel(-1e4, -1e4, false); ready = true; }
     });
-    KW.tag(SITE.domains.physics.tag);
+    KW.tag(SITE.domains.physics.tag, c);
     KW.loop(c, (t, dt) => {
         const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < Hh;
         acc = Math.min(acc + dt, 0.1);
@@ -94,7 +94,7 @@ const three = (c, shift) => {
     scene.add(group);
     let W = 0;
     KW.fit(c, (w, h) => { W = w; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); group.position.x = w > 900 ? shift : 0; });
-    const setColor = (mat, rgb) => mat.color.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255);
+    const setColor = (mat, rgb) => { if (rgb && rgb.length >= 3) mat.color.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255); };
     return { renderer, scene, cam, group, setColor, width: () => W };
 };
 
@@ -194,7 +194,7 @@ SIMS.datascience = (c) => {
         }
     });
 
-    KW.tag(SITE.domains.datascience.tag);
+    KW.tag(SITE.domains.datascience.tag, c);
 
     let rx = 0.58, ry = 0;
     KW.loop(c, (t, dt) => {
@@ -300,7 +300,7 @@ SIMS.quant = (c) => {
         }
         ctx.setLineDash([]); ctx.strokeStyle = rgba(a, 0.4);
         ctx.beginPath(); ctx.moveTo(x0, mid); ctx.lineTo(x1, mid); ctx.stroke();
-        if (++frame % 12 === 0) KW.tag(`Geometric Brownian motion · ${P} paths · σ = ${sigma.toFixed(2)} (cursor height sets σ)`);
+        if (++frame % 12 === 0) KW.tag(`Geometric Brownian motion · ${P} paths · σ = ${sigma.toFixed(2)} (cursor height sets σ)`, c);
     });
 };
 
@@ -320,7 +320,7 @@ SIMS.cs = (c) => {
         }
         head = nh;
     };
-    const tag = () => KW.tag(`Elementary cellular automaton · Rule ${RULES[ri]} · click to cycle the rule`);
+    const tag = () => KW.tag(`Elementary cellular automaton · Rule ${RULES[ri]} · click to cycle the rule`, c);
 
     KW.fit(c, (w, h, dpr) => {
         W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -394,7 +394,7 @@ SIMS.math = (c) => {
         ry += dt * 0.15 + (mx * 0.02);
         T.group.rotation.x = rx; T.group.rotation.y = ry;
         T.renderer.render(T.scene, T.cam);
-        if (++f % 6 === 0) KW.tag(`Band with t half-twists · t = ${tw.toFixed(2)}${Math.abs(tw - 1) < 0.05 ? " · Möbius (non-orientable)" : ""} · move the cursor to rotate`);
+        if (++f % 6 === 0) KW.tag(`Band with t half-twists · t = ${tw.toFixed(2)}${Math.abs(tw - 1) < 0.05 ? " · Möbius (non-orientable)" : ""} · move the cursor to rotate`, c);
     });
 };
 
@@ -425,7 +425,7 @@ SIMS.hub = (c) => {
     });
     const paint = () => tr.forEach((q, n) => { T.setColor(q.lm, KW.col.pal[n]); T.setColor(q.head.material, KW.col.pal[n]); });
     paint(); addEventListener("themechange", paint);
-    KW.tag("Lorenz system · σ=10, ρ=28, β=8/3 · RK4 · 5 trajectories, initial separation 10⁻³");
+    KW.tag("Lorenz system · σ=10, ρ=28, β=8/3 · RK4 · 5 domain trajectories, initial separation 10⁻³", c);
 
     let rx = 0.15, ry = 0;
     KW.loop(c, (t, dt) => {
