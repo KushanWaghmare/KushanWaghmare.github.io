@@ -5,14 +5,15 @@ const fs = require("fs");
 async function capture() {
     const chrome = spawn("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", [
         "--headless",
-        "--remote-debugging-port=9223",
+        "--remote-debugging-port=9227",
         "--disable-gpu",
         "--use-gl=angle",
         "--use-angle=swiftshader",
         "--enable-unsafe-swiftshader",
+        "--user-data-dir=/tmp/chrome-snap-profile",
         "--no-sandbox",
         "--window-size=1440,900",
-        "http://localhost:8765/datascience.html"
+        "http://localhost:8765/index.html"
     ]);
 
     let targets = null;
@@ -20,7 +21,7 @@ async function capture() {
         await new Promise((r) => setTimeout(r, 200));
         try {
             targets = await new Promise((resolve, reject) => {
-                http.get("http://127.0.0.1:9223/json", (res) => {
+                http.get("http://127.0.0.1:9227/json", (res) => {
                     let d = "";
                     res.on("data", (c) => (d += c));
                     res.on("end", () => resolve(JSON.parse(d)));
@@ -28,6 +29,11 @@ async function capture() {
             });
             if (targets && targets.length) break;
         } catch (e) {}
+    }
+
+    if (!targets || !targets.length) {
+        chrome.kill();
+        throw new Error("No target");
     }
 
     const pageTarget = targets.find((t) => t.type === "page") || targets[0];
@@ -51,34 +57,44 @@ async function capture() {
     await req("Page.enable");
     await req("DOM.enable");
 
-    // Wait 1.5 seconds for GSAP entrance and Three.js frames
-    await new Promise((r) => setTimeout(r, 1500));
-
-    // 1. Screenshot of the Hero
-    const heroShot = await req("Page.captureScreenshot", { format: "png" });
-    fs.writeFileSync("/tmp/datascience_hero_rendered.png", Buffer.from(heroShot.data, "base64"));
-    console.log("Captured /tmp/datascience_hero_rendered.png");
-
-    // 2. Scroll down to Contact Section
-    await req("Runtime.evaluate", {
-        expression: "document.getElementById('contact').scrollIntoView({ behavior: 'instant' });"
+    // Measure bounds at initial load
+    const initialBounds = await req("Runtime.evaluate", {
+        expression: `JSON.stringify({
+            introPadLeft: getComputedStyle(document.getElementById('intro')).paddingLeft,
+            introInnerRect: document.querySelector('#intro .snap-inner').getBoundingClientRect()
+        })`,
+        returnByValue: true
     });
-    await new Promise((r) => setTimeout(r, 800));
+    console.log("INITIAL BOUNDS:", initialBounds.result.value);
 
-    const contactShot = await req("Page.captureScreenshot", { format: "png" });
-    fs.writeFileSync("/tmp/datascience_contact.png", Buffer.from(contactShot.data, "base64"));
-    console.log("Captured /tmp/datascience_contact.png");
+    // Capture intro
+    const introShot = await req("Page.captureScreenshot", { format: "png" });
+    fs.writeFileSync("/tmp/snap_intro.png", Buffer.from(introShot.data, "base64"));
+    console.log("Captured /tmp/snap_intro.png");
 
-    // 3. Switch to Light Mode and capture
+    // Scroll to #domain-math
     await req("Runtime.evaluate", {
-        expression: "document.querySelector('.theme-btn').click();"
+        expression: "document.getElementById('domain-math').scrollIntoView({ behavior: 'instant' });"
     });
-    // Wait for 0.3s (after the 0.2s transition)
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 600));
 
-    const lightContactShot = await req("Page.captureScreenshot", { format: "png" });
-    fs.writeFileSync("/tmp/datascience_contact_light.png", Buffer.from(lightContactShot.data, "base64"));
-    console.log("Captured /tmp/datascience_contact_light.png");
+    const mathShot = await req("Page.captureScreenshot", { format: "png" });
+    fs.writeFileSync("/tmp/snap_math.png", Buffer.from(mathShot.data, "base64"));
+    console.log("Captured /tmp/snap_math.png");
+
+    // Inspect bounding rect of intro vs math
+    const bounds = await req("Runtime.evaluate", {
+        expression: `JSON.stringify({
+            introPad: getComputedStyle(document.getElementById('intro')).paddingLeft,
+            mathPad: getComputedStyle(document.getElementById('domain-math')).paddingLeft,
+            introInnerRect: document.querySelector('#intro .snap-inner').getBoundingClientRect(),
+            mathInnerRect: document.querySelector('#domain-math .snap-inner').getBoundingClientRect(),
+            introInnerClasses: document.querySelector('#intro .snap-inner').className,
+            mathInnerClasses: document.querySelector('#domain-math .snap-inner').className
+        })`,
+        returnByValue: true
+    });
+    console.log("BOUNDS:", bounds.result.value);
 
     ws.close();
     chrome.kill();

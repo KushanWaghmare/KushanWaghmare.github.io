@@ -66,7 +66,7 @@
 
         <section class="snap-section hero" id="intro" data-domain="hub">
             <canvas aria-hidden="true"></canvas>
-            <div class="snap-inner hero-inner">
+            <div class="snap-inner">
                 <div class="eyebrow" data-hero>Data Science · Quantitative Finance · IIT Madras</div>
                 <h1 data-hero>Kushan<br>Waghmare</h1>
                 <p class="lead" data-hero>Data Science &amp; Quantitative Finance student at IIT Madras, building complex systems from compilers to statistical-arbitrage models, and studying the physics underneath them.</p>

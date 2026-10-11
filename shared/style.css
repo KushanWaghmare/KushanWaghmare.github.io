@@ -322,11 +322,17 @@ html[data-page="hub"] body {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    align-items: flex-start;
     padding: clamp(90px, 12vh, 130px) clamp(24px, 6vw, 96px) clamp(60px, 8vh, 80px);
     scroll-snap-align: start;
     scroll-snap-stop: always;
     overflow: hidden;
     box-sizing: border-box;
+}
+
+.snap-section.hero {
+    align-items: flex-start;
+    padding: clamp(90px, 12vh, 130px) clamp(24px, 6vw, 96px) clamp(60px, 8vh, 80px);
 }
 
 .snap-section canvas {
