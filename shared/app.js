@@ -221,55 +221,30 @@
         }
     };
 
-    /* ---------- motion: GSAP page wipe, entrance, scroll-triggered reveals, parallax ---------- */
+    /* ---------- motion: native scroll-triggered reveals and progress ---------- */
     const motion = () => {
-        const wipe = $(".wipe");
-        if (!window.gsap || REDUCED) { if (wipe) wipe.style.display = "none"; return; }
-        gsap.registerPlugin(ScrollTrigger);
-
-        const isNav = sessionStorage.getItem("kw_nav");
-        if (isNav) {
-            sessionStorage.removeItem("kw_nav");
-            gsap.fromTo(wipe, { scaleY: 1, transformOrigin: "top" }, { scaleY: 0, duration: 0.6, ease: "power4.inOut" });
-        } else {
-            gsap.set(wipe, { scaleY: 0 });
+        if (REDUCED) {
+            document.querySelectorAll("[data-reveal], [data-hero]").forEach((el) => el.classList.add("revealed"));
+            return;
         }
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach((e) => {
+                if (e.isIntersecting) {
+                    e.target.classList.add("revealed");
+                    io.unobserve(e.target);
+                }
+            });
+        }, { threshold: 0.1 });
+        document.querySelectorAll("[data-reveal], [data-hero]").forEach((el) => io.observe(el));
 
-        // Entrance motion for hero
-        gsap.from("[data-hero]", {
-            opacity: 0,
-            y: 40,
-            duration: 0.8,
-            stagger: 0.08,
-            ease: "power3.out",
-            delay: isNav ? 0.25 : 0.05
-        });
-
-        // Scroll-triggered reveals
-        ScrollTrigger.batch("[data-reveal]", {
-            start: "top 92%",
-            once: true,
-            onEnter: (els) => gsap.fromTo(els, { opacity: 0, y: 35 }, { opacity: 1, y: 0, duration: 0.8, stagger: 0.1, ease: "power3.out", overwrite: true })
-        });
-        ScrollTrigger.refresh();
-
-        gsap.to(".hero-inner", { yPercent: -14, opacity: 0.25, ease: "none",
-            scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: true } });
-        gsap.to(".progress", { scaleX: 1, ease: "none", scrollTrigger: { start: 0, end: "max", scrub: 0.3 } });
-        addEventListener("load", () => ScrollTrigger.refresh());
-        addEventListener("pageshow", (e) => { if (e.persisted) gsap.set(wipe, { scaleY: 0 }); });
-
-        document.addEventListener("click", (e) => { // wipe out, then navigate
-            const a = e.target.closest("a");
-            if (!a || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target) return;
-            const u = new URL(a.href, location.href);
-            if (u.origin !== location.origin || (u.pathname === location.pathname && u.search === location.search)) return;
-            if (u.hash && u.pathname === location.pathname) return; // anchor links on same page
-            e.preventDefault();
-            sessionStorage.setItem("kw_nav", "1");
-            gsap.set(wipe, { transformOrigin: "bottom" });
-            gsap.to(wipe, { scaleY: 1, duration: 0.45, ease: "power3.inOut", onComplete: () => (location.href = u.href) });
-        });
+        const prog = $(".progress");
+        if (prog) {
+            const onScroll = () => {
+                const max = D.scrollHeight - window.innerHeight;
+                if (max > 0) prog.style.transform = `scaleX(${window.scrollY / max})`;
+            };
+            window.addEventListener("scroll", onScroll, { passive: true });
+        }
     };
 
     /* ---------- snap observer on hub page ---------- */
@@ -337,44 +312,18 @@
         if (c) { const r = c.getBoundingClientRect(); c.style.setProperty("--mx", e.clientX - r.left + "px"); c.style.setProperty("--my", e.clientY - r.top + "px"); }
     });
     document.addEventListener("click", (e) => {
-        const a = e.target.closest && e.target.closest("a");
-        if (a && a.hash && a.pathname === location.pathname) {
-            const target = document.querySelector(a.hash);
-            if (target) {
-                e.preventDefault();
-                target.scrollIntoView({ behavior: "smooth" });
-                try { history.replaceState(null, "", a.hash); } catch (err) {}
-            }
-        }
-    });
-    document.addEventListener("click", (e) => {
         const btn = e.target.closest && e.target.closest(".copy-btn");
-        if (!btn) return;
-        const text = btn.dataset.copy;
-        if (!text) return;
+        if (!btn || !btn.dataset.copy) return;
         const label = btn.querySelector(".copy-text") || btn;
         const originalText = label.textContent;
-        const notify = () => {
+        navigator.clipboard.writeText(btn.dataset.copy).then(() => {
             label.textContent = "Copied to clipboard!";
             btn.classList.add("copied");
             setTimeout(() => {
                 label.textContent = originalText;
                 btn.classList.remove("copied");
             }, 2200);
-        };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(notify).catch(notify);
-        } else {
-            const ta = document.createElement("textarea");
-            ta.value = text;
-            ta.style.position = "fixed";
-            ta.style.opacity = "0";
-            document.body.appendChild(ta);
-            ta.select();
-            try { document.execCommand("copy"); } catch (err) {}
-            document.body.removeChild(ta);
-            notify();
-        }
+        }).catch(() => {});
     });
     motion();
 })();

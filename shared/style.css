@@ -45,66 +45,15 @@ html[data-domain="cs"] { --a: var(--rgb-cs); }
 html[data-domain="hub"] { --a: var(--rgb-hub); }
 html { --accent: rgb(var(--a)); }
 
-/* Quick, responsive theme transitions for typography, surfaces, and formulas */
-body,
-.nav,
-.brand,
-.brand b,
-.links a,
-.hero h1,
-.hero.short-hero h1,
-.eyebrow,
-.lead,
-.hero-eq,
-.hero-eq .katex,
-.hero-eq .katex *,
-.sim-tag,
-.cue,
-.section-head h2,
-.section-head .idx,
-.card,
-.card h3,
-.card p,
-.card .no,
-.tag,
-.pill,
-.two-col,
-.edu strong,
-.edu span,
-.article h2,
-.article h2 .idx,
-.article p,
-.arch li,
-.arch li strong,
-.arch li span,
-.math-block,
-.math-block h3,
-.math-block p,
-.math-block .eq,
-.math-block .eq .katex,
-.math-block .eq .katex *,
-.crumbs,
-.crumbs a,
-.foot,
-.foot span,
-.foot a,
-.theme-btn,
-.contact-card,
-.contact-title,
-.contact-lead,
-.contact-value,
-.contact-sub,
-.contact-label,
-.snap-cta-btn,
-.snap-proj-pill,
-.snap-cue,
-.nav-contact-link,
-.snap-dot .dot-disc,
-.snap-dot .dot-text {
-    transition: color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-                background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-                border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-                box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+/* ---------- Scroll reveal ---------- */
+[data-reveal], [data-hero] {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-reveal].revealed, [data-hero].revealed {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 html.tt,
@@ -161,17 +110,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
     border-radius: 16px;
 }
 
-/* ---------- Page transition + progress ---------- */
-.wipe {
-    position: fixed;
-    inset: 0;
-    z-index: 999;
-    background: var(--bg);
-    box-shadow: inset 0 3px 0 var(--accent), inset 0 -3px 0 var(--accent);
-    transform: scaleY(0);
-    transform-origin: top;
-    pointer-events: none;
-}
+/* ---------- Progress bar ---------- */
 .progress {
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -819,4 +758,5 @@ a.contact-value:hover {
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     .cue::after { animation: none; }
+    [data-reveal], [data-hero] { opacity: 1 !important; transform: none !important; transition: none !important; }
 }

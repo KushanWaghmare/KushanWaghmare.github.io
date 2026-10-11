@@ -178,17 +178,14 @@ const buildHTML = ({ domain, pageType, three, title, desc, mainContent }) => `<!
     <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
     <link rel="stylesheet" href="shared/style.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-    <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 ${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js"></script>
     <script defer src="shared/sims.js"></script>
     <script defer src="shared/app.js"></script>
-    <noscript><style>.wipe{display:none}</style></noscript>
 </head>
 <body>
-    <div class="wipe"></div>${renderNav(domain, pageType)}
+    ${renderNav(domain, pageType)}
     <main id="main">${mainContent}</main>${renderFoot(pageType)}
 </body>
 </html>
