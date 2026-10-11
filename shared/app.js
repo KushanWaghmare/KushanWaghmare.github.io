@@ -201,9 +201,7 @@
                 <div class="progress"></div>
                 <header class="nav glass">
                     <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
-                    <nav class="links" aria-label="Domains">
-                        ${keys.map((k) => { const d = SITE.domains[k];
-                            return `<a href="${d.file}" data-d="${k}"${k === active ? ' aria-current="page"' : ""}><span class="full">${d.name}</span><span class="short">${d.short}</span></a>`; }).join("")}
+                    <nav class="links" aria-label="Navigation">
                         ${isHub ? '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>' : ''}
                         <button class="theme-btn" type="button" aria-label="Switch theme"></button>
                     </nav>
@@ -279,7 +277,6 @@
         const sections = document.querySelectorAll(".snap-section");
         if (!sections.length) return;
         const dots = document.querySelectorAll(".snap-dot");
-        const links = document.querySelectorAll(".links a[data-d]");
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
@@ -292,9 +289,6 @@
                         dots.forEach((dot) => {
                             const isCurrent = dot.getAttribute("href") === "#" + entry.target.id;
                             dot.classList.toggle("active", isCurrent);
-                        });
-                        links.forEach((a) => {
-                            a.toggleAttribute("aria-current", a.dataset.d === d);
                         });
                     }
                 }
@@ -336,8 +330,6 @@
             main.innerHTML = hero(`<h1 data-hero>Not found</h1><p class="lead" data-hero>No such project. <a class="pill" href="index.html">Back home</a></p>`, true);
         }
     }
-    document.querySelectorAll(".links a").forEach((a) => a.toggleAttribute("aria-current", a.dataset.d === D.dataset.domain)); // project pages inherit their domain
-    KW.refresh();
     if (window.renderMathInElement) renderMathInElement(document.body, { throwOnError: false,
         delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }] });
     document.addEventListener("pointermove", (e) => { // spotlight follows the cursor on cards

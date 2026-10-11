@@ -4,22 +4,25 @@ const http = require("http");
 async function main() {
     const chrome = spawn("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", [
         "--headless",
-        "--remote-debugging-port=9222",
+        "--remote-debugging-port=9225",
         "--disable-gpu",
         "--use-gl=angle",
         "--use-angle=swiftshader",
         "--enable-unsafe-swiftshader",
+        "--user-data-dir=/tmp/chrome-test-profile",
         "--no-sandbox",
         "http://localhost:8765/index.html"
     ]);
+    chrome.stderr.on("data", (d) => process.stderr.write(d));
+    chrome.stdout.on("data", (d) => process.stdout.write(d));
 
-    // Wait for Chrome to bind port 9222
+    // Wait for Chrome to bind port 9225
     let targets = null;
     for (let i = 0; i < 20; i++) {
         await new Promise((r) => setTimeout(r, 200));
         try {
             targets = await new Promise((resolve, reject) => {
-                http.get("http://127.0.0.1:9222/json", (res) => {
+                http.get("http://127.0.0.1:9225/json", (res) => {
                     let d = "";
                     res.on("data", (c) => (d += c));
                     res.on("end", () => resolve(JSON.parse(d)));

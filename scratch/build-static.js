@@ -159,8 +159,7 @@ const renderNav = (active, pageType) => {
     <div class="progress"></div>
     <header class="nav glass">
         <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
-        <nav class="links" aria-label="Domains">${keys.map((k) => { const d = SITE.domains[k];
-            return `<a href="${d.file}" data-d="${k}"${k === active ? ' aria-current="page"' : ""}><span class="full">${d.name}</span><span class="short">${d.short}</span></a>`; }).join("")}
+        <nav class="links" aria-label="Navigation">
             ${isHub ? '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>' : ''}
             <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button></nav>
     </header>`;
