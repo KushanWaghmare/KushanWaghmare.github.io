@@ -1,227 +1,82 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en-GB" data-domain="hub" data-page="hub">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kushan Waghmare | Physics Portfolio</title>
-    <style>
-        :root {
-            --bg: #050505;
-            --text: #ffffff;
-            --accent: #4ade80;
-            --surface: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.1);
-        }
-        body { 
-            margin: 0; padding: 0; 
-            font-family: system-ui, -apple-system, sans-serif; 
-            background: var(--bg); color: var(--text); 
-            overflow-x: hidden; 
-        }
-        canvas { 
-            position: fixed; top: 0; left: 0; 
-            z-index: 1; pointer-events: none; 
-        }
-        .content { 
-            position: relative; z-index: 2; 
-            max-width: 900px; margin: 0 auto; padding: 2rem; 
-        }
-        section { 
-            min-height: 100vh; display: flex; flex-direction: column; 
-            justify-content: center; position: relative;
-        }
-        h1 { font-size: 4rem; margin-bottom: 1rem; font-weight: 800; letter-spacing: -0.05em; }
-        h2 { font-size: 2.5rem; color: var(--accent); margin-bottom: 2rem; }
-        p { font-size: 1.2rem; line-height: 1.6; color: #a3a3a3; max-width: 600px; }
-        
-        .project-section {
-            min-height: 100vh;
-            display: flex; flex-direction: column; 
-            justify-content: center; position: relative;
-        }
-        .project-card { 
-            background: var(--surface); padding: 3rem; 
-            border-radius: 12px; backdrop-filter: blur(10px); 
-            border: 1px solid var(--border);
-            transition: transform 0.3s ease, border-color 0.3s ease;
-            max-width: 600px;
-        }
-        .project-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--accent);
-        }
-        .project-card h3 { margin-top: 0; font-size: 2rem; }
-        .project-card p { font-size: 1.1rem; margin-bottom: 0; color: #a3a3a3; line-height: 1.6; }
-        
-        .equation {
-            font-family: "Cambria Math", "Times New Roman", serif;
-            font-size: 1.5rem;
-            color: rgba(74, 222, 128, 0.6);
-            letter-spacing: 2px;
-            margin-top: 1rem;
-            font-style: italic;
-        }
-        
-        .nav { 
-            position: fixed; top: 2rem; right: 2rem; z-index: 10; 
-            display: flex; gap: 2rem;
-        }
-        .nav a { 
-            color: var(--text); text-decoration: none; 
-            text-transform: uppercase; letter-spacing: 2px; 
-            font-size: 0.85rem; font-weight: 600;
-            transition: color 0.3s;
-        }
-        .nav a:hover { color: var(--accent); }
-    </style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kushan Waghmare · Portfolio</title>
+    <meta name="description" content="Kushan Waghmare: Data Science and Quantitative Finance student at IIT Madras. Mathematics, physics, data science, quant finance and computer science projects." />
+    <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
+    <link rel="stylesheet" href="shared/style.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script defer src="shared/data.js"></script>
+    <script defer src="shared/sims.js"></script>
+    <script defer src="shared/app.js"></script>
+    <noscript><style>.wipe{display:none}</style></noscript>
 </head>
 <body>
-    <canvas id="rain-canvas"></canvas>
-    
-    <nav class="nav">
-        <a href="#home">Home</a>
-        <a href="#proj1">Work</a>
-        <a href="#contact">Contact</a>
-    </nav>
-
-    <div class="content">
-        <section id="home">
-            <h1>Kushan Waghmare</h1>
-            <p>Data Science & Quantitative Finance Student at IIT Madras.<br>Building complex systems from compilers to statistical arbitrage models.</p>
-            <div class="equation">
-                iℏ ∂Ψ(<b>r</b>, t)/∂t = - (ℏ²/2m)∇²Ψ(<b>r</b>, t) + V(<b>r</b>, t)Ψ(<b>r</b>, t)
+    <div class="wipe"></div>
+    <div class="progress"></div>
+    <header class="nav glass">
+        <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
+        <nav class="links" aria-label="Domains"><a href="math.html" data-d="math"><span class="full">Mathematics</span><span class="short">Math</span></a><a href="physics.html" data-d="physics"><span class="full">Physics</span><span class="short">Physics</span></a><a href="datascience.html" data-d="datascience"><span class="full">Data Science</span><span class="short">Data</span></a><a href="quant.html" data-d="quant"><span class="full">Quant Finance</span><span class="short">Quant</span></a><a href="cs.html" data-d="cs"><span class="full">Computer Science</span><span class="short">CS</span></a>
+            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button></nav>
+    </header>
+    <main id="main">
+        <section class="hero"><canvas aria-hidden="true"></canvas>
+            <div class="hero-inner">
+            <div class="eyebrow" data-hero>Data Science · Quantitative Finance · IIT Madras</div>
+            <h1 data-hero>Kushan<br>Waghmare</h1>
+            <p class="lead" data-hero>Data Science &amp; Quantitative Finance student at IIT Madras, building complex systems from compilers to statistical-arbitrage models, and studying the physics underneath them.</p>
+            <div class="hero-eq glass" data-hero>$$\dot x=\sigma(y-x),\quad\dot y=x(\rho-z)-y,\quad\dot z=xy-\beta z$$</div></div><div class="sim-tag" aria-hidden="true"></div>
+            <a class="cue" href="#content">Scroll</a>
+        </section>
+        <section class="section" id="content">
+            <div class="section-head" data-reveal><span class="idx">01</span><h2>Domains</h2></div>
+            <div class="grid">
+                <a class="card glass" style="--a:var(--rgb-math)" href="math.html" data-reveal>
+                    <span class="no">01 <span class="dot"></span> 2 projects</span>
+                    <h3>Mathematics</h3><p>Topology, differential geometry and analysis: the surfaces and spectra behind the models on the rest of this site.</p><span class="go">Enter</span>
+                </a>
+                <a class="card glass" style="--a:var(--rgb-physics)" href="physics.html" data-reveal>
+                    <span class="no">02 <span class="dot"></span> 2 projects</span>
+                    <h3>Physics</h3><p>Classical and quantum mechanics as computation: symplectic integrators, gravitating systems and wave equations.</p><span class="go">Enter</span>
+                </a>
+                <a class="card glass" style="--a:var(--rgb-datascience)" href="datascience.html" data-reveal>
+                    <span class="no">03 <span class="dot"></span> 2 projects</span>
+                    <h3>Data Science</h3><p>Statistical learning and graph analytics grounded in linear algebra, from regularised regression to spectral methods.</p><span class="go">Enter</span>
+                </a>
+                <a class="card glass" style="--a:var(--rgb-quant)" href="quant.html" data-reveal>
+                    <span class="no">04 <span class="dot"></span> 2 projects</span>
+                    <h3>Quant Finance</h3><p>Stochastic calculus applied to markets: derivative pricing, the Greeks and mean-reversion strategies.</p><span class="go">Enter</span>
+                </a>
+                <a class="card glass" style="--a:var(--rgb-cs)" href="cs.html" data-reveal>
+                    <span class="no">05 <span class="dot"></span> 2 projects</span>
+                    <h3>Computer Science</h3><p>Compilers and machine architecture, from grammars and SSA form down to TTL gates on a breadboard.</p><span class="go">Enter</span>
+                </a></div>
+        </section>
+        <section class="section">
+            <div class="section-head" data-reveal><span class="idx">02</span><h2>About</h2></div>
+            <div class="two-col">
+                <div data-reveal>
+                    <p class="lead">I work where data science, quantitative finance and physics overlap: stochastic models for markets, symplectic integrators for mechanics, compilers and hardware for the machines that run them.</p>
+                    <div class="tags" style="margin-top:22px"><span class="tag">Python</span><span class="tag">C</span><span class="tag">Java</span><span class="tag">SQL</span><span class="tag">Machine Learning</span><span class="tag">Options Pricing</span><span class="tag">Statistical Arbitrage</span><span class="tag">LLVM</span><span class="tag">Pandas</span><span class="tag">Git</span></div>
+                </div>
+                <div class="edu" data-reveal>
+                    <div class="glass"><strong>Indian Institute of Technology Madras</strong><span>Bachelor of Science in Data Science · 2023 – 2027</span></div>
+                    <div class="glass"><strong>Vidya Bharati Mahavidyalaya</strong><span>Bachelor of Science in Physics · 2025 – 2028</span></div>
+                </div>
             </div>
         </section>
-
-        <section id="proj1" class="project-section">
-            <div class="project-card">
-                <h3>Ku-Lang Compiler</h3>
-                <p>Custom programming language and compiler with lexical analysis, parsing, semantic checks, and LLVM IR generation.</p>
-                <div class="equation">ast → ir → obj</div>
-            </div>
-        </section>
-
-        <section id="proj2" class="project-section">
-            <div class="project-card" style="margin-left: auto;">
-                <h3>Options Pricing & Greeks</h3>
-                <p>Implemented Black-Scholes model in Python for European options pricing and Greeks computation. Validated with Monte Carlo.</p>
-                <div class="equation">dV = ΔdS + ½ΓdS² + Θdt</div>
-            </div>
-        </section>
-
-        <section id="proj3" class="project-section">
-            <div class="project-card">
-                <h3>Statistical Arbitrage</h3>
-                <p>Python-based pairs trading strategy using co-integration and z-score signals. Backtested over 2 years.</p>
-                <div class="equation">y_t = βx_t + ε_t</div>
-            </div>
-        </section>
-
-        <section id="proj4" class="project-section">
-            <div class="project-card" style="margin-left: auto;">
-                <h3>8-Bit Breadboard PC</h3>
-                <p>Built an 8-bit breadboard computer from scratch using discrete TTL logic. Designed ALU and control unit.</p>
-                <div class="equation">A ⊕ B</div>
-            </div>
-        </section>
-
-        <section id="contact">
-            <h2>Let's Connect</h2>
-            <p>Always open to discussing new opportunities and quantitative finance projects.</p>
-            <p style="margin-top: 2rem;">
-                <a href="mailto:kushan@example.com" style="color:var(--accent); text-decoration:none; margin-right:2rem;">kushan@example.com</a>
-                <a href="https://github.com/KushanWaghmare" style="color:var(--accent); text-decoration:none;">GitHub</a>
-            </p>
-        </section>
-    </div>
-
-    <script>
-        /**
-         * ponytail: Native canvas animation. Removed Three.js dependency and 3D net mesh.
-         * Dense physics equation stream cascade.
-         */
-        const canvas = document.getElementById('rain-canvas');
-        const ctx = canvas.getContext('2d');
-        let w, h;
-
-        function resize() {
-            w = canvas.width = window.innerWidth;
-            h = canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        const equations = [
-            "iℏ ∂Ψ/∂t = ĤΨ",
-            "G_μν + Λg_μν = 8πG/c⁴ T_μν",
-            "∇ · E = ρ / ε₀",
-            "∇ × B = μ₀J + μ₀ε₀ ∂E/∂t",
-            "∇ · B = 0",
-            "∇ × E = -∂B/∂t",
-            "(iγ^μ ∂_μ - m)ψ = 0",
-            "∂V/∂t + ½σ²S² ∂²V/∂S² + rS ∂V/∂S - rV = 0",
-            "ρ(∂u/∂t + u·∇u) = -∇p + μ∇²u + f",
-            "Δx Δp ≥ ℏ/2",
-            "F = dp/dt = ma",
-            "F = G(m₁m₂)/r²",
-            "S = k_B ln Ω",
-            "d²x^μ/dτ² + Γ^μ_αβ (dx^α/dτ)(dx^β/dτ) = 0",
-            "F = -k(x - x₀)",
-            "d/dt(∂L/∂q̇) - ∂L/∂q = 0",
-            "q̇ = ∂H/∂p, ṗ = -∂H/∂q",
-            "E = mc²",
-            "E² = (pc)² + (m₀c²)²",
-            "E = ℏω",
-            "F = q(E + v × B)",
-            "dU = TdS - pdV + μdN",
-            "j* = σT⁴",
-            "2d sin θ = nλ",
-            "(ȧ/a)² = 8πGρ/3 - kc²/a² + Λc²/3",
-            "λ = h/p",
-            "S = 1/μ₀ (E × B)",
-            "PV = Nk_B T",
-            "p + ½ρv² + ρgh = C",
-            "(□ + m²)ϕ = 0",
-            "df = (∂f/∂t + μ∂f/∂x + ½σ²∂²f/∂x²)dt + σ(∂f/∂x)dW_t",
-            "∂u/∂t = α∇²u",
-            "H = p²/2m + V(x)",
-            "∇²Φ = 4πGρ",
-            "Z = ∑ e^{-β E_i}",
-            "iℏ ∂Ψ/∂t = - (ℏ²/2m)∇²Ψ + VΨ",
-            "c² = 1 / (ε₀ μ₀)"
-        ];
-
-        // Ultra-dense equation cascade
-        const count = Math.max(250, Math.floor(window.innerWidth / 4.5));
-        const streams = Array.from({ length: count }, () => ({
-            x: Math.random() * w,
-            y: Math.random() * h,
-            speed: 0.4 + Math.random() * 1.8,
-            eq: equations[Math.floor(Math.random() * equations.length)],
-            opacity: 0.06 + Math.random() * 0.34,
-            size: 9 + Math.floor(Math.random() * 6)
-        }));
-
-        function draw() {
-            ctx.clearRect(0, 0, w, h);
-            for (let i = 0; i < streams.length; i++) {
-                const s = streams[i];
-                ctx.font = `${s.size}px monospace, serif`;
-                ctx.fillStyle = `rgba(74, 222, 128, ${s.opacity})`;
-                ctx.fillText(s.eq, s.x, s.y);
-                s.y += s.speed;
-                if (s.y > h + 30) {
-                    s.y = -20 - Math.random() * 60;
-                    s.x = Math.random() * w;
-                    s.eq = equations[Math.floor(Math.random() * equations.length)];
-                    s.speed = 0.5 + Math.random() * 1.6;
-                    s.opacity = 0.08 + Math.random() * 0.32;
-                }
-            }
-            requestAnimationFrame(draw);
-        }
-
-        draw();
-    </script>
+        <section class="section">
+            <div class="section-head" data-reveal><span class="idx">03</span><h2>Contact</h2></div>
+            <p class="lead" data-reveal>Always open to discussing new opportunities and interesting projects.</p>
+            <div class="pills" style="margin-top:22px" data-reveal><a class="pill" href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></div>
+        </section></main>
+    <footer class="foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
 </body>
 </html>

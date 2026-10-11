@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en-GB" data-domain="hub" data-page="project">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Project · Kushan Waghmare</title>
+    <meta name="description" content="Project deep-dive: architecture and mathematics." />
+    <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
+    <link rel="stylesheet" href="shared/style.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script defer src="shared/data.js"></script>
+    <script defer src="shared/sims.js"></script>
+    <script defer src="shared/app.js"></script>
+    <noscript><style>.wipe{display:none}</style></noscript>
+</head>
+<body>
+    <div class="wipe"></div>
+    <div class="progress"></div>
+    <header class="nav glass">
+        <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
+        <nav class="links" aria-label="Domains"><a href="math.html" data-d="math"><span class="full">Mathematics</span><span class="short">Math</span></a><a href="physics.html" data-d="physics"><span class="full">Physics</span><span class="short">Physics</span></a><a href="datascience.html" data-d="datascience"><span class="full">Data Science</span><span class="short">Data</span></a><a href="quant.html" data-d="quant"><span class="full">Quant Finance</span><span class="short">Quant</span></a><a href="cs.html" data-d="cs"><span class="full">Computer Science</span><span class="short">CS</span></a>
+            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button></nav>
+    </header>
+    <main id="main">
+        <section class="hero short-hero"><canvas aria-hidden="true"></canvas>
+            <div class="hero-inner">
+            <div class="crumbs" data-hero><a href="index.html">Home</a> / Projects</div>
+            <h1 data-hero>Selected Projects</h1>
+            <p class="lead" data-hero>Deep-dives into systems architecture, stochastic models and mathematical foundations.</p></div><div class="sim-tag" aria-hidden="true"></div>
+            
+        </section>
+        <section class="section" id="content">
+            <div class="section-head" data-reveal><span class="idx">10 projects</span><h2>All technical deep-dives</h2></div>
+            <div class="grid">
+        <a class="card glass" href="project.html?p=mobius-surfaces" data-reveal>
+            <span class="no">01 <span class="dot"></span> Draft</span>
+            <h3>Möbius Strip & Surface Geometry</h3><p>Parametrising a twisted band, deriving its first fundamental form and showing why it cannot be oriented.</p>
+            <div class="tags"><span class="tag">Differential geometry</span><span class="tag">Topology</span><span class="tag">Three.js</span></div><span class="go">Open project</span>
+        </a>
+        <a class="card glass" href="project.html?p=fourier-spectral" data-reveal>
+            <span class="no">02 <span class="dot"></span> Draft</span>
+            <h3>Fourier Analysis from First Principles</h3><p>The DFT, its three defining properties and the FFT recurrence that makes it practical.</p>
+            <div class="tags"><span class="tag">Fourier analysis</span><span class="tag">FFT</span><span class="tag">Python</span></div><span class="go">Open project</span>
+        </a>
+        <a class="card glass" href="project.html?p=nbody-leapfrog" data-reveal>
+            <span class="no">03 <span class="dot"></span> Draft</span>
+            <h3>Gravitational N-Body Integrator</h3><p>A self-gravitating disc integrated with a symplectic kick–drift–kick leapfrog. The hero is the live simulation.</p>
+            <div class="tags"><span class="tag">Classical mechanics</span><span class="tag">Symplectic integration</span><span class="tag">Canvas</span></div><span class="go">Open project</span>
+        </a>
+        <a class="card glass" href="project.html?p=split-step-schrodinger" data-reveal>
+            <span class="no">04 <span class="dot"></span> Draft</span>
+            <h3>Time-Dependent Schrödinger Equation</h3><p>Split-step Fourier evolution of a wave packet: unitary by construction and spectrally accurate in space.</p>
+            <div class="tags"><span class="tag">Quantum mechanics</span><span class="tag">Split-step Fourier</span><span class="tag">Python</span></div><span class="go">Open project</span>
+        </a>
+        <a class="card glass" href="project.html?p=regularised-regression" data-reveal>
+            <span class="no">05 <span class="dot"></span> Draft</span>
+            <h3>Regularised Regression from Scratch</h3><p>OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.</p>
+            <div class="tags"><span class="tag">Python</span><span class="tag">NumPy</span><span class="tag">Linear algebra</span></div><span class="go">Open project</span>
+        </a>
+        <a class="card glass" href="project.html?p=spectral-clustering" data-reveal>
+            <span class="no">06 <span class="dot"></span> Draft</span>
+            <h3>Spectral Clustering on Graphs</h3><p>Recovering communities in a stochastic block model from the eigenvectors of the graph Laplacian.</p>
+            <div class="tags"><span class="tag">Graph theory</span><span class="tag">Spectral methods</span><span class="tag">NumPy</span></div><span class="go">Open project</span>
+        </a>
+        <a class="card glass" href="project.html?p=options-pricing" data-reveal>
+            <span class="no">07 <span class="dot"></span> Completed</span>
+            <h3>Options Pricing & Greeks</h3><p>Black–Scholes pricing and Greeks for European options in Python, validated by Monte Carlo simulation with an interactive visualisation dashboard.</p>
+            <div class="tags"><span class="tag">Python</span><span class="tag">NumPy</span><span class="tag">Pandas</span><span class="tag">Matplotlib</span><span class="tag">Jupyter</span></div><span class="go">Open project</span>
+        </a>
+        <a class="card glass" href="project.html?p=stat-arb" data-reveal>
+            <span class="no">08 <span class="dot"></span> Completed</span>
+            <h3>Statistical Arbitrage Strategy</h3><p>Python pairs-trading strategy using co-integration and z-score signals, backtested over two years with a Sharpe ratio of 1.8.</p>
+            <div class="tags"><span class="tag">Python</span><span class="tag">Pandas</span><span class="tag">NumPy</span><span class="tag">Statsmodels</span><span class="tag">Matplotlib</span></div><span class="go">Open project</span>
+        </a>
+        <a class="card glass" href="project.html?p=ku-lang" data-reveal>
+            <span class="no">09 <span class="dot"></span> In progress</span>
+            <h3>Ku-Lang Compiler</h3><p>A custom language and compiler: lexical analysis, parsing, semantic checks and LLVM IR generation, with control flow, functions and typed expressions.</p>
+            <div class="tags"><span class="tag">C</span><span class="tag">LLVM</span><span class="tag">Flex</span><span class="tag">Bison</span><span class="tag">CMake</span></div><span class="go">Open project</span>
+        </a>
+        <a class="card glass" href="project.html?p=8bit-computer" data-reveal>
+            <span class="no">10 <span class="dot"></span> In progress</span>
+            <h3>8-Bit Breadboard Computer</h3><p>An 8-bit computer built from discrete TTL logic: ALU, control unit and memory with a custom instruction set, validated with a logic analyser.</p>
+            <div class="tags"><span class="tag">TTL logic</span><span class="tag">Assembly</span><span class="tag">Digital design</span><span class="tag">Logic analyser</span></div><span class="go">Open project</span>
+        </a></div>
+        </section></main>
+    <footer class="foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en-GB" data-domain="datascience" data-page="domain">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Data Science · Kushan Waghmare</title>
+    <meta name="description" content="Statistical learning and graph analytics grounded in linear algebra, from regularised regression to spectral methods." />
+    <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
+    <link rel="stylesheet" href="shared/style.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script defer src="shared/data.js"></script>
+    <script defer src="shared/sims.js"></script>
+    <script defer src="shared/app.js"></script>
+    <noscript><style>.wipe{display:none}</style></noscript>
+</head>
+<body>
+    <div class="wipe"></div>
+    <div class="progress"></div>
+    <header class="nav glass">
+        <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
+        <nav class="links" aria-label="Domains"><a href="math.html" data-d="math"><span class="full">Mathematics</span><span class="short">Math</span></a><a href="physics.html" data-d="physics"><span class="full">Physics</span><span class="short">Physics</span></a><a href="datascience.html" data-d="datascience" aria-current="page"><span class="full">Data Science</span><span class="short">Data</span></a><a href="quant.html" data-d="quant"><span class="full">Quant Finance</span><span class="short">Quant</span></a><a href="cs.html" data-d="cs"><span class="full">Computer Science</span><span class="short">CS</span></a>
+            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button></nav>
+    </header>
+    <main id="main">
+        <section class="hero"><canvas aria-hidden="true"></canvas>
+            <div class="hero-inner">
+            <div class="eyebrow" data-hero>03 / Data Science · Statistical learning & analytics</div>
+            <h1 data-hero>Data Science</h1>
+            <p class="lead" data-hero>Statistical learning and graph analytics grounded in linear algebra, from regularised regression to spectral methods.</p>
+            <div class="hero-eq glass" data-hero>$$\hat{\boldsymbol\beta}_\lambda=(X^\top X+\lambda I)^{-1}X^\top\mathbf y$$</div></div><div class="sim-tag" aria-hidden="true"></div>
+            <a class="cue" href="#content">Scroll</a>
+        </section>
+        <section class="section" id="content">
+            <div class="section-head" data-reveal><span class="idx">2 projects</span><h2>Selected work</h2></div>
+            <div class="grid">
+        <a class="card glass" href="project.html?p=regularised-regression" data-reveal>
+            <span class="no">01 <span class="dot"></span> Draft</span>
+            <h3>Regularised Regression from Scratch</h3><p>OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.</p>
+            <div class="tags"><span class="tag">Python</span><span class="tag">NumPy</span><span class="tag">Linear algebra</span></div><span class="go">Open project</span>
+        </a>
+        <a class="card glass" href="project.html?p=spectral-clustering" data-reveal>
+            <span class="no">02 <span class="dot"></span> Draft</span>
+            <h3>Spectral Clustering on Graphs</h3><p>Recovering communities in a stochastic block model from the eigenvectors of the graph Laplacian.</p>
+            <div class="tags"><span class="tag">Graph theory</span><span class="tag">Spectral methods</span><span class="tag">NumPy</span></div><span class="go">Open project</span>
+        </a></div>
+        </section>
+        <section class="section"><div class="section-head" data-reveal><span class="idx">→</span><h2>Other domains</h2></div><div class="pills" data-reveal><a class="pill" style="--a:var(--rgb-math)" href="math.html">Mathematics</a><a class="pill" style="--a:var(--rgb-physics)" href="physics.html">Physics</a><a class="pill" style="--a:var(--rgb-quant)" href="quant.html">Quant Finance</a><a class="pill" style="--a:var(--rgb-cs)" href="cs.html">Computer Science</a></div></section></main>
+    <footer class="foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+</body>
+</html>

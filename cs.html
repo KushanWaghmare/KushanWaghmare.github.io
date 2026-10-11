@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en-GB" data-domain="cs" data-page="domain">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Computer Science · Kushan Waghmare</title>
+    <meta name="description" content="Compilers and machine architecture, from grammars and SSA form down to TTL gates on a breadboard." />
+    <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
+    <link rel="stylesheet" href="shared/style.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script defer src="shared/data.js"></script>
+    <script defer src="shared/sims.js"></script>
+    <script defer src="shared/app.js"></script>
+    <noscript><style>.wipe{display:none}</style></noscript>
+</head>
+<body>
+    <div class="wipe"></div>
+    <div class="progress"></div>
+    <header class="nav glass">
+        <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
+        <nav class="links" aria-label="Domains"><a href="math.html" data-d="math"><span class="full">Mathematics</span><span class="short">Math</span></a><a href="physics.html" data-d="physics"><span class="full">Physics</span><span class="short">Physics</span></a><a href="datascience.html" data-d="datascience"><span class="full">Data Science</span><span class="short">Data</span></a><a href="quant.html" data-d="quant"><span class="full">Quant Finance</span><span class="short">Quant</span></a><a href="cs.html" data-d="cs" aria-current="page"><span class="full">Computer Science</span><span class="short">CS</span></a>
+            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button></nav>
+    </header>
+    <main id="main">
+        <section class="hero"><canvas aria-hidden="true"></canvas>
+            <div class="hero-inner">
+            <div class="eyebrow" data-hero>05 / Computer Science · Systems & compilers</div>
+            <h1 data-hero>Computer Science</h1>
+            <p class="lead" data-hero>Compilers and machine architecture, from grammars and SSA form down to TTL gates on a breadboard.</p>
+            <div class="hero-eq glass" data-hero>$$\frac{\Gamma\vdash e_1:\mathtt{int}\qquad\Gamma\vdash e_2:\mathtt{int}}{\Gamma\vdash e_1+e_2:\mathtt{int}}$$</div></div><div class="sim-tag" aria-hidden="true"></div>
+            <a class="cue" href="#content">Scroll</a>
+        </section>
+        <section class="section" id="content">
+            <div class="section-head" data-reveal><span class="idx">2 projects</span><h2>Selected work</h2></div>
+            <div class="grid">
+        <a class="card glass" href="project.html?p=ku-lang" data-reveal>
+            <span class="no">01 <span class="dot"></span> In progress</span>
+            <h3>Ku-Lang Compiler</h3><p>A custom language and compiler: lexical analysis, parsing, semantic checks and LLVM IR generation, with control flow, functions and typed expressions.</p>
+            <div class="tags"><span class="tag">C</span><span class="tag">LLVM</span><span class="tag">Flex</span><span class="tag">Bison</span><span class="tag">CMake</span></div><span class="go">Open project</span>
+        </a>
+        <a class="card glass" href="project.html?p=8bit-computer" data-reveal>
+            <span class="no">02 <span class="dot"></span> In progress</span>
+            <h3>8-Bit Breadboard Computer</h3><p>An 8-bit computer built from discrete TTL logic: ALU, control unit and memory with a custom instruction set, validated with a logic analyser.</p>
+            <div class="tags"><span class="tag">TTL logic</span><span class="tag">Assembly</span><span class="tag">Digital design</span><span class="tag">Logic analyser</span></div><span class="go">Open project</span>
+        </a></div>
+        </section>
+        <section class="section"><div class="section-head" data-reveal><span class="idx">→</span><h2>Other domains</h2></div><div class="pills" data-reveal><a class="pill" style="--a:var(--rgb-math)" href="math.html">Mathematics</a><a class="pill" style="--a:var(--rgb-physics)" href="physics.html">Physics</a><a class="pill" style="--a:var(--rgb-datascience)" href="datascience.html">Data Science</a><a class="pill" style="--a:var(--rgb-quant)" href="quant.html">Quant Finance</a></div></section></main>
+    <footer class="foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+</body>
+</html>
