@@ -207,20 +207,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
     transition: color 0.25s, background-color 0.25s;
 }
 .links a:hover { color: rgb(var(--la)); background: rgba(var(--la), 0.1); }
-.links a[aria-current] { color: rgb(var(--la)); }
-.links a[aria-current]::after {
-    content: "";
-    position: absolute;
-    left: 12px; right: 12px; bottom: 3px;
-    height: 2px;
-    border-radius: 2px;
-    background: rgb(var(--la));
-}
-.links a[data-d="math"] { --la: var(--rgb-math); }
-.links a[data-d="physics"] { --la: var(--rgb-physics); }
-.links a[data-d="datascience"] { --la: var(--rgb-datascience); }
-.links a[data-d="quant"] { --la: var(--rgb-quant); }
-.links a[data-d="cs"] { --la: var(--rgb-cs); }
+
 
 .nav-contact-link {
     --la: var(--a);
