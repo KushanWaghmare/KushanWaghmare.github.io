@@ -79,10 +79,37 @@
                 </div>
             </div>
         </section>
-        <section class="section">
-            <div class="section-head" data-reveal><span class="idx">03</span><h2>Contact</h2></div>
-            <p class="lead" data-reveal>Always open to discussing new opportunities and interesting projects.</p>
-            <div class="pills" style="margin-top:22px" data-reveal><a class="pill" href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></div>
+        ${contactSection()}`;
+
+    const contactSection = () => `
+        <section class="section" id="contact">
+            <div class="section-head" data-reveal><span class="idx">03</span><h2>Contact &amp; Collaboration</h2></div>
+            <div class="contact-card glass" data-reveal>
+                <div class="contact-header">
+                    <span class="contact-status"><span class="status-dot"></span> Available for research &amp; engineering opportunities</span>
+                    <h3 class="contact-title">Let's build something rigorous together.</h3>
+                    <p class="contact-lead">Interested in collaborative research, machine learning engineering, quantitative modelling, or high-performance systems? Reach out directly via email or inspect my code repositories.</p>
+                </div>
+                <div class="contact-grid">
+                    <div class="contact-item">
+                        <span class="contact-label">Direct Email</span>
+                        <a href="mailto:kushanwaghmare@gmail.com" class="contact-value">kushanwaghmare@gmail.com</a>
+                        <button type="button" class="copy-btn pill" data-copy="kushanwaghmare@gmail.com" aria-label="Copy email address to clipboard">
+                            <span class="copy-icon">⎘</span> <span class="copy-text">Copy Email</span>
+                        </button>
+                    </div>
+                    <div class="contact-item">
+                        <span class="contact-label">Code Repositories</span>
+                        <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="contact-value">github.com/KushanWaghmare</a>
+                        <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="pill">View GitHub →</a>
+                    </div>
+                    <div class="contact-item">
+                        <span class="contact-label">Affiliations &amp; Location</span>
+                        <span class="contact-value">IIT Madras · Chennai, India</span>
+                        <span class="contact-sub">Vidya Bharati Mahavidyalaya · Amravati</span>
+                    </div>
+                </div>
+            </div>
         </section>`;
 
     const others = (key) => `<div class="pills" data-reveal>${keys.filter((k) => k !== key).map((k) =>
@@ -99,7 +126,8 @@
             <div class="section-head" data-reveal><span class="idx">${ps.length} projects</span><h2>Selected work</h2></div>
             <div class="grid">${ps.map(card).join("")}</div>
         </section>
-        <section class="section"><div class="section-head" data-reveal><span class="idx">→</span><h2>Other domains</h2></div>${others(key)}</section>`;
+        <section class="section"><div class="section-head" data-reveal><span class="idx">→</span><h2>Other domains</h2></div>${others(key)}</section>` +
+        contactSection();
     };
 
     const projectPage = (p) => {
@@ -220,6 +248,35 @@
     document.addEventListener("pointermove", (e) => { // spotlight follows the cursor on cards
         const c = e.target.closest && e.target.closest(".card");
         if (c) { const r = c.getBoundingClientRect(); c.style.setProperty("--mx", e.clientX - r.left + "px"); c.style.setProperty("--my", e.clientY - r.top + "px"); }
+    });
+    document.addEventListener("click", (e) => {
+        const btn = e.target.closest && e.target.closest(".copy-btn");
+        if (!btn) return;
+        const text = btn.dataset.copy;
+        if (!text) return;
+        const label = btn.querySelector(".copy-text") || btn;
+        const originalText = label.textContent;
+        const notify = () => {
+            label.textContent = "Copied to clipboard!";
+            btn.classList.add("copied");
+            setTimeout(() => {
+                label.textContent = originalText;
+                btn.classList.remove("copied");
+            }, 2200);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(notify).catch(notify);
+        } else {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand("copy"); } catch (err) {}
+            document.body.removeChild(ta);
+            notify();
+        }
     });
     motion();
     try { if (sim) SIMS[sim]($(".hero canvas")); } catch (err) { console.warn("Simulation unavailable:", err); }

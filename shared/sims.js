@@ -85,61 +85,174 @@ SIMS.physics = (c) => {
     });
 };
 
-/* ------------------------------------------------------------- DATA SCIENCE
-   Stochastic block model (5 communities, one per site accent colour) laid out by a
-   force-directed simulation: pairwise repulsion + edge springs + weak centring. */
-SIMS.datascience = (c) => {
-    const ctx = c.getContext("2d");
-    const N = 96, K = 5, KR = 700, KS = 0.05, L = 30, KG = 0.006, MR = 150;
-    const comm = Array.from({ length: N }, (_, i) => i % K), edges = [], deg = new Uint8Array(N);
-    for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++)
-        if (Math.random() < (comm[i] === comm[j] ? 0.16 : 0.007)) { edges.push([i, j]); deg[i]++; deg[j]++; }
-    const x = new Float32Array(N), y = new Float32Array(N), vx = new Float32Array(N), vy = new Float32Array(N);
-    const fx = new Float32Array(N), fy = new Float32Array(N);
-    let W = 0, H = 0, cx = 0, cy = 0, ready = false;
+/* ---------------------------------------------------------------- THREE.JS */
+const three = (c, shift) => {
+    const renderer = new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
+    const group = new THREE.Group();
+    scene.add(group);
+    let W = 0;
+    KW.fit(c, (w, h) => { W = w; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); group.position.x = w > 900 ? shift : 0; });
+    const setColor = (mat, rgb) => mat.color.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255);
+    return { renderer, scene, cam, group, setColor, width: () => W };
+};
 
-    KW.fit(c, (w, h, dpr) => {
-        W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        cx = W * (W > 900 ? 0.66 : 0.5); cy = H * 0.5;
-        if (!ready) {
-            for (let i = 0; i < N; i++) {
-                const a = (comm[i] / K) * TAU;
-                x[i] = cx + Math.cos(a) * 140 + (Math.random() - 0.5) * 80;
-                y[i] = cy + Math.sin(a) * 140 + (Math.random() - 0.5) * 80;
-            }
-            ready = true;
+/* ------------------------------------------------------------- DATA SCIENCE
+   Non-convex loss landscape with Langevin SGD particle swarm optimisation:
+   θ_{t+1} = θ_t + v_t,   v_{t+1} = β v_t - η ∇L(θ_t) + σ ξ_t
+   Topological manifold with non-convex valleys, saddle points and dynamic regularisation.
+   The cursor perturbs local curvature; clicking reseeds the optimiser particle swarm. */
+SIMS.datascience = (c) => {
+    const T = three(c, 11);
+    T.cam.position.set(0, 22, 34);
+    T.cam.lookAt(0, -2, 0);
+
+    const GW = 52, GH = 52, SPAN = 32;
+    const pos = new Float32Array((GW + 1) * (GH + 1) * 3);
+    const idx = [];
+    const vi = (i, j) => i * (GH + 1) + j;
+    for (let i = 0; i < GW; i++) {
+        for (let j = 0; j < GH; j++) {
+            idx.push(vi(i, j), vi(i + 1, j), vi(i, j), vi(i, j + 1));
+        }
+    }
+    for (let i = 0; i < GW; i++) idx.push(vi(i, GH), vi(i + 1, GH));
+    for (let j = 0; j < GH; j++) idx.push(vi(GW, j), vi(GW, j + 1));
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    geo.setIndex(idx);
+
+    const lm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.35 });
+    const mesh = new THREE.LineSegments(geo, lm);
+    mesh.frustumCulled = false;
+    T.group.add(mesh);
+
+    const loss = (x, z, t, mx, mz) => {
+        const r2 = x * x + z * z;
+        let y = 0.018 * r2 - 2.8 * (Math.cos(x * 0.42 + t * 0.32) * Math.cos(z * 0.42) + 0.55 * Math.sin(x * 0.24) * Math.sin(z * 0.24 + t * 0.22));
+        if (mx !== undefined && mz !== undefined) {
+            const dx = x - mx, dz = z - mz;
+            y -= 3.4 / (1 + 0.3 * (dx * dx + dz * dz));
+        }
+        return y;
+    };
+
+    const NP = 48, TL = 12;
+    const px = new Float32Array(NP), pz = new Float32Array(NP);
+    const vx = new Float32Array(NP), vz = new Float32Array(NP);
+    const trails = new Float32Array(NP * TL * 3);
+    const lr = new Float32Array(NP);
+
+    const reseed = (i) => {
+        const rad = 7 + Math.random() * 8, ang = Math.random() * TAU;
+        px[i] = Math.cos(ang) * rad;
+        pz[i] = Math.sin(ang) * rad;
+        vx[i] = (Math.random() - 0.5) * 0.15;
+        vz[i] = (Math.random() - 0.5) * 0.15;
+        lr[i] = 0.12 + Math.random() * 0.18;
+        const o = i * TL * 3, y = loss(px[i], pz[i], 0);
+        for (let k = 0; k < TL; k++) {
+            trails[o + k * 3] = px[i];
+            trails[o + k * 3 + 1] = y;
+            trails[o + k * 3 + 2] = pz[i];
+        }
+    };
+    for (let i = 0; i < NP; i++) reseed(i);
+
+    const trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute("position", new THREE.BufferAttribute(trails, 3));
+    const tIdx = [];
+    for (let i = 0; i < NP; i++) {
+        for (let k = 0; k < TL - 1; k++) tIdx.push(i * TL + k, i * TL + k + 1);
+    }
+    trailGeo.setIndex(tIdx);
+    const tm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.85 });
+    const trailMesh = new THREE.LineSegments(trailGeo, tm);
+    trailMesh.frustumCulled = false;
+    T.group.add(trailMesh);
+
+    const headPos = new Float32Array(NP * 3);
+    const headGeo = new THREE.BufferGeometry();
+    headGeo.setAttribute("position", new THREE.BufferAttribute(headPos, 3));
+    const pm = new THREE.PointsMaterial({ size: 0.22, transparent: true, opacity: 0.95 });
+    const headPoints = new THREE.Points(headGeo, pm);
+    headPoints.frustumCulled = false;
+    T.group.add(headPoints);
+
+    const paint = () => {
+        T.setColor(lm, KW.col.a);
+        T.setColor(tm, KW.col.a);
+        T.setColor(pm, KW.col.a);
+    };
+    paint();
+    addEventListener("themechange", paint);
+    addEventListener("click", (e) => {
+        if (!e.target.closest("a,button")) {
+            for (let i = 0; i < NP; i++) reseed(i);
         }
     });
+
     KW.tag(SITE.domains.datascience.tag);
+
+    let rx = 0.58, ry = 0;
     KW.loop(c, (t, dt) => {
-        const s = Math.min(dt * 60, 2), p = KW.local(c);
-        fx.fill(0); fy.fill(0);
-        for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
-            const dx = x[i] - x[j], dy = y[i] - y[j], d2 = dx * dx + dy * dy + 30, d = Math.sqrt(d2), f = KR / d2;
-            fx[i] += (f * dx) / d; fy[i] += (f * dy) / d; fx[j] -= (f * dx) / d; fy[j] -= (f * dy) / d;
+        const p = KW.local(c), inside = p.x > 0 && p.y > 0 && p.x < T.width();
+        const mx = inside ? (p.x / T.width() - 0.5) * 22 : undefined;
+        const mz = inside ? (p.y / c.clientHeight - 0.5) * 22 : undefined;
+
+        let o = 0;
+        for (let i = 0; i <= GW; i++) {
+            const x = (i / GW - 0.5) * SPAN;
+            for (let j = 0; j <= GH; j++) {
+                const z = (j / GH - 0.5) * SPAN;
+                pos[o] = x;
+                pos[o + 1] = loss(x, z, t, mx, mz);
+                pos[o + 2] = z;
+                o += 3;
+            }
         }
-        for (const [i, j] of edges) {
-            const dx = x[j] - x[i], dy = y[j] - y[i], d = Math.sqrt(dx * dx + dy * dy) + 0.01, f = (KS * (d - L)) / d;
-            fx[i] += f * dx; fy[i] += f * dy; fx[j] -= f * dx; fy[j] -= f * dy;
+        geo.attributes.position.needsUpdate = true;
+
+        const eps = 0.1;
+        for (let i = 0; i < NP; i++) {
+            const x = px[i], z = pz[i];
+            const y = loss(x, z, t, mx, mz);
+            const gx = (loss(x + eps, z, t, mx, mz) - loss(x - eps, z, t, mx, mz)) / (2 * eps);
+            const gz = (loss(x, z + eps, t, mx, mz) - loss(x, z - eps, t, mx, mz)) / (2 * eps);
+
+            vx[i] = vx[i] * 0.86 - gx * lr[i] + randn() * 0.04;
+            vz[i] = vz[i] * 0.86 - gz * lr[i] + randn() * 0.04;
+            px[i] += vx[i];
+            pz[i] += vz[i];
+
+            if (Math.abs(px[i]) > SPAN * 0.48 || Math.abs(pz[i]) > SPAN * 0.48 || Math.hypot(vx[i], vz[i]) < 0.004) {
+                reseed(i);
+            }
+
+            const to = i * TL * 3;
+            trails.copyWithin(to, to + 3, to + TL * 3);
+            const last = to + (TL - 1) * 3;
+            trails[last] = px[i];
+            trails[last + 1] = y + 0.16;
+            trails[last + 2] = pz[i];
+
+            headPos[i * 3] = px[i];
+            headPos[i * 3 + 1] = y + 0.22;
+            headPos[i * 3 + 2] = pz[i];
         }
-        for (let i = 0; i < N; i++) {
-            fx[i] += (cx - x[i]) * KG; fy[i] += (cy - y[i]) * KG;
-            const dx = x[i] - p.x, dy = y[i] - p.y, d = Math.sqrt(dx * dx + dy * dy);
-            if (d < MR && d > 0.01) { const f = (1 - d / MR) * 6; fx[i] += (f * dx) / d; fy[i] += (f * dy) / d; }
-            vx[i] = (vx[i] + fx[i] * s) * 0.86; vy[i] = (vy[i] + fy[i] * s) * 0.86;
-            x[i] += vx[i] * s; y[i] += vy[i] * s;
-        }
-        const pal = KW.col.pal, edgeRGB = KW.col.light ? "0,0,0" : "255,255,255";
-        ctx.clearRect(0, 0, W, H);
-        ctx.lineWidth = 1;
-        for (const [i, j] of edges) {
-            ctx.strokeStyle = comm[i] === comm[j] ? rgba(pal[comm[i]], 0.35) : `rgba(${edgeRGB},0.1)`;
-            ctx.beginPath(); ctx.moveTo(x[i], y[i]); ctx.lineTo(x[j], y[j]); ctx.stroke();
-        }
-        for (let i = 0; i < N; i++) {
-            ctx.fillStyle = rgba(pal[comm[i]], 0.95);
-            ctx.beginPath(); ctx.arc(x[i], y[i], 3 + deg[i] * 0.25, 0, TAU); ctx.fill();
-        }
+        trailGeo.attributes.position.needsUpdate = true;
+        headGeo.attributes.position.needsUpdate = true;
+
+        const curX = inside ? (p.x / T.width()) * 2 - 1 : 0;
+        const curY = inside ? (p.y / c.clientHeight) * 2 - 1 : 0;
+        rx += (0.58 + curY * 0.22 - rx) * 0.05;
+        ry += dt * 0.12 + (curX * 0.015);
+        T.group.rotation.x = rx;
+        T.group.rotation.y = ry;
+
+        T.renderer.render(T.scene, T.cam);
     });
 };
 
@@ -242,19 +355,6 @@ SIMS.cs = (c) => {
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(off, 0, 0, cols, rows, 0, 0, cols * CELL, rows * CELL);
     });
-};
-
-/* ---------------------------------------------------------------- THREE.JS */
-const three = (c, shift) => {
-    const renderer = new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-    const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
-    const group = new THREE.Group();
-    scene.add(group);
-    let W = 0;
-    KW.fit(c, (w, h) => { W = w; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); group.position.x = w > 900 ? shift : 0; });
-    const setColor = (mat, rgb) => mat.color.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255);
-    return { renderer, scene, cam, group, setColor, width: () => W };
 };
 
 /* ---------------------------------------------------------------------- MATH

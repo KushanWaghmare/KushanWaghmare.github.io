@@ -21,9 +21,9 @@ const SITE = {
         datascience: {
             name: "Data Science", short: "Data", file: "datascience.html",
             label: "Data Science · Statistical learning & analytics",
-            blurb: "Statistical learning and graph analytics grounded in linear algebra, from regularised regression to spectral methods.",
+            blurb: "Statistical learning and non-convex optimisation: loss surfaces, Langevin SGD, regularisation and spectral methods.",
             eq: r`\hat{\boldsymbol\beta}_\lambda=(X^\top X+\lambda I)^{-1}X^\top\mathbf y`,
-            tag: "Stochastic block model · force-directed layout · cursor repels nodes",
+            tag: "Loss landscape · Langevin SGD: v ← 0.86v - η∇L + 0.05ξ · move cursor to alter curvature · click to reseed",
         },
         quant: {
             name: "Quant Finance", short: "Quant", file: "quant.html",
