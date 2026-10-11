@@ -189,6 +189,21 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 }
 .theme-btn:hover { transform: rotate(180deg); border-color: var(--accent); color: var(--accent); }
 
+.sound-btn {
+    margin-left: 8px;
+    width: 36px; height: 36px;
+    display: grid; place-items: center;
+    border-radius: 10px;
+    border: 1px solid var(--glass-line);
+    background: transparent;
+    color: var(--fg);
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.25s, color 0.25s, opacity 0.25s;
+}
+.sound-btn:hover { border-color: var(--accent); color: var(--accent); transform: scale(1.08); }
+.sound-btn.muted { opacity: 0.55; }
+
 /* ---------- Hero ---------- */
 .hero {
     position: relative;
@@ -243,12 +258,16 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 .cue::after { content: ""; display: block; width: 1px; height: 36px; margin-top: 10px; background: var(--accent); animation: cue 2s ease-in-out infinite; transform-origin: top; }
 @keyframes cue { 0%, 100% { transform: scaleY(0.2); } 50% { transform: scaleY(1); } }
 
-/* ---------- Snap-scrolling layout on index.html (hub) ---------- */
-html[data-page="hub"] {
+/* ---------- Snap-scrolling layout on index.html (hub), domain pages, and project pages ---------- */
+html[data-page="hub"],
+html[data-page="domain"],
+html[data-page="project"] {
     scroll-snap-type: y mandatory;
     scroll-behavior: smooth;
 }
-html[data-page="hub"] body {
+html[data-page="hub"] body,
+html[data-page="domain"] body,
+html[data-page="project"] body {
     scroll-snap-type: y mandatory;
     overflow-y: scroll;
     scroll-behavior: smooth;
@@ -545,10 +564,80 @@ html[data-page="hub"] body {
     width: 100%;
 }
 
+.project-snap {
+    align-items: flex-start;
+}
+.project-snap .snap-inner {
+    max-width: 880px;
+}
+.snap-overview-card {
+    padding: clamp(22px, 3.5vw, 36px);
+    border-radius: var(--radius);
+    border: 1px solid var(--glass-line);
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 10px;
+}
+.snap-overview-card p {
+    color: var(--muted);
+    font-size: 16.5px;
+    line-height: 1.8;
+    margin: 0;
+}
+.snap-arch-grid {
+    list-style: none;
+    counter-reset: s;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+    gap: 14px;
+    width: 100%;
+    margin-top: 14px;
+    padding: 0;
+}
+.snap-arch-grid li {
+    counter-increment: s;
+    position: relative;
+    padding: 18px 20px 18px 60px;
+}
+.snap-arch-grid li::before {
+    content: counter(s, decimal-leading-zero);
+    position: absolute;
+    left: 20px;
+    top: 19px;
+    font: 700 13px var(--mono);
+    color: var(--accent);
+}
+.snap-arch-grid strong { display: block; margin-bottom: 4px; }
+.snap-arch-grid span { color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+.snap-math-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+    gap: 16px;
+    width: 100%;
+    margin-top: 14px;
+}
+.snap-math-grid .math-block { margin: 0; }
+
+.snap-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+    gap: 16px;
+    width: 100%;
+    margin-top: 18px;
+    margin-bottom: 24px;
+}
+
 @media (max-width: 900px) {
     .snap-pager { display: none; }
     .snap-section { padding: 90px 20px 60px; min-height: auto; }
-    html[data-page="hub"], html[data-page="hub"] body { scroll-snap-type: none; }
+    html[data-page="hub"], html[data-page="hub"] body,
+    html[data-page="domain"], html[data-page="domain"] body,
+    html[data-page="project"], html[data-page="project"] body { scroll-snap-type: none; }
 }
 
 /* ---------- Sections & cards ---------- */

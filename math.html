@@ -22,32 +22,125 @@
         <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
         <nav class="links" aria-label="Navigation">
             
-            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button></nav>
+            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
+            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Toggle sound">🔊</button>
+        </nav>
     </header>
     <main id="main">
-        <section class="hero"><canvas aria-hidden="true"></canvas>
-            <div class="hero-inner">
-            <div class="eyebrow" data-hero>01 / Mathematics · Topological & geometric models</div>
+    <nav class="snap-pager" aria-label="Section navigation">
+        <a href="#domain-intro" class="snap-dot active" data-title="00 Overview" aria-label="Mathematics Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+        
+        <a href="#proj-mobius-surfaces" class="snap-dot" data-title="01 Möbius Strip & Surface Geometry" aria-label="Möbius Strip & Surface Geometry"><span class="dot-disc"></span><span class="dot-text">01 Möbius Strip & Surface Geometry</span></a>
+        <a href="#proj-fourier-spectral" class="snap-dot" data-title="02 Fourier Analysis from First Principles" aria-label="Fourier Analysis from First Principles"><span class="dot-disc"></span><span class="dot-text">02 Fourier Analysis from First Principles</span></a>
+        <a href="#domain-explore" class="snap-dot" data-title="03 Explore" aria-label="Explore other domains"><span class="dot-disc"></span><span class="dot-text">03 Explore</span></a>
+    </nav>
+
+    <section class="snap-section hero" id="domain-intro" data-domain="math">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>01 / Mathematics · Topological & geometric models</div>
             <h1 data-hero>Mathematics</h1>
             <p class="lead" data-hero>Topology, differential geometry and analysis: the surfaces and spectra behind the models on the rest of this site.</p>
-            <div class="hero-eq glass" data-hero>$$\iint_M K\,dA+\oint_{\partial M}k_g\,ds=2\pi\,\chi(M)$$</div></div><div class="sim-tag" aria-hidden="true"></div>
-            <a class="cue" href="#content">Scroll</a>
-        </section>
-        <section class="section" id="content">
-            <div class="section-head" data-reveal><span class="idx">2 projects</span><h2>Selected work</h2></div>
-            <div class="grid">
-        <a class="card glass" href="project.html?p=mobius-surfaces" data-reveal>
-            <span class="no">01 <span class="dot"></span> Draft</span>
-            <h3>Möbius Strip & Surface Geometry</h3><p>Parametrising a twisted band, deriving its first fundamental form and showing why it cannot be oriented.</p>
-            <div class="tags"><span class="tag">Differential geometry</span><span class="tag">Topology</span><span class="tag">Three.js</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=fourier-spectral" data-reveal>
-            <span class="no">02 <span class="dot"></span> Draft</span>
-            <h3>Fourier Analysis from First Principles</h3><p>The DFT, its three defining properties and the FFT recurrence that makes it practical.</p>
-            <div class="tags"><span class="tag">Fourier analysis</span><span class="tag">FFT</span><span class="tag">Python</span></div><span class="go">Open project</span>
-        </a></div>
-        </section>
-        <section class="section"><div class="section-head" data-reveal><span class="idx">→</span><h2>Other domains</h2></div><div class="pills" data-reveal><a class="pill" style="--a:var(--rgb-physics)" href="physics.html">Physics</a><a class="pill" style="--a:var(--rgb-datascience)" href="datascience.html">Data Science</a><a class="pill" style="--a:var(--rgb-quant)" href="quant.html">Quant Finance</a><a class="pill" style="--a:var(--rgb-cs)" href="cs.html">Computer Science</a></div></section></main>
+            <div class="hero-eq glass snap-eq" data-hero>$$\iint_M K\,dA+\oint_{\partial M}k_g\,ds=2\pi\,\chi(M)$$</div>
+            <div class="snap-jump-pills" data-hero>
+                <span class="snap-jump-label">Selected work:</span>
+                <a href="#proj-mobius-surfaces" class="pill jump-pill"><strong>Möbius Strip & Surface Geometry</strong></a><a href="#proj-fourier-spectral" class="pill jump-pill"><strong>Fourier Analysis from First Principles</strong></a>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Möbius immersion · non-orientable topological manifold · cursor controls twist & angle</div>
+        <a class="snap-cue" href="#proj-mobius-surfaces">Scroll to projects</a>
+    </section>
+
+    
+    <section class="snap-section project-snap" id="proj-mobius-surfaces" data-domain="math">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 01 / 02 · Mathematics</div>
+            <h2 class="snap-title" data-reveal>Möbius Strip & Surface Geometry</h2>
+            <p class="lead snap-lead" data-reveal>Parametrising a twisted band, deriving its first fundamental form and showing why it cannot be oriented.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$\mathbf r(u,v)=\begin{pmatrix}(R+v\cos\alpha)\cos u\\(R+v\cos\alpha)\sin u\\ v\sin\alpha\end{pmatrix}$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Differential geometry</strong></span><span class="snap-proj-pill glass"><strong>Topology</strong></span><span class="snap-proj-pill glass"><strong>Three.js</strong></span>
+                <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=mobius-surfaces" class="snap-cta-btn glass">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Möbius immersion · non-orientable topological manifold · cursor controls twist & angle</div>
+        <a class="snap-cue" href="#proj-fourier-spectral">Next: Fourier Analysis from First Principles</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-fourier-spectral" data-domain="math">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 02 / 02 · Mathematics</div>
+            <h2 class="snap-title" data-reveal>Fourier Analysis from First Principles</h2>
+            <p class="lead snap-lead" data-reveal>The DFT, its three defining properties and the FFT recurrence that makes it practical.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$X_k=\sum_{n=0}^{N-1}x_n\,e^{-2\pi i kn/N},\qquad x_n=\frac1N\sum_{k=0}^{N-1}X_k\,e^{2\pi i kn/N}$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Fourier analysis</strong></span><span class="snap-proj-pill glass"><strong>FFT</strong></span><span class="snap-proj-pill glass"><strong>Python</strong></span>
+                <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=fourier-spectral" class="snap-cta-btn glass">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Möbius immersion · non-orientable topological manifold · cursor controls twist & angle</div>
+        <a class="snap-cue" href="#domain-explore">Next: Explore other domains</a>
+    </section>
+
+    <section class="snap-section about-contact-section" id="domain-explore" data-domain="math">
+        <div class="snap-inner" style="max-width:960px">
+            <div class="section-head" data-reveal><span class="idx">03</span><h2>Explore Other Domains</h2></div>
+            <p class="lead" data-reveal style="margin-bottom:28px">Navigate through other core domains of mathematical modelling, physics simulations, stochastic calculus, and machine systems.</p>
+            <div class="pills" data-reveal style="margin-bottom:36px">
+                
+                <a class="pill" style="--a:var(--rgb-physics)" href="physics.html">Physics →</a>
+                <a class="pill" style="--a:var(--rgb-datascience)" href="datascience.html">Data Science →</a>
+                <a class="pill" style="--a:var(--rgb-quant)" href="quant.html">Quant Finance →</a>
+                <a class="pill" style="--a:var(--rgb-cs)" href="cs.html">Computer Science →</a>
+                <a class="pill" href="index.html">← Back to Hub</a>
+            </div>
+            
+        <div class="contact-card glass" data-reveal>
+            <div class="contact-header">
+                <span class="contact-status"><span class="status-dot"></span> Available for research &amp; engineering opportunities</span>
+                <h3 class="contact-title">Let's build something rigorous together.</h3>
+                <p class="contact-lead">Interested in collaborative research, machine learning engineering, quantitative modelling, or high-performance systems? Reach out directly via email or inspect my code repositories.</p>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-item">
+                    <span class="contact-label">Direct Email</span>
+                    <a href="mailto:kushanwaghmare@gmail.com" class="contact-value">kushanwaghmare@gmail.com</a>
+                    <button type="button" class="copy-btn pill" data-copy="kushanwaghmare@gmail.com" aria-label="Copy email address to clipboard">
+                        <span class="copy-icon">⎘</span> <span class="copy-text">Copy Email</span>
+                    </button>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-label">Code Repositories</span>
+                    <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="contact-value">github.com/KushanWaghmare</a>
+                    <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="pill">View GitHub →</a>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-label">Affiliations &amp; Location</span>
+                    <span class="contact-value">IIT Madras · Chennai, India</span>
+                    <span class="contact-sub">Vidya Bharati Mahavidyalaya · Amravati</span>
+                </div>
+            </div>
+        </div>
+        </div>
+        <footer class="foot snap-foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+    </section></main>
     <footer class="foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
 </body>
 </html>

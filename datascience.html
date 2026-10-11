@@ -22,32 +22,125 @@
         <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
         <nav class="links" aria-label="Navigation">
             
-            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button></nav>
+            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
+            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Toggle sound">🔊</button>
+        </nav>
     </header>
     <main id="main">
-        <section class="hero"><canvas aria-hidden="true"></canvas>
-            <div class="hero-inner">
-            <div class="eyebrow" data-hero>03 / Data Science · Statistical learning & analytics</div>
+    <nav class="snap-pager" aria-label="Section navigation">
+        <a href="#domain-intro" class="snap-dot active" data-title="00 Overview" aria-label="Data Science Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+        
+        <a href="#proj-regularised-regression" class="snap-dot" data-title="01 Regularised Regression from Scratch" aria-label="Regularised Regression from Scratch"><span class="dot-disc"></span><span class="dot-text">01 Regularised Regression from Scratch</span></a>
+        <a href="#proj-spectral-clustering" class="snap-dot" data-title="02 Spectral Clustering on Graphs" aria-label="Spectral Clustering on Graphs"><span class="dot-disc"></span><span class="dot-text">02 Spectral Clustering on Graphs</span></a>
+        <a href="#domain-explore" class="snap-dot" data-title="03 Explore" aria-label="Explore other domains"><span class="dot-disc"></span><span class="dot-text">03 Explore</span></a>
+    </nav>
+
+    <section class="snap-section hero" id="domain-intro" data-domain="datascience">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>03 / Data Science · Statistical learning & analytics</div>
             <h1 data-hero>Data Science</h1>
             <p class="lead" data-hero>Statistical learning and non-convex optimisation: loss surfaces, Langevin SGD, regularisation and spectral methods.</p>
-            <div class="hero-eq glass" data-hero>$$\hat{\boldsymbol\beta}_\lambda=(X^\top X+\lambda I)^{-1}X^\top\mathbf y$$</div></div><div class="sim-tag" aria-hidden="true"></div>
-            <a class="cue" href="#content">Scroll</a>
-        </section>
-        <section class="section" id="content">
-            <div class="section-head" data-reveal><span class="idx">2 projects</span><h2>Selected work</h2></div>
-            <div class="grid">
-        <a class="card glass" href="project.html?p=regularised-regression" data-reveal>
-            <span class="no">01 <span class="dot"></span> Draft</span>
-            <h3>Regularised Regression from Scratch</h3><p>OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.</p>
-            <div class="tags"><span class="tag">Python</span><span class="tag">NumPy</span><span class="tag">Linear algebra</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=spectral-clustering" data-reveal>
-            <span class="no">02 <span class="dot"></span> Draft</span>
-            <h3>Spectral Clustering on Graphs</h3><p>Recovering communities in a stochastic block model from the eigenvectors of the graph Laplacian.</p>
-            <div class="tags"><span class="tag">Graph theory</span><span class="tag">Spectral methods</span><span class="tag">NumPy</span></div><span class="go">Open project</span>
-        </a></div>
-        </section>
-        <section class="section"><div class="section-head" data-reveal><span class="idx">→</span><h2>Other domains</h2></div><div class="pills" data-reveal><a class="pill" style="--a:var(--rgb-math)" href="math.html">Mathematics</a><a class="pill" style="--a:var(--rgb-physics)" href="physics.html">Physics</a><a class="pill" style="--a:var(--rgb-quant)" href="quant.html">Quant Finance</a><a class="pill" style="--a:var(--rgb-cs)" href="cs.html">Computer Science</a></div></section></main>
+            <div class="hero-eq glass snap-eq" data-hero>$$\hat{\boldsymbol\beta}_\lambda=(X^\top X+\lambda I)^{-1}X^\top\mathbf y$$</div>
+            <div class="snap-jump-pills" data-hero>
+                <span class="snap-jump-label">Selected work:</span>
+                <a href="#proj-regularised-regression" class="pill jump-pill"><strong>Regularised Regression from Scratch</strong></a><a href="#proj-spectral-clustering" class="pill jump-pill"><strong>Spectral Clustering on Graphs</strong></a>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Loss landscape · Langevin SGD: v ← 0.86v - η∇L + 0.05ξ · move cursor to alter curvature · click to reseed</div>
+        <a class="snap-cue" href="#proj-regularised-regression">Scroll to projects</a>
+    </section>
+
+    
+    <section class="snap-section project-snap" id="proj-regularised-regression" data-domain="datascience">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 01 / 02 · Data Science</div>
+            <h2 class="snap-title" data-reveal>Regularised Regression from Scratch</h2>
+            <p class="lead snap-lead" data-reveal>OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$\hat{\boldsymbol\beta}=\arg\min_{\boldsymbol\beta}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2=(X^\top X)^{-1}X^\top\mathbf y$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Python</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span><span class="snap-proj-pill glass"><strong>Linear algebra</strong></span>
+                <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=regularised-regression" class="snap-cta-btn glass">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Loss landscape · Langevin SGD: v ← 0.86v - η∇L + 0.05ξ · move cursor to alter curvature · click to reseed</div>
+        <a class="snap-cue" href="#proj-spectral-clustering">Next: Spectral Clustering on Graphs</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-spectral-clustering" data-domain="datascience">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 02 / 02 · Data Science</div>
+            <h2 class="snap-title" data-reveal>Spectral Clustering on Graphs</h2>
+            <p class="lead snap-lead" data-reveal>Recovering communities in a stochastic block model from the eigenvectors of the graph Laplacian.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$\Pr(A_{ij}=1)=\begin{cases}p_{\text{in}}&c_i=c_j\\p_{\text{out}}&c_i\ne c_j\end{cases}$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Graph theory</strong></span><span class="snap-proj-pill glass"><strong>Spectral methods</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span>
+                <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=spectral-clustering" class="snap-cta-btn glass">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Loss landscape · Langevin SGD: v ← 0.86v - η∇L + 0.05ξ · move cursor to alter curvature · click to reseed</div>
+        <a class="snap-cue" href="#domain-explore">Next: Explore other domains</a>
+    </section>
+
+    <section class="snap-section about-contact-section" id="domain-explore" data-domain="datascience">
+        <div class="snap-inner" style="max-width:960px">
+            <div class="section-head" data-reveal><span class="idx">03</span><h2>Explore Other Domains</h2></div>
+            <p class="lead" data-reveal style="margin-bottom:28px">Navigate through other core domains of mathematical modelling, physics simulations, stochastic calculus, and machine systems.</p>
+            <div class="pills" data-reveal style="margin-bottom:36px">
+                
+                <a class="pill" style="--a:var(--rgb-math)" href="math.html">Mathematics →</a>
+                <a class="pill" style="--a:var(--rgb-physics)" href="physics.html">Physics →</a>
+                <a class="pill" style="--a:var(--rgb-quant)" href="quant.html">Quant Finance →</a>
+                <a class="pill" style="--a:var(--rgb-cs)" href="cs.html">Computer Science →</a>
+                <a class="pill" href="index.html">← Back to Hub</a>
+            </div>
+            
+        <div class="contact-card glass" data-reveal>
+            <div class="contact-header">
+                <span class="contact-status"><span class="status-dot"></span> Available for research &amp; engineering opportunities</span>
+                <h3 class="contact-title">Let's build something rigorous together.</h3>
+                <p class="contact-lead">Interested in collaborative research, machine learning engineering, quantitative modelling, or high-performance systems? Reach out directly via email or inspect my code repositories.</p>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-item">
+                    <span class="contact-label">Direct Email</span>
+                    <a href="mailto:kushanwaghmare@gmail.com" class="contact-value">kushanwaghmare@gmail.com</a>
+                    <button type="button" class="copy-btn pill" data-copy="kushanwaghmare@gmail.com" aria-label="Copy email address to clipboard">
+                        <span class="copy-icon">⎘</span> <span class="copy-text">Copy Email</span>
+                    </button>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-label">Code Repositories</span>
+                    <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="contact-value">github.com/KushanWaghmare</a>
+                    <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="pill">View GitHub →</a>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-label">Affiliations &amp; Location</span>
+                    <span class="contact-value">IIT Madras · Chennai, India</span>
+                    <span class="contact-sub">Vidya Bharati Mahavidyalaya · Amravati</span>
+                </div>
+            </div>
+        </div>
+        </div>
+        <footer class="foot snap-foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+    </section></main>
     <footer class="foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
 </body>
 </html>

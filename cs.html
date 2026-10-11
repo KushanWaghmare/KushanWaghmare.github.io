@@ -21,32 +21,125 @@
         <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
         <nav class="links" aria-label="Navigation">
             
-            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button></nav>
+            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
+            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Toggle sound">🔊</button>
+        </nav>
     </header>
     <main id="main">
-        <section class="hero"><canvas aria-hidden="true"></canvas>
-            <div class="hero-inner">
-            <div class="eyebrow" data-hero>05 / Computer Science · Systems & compilers</div>
+    <nav class="snap-pager" aria-label="Section navigation">
+        <a href="#domain-intro" class="snap-dot active" data-title="00 Overview" aria-label="Computer Science Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+        
+        <a href="#proj-ku-lang" class="snap-dot" data-title="01 Ku-Lang Compiler" aria-label="Ku-Lang Compiler"><span class="dot-disc"></span><span class="dot-text">01 Ku-Lang Compiler</span></a>
+        <a href="#proj-8bit-computer" class="snap-dot" data-title="02 8-Bit Breadboard Computer" aria-label="8-Bit Breadboard Computer"><span class="dot-disc"></span><span class="dot-text">02 8-Bit Breadboard Computer</span></a>
+        <a href="#domain-explore" class="snap-dot" data-title="03 Explore" aria-label="Explore other domains"><span class="dot-disc"></span><span class="dot-text">03 Explore</span></a>
+    </nav>
+
+    <section class="snap-section hero" id="domain-intro" data-domain="cs">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>05 / Computer Science · Systems & compilers</div>
             <h1 data-hero>Computer Science</h1>
             <p class="lead" data-hero>Compilers and machine architecture, from grammars and SSA form down to TTL gates on a breadboard.</p>
-            <div class="hero-eq glass" data-hero>$$\frac{\Gamma\vdash e_1:\mathtt{int}\qquad\Gamma\vdash e_2:\mathtt{int}}{\Gamma\vdash e_1+e_2:\mathtt{int}}$$</div></div><div class="sim-tag" aria-hidden="true"></div>
-            <a class="cue" href="#content">Scroll</a>
-        </section>
-        <section class="section" id="content">
-            <div class="section-head" data-reveal><span class="idx">2 projects</span><h2>Selected work</h2></div>
-            <div class="grid">
-        <a class="card glass" href="project.html?p=ku-lang" data-reveal>
-            <span class="no">01 <span class="dot"></span> In progress</span>
-            <h3>Ku-Lang Compiler</h3><p>A custom language and compiler: lexical analysis, parsing, semantic checks and LLVM IR generation, with control flow, functions and typed expressions.</p>
-            <div class="tags"><span class="tag">C</span><span class="tag">LLVM</span><span class="tag">Flex</span><span class="tag">Bison</span><span class="tag">CMake</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=8bit-computer" data-reveal>
-            <span class="no">02 <span class="dot"></span> In progress</span>
-            <h3>8-Bit Breadboard Computer</h3><p>An 8-bit computer built from discrete TTL logic: ALU, control unit and memory with a custom instruction set, validated with a logic analyser.</p>
-            <div class="tags"><span class="tag">TTL logic</span><span class="tag">Assembly</span><span class="tag">Digital design</span><span class="tag">Logic analyser</span></div><span class="go">Open project</span>
-        </a></div>
-        </section>
-        <section class="section"><div class="section-head" data-reveal><span class="idx">→</span><h2>Other domains</h2></div><div class="pills" data-reveal><a class="pill" style="--a:var(--rgb-math)" href="math.html">Mathematics</a><a class="pill" style="--a:var(--rgb-physics)" href="physics.html">Physics</a><a class="pill" style="--a:var(--rgb-datascience)" href="datascience.html">Data Science</a><a class="pill" style="--a:var(--rgb-quant)" href="quant.html">Quant Finance</a></div></section></main>
+            <div class="hero-eq glass snap-eq" data-hero>$$\frac{\Gamma\vdash e_1:\mathtt{int}\qquad\Gamma\vdash e_2:\mathtt{int}}{\Gamma\vdash e_1+e_2:\mathtt{int}}$$</div>
+            <div class="snap-jump-pills" data-hero>
+                <span class="snap-jump-label">Selected work:</span>
+                <a href="#proj-ku-lang" class="pill jump-pill"><strong>Ku-Lang Compiler</strong></a><a href="#proj-8bit-computer" class="pill jump-pill"><strong>8-Bit Breadboard Computer</strong></a>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Elementary cellular automaton · click to cycle the rule</div>
+        <a class="snap-cue" href="#proj-ku-lang">Scroll to projects</a>
+    </section>
+
+    
+    <section class="snap-section project-snap" id="proj-ku-lang" data-domain="cs">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 01 / 02 · Computer Science</div>
+            <h2 class="snap-title" data-reveal>Ku-Lang Compiler</h2>
+            <p class="lead snap-lead" data-reveal>A custom language and compiler: lexical analysis, parsing, semantic checks and LLVM IR generation, with control flow, functions and typed expressions.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$L(r_1\mid r_2)=L(r_1)\cup L(r_2),\quad L(r_1r_2)=L(r_1)L(r_2),\quad L(r^*)=\bigcup_{k\ge0}L(r)^k,\qquad|Q_{\mathrm{DFA}}|\le2^{|Q_{\mathrm{NFA}}|}$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>C</strong></span><span class="snap-proj-pill glass"><strong>LLVM</strong></span><span class="snap-proj-pill glass"><strong>Flex</strong></span><span class="snap-proj-pill glass"><strong>Bison</strong></span><span class="snap-proj-pill glass"><strong>CMake</strong></span>
+                <span class="tag-status">In progress</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=ku-lang" class="snap-cta-btn glass">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">5 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Elementary cellular automaton · click to cycle the rule</div>
+        <a class="snap-cue" href="#proj-8bit-computer">Next: 8-Bit Breadboard Computer</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-8bit-computer" data-domain="cs">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 02 / 02 · Computer Science</div>
+            <h2 class="snap-title" data-reveal>8-Bit Breadboard Computer</h2>
+            <p class="lead snap-lead" data-reveal>An 8-bit computer built from discrete TTL logic: ALU, control unit and memory with a custom instruction set, validated with a logic analyser.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$S=A\oplus B\oplus C_{\mathrm{in}},\qquad C_{\mathrm{out}}=AB+C_{\mathrm{in}}(A\oplus B)$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>TTL logic</strong></span><span class="snap-proj-pill glass"><strong>Assembly</strong></span><span class="snap-proj-pill glass"><strong>Digital design</strong></span><span class="snap-proj-pill glass"><strong>Logic analyser</strong></span>
+                <span class="tag-status">In progress</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=8bit-computer" class="snap-cta-btn glass">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">5 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Elementary cellular automaton · click to cycle the rule</div>
+        <a class="snap-cue" href="#domain-explore">Next: Explore other domains</a>
+    </section>
+
+    <section class="snap-section about-contact-section" id="domain-explore" data-domain="cs">
+        <div class="snap-inner" style="max-width:960px">
+            <div class="section-head" data-reveal><span class="idx">03</span><h2>Explore Other Domains</h2></div>
+            <p class="lead" data-reveal style="margin-bottom:28px">Navigate through other core domains of mathematical modelling, physics simulations, stochastic calculus, and machine systems.</p>
+            <div class="pills" data-reveal style="margin-bottom:36px">
+                
+                <a class="pill" style="--a:var(--rgb-math)" href="math.html">Mathematics →</a>
+                <a class="pill" style="--a:var(--rgb-physics)" href="physics.html">Physics →</a>
+                <a class="pill" style="--a:var(--rgb-datascience)" href="datascience.html">Data Science →</a>
+                <a class="pill" style="--a:var(--rgb-quant)" href="quant.html">Quant Finance →</a>
+                <a class="pill" href="index.html">← Back to Hub</a>
+            </div>
+            
+        <div class="contact-card glass" data-reveal>
+            <div class="contact-header">
+                <span class="contact-status"><span class="status-dot"></span> Available for research &amp; engineering opportunities</span>
+                <h3 class="contact-title">Let's build something rigorous together.</h3>
+                <p class="contact-lead">Interested in collaborative research, machine learning engineering, quantitative modelling, or high-performance systems? Reach out directly via email or inspect my code repositories.</p>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-item">
+                    <span class="contact-label">Direct Email</span>
+                    <a href="mailto:kushanwaghmare@gmail.com" class="contact-value">kushanwaghmare@gmail.com</a>
+                    <button type="button" class="copy-btn pill" data-copy="kushanwaghmare@gmail.com" aria-label="Copy email address to clipboard">
+                        <span class="copy-icon">⎘</span> <span class="copy-text">Copy Email</span>
+                    </button>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-label">Code Repositories</span>
+                    <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="contact-value">github.com/KushanWaghmare</a>
+                    <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="pill">View GitHub →</a>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-label">Affiliations &amp; Location</span>
+                    <span class="contact-value">IIT Madras · Chennai, India</span>
+                    <span class="contact-sub">Vidya Bharati Mahavidyalaya · Amravati</span>
+                </div>
+            </div>
+        </div>
+        </div>
+        <footer class="foot snap-foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+    </section></main>
     <footer class="foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
 </body>
 </html>

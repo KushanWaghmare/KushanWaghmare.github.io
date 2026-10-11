@@ -42,6 +42,82 @@
     addEventListener("pointermove", (e) => { KW.mouse.cx = e.clientX; KW.mouse.cy = e.clientY; }, { passive: true });
     D.addEventListener("mouseleave", () => { KW.mouse.cx = KW.mouse.cy = -1e4; });
 
+    /* ---------- sound synthesiser (Web Audio API) ---------- */
+    const SOUND = (() => {
+        let ctx = null;
+        let enabled = true;
+        try {
+            const stored = localStorage.getItem("kw_sound");
+            if (stored !== null) enabled = stored === "true";
+        } catch (e) {}
+
+        const init = () => {
+            if (!ctx) {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (AC) ctx = new AC();
+            }
+            if (ctx && ctx.state === "suspended") {
+                ctx.resume().catch(() => {});
+            }
+        };
+
+        ["pointerdown", "keydown", "wheel", "touchstart"].forEach((ev) => {
+            window.addEventListener(ev, init, { once: true, passive: true });
+        });
+
+        const playTone = (freqStart, freqEnd, type, duration, volume) => {
+            if (!enabled || !ctx || ctx.state !== "running") return;
+            try {
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = type || "sine";
+                osc.frequency.setValueAtTime(freqStart, now);
+                if (freqEnd && freqEnd !== freqStart) {
+                    osc.frequency.exponentialRampToValueAtTime(Math.max(freqEnd, 20), now + duration);
+                }
+                gain.gain.setValueAtTime(volume, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + duration);
+            } catch (e) {}
+        };
+
+        return {
+            isEnabled: () => enabled,
+            toggle: () => {
+                init();
+                enabled = !enabled;
+                try { localStorage.setItem("kw_sound", enabled); } catch (e) {}
+                return enabled;
+            },
+            snap: () => {
+                init();
+                playTone(580, 180, "sine", 0.038, 0.035);
+            },
+            hover: () => {
+                init();
+                playTone(1800, 1800, "triangle", 0.014, 0.015);
+            },
+            click: () => {
+                init();
+                playTone(900, 420, "sine", 0.028, 0.04);
+            },
+            theme: () => {
+                init();
+                playTone(520, 720, "sine", 0.045, 0.04);
+                setTimeout(() => playTone(720, 960, "sine", 0.05, 0.04), 40);
+            },
+            copy: () => {
+                init();
+                playTone(523, 523, "sine", 0.07, 0.045);
+                setTimeout(() => playTone(784, 784, "sine", 0.09, 0.045), 65);
+            }
+        };
+    })();
+
     /* ---------- page templates ---------- */
     const tags = (a) => a.map((t) => `<span class="tag">${t}</span>`).join("");
     const card = (p, i) => `
@@ -160,39 +236,230 @@
 
     const domainPage = (key) => {
         const d = SITE.domains[key], ps = list(key);
-        return hero(`
-            <div class="eyebrow" data-hero>${pad(keys.indexOf(key))} / ${d.label}</div>
-            <h1 data-hero>${d.name}</h1>
-            <p class="lead" data-hero>${d.blurb}</p>
-            <div class="hero-eq glass" data-hero>$$${d.eq}$$</div>`) +
-        `<section class="section" id="content">
-            <div class="section-head" data-reveal><span class="idx">${ps.length} projects</span><h2>Selected work</h2></div>
-            <div class="grid">${ps.map(card).join("")}</div>
+        const domainIdx = keys.indexOf(key);
+        return `
+        <nav class="snap-pager" aria-label="Section navigation">
+            <a href="#domain-intro" class="snap-dot active" data-title="00 Overview" aria-label="${d.name} Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+            ${ps.map((p, i) => `
+            <a href="#proj-${p.id}" class="snap-dot" data-title="${pad(i)} ${p.title}" aria-label="${p.title}"><span class="dot-disc"></span><span class="dot-text">${pad(i)} ${p.title}</span></a>`).join("")}
+            <a href="#domain-explore" class="snap-dot" data-title="${String(ps.length + 1).padStart(2, "0")} Explore" aria-label="Explore other domains"><span class="dot-disc"></span><span class="dot-text">${String(ps.length + 1).padStart(2, "0")} Explore</span></a>
+        </nav>
+
+        <section class="snap-section hero" id="domain-intro" data-domain="${key}">
+            <canvas aria-hidden="true"></canvas>
+            <div class="snap-inner">
+                <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>${pad(domainIdx)} / ${d.label}</div>
+                <h1 data-hero>${d.name}</h1>
+                <p class="lead" data-hero>${d.blurb}</p>
+                <div class="hero-eq glass snap-eq" data-hero>$$${d.eq}$$</div>
+                <div class="snap-jump-pills" data-hero>
+                    <span class="snap-jump-label">Selected work:</span>
+                    ${ps.map((p) => `<a href="#proj-${p.id}" class="pill jump-pill"><strong>${p.title}</strong></a>`).join("")}
+                </div>
+            </div>
+            <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+            <a class="snap-cue" href="#proj-${ps[0].id}">Scroll to projects</a>
         </section>
-        <section class="section"><div class="section-head" data-reveal><span class="idx">→</span><h2>Other domains</h2></div>${others(key)}</section>`;
+
+        ${ps.map((p, i) => {
+            const nextTarget = ps[i + 1] ? `#proj-${ps[i + 1].id}` : "#domain-explore";
+            const nextLabel = ps[i + 1] ? `Next: ${ps[i + 1].title}` : "Next: Explore other domains";
+            const eq = (p.math && p.math[0] && p.math[0].eq) ? p.math[0].eq : d.eq;
+            return `
+        <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${key}">
+            <canvas aria-hidden="true"></canvas>
+            <div class="snap-inner">
+                <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project ${pad(i)} / ${String(ps.length).padStart(2, "0")} · ${d.name}</div>
+                <h2 class="snap-title" data-reveal>${p.title}</h2>
+                <p class="lead snap-lead" data-reveal>${p.summary}</p>
+                <div class="hero-eq glass snap-eq" data-reveal>$$${eq}$$</div>
+                <div class="snap-projects" data-reveal>
+                    <span class="snap-proj-label">Architecture:</span>
+                    ${p.tags.map(t => `<span class="snap-proj-pill glass"><strong>${t}</strong></span>`).join("")}
+                    <span class="tag-status">${p.status}</span>
+                </div>
+                <div class="snap-actions" data-reveal>
+                    <a href="project.html?p=${p.id}" class="snap-cta-btn glass">
+                        <span>Read Deep-Dive &amp; Architecture</span>
+                        <span class="arr">→</span>
+                    </a>
+                    <span class="snap-count">${p.arch ? p.arch.length : 4} core subsystems</span>
+                </div>
+            </div>
+            <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+            <a class="snap-cue" href="${nextTarget}">${nextLabel}</a>
+        </section>`;
+        }).join("")}
+
+        <section class="snap-section about-contact-section" id="domain-explore" data-domain="${key}">
+            <div class="snap-inner" style="max-width:960px">
+                <div class="section-head" data-reveal><span class="idx">${String(ps.length + 1).padStart(2, "0")}</span><h2>Explore Other Domains</h2></div>
+                <p class="lead" data-reveal style="margin-bottom:28px">Navigate through other core domains of mathematical modelling, physics simulations, stochastic calculus, and machine systems.</p>
+                <div class="pills" data-reveal style="margin-bottom:36px">
+                    ${keys.filter(k => k !== key).map(k => `
+                    <a class="pill" style="--a:var(--rgb-${k})" href="${SITE.domains[k].file}">${SITE.domains[k].name} →</a>`).join("")}
+                    <a class="pill" href="index.html">← Back to Hub</a>
+                </div>
+                ${contactSection()}
+            </div>
+            <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+        </section>`;
     };
 
     const projectPage = (p) => {
         const d = SITE.domains[p.domain], sib = list(p.domain), i = sib.indexOf(p);
         const nb = [sib[i - 1], sib[i + 1]].filter(Boolean);
-        return hero(`
-            <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="${d.file}">${d.name}</a> / ${p.title}</div>
-            <h1 data-hero>${p.title}</h1>
-            <p class="lead" data-hero>${p.summary}</p>
-            <div class="tags" style="margin-top:22px" data-hero>${tags([p.status, ...p.tags])}</div>`, true) +
-        `<article class="article">
-            <h2 data-reveal><span class="idx">01</span>Overview</h2>
-            ${p.intro.map((t) => `<p data-reveal>${t}</p>`).join("")}
-            <h2 data-reveal><span class="idx">02</span>Architecture</h2>
-            <ol class="arch">${p.arch.map(([n, t]) => `<li class="glass" data-reveal><strong>${n}</strong><span>${t}</span></li>`).join("")}</ol>
-            <h2 data-reveal><span class="idx">03</span>Mathematics</h2>
-            ${p.math.map((m) => `<div class="math-block glass" data-reveal><h3>${m.h}</h3>${m.p ? `<p>${m.p}</p>` : ""}<div class="eq">$$${m.eq}$$</div>${m.after ? `<p>${m.after}</p>` : ""}</div>`).join("")}
-            <div class="pn">${nb.map((n) => `<a class="card glass" href="project.html?p=${n.id}" data-reveal><span class="no">${n === sib[i - 1] ? "← Previous" : "Next →"}</span><h3>${n.title}</h3></a>`).join("")}</div>
-            <p style="margin-top:48px" data-reveal><a class="pill" href="${d.file}">← All ${d.name} projects</a></p>
-        </article>`;
+        return `
+        <nav class="snap-pager" aria-label="Project section navigation">
+            <a href="#proj-hero" class="snap-dot active" data-title="00 Project" aria-label="Project Title"><span class="dot-disc"></span><span class="dot-text">00 Project</span></a>
+            <a href="#proj-overview" class="snap-dot" data-title="01 Overview" aria-label="Technical Overview"><span class="dot-disc"></span><span class="dot-text">01 Overview</span></a>
+            <a href="#proj-arch" class="snap-dot" data-title="02 Architecture" aria-label="Architecture"><span class="dot-disc"></span><span class="dot-text">02 Architecture</span></a>
+            <a href="#proj-math" class="snap-dot" data-title="03 Mathematics" aria-label="Mathematics"><span class="dot-disc"></span><span class="dot-text">03 Mathematics</span></a>
+            <a href="#proj-nav" class="snap-dot" data-title="04 Navigation" aria-label="Navigation & Related"><span class="dot-disc"></span><span class="dot-text">04 Navigation</span></a>
+        </nav>
+
+        <section class="snap-section hero" id="proj-hero" data-domain="${p.domain}">
+            <canvas aria-hidden="true"></canvas>
+            <div class="snap-inner">
+                <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="${d.file}">${d.name}</a> / ${p.title}</div>
+                <h1 data-hero>${p.title}</h1>
+                <p class="lead" data-hero>${p.summary}</p>
+                <div class="tags" style="margin-top:14px" data-hero>${tags([p.status, ...p.tags])}</div>
+                <div class="snap-jump-pills" data-hero style="margin-top:20px">
+                    <a href="#proj-overview" class="pill jump-pill">01 Overview</a>
+                    <a href="#proj-arch" class="pill jump-pill">02 Architecture</a>
+                    <a href="#proj-math" class="pill jump-pill">03 Mathematics</a>
+                    <a href="#proj-nav" class="pill jump-pill">04 Navigation</a>
+                </div>
+            </div>
+            <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+            <a class="snap-cue" href="#proj-overview">Scroll to overview</a>
+        </section>
+
+        <section class="snap-section project-snap" id="proj-overview" data-domain="${p.domain}">
+            <canvas aria-hidden="true"></canvas>
+            <div class="snap-inner" style="max-width:880px">
+                <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>01 / Technical Overview</div>
+                <h2 class="snap-title" data-reveal style="font-size:clamp(30px, 4.2vw, 52px)">Context &amp; Formulation</h2>
+                <div class="snap-overview-card glass" data-reveal>
+                    ${p.intro.map((t) => `<p>${t}</p>`).join("")}
+                </div>
+            </div>
+            <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+            <a class="snap-cue" href="#proj-arch">Next: Architecture</a>
+        </section>
+
+        <section class="snap-section project-snap" id="proj-arch" data-domain="${p.domain}">
+            <canvas aria-hidden="true"></canvas>
+            <div class="snap-inner" style="max-width:960px">
+                <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>02 / Architecture &amp; Subsystems</div>
+                <h2 class="snap-title" data-reveal style="font-size:clamp(30px, 4.2vw, 52px)">System Pipeline</h2>
+                <ol class="snap-arch-grid" data-reveal>
+                    ${p.arch.map(([n, t]) => `<li class="glass"><strong>${n}</strong><span>${t}</span></li>`).join("")}
+                </ol>
+            </div>
+            <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+            <a class="snap-cue" href="#proj-math">Next: Mathematics</a>
+        </section>
+
+        <section class="snap-section project-snap" id="proj-math" data-domain="${p.domain}">
+            <canvas aria-hidden="true"></canvas>
+            <div class="snap-inner" style="max-width:960px">
+                <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>03 / Mathematical Foundations</div>
+                <h2 class="snap-title" data-reveal style="font-size:clamp(30px, 4.2vw, 52px)">Analytical &amp; Numerical Formulations</h2>
+                <div class="snap-math-grid" data-reveal>
+                    ${p.math.map((m) => `
+                    <div class="math-block glass">
+                        <h3>${m.h}</h3>
+                        ${m.p ? `<p>${m.p}</p>` : ""}
+                        <div class="eq">$$${m.eq}$$</div>
+                        ${m.after ? `<p>${m.after}</p>` : ""}
+                    </div>`).join("")}
+                </div>
+            </div>
+            <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+            <a class="snap-cue" href="#proj-nav">Next: Navigation</a>
+        </section>
+
+        <section class="snap-section about-contact-section" id="proj-nav" data-domain="${p.domain}">
+            <div class="snap-inner" style="max-width:960px">
+                <div class="section-head" data-reveal><span class="idx">04</span><h2>Related Work &amp; Source Code</h2></div>
+                <p class="lead" data-reveal>Explore other technical deep-dives in ${d.name} or navigate back to the domain index.</p>
+                <div class="pn snap-nav-grid" data-reveal>
+                    ${nb.map((n) => `
+                    <a class="card glass" href="project.html?p=${n.id}">
+                        <span class="no">${n === sib[i - 1] ? "← Previous" : "Next →"}</span>
+                        <h3>${n.title}</h3>
+                        <p>${n.summary}</p>
+                        <span class="go">Open deep-dive</span>
+                    </a>`).join("")}
+                </div>
+                <div class="pills" data-reveal style="margin-top:24px">
+                    <a class="pill" href="${d.file}">← All ${d.name} projects</a>
+                    <a class="pill" href="index.html">← Back to Hub</a>
+                </div>
+            </div>
+            <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+        </section>`;
     };
 
-    /* ---------- chrome: nav, theme toggle, footer ---------- */
+    const projectIndexPage = () => {
+        return `
+        <nav class="snap-pager" aria-label="Section navigation">
+            <a href="#proj-index-hero" class="snap-dot active" data-title="00 Overview" aria-label="Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+            ${SITE.projects.map((p, i) => `
+            <a href="#proj-${p.id}" class="snap-dot" data-title="${pad(i)} ${p.title}" aria-label="${p.title}"><span class="dot-disc" style="--a:var(--rgb-${p.domain})"></span><span class="dot-text">${pad(i)} ${p.title}</span></a>`).join("")}
+        </nav>
+
+        <section class="snap-section hero" id="proj-index-hero" data-domain="hub">
+            <canvas aria-hidden="true"></canvas>
+            <div class="snap-inner">
+                <div class="crumbs" data-hero><a href="index.html">Home</a> / Projects</div>
+                <h1 data-hero>Selected Projects</h1>
+                <p class="lead" data-hero>Deep-dives into systems architecture, stochastic models and mathematical foundations across all 5 domains.</p>
+                <div class="snap-jump-pills" data-hero>
+                    <span class="snap-jump-label">Jump to domain:</span>
+                    ${keys.map((k) => `<a href="${SITE.domains[k].file}" class="pill jump-pill" style="--a:var(--rgb-${k})">${SITE.domains[k].name}</a>`).join("")}
+                </div>
+            </div>
+            <div class="sim-tag" aria-hidden="true">Index of 10 technical deep-dives</div>
+            <a class="snap-cue" href="#proj-${SITE.projects[0].id}">Scroll to projects</a>
+        </section>
+
+        ${SITE.projects.map((p, i) => {
+            const d = SITE.domains[p.domain];
+            const nextTarget = SITE.projects[i + 1] ? `#proj-${SITE.projects[i + 1].id}` : "#proj-index-hero";
+            const nextLabel = SITE.projects[i + 1] ? `Next: ${SITE.projects[i + 1].title}` : "Back to top";
+            const eq = (p.math && p.math[0] && p.math[0].eq) ? p.math[0].eq : d.eq;
+            return `
+        <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${p.domain}" style="--a:var(--rgb-${p.domain})">
+            <canvas aria-hidden="true"></canvas>
+            <div class="snap-inner">
+                <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project ${pad(i)} / ${String(SITE.projects.length).padStart(2, "0")} · ${d.name}</div>
+                <h2 class="snap-title" data-reveal>${p.title}</h2>
+                <p class="lead snap-lead" data-reveal>${p.summary}</p>
+                <div class="hero-eq glass snap-eq" data-reveal>$$${eq}$$</div>
+                <div class="snap-projects" data-reveal>
+                    <span class="snap-proj-label">Architecture:</span>
+                    ${p.tags.map(t => `<span class="snap-proj-pill glass"><strong>${t}</strong></span>`).join("")}
+                    <span class="tag-status">${p.status}</span>
+                </div>
+                <div class="snap-actions" data-reveal>
+                    <a href="project.html?p=${p.id}" class="snap-cta-btn glass" style="--a:var(--rgb-${p.domain})">
+                        <span>Read Deep-Dive &amp; Architecture</span>
+                        <span class="arr">→</span>
+                    </a>
+                    <span class="snap-count">${p.arch ? p.arch.length : 4} core subsystems</span>
+                </div>
+            </div>
+            <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+            <a class="snap-cue" href="${nextTarget}">${nextLabel}</a>
+        </section>`;
+        }).join("")}
+        `;
+    };
+
+    /* ---------- chrome: nav, theme toggle, sound toggle, footer ---------- */
     const chrome = () => {
         const active = D.dataset.domain;
         const isHub = page === "hub";
@@ -204,6 +471,7 @@
                     <nav class="links" aria-label="Navigation">
                         ${isHub ? '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>' : ''}
                         <button class="theme-btn" type="button" aria-label="Switch theme"></button>
+                        <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Toggle sound"></button>
                     </nav>
                 </header>
                 <main id="main"></main>
@@ -213,10 +481,26 @@
         if (btn) {
             sync();
             btn.addEventListener("click", () => {
+                SOUND.theme();
                 D.classList.add("tt"); setTimeout(() => D.classList.remove("tt"), 260);
                 D.dataset.theme = D.dataset.theme === "light" ? "dark" : "light";
                 try { localStorage.setItem("theme", D.dataset.theme); } catch (e) {}
                 KW.refresh(); sync(); dispatchEvent(new Event("themechange"));
+            });
+        }
+        const soundBtn = $(".sound-btn");
+        if (soundBtn) {
+            const syncSound = () => {
+                const on = SOUND.isEnabled();
+                soundBtn.textContent = on ? "🔊" : "🔇";
+                soundBtn.setAttribute("aria-label", on ? "Mute sound effects" : "Enable sound effects");
+                soundBtn.classList.toggle("muted", !on);
+            };
+            syncSound();
+            soundBtn.addEventListener("click", () => {
+                const on = SOUND.toggle();
+                syncSound();
+                if (on) SOUND.click();
             });
         }
     };
@@ -247,25 +531,32 @@
         }
     };
 
-    /* ---------- snap observer on hub page ---------- */
+    /* ---------- snap observer across all page types ---------- */
     const setupSnapObserver = () => {
         const sections = document.querySelectorAll(".snap-section");
         if (!sections.length) return;
         const dots = document.querySelectorAll(".snap-dot");
+        let lastId = null;
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
                 if (entry.isIntersecting) {
+                    const id = entry.target.id;
                     const d = entry.target.dataset.domain;
-                    if (d) {
+                    if (d && D.dataset.domain !== d) {
                         D.dataset.domain = d;
                         KW.refresh();
                         window.dispatchEvent(new Event("themechange"));
-                        dots.forEach((dot) => {
-                            const isCurrent = dot.getAttribute("href") === "#" + entry.target.id;
-                            dot.classList.toggle("active", isCurrent);
-                        });
                     }
+                    dots.forEach((dot) => {
+                        const href = dot.getAttribute("href");
+                        const isCurrent = href === "#" + id;
+                        dot.classList.toggle("active", isCurrent);
+                    });
+                    if (lastId !== null && lastId !== id) {
+                        SOUND.snap();
+                    }
+                    lastId = id;
                 }
             });
         }, { threshold: 0.5 });
@@ -293,16 +584,31 @@
     } else if (page === "domain") {
         const sim = D.dataset.domain;
         if (!main.firstElementChild) main.innerHTML = domainPage(sim);
-        try { if (sim && SIMS[sim]) SIMS[sim]($(".hero canvas")); } catch (err) { console.warn("Simulation unavailable:", err); }
+        document.querySelectorAll(".snap-section canvas").forEach((c) => {
+            try { if (sim && SIMS[sim]) SIMS[sim](c); } catch (err) { console.warn("Simulation unavailable:", err); }
+        });
+        setupSnapObserver();
     } else {
         const p = SITE.projects.find((x) => x.id === new URLSearchParams(location.search).get("p"));
         if (p) {
             D.dataset.domain = p.domain;
             document.title = `${p.title} · Kushan Waghmare`;
             main.innerHTML = projectPage(p);
-            try { if (p.domain && SIMS[p.domain]) SIMS[p.domain]($(".hero canvas")); } catch (err) {}
+            document.querySelectorAll(".snap-section canvas").forEach((c) => {
+                try { if (p.domain && SIMS[p.domain]) SIMS[p.domain](c); } catch (err) {}
+            });
+            setupSnapObserver();
         } else if (!main.firstElementChild) {
-            main.innerHTML = hero(`<h1 data-hero>Not found</h1><p class="lead" data-hero>No such project. <a class="pill" href="index.html">Back home</a></p>`, true);
+            main.innerHTML = projectIndexPage();
+            const introCanvas = $("#proj-index-hero canvas");
+            if (introCanvas && SIMS.hub) {
+                try { SIMS.hub(introCanvas); } catch (e) {}
+            }
+            SITE.projects.forEach((proj) => {
+                const c = $(`#proj-${proj.id} canvas`);
+                if (c && SIMS[proj.domain]) try { SIMS[proj.domain](c); } catch (e) {}
+            });
+            setupSnapObserver();
         }
     }
     if (window.renderMathInElement) renderMathInElement(document.body, { throwOnError: false,
@@ -313,17 +619,37 @@
     });
     document.addEventListener("click", (e) => {
         const btn = e.target.closest && e.target.closest(".copy-btn");
-        if (!btn || !btn.dataset.copy) return;
-        const label = btn.querySelector(".copy-text") || btn;
-        const originalText = label.textContent;
-        navigator.clipboard.writeText(btn.dataset.copy).then(() => {
-            label.textContent = "Copied to clipboard!";
-            btn.classList.add("copied");
-            setTimeout(() => {
-                label.textContent = originalText;
-                btn.classList.remove("copied");
-            }, 2200);
-        }).catch(() => {});
+        if (btn && btn.dataset.copy) {
+            SOUND.copy();
+            const label = btn.querySelector(".copy-text") || btn;
+            const originalText = label.textContent;
+            navigator.clipboard.writeText(btn.dataset.copy).then(() => {
+                label.textContent = "Copied to clipboard!";
+                btn.classList.add("copied");
+                setTimeout(() => {
+                    label.textContent = originalText;
+                    btn.classList.remove("copied");
+                }, 2200);
+            }).catch(() => {});
+            return;
+        }
+        const interactive = e.target.closest && e.target.closest(".snap-dot, .pill, .snap-cta-btn, .snap-cue, .card, .nav a");
+        if (interactive) {
+            SOUND.click();
+        }
     });
+
+    let lastHoverTime = 0;
+    document.addEventListener("pointerover", (e) => {
+        const target = e.target.closest && e.target.closest(".snap-dot, .pill, .snap-cta-btn, .card, .copy-btn, .theme-btn, .sound-btn, .nav a, .snap-cue");
+        if (target) {
+            const now = performance.now();
+            if (now - lastHoverTime > 65) {
+                SOUND.hover();
+                lastHoverTime = now;
+            }
+        }
+    }, { passive: true });
+
     motion();
 })();

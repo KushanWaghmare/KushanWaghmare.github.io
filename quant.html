@@ -21,32 +21,125 @@
         <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
         <nav class="links" aria-label="Navigation">
             
-            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button></nav>
+            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
+            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Toggle sound">🔊</button>
+        </nav>
     </header>
     <main id="main">
-        <section class="hero"><canvas aria-hidden="true"></canvas>
-            <div class="hero-inner">
-            <div class="eyebrow" data-hero>04 / Quantitative Finance · Stochastic models</div>
+    <nav class="snap-pager" aria-label="Section navigation">
+        <a href="#domain-intro" class="snap-dot active" data-title="00 Overview" aria-label="Quant Finance Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+        
+        <a href="#proj-options-pricing" class="snap-dot" data-title="01 Options Pricing & Greeks" aria-label="Options Pricing & Greeks"><span class="dot-disc"></span><span class="dot-text">01 Options Pricing & Greeks</span></a>
+        <a href="#proj-stat-arb" class="snap-dot" data-title="02 Statistical Arbitrage Strategy" aria-label="Statistical Arbitrage Strategy"><span class="dot-disc"></span><span class="dot-text">02 Statistical Arbitrage Strategy</span></a>
+        <a href="#domain-explore" class="snap-dot" data-title="03 Explore" aria-label="Explore other domains"><span class="dot-disc"></span><span class="dot-text">03 Explore</span></a>
+    </nav>
+
+    <section class="snap-section hero" id="domain-intro" data-domain="quant">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>04 / Quantitative Finance · Stochastic models</div>
             <h1 data-hero>Quant Finance</h1>
             <p class="lead" data-hero>Stochastic calculus applied to markets: derivative pricing, the Greeks and mean-reversion strategies.</p>
-            <div class="hero-eq glass" data-hero>$$dS_t=\mu S_t\,dt+\sigma S_t\,dW_t$$</div></div><div class="sim-tag" aria-hidden="true"></div>
-            <a class="cue" href="#content">Scroll</a>
-        </section>
-        <section class="section" id="content">
-            <div class="section-head" data-reveal><span class="idx">2 projects</span><h2>Selected work</h2></div>
-            <div class="grid">
-        <a class="card glass" href="project.html?p=options-pricing" data-reveal>
-            <span class="no">01 <span class="dot"></span> Completed</span>
-            <h3>Options Pricing & Greeks</h3><p>Black–Scholes pricing and Greeks for European options in Python, validated by Monte Carlo simulation with an interactive visualisation dashboard.</p>
-            <div class="tags"><span class="tag">Python</span><span class="tag">NumPy</span><span class="tag">Pandas</span><span class="tag">Matplotlib</span><span class="tag">Jupyter</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=stat-arb" data-reveal>
-            <span class="no">02 <span class="dot"></span> Completed</span>
-            <h3>Statistical Arbitrage Strategy</h3><p>Python pairs-trading strategy using co-integration and z-score signals, backtested over two years with a Sharpe ratio of 1.8.</p>
-            <div class="tags"><span class="tag">Python</span><span class="tag">Pandas</span><span class="tag">NumPy</span><span class="tag">Statsmodels</span><span class="tag">Matplotlib</span></div><span class="go">Open project</span>
-        </a></div>
-        </section>
-        <section class="section"><div class="section-head" data-reveal><span class="idx">→</span><h2>Other domains</h2></div><div class="pills" data-reveal><a class="pill" style="--a:var(--rgb-math)" href="math.html">Mathematics</a><a class="pill" style="--a:var(--rgb-physics)" href="physics.html">Physics</a><a class="pill" style="--a:var(--rgb-datascience)" href="datascience.html">Data Science</a><a class="pill" style="--a:var(--rgb-cs)" href="cs.html">Computer Science</a></div></section></main>
+            <div class="hero-eq glass snap-eq" data-hero>$$dS_t=\mu S_t\,dt+\sigma S_t\,dW_t$$</div>
+            <div class="snap-jump-pills" data-hero>
+                <span class="snap-jump-label">Selected work:</span>
+                <a href="#proj-options-pricing" class="pill jump-pill"><strong>Options Pricing & Greeks</strong></a><a href="#proj-stat-arb" class="pill jump-pill"><strong>Statistical Arbitrage Strategy</strong></a>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Geometric Brownian motion · 70 paths · cursor height sets σ</div>
+        <a class="snap-cue" href="#proj-options-pricing">Scroll to projects</a>
+    </section>
+
+    
+    <section class="snap-section project-snap" id="proj-options-pricing" data-domain="quant">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 01 / 02 · Quant Finance</div>
+            <h2 class="snap-title" data-reveal>Options Pricing & Greeks</h2>
+            <p class="lead snap-lead" data-reveal>Black–Scholes pricing and Greeks for European options in Python, validated by Monte Carlo simulation with an interactive visualisation dashboard.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$\frac{\partial V}{\partial t}+\tfrac12\sigma^2S^2\frac{\partial^2V}{\partial S^2}+rS\frac{\partial V}{\partial S}-rV=0$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Python</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span><span class="snap-proj-pill glass"><strong>Pandas</strong></span><span class="snap-proj-pill glass"><strong>Matplotlib</strong></span><span class="snap-proj-pill glass"><strong>Jupyter</strong></span>
+                <span class="tag-status">Completed</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=options-pricing" class="snap-cta-btn glass">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Geometric Brownian motion · 70 paths · cursor height sets σ</div>
+        <a class="snap-cue" href="#proj-stat-arb">Next: Statistical Arbitrage Strategy</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-stat-arb" data-domain="quant">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 02 / 02 · Quant Finance</div>
+            <h2 class="snap-title" data-reveal>Statistical Arbitrage Strategy</h2>
+            <p class="lead snap-lead" data-reveal>Python pairs-trading strategy using co-integration and z-score signals, backtested over two years with a Sharpe ratio of 1.8.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$y_t=\alpha+\beta x_t+\varepsilon_t,\qquad\varepsilon_t\sim I(0)$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Python</strong></span><span class="snap-proj-pill glass"><strong>Pandas</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span><span class="snap-proj-pill glass"><strong>Statsmodels</strong></span><span class="snap-proj-pill glass"><strong>Matplotlib</strong></span>
+                <span class="tag-status">Completed</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=stat-arb" class="snap-cta-btn glass">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Geometric Brownian motion · 70 paths · cursor height sets σ</div>
+        <a class="snap-cue" href="#domain-explore">Next: Explore other domains</a>
+    </section>
+
+    <section class="snap-section about-contact-section" id="domain-explore" data-domain="quant">
+        <div class="snap-inner" style="max-width:960px">
+            <div class="section-head" data-reveal><span class="idx">03</span><h2>Explore Other Domains</h2></div>
+            <p class="lead" data-reveal style="margin-bottom:28px">Navigate through other core domains of mathematical modelling, physics simulations, stochastic calculus, and machine systems.</p>
+            <div class="pills" data-reveal style="margin-bottom:36px">
+                
+                <a class="pill" style="--a:var(--rgb-math)" href="math.html">Mathematics →</a>
+                <a class="pill" style="--a:var(--rgb-physics)" href="physics.html">Physics →</a>
+                <a class="pill" style="--a:var(--rgb-datascience)" href="datascience.html">Data Science →</a>
+                <a class="pill" style="--a:var(--rgb-cs)" href="cs.html">Computer Science →</a>
+                <a class="pill" href="index.html">← Back to Hub</a>
+            </div>
+            
+        <div class="contact-card glass" data-reveal>
+            <div class="contact-header">
+                <span class="contact-status"><span class="status-dot"></span> Available for research &amp; engineering opportunities</span>
+                <h3 class="contact-title">Let's build something rigorous together.</h3>
+                <p class="contact-lead">Interested in collaborative research, machine learning engineering, quantitative modelling, or high-performance systems? Reach out directly via email or inspect my code repositories.</p>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-item">
+                    <span class="contact-label">Direct Email</span>
+                    <a href="mailto:kushanwaghmare@gmail.com" class="contact-value">kushanwaghmare@gmail.com</a>
+                    <button type="button" class="copy-btn pill" data-copy="kushanwaghmare@gmail.com" aria-label="Copy email address to clipboard">
+                        <span class="copy-icon">⎘</span> <span class="copy-text">Copy Email</span>
+                    </button>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-label">Code Repositories</span>
+                    <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="contact-value">github.com/KushanWaghmare</a>
+                    <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="pill">View GitHub →</a>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-label">Affiliations &amp; Location</span>
+                    <span class="contact-value">IIT Madras · Chennai, India</span>
+                    <span class="contact-sub">Vidya Bharati Mahavidyalaya · Amravati</span>
+                </div>
+            </div>
+        </div>
+        </div>
+        <footer class="foot snap-foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+    </section></main>
     <footer class="foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
 </body>
 </html>

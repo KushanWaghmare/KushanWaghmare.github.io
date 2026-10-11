@@ -129,29 +129,131 @@ const others = (key) => `<div class="pills" data-reveal>${keys.filter((k) => k !
 
 const domainPage = (key) => {
     const d = SITE.domains[key], ps = list(key);
-    return hero(`
-            <div class="eyebrow" data-hero>${pad(keys.indexOf(key))} / ${d.label}</div>
+    const domainIdx = keys.indexOf(key);
+    return `
+    <nav class="snap-pager" aria-label="Section navigation">
+        <a href="#domain-intro" class="snap-dot active" data-title="00 Overview" aria-label="${d.name} Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+        ${ps.map((p, i) => `
+        <a href="#proj-${p.id}" class="snap-dot" data-title="${pad(i)} ${p.title}" aria-label="${p.title}"><span class="dot-disc"></span><span class="dot-text">${pad(i)} ${p.title}</span></a>`).join("")}
+        <a href="#domain-explore" class="snap-dot" data-title="${String(ps.length + 1).padStart(2, "0")} Explore" aria-label="Explore other domains"><span class="dot-disc"></span><span class="dot-text">${String(ps.length + 1).padStart(2, "0")} Explore</span></a>
+    </nav>
+
+    <section class="snap-section hero" id="domain-intro" data-domain="${key}">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>${pad(domainIdx)} / ${d.label}</div>
             <h1 data-hero>${d.name}</h1>
             <p class="lead" data-hero>${d.blurb}</p>
-            <div class="hero-eq glass" data-hero>$$${d.eq}$$</div>`) +
-    `
-        <section class="section" id="content">
-            <div class="section-head" data-reveal><span class="idx">${ps.length} projects</span><h2>Selected work</h2></div>
-            <div class="grid">${ps.map(card).join("")}</div>
-        </section>
-        <section class="section"><div class="section-head" data-reveal><span class="idx">→</span><h2>Other domains</h2></div>${others(key)}</section>`;
+            <div class="hero-eq glass snap-eq" data-hero>$$${d.eq}$$</div>
+            <div class="snap-jump-pills" data-hero>
+                <span class="snap-jump-label">Selected work:</span>
+                ${ps.map((p) => `<a href="#proj-${p.id}" class="pill jump-pill"><strong>${p.title}</strong></a>`).join("")}
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+        <a class="snap-cue" href="#proj-${ps[0].id}">Scroll to projects</a>
+    </section>
+
+    ${ps.map((p, i) => {
+        const nextTarget = ps[i + 1] ? `#proj-${ps[i + 1].id}` : "#domain-explore";
+        const nextLabel = ps[i + 1] ? `Next: ${ps[i + 1].title}` : "Next: Explore other domains";
+        const eq = (p.math && p.math[0] && p.math[0].eq) ? p.math[0].eq : d.eq;
+        return `
+    <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${key}">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project ${pad(i)} / ${String(ps.length).padStart(2, "0")} · ${d.name}</div>
+            <h2 class="snap-title" data-reveal>${p.title}</h2>
+            <p class="lead snap-lead" data-reveal>${p.summary}</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$${eq}$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                ${p.tags.map(t => `<span class="snap-proj-pill glass"><strong>${t}</strong></span>`).join("")}
+                <span class="tag-status">${p.status}</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=${p.id}" class="snap-cta-btn glass">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">${p.arch ? p.arch.length : 4} core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+        <a class="snap-cue" href="${nextTarget}">${nextLabel}</a>
+    </section>`;
+    }).join("")}
+
+    <section class="snap-section about-contact-section" id="domain-explore" data-domain="${key}">
+        <div class="snap-inner" style="max-width:960px">
+            <div class="section-head" data-reveal><span class="idx">${String(ps.length + 1).padStart(2, "0")}</span><h2>Explore Other Domains</h2></div>
+            <p class="lead" data-reveal style="margin-bottom:28px">Navigate through other core domains of mathematical modelling, physics simulations, stochastic calculus, and machine systems.</p>
+            <div class="pills" data-reveal style="margin-bottom:36px">
+                ${keys.filter(k => k !== key).map(k => `
+                <a class="pill" style="--a:var(--rgb-${k})" href="${SITE.domains[k].file}">${SITE.domains[k].name} →</a>`).join("")}
+                <a class="pill" href="index.html">← Back to Hub</a>
+            </div>
+            ${contactSection()}
+        </div>
+        <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+    </section>`;
 };
 
-const projectIndexPage = () =>
-    hero(`
+const projectIndexPage = () => {
+    return `
+    <nav class="snap-pager" aria-label="Section navigation">
+        <a href="#proj-index-hero" class="snap-dot active" data-title="00 Overview" aria-label="Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+        ${SITE.projects.map((p, i) => `
+        <a href="#proj-${p.id}" class="snap-dot" data-title="${pad(i)} ${p.title}" aria-label="${p.title}"><span class="dot-disc" style="--a:var(--rgb-${p.domain})"></span><span class="dot-text">${pad(i)} ${p.title}</span></a>`).join("")}
+    </nav>
+
+    <section class="snap-section hero" id="proj-index-hero" data-domain="hub">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Projects</div>
             <h1 data-hero>Selected Projects</h1>
-            <p class="lead" data-hero>Deep-dives into systems architecture, stochastic models and mathematical foundations.</p>`, true) +
-    `
-        <section class="section" id="content">
-            <div class="section-head" data-reveal><span class="idx">${SITE.projects.length} projects</span><h2>All technical deep-dives</h2></div>
-            <div class="grid">${SITE.projects.map((p, i) => card(p, i)).join("")}</div>
-        </section>`;
+            <p class="lead" data-hero>Deep-dives into systems architecture, stochastic models and mathematical foundations across all 5 domains.</p>
+            <div class="snap-jump-pills" data-hero>
+                <span class="snap-jump-label">Jump to domain:</span>
+                ${keys.map((k) => `<a href="${SITE.domains[k].file}" class="pill jump-pill" style="--a:var(--rgb-${k})">${SITE.domains[k].name}</a>`).join("")}
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Index of 10 technical deep-dives</div>
+        <a class="snap-cue" href="#proj-${SITE.projects[0].id}">Scroll to projects</a>
+    </section>
+
+    ${SITE.projects.map((p, i) => {
+        const d = SITE.domains[p.domain];
+        const nextTarget = SITE.projects[i + 1] ? `#proj-${SITE.projects[i + 1].id}` : "#proj-index-hero";
+        const nextLabel = SITE.projects[i + 1] ? `Next: ${SITE.projects[i + 1].title}` : "Back to top";
+        const eq = (p.math && p.math[0] && p.math[0].eq) ? p.math[0].eq : d.eq;
+        return `
+    <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${p.domain}" style="--a:var(--rgb-${p.domain})">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project ${pad(i)} / ${String(SITE.projects.length).padStart(2, "0")} · ${d.name}</div>
+            <h2 class="snap-title" data-reveal>${p.title}</h2>
+            <p class="lead snap-lead" data-reveal>${p.summary}</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$${eq}$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                ${p.tags.map(t => `<span class="snap-proj-pill glass"><strong>${t}</strong></span>`).join("")}
+                <span class="tag-status">${p.status}</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=${p.id}" class="snap-cta-btn glass" style="--a:var(--rgb-${p.domain})">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">${p.arch ? p.arch.length : 4} core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+        <a class="snap-cue" href="${nextTarget}">${nextLabel}</a>
+    </section>`;
+    }).join("")}
+    `;
+};
 
 const renderNav = (active, pageType) => {
     const isHub = pageType === "hub";
@@ -161,7 +263,9 @@ const renderNav = (active, pageType) => {
         <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
         <nav class="links" aria-label="Navigation">
             ${isHub ? '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>' : ''}
-            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button></nav>
+            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
+            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Toggle sound">🔊</button>
+        </nav>
     </header>`;
 };
 

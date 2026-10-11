@@ -21,32 +21,125 @@
         <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
         <nav class="links" aria-label="Navigation">
             
-            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button></nav>
+            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
+            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Toggle sound">🔊</button>
+        </nav>
     </header>
     <main id="main">
-        <section class="hero"><canvas aria-hidden="true"></canvas>
-            <div class="hero-inner">
-            <div class="eyebrow" data-hero>02 / Physics · Mechanics & quantum dynamics</div>
+    <nav class="snap-pager" aria-label="Section navigation">
+        <a href="#domain-intro" class="snap-dot active" data-title="00 Overview" aria-label="Physics Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+        
+        <a href="#proj-nbody-leapfrog" class="snap-dot" data-title="01 Gravitational N-Body Integrator" aria-label="Gravitational N-Body Integrator"><span class="dot-disc"></span><span class="dot-text">01 Gravitational N-Body Integrator</span></a>
+        <a href="#proj-split-step-schrodinger" class="snap-dot" data-title="02 Time-Dependent Schrödinger Equation" aria-label="Time-Dependent Schrödinger Equation"><span class="dot-disc"></span><span class="dot-text">02 Time-Dependent Schrödinger Equation</span></a>
+        <a href="#domain-explore" class="snap-dot" data-title="03 Explore" aria-label="Explore other domains"><span class="dot-disc"></span><span class="dot-text">03 Explore</span></a>
+    </nav>
+
+    <section class="snap-section hero" id="domain-intro" data-domain="physics">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>02 / Physics · Mechanics & quantum dynamics</div>
             <h1 data-hero>Physics</h1>
             <p class="lead" data-hero>Classical and quantum mechanics as computation: symplectic integrators, gravitating systems and wave equations.</p>
-            <div class="hero-eq glass" data-hero>$$i\hbar\,\frac{\partial\psi}{\partial t}=\Big[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\Big]\psi$$</div></div><div class="sim-tag" aria-hidden="true"></div>
-            <a class="cue" href="#content">Scroll</a>
-        </section>
-        <section class="section" id="content">
-            <div class="section-head" data-reveal><span class="idx">2 projects</span><h2>Selected work</h2></div>
-            <div class="grid">
-        <a class="card glass" href="project.html?p=nbody-leapfrog" data-reveal>
-            <span class="no">01 <span class="dot"></span> Draft</span>
-            <h3>Gravitational N-Body Integrator</h3><p>A self-gravitating disc integrated with a symplectic kick–drift–kick leapfrog. The hero is the live simulation.</p>
-            <div class="tags"><span class="tag">Classical mechanics</span><span class="tag">Symplectic integration</span><span class="tag">Canvas</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=split-step-schrodinger" data-reveal>
-            <span class="no">02 <span class="dot"></span> Draft</span>
-            <h3>Time-Dependent Schrödinger Equation</h3><p>Split-step Fourier evolution of a wave packet: unitary by construction and spectrally accurate in space.</p>
-            <div class="tags"><span class="tag">Quantum mechanics</span><span class="tag">Split-step Fourier</span><span class="tag">Python</span></div><span class="go">Open project</span>
-        </a></div>
-        </section>
-        <section class="section"><div class="section-head" data-reveal><span class="idx">→</span><h2>Other domains</h2></div><div class="pills" data-reveal><a class="pill" style="--a:var(--rgb-math)" href="math.html">Mathematics</a><a class="pill" style="--a:var(--rgb-datascience)" href="datascience.html">Data Science</a><a class="pill" style="--a:var(--rgb-quant)" href="quant.html">Quant Finance</a><a class="pill" style="--a:var(--rgb-cs)" href="cs.html">Computer Science</a></div></section></main>
+            <div class="hero-eq glass snap-eq" data-hero>$$i\hbar\,\frac{\partial\psi}{\partial t}=\Big[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\Big]\psi$$</div>
+            <div class="snap-jump-pills" data-hero>
+                <span class="snap-jump-label">Selected work:</span>
+                <a href="#proj-nbody-leapfrog" class="pill jump-pill"><strong>Gravitational N-Body Integrator</strong></a><a href="#proj-split-step-schrodinger" class="pill jump-pill"><strong>Time-Dependent Schrödinger Equation</strong></a>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">N-body · leapfrog (KDK) · your cursor is a point mass</div>
+        <a class="snap-cue" href="#proj-nbody-leapfrog">Scroll to projects</a>
+    </section>
+
+    
+    <section class="snap-section project-snap" id="proj-nbody-leapfrog" data-domain="physics">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 01 / 02 · Physics</div>
+            <h2 class="snap-title" data-reveal>Gravitational N-Body Integrator</h2>
+            <p class="lead snap-lead" data-reveal>A self-gravitating disc integrated with a symplectic kick–drift–kick leapfrog. The hero is the live simulation.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$\mathbf a_i=-\sum_{j\ne i}\frac{G\,m_j\,(\mathbf r_i-\mathbf r_j)}{\left(\lVert\mathbf r_i-\mathbf r_j\rVert^2+\varepsilon^2\right)^{3/2}}$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Classical mechanics</strong></span><span class="snap-proj-pill glass"><strong>Symplectic integration</strong></span><span class="snap-proj-pill glass"><strong>Canvas</strong></span>
+                <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=nbody-leapfrog" class="snap-cta-btn glass">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">N-body · leapfrog (KDK) · your cursor is a point mass</div>
+        <a class="snap-cue" href="#proj-split-step-schrodinger">Next: Time-Dependent Schrödinger Equation</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-split-step-schrodinger" data-domain="physics">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 02 / 02 · Physics</div>
+            <h2 class="snap-title" data-reveal>Time-Dependent Schrödinger Equation</h2>
+            <p class="lead snap-lead" data-reveal>Split-step Fourier evolution of a wave packet: unitary by construction and spectrally accurate in space.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$i\hbar\,\frac{\partial\psi}{\partial t}=\hat H\psi=\Big[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\Big]\psi$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Quantum mechanics</strong></span><span class="snap-proj-pill glass"><strong>Split-step Fourier</strong></span><span class="snap-proj-pill glass"><strong>Python</strong></span>
+                <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=split-step-schrodinger" class="snap-cta-btn glass">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">N-body · leapfrog (KDK) · your cursor is a point mass</div>
+        <a class="snap-cue" href="#domain-explore">Next: Explore other domains</a>
+    </section>
+
+    <section class="snap-section about-contact-section" id="domain-explore" data-domain="physics">
+        <div class="snap-inner" style="max-width:960px">
+            <div class="section-head" data-reveal><span class="idx">03</span><h2>Explore Other Domains</h2></div>
+            <p class="lead" data-reveal style="margin-bottom:28px">Navigate through other core domains of mathematical modelling, physics simulations, stochastic calculus, and machine systems.</p>
+            <div class="pills" data-reveal style="margin-bottom:36px">
+                
+                <a class="pill" style="--a:var(--rgb-math)" href="math.html">Mathematics →</a>
+                <a class="pill" style="--a:var(--rgb-datascience)" href="datascience.html">Data Science →</a>
+                <a class="pill" style="--a:var(--rgb-quant)" href="quant.html">Quant Finance →</a>
+                <a class="pill" style="--a:var(--rgb-cs)" href="cs.html">Computer Science →</a>
+                <a class="pill" href="index.html">← Back to Hub</a>
+            </div>
+            
+        <div class="contact-card glass" data-reveal>
+            <div class="contact-header">
+                <span class="contact-status"><span class="status-dot"></span> Available for research &amp; engineering opportunities</span>
+                <h3 class="contact-title">Let's build something rigorous together.</h3>
+                <p class="contact-lead">Interested in collaborative research, machine learning engineering, quantitative modelling, or high-performance systems? Reach out directly via email or inspect my code repositories.</p>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-item">
+                    <span class="contact-label">Direct Email</span>
+                    <a href="mailto:kushanwaghmare@gmail.com" class="contact-value">kushanwaghmare@gmail.com</a>
+                    <button type="button" class="copy-btn pill" data-copy="kushanwaghmare@gmail.com" aria-label="Copy email address to clipboard">
+                        <span class="copy-icon">⎘</span> <span class="copy-text">Copy Email</span>
+                    </button>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-label">Code Repositories</span>
+                    <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="contact-value">github.com/KushanWaghmare</a>
+                    <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="pill">View GitHub →</a>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-label">Affiliations &amp; Location</span>
+                    <span class="contact-value">IIT Madras · Chennai, India</span>
+                    <span class="contact-sub">Vidya Bharati Mahavidyalaya · Amravati</span>
+                </div>
+            </div>
+        </div>
+        </div>
+        <footer class="foot snap-foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+    </section></main>
     <footer class="foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
 </body>
 </html>

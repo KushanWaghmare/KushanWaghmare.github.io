@@ -22,70 +22,273 @@
         <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
         <nav class="links" aria-label="Navigation">
             
-            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button></nav>
+            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
+            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Toggle sound">🔊</button>
+        </nav>
     </header>
     <main id="main">
-        <section class="hero short-hero"><canvas aria-hidden="true"></canvas>
-            <div class="hero-inner">
+    <nav class="snap-pager" aria-label="Section navigation">
+        <a href="#proj-index-hero" class="snap-dot active" data-title="00 Overview" aria-label="Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+        
+        <a href="#proj-mobius-surfaces" class="snap-dot" data-title="01 Möbius Strip & Surface Geometry" aria-label="Möbius Strip & Surface Geometry"><span class="dot-disc" style="--a:var(--rgb-math)"></span><span class="dot-text">01 Möbius Strip & Surface Geometry</span></a>
+        <a href="#proj-fourier-spectral" class="snap-dot" data-title="02 Fourier Analysis from First Principles" aria-label="Fourier Analysis from First Principles"><span class="dot-disc" style="--a:var(--rgb-math)"></span><span class="dot-text">02 Fourier Analysis from First Principles</span></a>
+        <a href="#proj-nbody-leapfrog" class="snap-dot" data-title="03 Gravitational N-Body Integrator" aria-label="Gravitational N-Body Integrator"><span class="dot-disc" style="--a:var(--rgb-physics)"></span><span class="dot-text">03 Gravitational N-Body Integrator</span></a>
+        <a href="#proj-split-step-schrodinger" class="snap-dot" data-title="04 Time-Dependent Schrödinger Equation" aria-label="Time-Dependent Schrödinger Equation"><span class="dot-disc" style="--a:var(--rgb-physics)"></span><span class="dot-text">04 Time-Dependent Schrödinger Equation</span></a>
+        <a href="#proj-regularised-regression" class="snap-dot" data-title="05 Regularised Regression from Scratch" aria-label="Regularised Regression from Scratch"><span class="dot-disc" style="--a:var(--rgb-datascience)"></span><span class="dot-text">05 Regularised Regression from Scratch</span></a>
+        <a href="#proj-spectral-clustering" class="snap-dot" data-title="06 Spectral Clustering on Graphs" aria-label="Spectral Clustering on Graphs"><span class="dot-disc" style="--a:var(--rgb-datascience)"></span><span class="dot-text">06 Spectral Clustering on Graphs</span></a>
+        <a href="#proj-options-pricing" class="snap-dot" data-title="07 Options Pricing & Greeks" aria-label="Options Pricing & Greeks"><span class="dot-disc" style="--a:var(--rgb-quant)"></span><span class="dot-text">07 Options Pricing & Greeks</span></a>
+        <a href="#proj-stat-arb" class="snap-dot" data-title="08 Statistical Arbitrage Strategy" aria-label="Statistical Arbitrage Strategy"><span class="dot-disc" style="--a:var(--rgb-quant)"></span><span class="dot-text">08 Statistical Arbitrage Strategy</span></a>
+        <a href="#proj-ku-lang" class="snap-dot" data-title="09 Ku-Lang Compiler" aria-label="Ku-Lang Compiler"><span class="dot-disc" style="--a:var(--rgb-cs)"></span><span class="dot-text">09 Ku-Lang Compiler</span></a>
+        <a href="#proj-8bit-computer" class="snap-dot" data-title="10 8-Bit Breadboard Computer" aria-label="8-Bit Breadboard Computer"><span class="dot-disc" style="--a:var(--rgb-cs)"></span><span class="dot-text">10 8-Bit Breadboard Computer</span></a>
+    </nav>
+
+    <section class="snap-section hero" id="proj-index-hero" data-domain="hub">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Projects</div>
             <h1 data-hero>Selected Projects</h1>
-            <p class="lead" data-hero>Deep-dives into systems architecture, stochastic models and mathematical foundations.</p></div><div class="sim-tag" aria-hidden="true"></div>
-            
-        </section>
-        <section class="section" id="content">
-            <div class="section-head" data-reveal><span class="idx">10 projects</span><h2>All technical deep-dives</h2></div>
-            <div class="grid">
-        <a class="card glass" href="project.html?p=mobius-surfaces" data-reveal>
-            <span class="no">01 <span class="dot"></span> Draft</span>
-            <h3>Möbius Strip & Surface Geometry</h3><p>Parametrising a twisted band, deriving its first fundamental form and showing why it cannot be oriented.</p>
-            <div class="tags"><span class="tag">Differential geometry</span><span class="tag">Topology</span><span class="tag">Three.js</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=fourier-spectral" data-reveal>
-            <span class="no">02 <span class="dot"></span> Draft</span>
-            <h3>Fourier Analysis from First Principles</h3><p>The DFT, its three defining properties and the FFT recurrence that makes it practical.</p>
-            <div class="tags"><span class="tag">Fourier analysis</span><span class="tag">FFT</span><span class="tag">Python</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=nbody-leapfrog" data-reveal>
-            <span class="no">03 <span class="dot"></span> Draft</span>
-            <h3>Gravitational N-Body Integrator</h3><p>A self-gravitating disc integrated with a symplectic kick–drift–kick leapfrog. The hero is the live simulation.</p>
-            <div class="tags"><span class="tag">Classical mechanics</span><span class="tag">Symplectic integration</span><span class="tag">Canvas</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=split-step-schrodinger" data-reveal>
-            <span class="no">04 <span class="dot"></span> Draft</span>
-            <h3>Time-Dependent Schrödinger Equation</h3><p>Split-step Fourier evolution of a wave packet: unitary by construction and spectrally accurate in space.</p>
-            <div class="tags"><span class="tag">Quantum mechanics</span><span class="tag">Split-step Fourier</span><span class="tag">Python</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=regularised-regression" data-reveal>
-            <span class="no">05 <span class="dot"></span> Draft</span>
-            <h3>Regularised Regression from Scratch</h3><p>OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.</p>
-            <div class="tags"><span class="tag">Python</span><span class="tag">NumPy</span><span class="tag">Linear algebra</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=spectral-clustering" data-reveal>
-            <span class="no">06 <span class="dot"></span> Draft</span>
-            <h3>Spectral Clustering on Graphs</h3><p>Recovering communities in a stochastic block model from the eigenvectors of the graph Laplacian.</p>
-            <div class="tags"><span class="tag">Graph theory</span><span class="tag">Spectral methods</span><span class="tag">NumPy</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=options-pricing" data-reveal>
-            <span class="no">07 <span class="dot"></span> Completed</span>
-            <h3>Options Pricing & Greeks</h3><p>Black–Scholes pricing and Greeks for European options in Python, validated by Monte Carlo simulation with an interactive visualisation dashboard.</p>
-            <div class="tags"><span class="tag">Python</span><span class="tag">NumPy</span><span class="tag">Pandas</span><span class="tag">Matplotlib</span><span class="tag">Jupyter</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=stat-arb" data-reveal>
-            <span class="no">08 <span class="dot"></span> Completed</span>
-            <h3>Statistical Arbitrage Strategy</h3><p>Python pairs-trading strategy using co-integration and z-score signals, backtested over two years with a Sharpe ratio of 1.8.</p>
-            <div class="tags"><span class="tag">Python</span><span class="tag">Pandas</span><span class="tag">NumPy</span><span class="tag">Statsmodels</span><span class="tag">Matplotlib</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=ku-lang" data-reveal>
-            <span class="no">09 <span class="dot"></span> In progress</span>
-            <h3>Ku-Lang Compiler</h3><p>A custom language and compiler: lexical analysis, parsing, semantic checks and LLVM IR generation, with control flow, functions and typed expressions.</p>
-            <div class="tags"><span class="tag">C</span><span class="tag">LLVM</span><span class="tag">Flex</span><span class="tag">Bison</span><span class="tag">CMake</span></div><span class="go">Open project</span>
-        </a>
-        <a class="card glass" href="project.html?p=8bit-computer" data-reveal>
-            <span class="no">10 <span class="dot"></span> In progress</span>
-            <h3>8-Bit Breadboard Computer</h3><p>An 8-bit computer built from discrete TTL logic: ALU, control unit and memory with a custom instruction set, validated with a logic analyser.</p>
-            <div class="tags"><span class="tag">TTL logic</span><span class="tag">Assembly</span><span class="tag">Digital design</span><span class="tag">Logic analyser</span></div><span class="go">Open project</span>
-        </a></div>
-        </section></main>
+            <p class="lead" data-hero>Deep-dives into systems architecture, stochastic models and mathematical foundations across all 5 domains.</p>
+            <div class="snap-jump-pills" data-hero>
+                <span class="snap-jump-label">Jump to domain:</span>
+                <a href="math.html" class="pill jump-pill" style="--a:var(--rgb-math)">Mathematics</a><a href="physics.html" class="pill jump-pill" style="--a:var(--rgb-physics)">Physics</a><a href="datascience.html" class="pill jump-pill" style="--a:var(--rgb-datascience)">Data Science</a><a href="quant.html" class="pill jump-pill" style="--a:var(--rgb-quant)">Quant Finance</a><a href="cs.html" class="pill jump-pill" style="--a:var(--rgb-cs)">Computer Science</a>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Index of 10 technical deep-dives</div>
+        <a class="snap-cue" href="#proj-mobius-surfaces">Scroll to projects</a>
+    </section>
+
+    
+    <section class="snap-section project-snap" id="proj-mobius-surfaces" data-domain="math" style="--a:var(--rgb-math)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 01 / 10 · Mathematics</div>
+            <h2 class="snap-title" data-reveal>Möbius Strip & Surface Geometry</h2>
+            <p class="lead snap-lead" data-reveal>Parametrising a twisted band, deriving its first fundamental form and showing why it cannot be oriented.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$\mathbf r(u,v)=\begin{pmatrix}(R+v\cos\alpha)\cos u\\(R+v\cos\alpha)\sin u\\ v\sin\alpha\end{pmatrix}$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Differential geometry</strong></span><span class="snap-proj-pill glass"><strong>Topology</strong></span><span class="snap-proj-pill glass"><strong>Three.js</strong></span>
+                <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=mobius-surfaces" class="snap-cta-btn glass" style="--a:var(--rgb-math)">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Möbius immersion · non-orientable topological manifold · cursor controls twist & angle</div>
+        <a class="snap-cue" href="#proj-fourier-spectral">Next: Fourier Analysis from First Principles</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-fourier-spectral" data-domain="math" style="--a:var(--rgb-math)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 02 / 10 · Mathematics</div>
+            <h2 class="snap-title" data-reveal>Fourier Analysis from First Principles</h2>
+            <p class="lead snap-lead" data-reveal>The DFT, its three defining properties and the FFT recurrence that makes it practical.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$X_k=\sum_{n=0}^{N-1}x_n\,e^{-2\pi i kn/N},\qquad x_n=\frac1N\sum_{k=0}^{N-1}X_k\,e^{2\pi i kn/N}$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Fourier analysis</strong></span><span class="snap-proj-pill glass"><strong>FFT</strong></span><span class="snap-proj-pill glass"><strong>Python</strong></span>
+                <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=fourier-spectral" class="snap-cta-btn glass" style="--a:var(--rgb-math)">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Möbius immersion · non-orientable topological manifold · cursor controls twist & angle</div>
+        <a class="snap-cue" href="#proj-nbody-leapfrog">Next: Gravitational N-Body Integrator</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-nbody-leapfrog" data-domain="physics" style="--a:var(--rgb-physics)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 03 / 10 · Physics</div>
+            <h2 class="snap-title" data-reveal>Gravitational N-Body Integrator</h2>
+            <p class="lead snap-lead" data-reveal>A self-gravitating disc integrated with a symplectic kick–drift–kick leapfrog. The hero is the live simulation.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$\mathbf a_i=-\sum_{j\ne i}\frac{G\,m_j\,(\mathbf r_i-\mathbf r_j)}{\left(\lVert\mathbf r_i-\mathbf r_j\rVert^2+\varepsilon^2\right)^{3/2}}$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Classical mechanics</strong></span><span class="snap-proj-pill glass"><strong>Symplectic integration</strong></span><span class="snap-proj-pill glass"><strong>Canvas</strong></span>
+                <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=nbody-leapfrog" class="snap-cta-btn glass" style="--a:var(--rgb-physics)">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">N-body · leapfrog (KDK) · your cursor is a point mass</div>
+        <a class="snap-cue" href="#proj-split-step-schrodinger">Next: Time-Dependent Schrödinger Equation</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-split-step-schrodinger" data-domain="physics" style="--a:var(--rgb-physics)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 04 / 10 · Physics</div>
+            <h2 class="snap-title" data-reveal>Time-Dependent Schrödinger Equation</h2>
+            <p class="lead snap-lead" data-reveal>Split-step Fourier evolution of a wave packet: unitary by construction and spectrally accurate in space.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$i\hbar\,\frac{\partial\psi}{\partial t}=\hat H\psi=\Big[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\Big]\psi$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Quantum mechanics</strong></span><span class="snap-proj-pill glass"><strong>Split-step Fourier</strong></span><span class="snap-proj-pill glass"><strong>Python</strong></span>
+                <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=split-step-schrodinger" class="snap-cta-btn glass" style="--a:var(--rgb-physics)">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">N-body · leapfrog (KDK) · your cursor is a point mass</div>
+        <a class="snap-cue" href="#proj-regularised-regression">Next: Regularised Regression from Scratch</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-regularised-regression" data-domain="datascience" style="--a:var(--rgb-datascience)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 05 / 10 · Data Science</div>
+            <h2 class="snap-title" data-reveal>Regularised Regression from Scratch</h2>
+            <p class="lead snap-lead" data-reveal>OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$\hat{\boldsymbol\beta}=\arg\min_{\boldsymbol\beta}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2=(X^\top X)^{-1}X^\top\mathbf y$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Python</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span><span class="snap-proj-pill glass"><strong>Linear algebra</strong></span>
+                <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=regularised-regression" class="snap-cta-btn glass" style="--a:var(--rgb-datascience)">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Loss landscape · Langevin SGD: v ← 0.86v - η∇L + 0.05ξ · move cursor to alter curvature · click to reseed</div>
+        <a class="snap-cue" href="#proj-spectral-clustering">Next: Spectral Clustering on Graphs</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-spectral-clustering" data-domain="datascience" style="--a:var(--rgb-datascience)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 06 / 10 · Data Science</div>
+            <h2 class="snap-title" data-reveal>Spectral Clustering on Graphs</h2>
+            <p class="lead snap-lead" data-reveal>Recovering communities in a stochastic block model from the eigenvectors of the graph Laplacian.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$\Pr(A_{ij}=1)=\begin{cases}p_{\text{in}}&c_i=c_j\\p_{\text{out}}&c_i\ne c_j\end{cases}$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Graph theory</strong></span><span class="snap-proj-pill glass"><strong>Spectral methods</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span>
+                <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=spectral-clustering" class="snap-cta-btn glass" style="--a:var(--rgb-datascience)">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Loss landscape · Langevin SGD: v ← 0.86v - η∇L + 0.05ξ · move cursor to alter curvature · click to reseed</div>
+        <a class="snap-cue" href="#proj-options-pricing">Next: Options Pricing & Greeks</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-options-pricing" data-domain="quant" style="--a:var(--rgb-quant)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 07 / 10 · Quant Finance</div>
+            <h2 class="snap-title" data-reveal>Options Pricing & Greeks</h2>
+            <p class="lead snap-lead" data-reveal>Black–Scholes pricing and Greeks for European options in Python, validated by Monte Carlo simulation with an interactive visualisation dashboard.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$\frac{\partial V}{\partial t}+\tfrac12\sigma^2S^2\frac{\partial^2V}{\partial S^2}+rS\frac{\partial V}{\partial S}-rV=0$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Python</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span><span class="snap-proj-pill glass"><strong>Pandas</strong></span><span class="snap-proj-pill glass"><strong>Matplotlib</strong></span><span class="snap-proj-pill glass"><strong>Jupyter</strong></span>
+                <span class="tag-status">Completed</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=options-pricing" class="snap-cta-btn glass" style="--a:var(--rgb-quant)">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Geometric Brownian motion · 70 paths · cursor height sets σ</div>
+        <a class="snap-cue" href="#proj-stat-arb">Next: Statistical Arbitrage Strategy</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-stat-arb" data-domain="quant" style="--a:var(--rgb-quant)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 08 / 10 · Quant Finance</div>
+            <h2 class="snap-title" data-reveal>Statistical Arbitrage Strategy</h2>
+            <p class="lead snap-lead" data-reveal>Python pairs-trading strategy using co-integration and z-score signals, backtested over two years with a Sharpe ratio of 1.8.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$y_t=\alpha+\beta x_t+\varepsilon_t,\qquad\varepsilon_t\sim I(0)$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>Python</strong></span><span class="snap-proj-pill glass"><strong>Pandas</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span><span class="snap-proj-pill glass"><strong>Statsmodels</strong></span><span class="snap-proj-pill glass"><strong>Matplotlib</strong></span>
+                <span class="tag-status">Completed</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=stat-arb" class="snap-cta-btn glass" style="--a:var(--rgb-quant)">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">4 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Geometric Brownian motion · 70 paths · cursor height sets σ</div>
+        <a class="snap-cue" href="#proj-ku-lang">Next: Ku-Lang Compiler</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-ku-lang" data-domain="cs" style="--a:var(--rgb-cs)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 09 / 10 · Computer Science</div>
+            <h2 class="snap-title" data-reveal>Ku-Lang Compiler</h2>
+            <p class="lead snap-lead" data-reveal>A custom language and compiler: lexical analysis, parsing, semantic checks and LLVM IR generation, with control flow, functions and typed expressions.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$L(r_1\mid r_2)=L(r_1)\cup L(r_2),\quad L(r_1r_2)=L(r_1)L(r_2),\quad L(r^*)=\bigcup_{k\ge0}L(r)^k,\qquad|Q_{\mathrm{DFA}}|\le2^{|Q_{\mathrm{NFA}}|}$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>C</strong></span><span class="snap-proj-pill glass"><strong>LLVM</strong></span><span class="snap-proj-pill glass"><strong>Flex</strong></span><span class="snap-proj-pill glass"><strong>Bison</strong></span><span class="snap-proj-pill glass"><strong>CMake</strong></span>
+                <span class="tag-status">In progress</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=ku-lang" class="snap-cta-btn glass" style="--a:var(--rgb-cs)">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">5 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Elementary cellular automaton · click to cycle the rule</div>
+        <a class="snap-cue" href="#proj-8bit-computer">Next: 8-Bit Breadboard Computer</a>
+    </section>
+    <section class="snap-section project-snap" id="proj-8bit-computer" data-domain="cs" style="--a:var(--rgb-cs)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 10 / 10 · Computer Science</div>
+            <h2 class="snap-title" data-reveal>8-Bit Breadboard Computer</h2>
+            <p class="lead snap-lead" data-reveal>An 8-bit computer built from discrete TTL logic: ALU, control unit and memory with a custom instruction set, validated with a logic analyser.</p>
+            <div class="hero-eq glass snap-eq" data-reveal>$$S=A\oplus B\oplus C_{\mathrm{in}},\qquad C_{\mathrm{out}}=AB+C_{\mathrm{in}}(A\oplus B)$$</div>
+            <div class="snap-projects" data-reveal>
+                <span class="snap-proj-label">Architecture:</span>
+                <span class="snap-proj-pill glass"><strong>TTL logic</strong></span><span class="snap-proj-pill glass"><strong>Assembly</strong></span><span class="snap-proj-pill glass"><strong>Digital design</strong></span><span class="snap-proj-pill glass"><strong>Logic analyser</strong></span>
+                <span class="tag-status">In progress</span>
+            </div>
+            <div class="snap-actions" data-reveal>
+                <a href="project.html?p=8bit-computer" class="snap-cta-btn glass" style="--a:var(--rgb-cs)">
+                    <span>Read Deep-Dive &amp; Architecture</span>
+                    <span class="arr">→</span>
+                </a>
+                <span class="snap-count">5 core subsystems</span>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Elementary cellular automaton · click to cycle the rule</div>
+        <a class="snap-cue" href="#proj-index-hero">Back to top</a>
+    </section>
+    </main>
     <footer class="foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
 </body>
 </html>
