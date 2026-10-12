@@ -876,7 +876,8 @@
             if (!isInitial || !main.firstElementChild) main.innerHTML = domainPage(nextDomain);
             document.querySelectorAll(".snap-section canvas").forEach((c) => {
                 const sec = c.closest(".snap-section");
-                const sd = sec && sec.dataset.domain === "contact" ? "contact" : nextDomain;
+                const pid = sec && sec.id && sec.id.startsWith("proj-") ? sec.id.slice(5) : null;
+                const sd = (pid && SIMS[pid]) ? pid : (sec && sec.dataset.domain === "contact" ? "contact" : nextDomain);
                 try { if (SIMS[sd]) SIMS[sd](c); } catch (err) {}
             });
         } else {
@@ -888,7 +889,8 @@
                 document.title = `${p.title} · Kushan Waghmare`;
                 main.innerHTML = projectPage(p);
                 document.querySelectorAll(".snap-section canvas").forEach((c) => {
-                    try { if (p.domain && SIMS[p.domain]) SIMS[p.domain](c); } catch (err) {}
+                    const fn = SIMS[p.id] || SIMS[p.domain];
+                    try { if (fn) fn(c); } catch (err) {}
                 });
             } else {
                 if (!isInitial || !main.firstElementChild) main.innerHTML = projectIndexPage();
@@ -896,7 +898,8 @@
                 if (introCanvas && SIMS.hub) try { SIMS.hub(introCanvas); } catch (e) {}
                 SITE.projects.forEach((proj) => {
                     const c = $(`#proj-${proj.id} canvas`);
-                    if (c && SIMS[proj.domain]) try { SIMS[proj.domain](c); } catch (e) {}
+                    const fn = SIMS[proj.id] || SIMS[proj.domain];
+                    if (c && fn) try { fn(c); } catch (e) {}
                 });
             }
         }

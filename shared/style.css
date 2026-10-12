@@ -15,7 +15,7 @@ html[data-theme="dark"] {
     --line: #ffffff17;
     --glass: #10121a8c;
     --glass-line: #ffffff1f;
-    --rgb-hub: 233, 235, 241;        /* titanium / ghost white */
+    --rgb-hub: 59, 130, 246;         /* electric cobalt blue */
     --rgb-math: 224, 40, 64;         /* crimson */
     --rgb-physics: 34, 211, 238;     /* electric cyan */
     --rgb-datascience: 245, 158, 11; /* amber */
@@ -32,7 +32,7 @@ html[data-theme="light"] {
     --line: #0000001a;
     --glass: #ffffff9e;
     --glass-line: #0000001a;
-    --rgb-hub: 18, 20, 27;
+    --rgb-hub: 37, 99, 235;
     --rgb-math: 176, 20, 48;
     --rgb-physics: 6, 140, 172;
     --rgb-datascience: 176, 98, 0;

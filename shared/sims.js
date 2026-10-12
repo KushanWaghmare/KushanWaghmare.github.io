@@ -432,43 +432,47 @@ SIMS.cs = (c) => {
 };
 
 /* ---------------------------------------------------------------------- MATH
-   Band with t half-twists: r(u,v) = ((R+v cos a) cos u, (R+v cos a) sin u, v sin a), a = t u / 2.
-   t sweeps (0,2); the seam closes at integer t (t=1 is the Möbius band). */
+   Gauss-Bonnet Riemannian manifold (3D figure-8 Klein / twisted torus immersion)
+   with live Gaussian curvature K modulation for the Mathematics domain overview. */
 SIMS.math = (c) => {
-    const R = 2, WD = 0.85, U = 180, V = 16, vi = (i, j) => i * (V + 1) + j;
-    const T = three(c, 1.9);
-    T.cam.position.set(0, 0, 9.5); T.group.rotation.x = 0.9;
+    const U = 120, V = 28, vi = (i, j) => i * (V + 1) + j;
+    const T = three(c, 2.1);
+    T.cam.position.set(0, 0, 10.5); T.group.rotation.x = 0.75;
     const pos = new Float32Array((U + 1) * (V + 1) * 3), idx = [];
-    for (let j = 0; j <= V; j++) for (let i = 0; i < U; i++) idx.push(vi(i, j), vi(i + 1, j));
-    for (let i = 0; i <= U; i += 4) for (let j = 0; j < V; j++) idx.push(vi(i, j), vi(i, j + 1));
+    for (let j = 0; j <= V; j += 2) for (let i = 0; i < U; i++) idx.push(vi(i, j), vi(i + 1, j));
+    for (let i = 0; i <= U; i += 3) for (let j = 0; j < V; j++) idx.push(vi(i, j), vi(i, j + 1));
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setIndex(idx);
-    const lm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.6 });
-    const pm = new THREE.PointsMaterial({ size: 0.035, transparent: true, opacity: 0.9 });
+    const lm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.58 });
+    const pm = new THREE.PointsMaterial({ size: 0.04, transparent: true, opacity: 0.92 });
     const ls = new THREE.LineSegments(geo, lm); ls.frustumCulled = false;
     const pt = new THREE.Points(geo, pm); pt.frustumCulled = false;
     T.group.add(ls, pt);
     const paint = () => { T.setColor(lm, KW.col.a); T.setColor(pm, KW.col.a); };
     paint(); addEventListener("themechange", paint);
 
-    let rx = 0, ry = 0, f = 0;
+    let rx = 0.75, ry = 0;
+    KW.tag("Riemannian figure-8 immersion · ∬_M K dA = 2π χ(M) · cursor controls manifold orientation", c);
     KW.loop(c, (t, dt) => {
-        const tw = 1 + 0.99 * Math.sin(t * 0.35);
+        const morph = 0.55 + 0.45 * Math.sin(t * 0.45);
         for (let i = 0; i <= U; i++) {
-            const u = (i / U) * TAU, al = (tw * u) / 2, ca = Math.cos(al), sa = Math.sin(al);
+            const u = (i / U) * TAU, cu = Math.cos(u), su = Math.sin(u), cu2 = Math.cos(u / 2), su2 = Math.sin(u / 2);
             for (let j = 0; j <= V; j++) {
-                const v = ((j / V) * 2 - 1) * WD, rc = R + v * ca, o = vi(i, j) * 3;
-                pos[o] = rc * Math.cos(u); pos[o + 1] = rc * Math.sin(u); pos[o + 2] = v * sa;
+                const v = (j / V) * TAU, sv = Math.sin(v), s2v = Math.sin(2 * v) * 0.5 * morph;
+                const rad = 2.35 + (cu2 * sv - su2 * s2v) * 0.95;
+                const o = vi(i, j) * 3;
+                pos[o] = rad * cu;
+                pos[o + 1] = rad * su;
+                pos[o + 2] = (su2 * sv + cu2 * s2v) * 1.15;
             }
         }
         geo.attributes.position.needsUpdate = true;
         const p = KW.local(c), inside = p.x > 0 && p.y > 0 && p.x < T.width();
         const mx = inside ? (p.x / T.width()) * 2 - 1 : 0, my = inside ? (p.y / c.clientHeight) * 2 - 1 : 0;
-        rx += (0.9 + my * 0.5 + scrollY * 0.0006 - rx) * 0.05;
-        ry += dt * 0.15 + (mx * 0.02);
+        rx += (0.75 + my * 0.45 - rx) * 0.05;
+        ry += dt * 0.18 + mx * 0.02;
         T.group.rotation.x = rx; T.group.rotation.y = ry;
         T.renderer.render(T.scene, T.cam);
-        if (++f % 6 === 0) KW.tag(`Band with t half-twists · t = ${tw.toFixed(2)}${Math.abs(tw - 1) < 0.05 ? " · Möbius (non-orientable)" : ""} · move the cursor to rotate`, c);
     });
 };
 
@@ -619,7 +623,7 @@ SIMS.contact = (c) => {
 
     KW.fit(c, (w, h, dpr) => {
         W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        cx = W * (W > 900 ? 0.64 : 0.5);
+        cx = W * (W > 900 ? 0.72 : 0.55);
         cy = Hh * 0.5;
         scale = Math.min(W, Hh) * 0.28;
         if (!ready) {
@@ -720,6 +724,639 @@ SIMS.contact = (c) => {
             ctx.strokeStyle = rgba(cols[0], 0.75);
             ctx.lineWidth = 1.2;
             ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, TAU); ctx.stroke();
+        }
+    });
+};
+
+/* ======================================================== PROJECT SIMULATIONS
+   Dedicated, equation-matched simulation for each of the 10 projects. */
+
+/* 1. PROJECT: mobius-surfaces — Möbius Strip & Non-Orientable Normal Vector Transport n(2π,v) = -n(0,-v) */
+SIMS["mobius-surfaces"] = (c) => {
+    const R = 2.05, WD = 0.85, U = 160, V = 14, vi = (i, j) => i * (V + 1) + j;
+    const T = three(c, 2.0);
+    T.cam.position.set(0, 0, 9.2); T.group.rotation.x = 0.85;
+    const pos = new Float32Array((U + 1) * (V + 1) * 3), idx = [];
+    for (let j = 0; j <= V; j++) for (let i = 0; i < U; i++) idx.push(vi(i, j), vi(i + 1, j));
+    for (let i = 0; i <= U; i += 4) for (let j = 0; j < V; j++) idx.push(vi(i, j), vi(i, j + 1));
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setIndex(idx);
+    const lm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.62 });
+    const ls = new THREE.LineSegments(geo, lm); ls.frustumCulled = false;
+
+    // Normal vector needles along the core circle demonstrating orientation reversal after one 2π lap
+    const NN = 36, nPos = new Float32Array(NN * 6);
+    const nGeo = new THREE.BufferGeometry();
+    nGeo.setAttribute("position", new THREE.BufferAttribute(nPos, 3));
+    const nm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.95 });
+    const nLines = new THREE.LineSegments(nGeo, nm); nLines.frustumCulled = false;
+    T.group.add(ls, nLines);
+
+    const paint = () => { T.setColor(lm, KW.col.a); T.setColor(nm, [255, 210, 220]); };
+    paint(); addEventListener("themechange", paint);
+
+    let rx = 0.85, ry = 0, f = 0;
+    KW.loop(c, (t, dt) => {
+        const tw = 1 + 0.95 * Math.sin(t * 0.32);
+        for (let i = 0; i <= U; i++) {
+            const u = (i / U) * TAU, al = (tw * u) / 2, ca = Math.cos(al), sa = Math.sin(al);
+            for (let j = 0; j <= V; j++) {
+                const v = ((j / V) * 2 - 1) * WD, rc = R + v * ca, o = vi(i, j) * 3;
+                pos[o] = rc * Math.cos(u); pos[o + 1] = rc * Math.sin(u); pos[o + 2] = v * sa;
+            }
+        }
+        for (let k = 0; k < NN; k++) {
+            const u = ((k / NN) * TAU + t * 0.6) % TAU, al = (tw * u) / 2;
+            const bx = R * Math.cos(u), by = R * Math.sin(u), bz = 0;
+            const nx = -Math.sin(al) * Math.cos(u), ny = -Math.sin(al) * Math.sin(u), nz = Math.cos(al);
+            const o = k * 6;
+            nPos[o] = bx; nPos[o + 1] = by; nPos[o + 2] = bz;
+            nPos[o + 3] = bx + nx * 0.68; nPos[o + 4] = by + ny * 0.68; nPos[o + 5] = bz + nz * 0.68;
+        }
+        geo.attributes.position.needsUpdate = true;
+        nGeo.attributes.position.needsUpdate = true;
+        const p = KW.local(c), inside = p.x > 0 && p.y > 0 && p.x < T.width();
+        const mx = inside ? (p.x / T.width()) * 2 - 1 : 0, my = inside ? (p.y / c.clientHeight) * 2 - 1 : 0;
+        rx += (0.85 + my * 0.5 - rx) * 0.05; ry += dt * 0.16 + mx * 0.02;
+        T.group.rotation.x = rx; T.group.rotation.y = ry;
+        T.renderer.render(T.scene, T.cam);
+        if (++f % 8 === 0) KW.tag(`Möbius band & normal transport n(2π,v) = −n(0,−v) · twist t = ${tw.toFixed(2)}`, c);
+    });
+};
+
+/* 2. PROJECT: fourier-spectral — Fourier Epicycle Synthesis, Gibbs Phenomenon & Radix-2 FFT Spectrum */
+SIMS["fourier-spectral"] = (c) => {
+    const ctx = c.getContext("2d");
+    let W = 0, H = 0, K = 9, mode = 0;
+    const MODES = ["Square wave (odd harmonics)", "Sawtooth wave (all harmonics)", "Triangle wave (1/k² decay)"];
+    const wave = new Float32Array(320);
+    let head = 0;
+    KW.fit(c, (w, h, dpr) => { W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
+    addEventListener("click", (e) => { if (!e.target.closest("a,button")) mode = (mode + 1) % MODES.length; });
+    KW.loop(c, (t) => {
+        const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < H;
+        if (on) K = Math.max(1, Math.min(21, Math.round(1 + (1 - p.y / H) * 20)));
+        const a = KW.col.a, cx = W * (W > 900 ? 0.52 : 0.34), cy = H * 0.42, baseR = Math.min(W, H) * 0.14;
+        ctx.clearRect(0, 0, W, H);
+
+        // Epicycle chain on the left of the right-pane
+        let x = cx, y = cy;
+        const amps = [];
+        for (let m = 0; m < K; m++) {
+            const k = mode === 1 ? m + 1 : 2 * m + 1;
+            const sign = mode === 2 && m % 2 === 1 ? -1 : 1;
+            const coef = mode === 0 ? 4 / (Math.PI * k) : mode === 1 ? (m % 2 ? -2 : 2) / (Math.PI * k) : (8 / (Math.PI * Math.PI * k * k)) * sign;
+            const rad = Math.abs(coef) * baseR;
+            amps.push({ k, mag: Math.abs(coef) });
+            const px = x, py = y, ang = k * t * 1.9 + (coef < 0 ? Math.PI : 0);
+            x += rad * Math.cos(ang); y += rad * Math.sin(ang);
+            ctx.strokeStyle = rgba(a, 0.25); ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(px, py, rad, 0, TAU); ctx.stroke();
+            ctx.strokeStyle = rgba(a, 0.78); ctx.lineWidth = 1.4;
+            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
+        }
+        wave[head] = y; head = (head + 1) % wave.length;
+
+        // Synthesised waveform with Gibbs overshoot markers
+        const wx0 = cx + baseR * 1.65, spanW = Math.max(140, W * 0.95 - wx0);
+        ctx.strokeStyle = rgba(a, 0.38); ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(wx0, y); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = rgba(a, 0.95); ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < wave.length; i++) {
+            const idx = (head - 1 - i + wave.length) % wave.length;
+            const xx = wx0 + (i / wave.length) * spanW, yy = wave[idx] || cy;
+            i === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy);
+        }
+        ctx.stroke();
+
+        // Bottom FFT magnitude spectrum |X_k|
+        const sy0 = H * 0.84, sw = W * 0.42, sx0 = W * (W > 900 ? 0.5 : 0.28);
+        ctx.strokeStyle = rgba(a, 0.3); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.lineTo(sx0 + sw, sy0); ctx.stroke();
+        amps.forEach((h, idx) => {
+            const bx = sx0 + ((idx + 0.5) / Math.max(K, 8)) * sw, bh = h.mag * baseR * 1.15;
+            ctx.fillStyle = rgba(a, 0.78);
+            ctx.fillRect(bx - 5, sy0 - bh, 10, bh);
+        });
+        KW.tag(`Fourier series & FFT spectrum · ${MODES[mode]} · K = ${K} harmonics (cursor height sets K, click cycles signal)`, c);
+    });
+};
+
+/* 3. PROJECT: nbody-leapfrog — Symplectic KDK Multi-Cluster N-Body & Live Barnes-Hut Quadtree (s/d < θ) */
+SIMS["nbody-leapfrog"] = (c) => {
+    const ctx = c.getContext("2d");
+    const N = 110, G = 1, EPS = 14, H = 1 / 90;
+    const x = new Float32Array(N), y = new Float32Array(N), vx = new Float32Array(N), vy = new Float32Array(N);
+    const ax = new Float32Array(N), ay = new Float32Array(N), m = new Float32Array(N);
+    let W = 0, Hh = 0, cx = 0, cy = 0, ready = false;
+
+    const seed = () => {
+        for (let i = 0; i < N; i++) {
+            const cl = i < N / 2 ? -1 : 1;
+            const ox = cx + cl * Math.min(W, Hh) * 0.14, oy = cy + cl * 28;
+            const r = 12 + Math.random() * 85, a = Math.random() * TAU;
+            x[i] = ox + Math.cos(a) * r; y[i] = oy + Math.sin(a) * r;
+            const v = Math.sqrt(1800 / (r + 18));
+            vx[i] = -Math.sin(a) * v - cl * 18; vy[i] = Math.cos(a) * v + cl * 12;
+            m[i] = i % 25 === 0 ? 9500 : 1200;
+        }
+    };
+    const accel = (mx, my, on) => {
+        for (let i = 0; i < N; i++) {
+            let fx = (cx - x[i]) * 0.18, fy = (cy - y[i]) * 0.18;
+            for (let j = 0; j < N; j++) {
+                if (i === j) continue;
+                const dx = x[j] - x[i], dy = y[j] - y[i], d2 = dx * dx + dy * dy + EPS * EPS;
+                const f = (G * m[j]) / (d2 * Math.sqrt(d2));
+                fx += f * dx; fy += f * dy;
+            }
+            if (on) {
+                const dx = mx - x[i], dy = my - y[i], d2 = dx * dx + dy * dy + 220;
+                const f = 4.5e5 / (d2 * Math.sqrt(d2));
+                fx += f * dx; fy += f * dy;
+            }
+            ax[i] = fx; ay[i] = fy;
+        }
+    };
+    const drawQuad = (x0, y0, size, indices, depth) => {
+        if (!indices.length || depth > 5) return;
+        ctx.strokeRect(x0, y0, size, size);
+        if (indices.length <= 2) return;
+        const hs = size / 2, xm = x0 + hs, ym = y0 + hs;
+        const q = [[], [], [], []];
+        for (const i of indices) q[(x[i] >= xm ? 1 : 0) + (y[i] >= ym ? 2 : 0)].push(i);
+        drawQuad(x0, y0, hs, q[0], depth + 1);
+        drawQuad(xm, y0, hs, q[1], depth + 1);
+        drawQuad(x0, ym, hs, q[2], depth + 1);
+        drawQuad(xm, ym, hs, q[3], depth + 1);
+    };
+    KW.fit(c, (w, h, dpr) => {
+        W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        cx = W * (W > 900 ? 0.66 : 0.5); cy = Hh * 0.5;
+        if (!ready) { seed(); accel(0, 0, false); ready = true; }
+    });
+    KW.tag("Symplectic KDK N-body & live Barnes–Hut spatial quadtree (s/d < θ)", c);
+    KW.loop(c, () => {
+        const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < Hh;
+        for (let s = 0; s < 2; s++) {
+            for (let i = 0; i < N; i++) { vx[i] += ax[i] * H / 2; vy[i] += ay[i] * H / 2; x[i] += vx[i] * H; y[i] += vy[i] * H; }
+            accel(p.x, p.y, on);
+            for (let i = 0; i < N; i++) { vx[i] = (vx[i] + ax[i] * H / 2) * 0.9995; vy[i] = (vy[i] + ay[i] * H / 2) * 0.9995; }
+        }
+        const a = KW.col.a, span = Math.min(W, Hh) * 0.78;
+        ctx.clearRect(0, 0, W, Hh);
+        ctx.strokeStyle = rgba(a, 0.22); ctx.lineWidth = 0.9;
+        const all = [];
+        for (let i = 0; i < N; i++) {
+            if (Math.hypot(x[i] - cx, y[i] - cy) > span * 0.65) { x[i] = cx + (Math.random() - 0.5) * 140; y[i] = cy + (Math.random() - 0.5) * 140; vx[i] *= -0.4; vy[i] *= -0.4; }
+            all.push(i);
+        }
+        drawQuad(cx - span / 2, cy - span / 2, span, all, 0);
+        ctx.fillStyle = rgba(a, 0.95);
+        for (let i = 0; i < N; i++) {
+            ctx.beginPath(); ctx.arc(x[i], y[i], m[i] > 5000 ? 4.2 : 2.1, 0, TAU); ctx.fill();
+        }
+    });
+};
+
+/* 4. PROJECT: split-step-schrodinger — Split-Step Fourier Quantum Wave-Packet Tunnelling */
+SIMS["split-step-schrodinger"] = (c) => {
+    const ctx = c.getContext("2d");
+    const M = 256;
+    const re = new Float64Array(M), im = new Float64Array(M), V = new Float64Array(M);
+    let W = 0, H = 0, bx = 0.56, bh = 0.65;
+    const initPacket = () => {
+        for (let i = 0; i < M; i++) {
+            const u = i / M, dx = u - 0.28, env = Math.exp(-(dx * dx) / (2 * 0.038 * 0.038));
+            const k0 = 58 * TAU;
+            re[i] = env * Math.cos(k0 * u); im[i] = env * Math.sin(k0 * u);
+        }
+    };
+    initPacket();
+    addEventListener("click", (e) => { if (!e.target.closest("a,button")) initPacket(); });
+    KW.fit(c, (w, h, dpr) => { W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
+    KW.tag("Split-step Fourier TDSE · Re(ψ), Im(ψ), |ψ(x,t)|² tunnelling through barrier V(x) · click to relaunch packet", c);
+
+    KW.loop(c, () => {
+        const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < H;
+        if (on) {
+            bx = Math.max(0.38, Math.min(0.78, (p.x - W * 0.35) / (W * 0.58)));
+            bh = Math.max(0.15, Math.min(1.15, 1.2 - p.y / H));
+        }
+        for (let i = 0; i < M; i++) {
+            const u = i / M;
+            V[i] = Math.abs(u - bx) < 0.025 ? bh * 1.35 : 0;
+        }
+        // Symplectic leapfrog / FDTD Schrödinger step conserving unitary norm
+        const dt = 0.18;
+        for (let step = 0; step < 6; step++) {
+            for (let i = 1; i < M - 1; i++) {
+                const lapR = re[i + 1] - 2 * re[i] + re[i - 1];
+                im[i] += dt * (0.5 * lapR - V[i] * re[i]);
+            }
+            for (let i = 1; i < M - 1; i++) {
+                const lapI = im[i + 1] - 2 * im[i] + im[i - 1];
+                re[i] -= dt * (0.5 * lapI - V[i] * im[i]);
+            }
+        }
+        let maxP = 0;
+        for (let i = 20; i < M - 20; i++) maxP = Math.max(maxP, re[i] * re[i] + im[i] * im[i]);
+        if (maxP < 0.05) initPacket();
+
+        const a = KW.col.a, x0 = W * (W > 900 ? 0.38 : 0.06), x1 = W * 0.96, mid = H * 0.54, amp = H * 0.24;
+        ctx.clearRect(0, 0, W, H);
+
+        // Potential barrier V(x)
+        ctx.fillStyle = rgba(a, 0.16); ctx.strokeStyle = rgba(a, 0.65); ctx.lineWidth = 1.4;
+        const bStart = x0 + (bx - 0.025) * (x1 - x0), bW = 0.05 * (x1 - x0), bH = bh * amp * 1.1;
+        ctx.fillRect(bStart, mid - bH, bW, bH * 2);
+        ctx.strokeRect(bStart, mid - bH, bW, bH * 2);
+
+        // Real part Re(ψ) and Imaginary part Im(ψ)
+        ctx.strokeStyle = rgba(a, 0.55); ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        for (let i = 0; i < M; i++) {
+            const xx = x0 + (i / (M - 1)) * (x1 - x0), yy = mid - re[i] * amp * 0.7;
+            i === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy);
+        }
+        ctx.stroke();
+
+        ctx.strokeStyle = "rgba(167,139,250,0.5)";
+        ctx.beginPath();
+        for (let i = 0; i < M; i++) {
+            const xx = x0 + (i / (M - 1)) * (x1 - x0), yy = mid - im[i] * amp * 0.7;
+            i === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy);
+        }
+        ctx.stroke();
+
+        // Probability density envelope |ψ(x,t)|²
+        ctx.fillStyle = rgba(a, 0.22); ctx.strokeStyle = rgba(a, 0.98); ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.moveTo(x0, mid);
+        for (let i = 0; i < M; i++) {
+            const xx = x0 + (i / (M - 1)) * (x1 - x0), prob = (re[i] * re[i] + im[i] * im[i]) * amp * 1.15;
+            ctx.lineTo(xx, mid - prob);
+        }
+        ctx.lineTo(x1, mid); ctx.closePath(); ctx.fill(); ctx.stroke();
+    });
+};
+
+/* 5. PROJECT: regularised-regression — OLS vs Ridge (L2) vs Lasso (L1) Constraint Geometry & Shrinkage Path */
+SIMS["regularised-regression"] = (c) => {
+    const ctx = c.getContext("2d");
+    let W = 0, H = 0, lam = 0.35;
+    const pts = Array.from({ length: 24 }, (_, i) => {
+        const u = (i / 23) * 2 - 1;
+        return { x: u, y: 0.55 * Math.sin(u * 2.6) + 0.25 * u + ((i * 37) % 11 - 5) * 0.045 };
+    });
+    KW.fit(c, (w, h, dpr) => { W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
+    KW.loop(c, (t) => {
+        const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < H;
+        lam = on ? Math.max(0.02, Math.min(1.5, ((p.x / W) - 0.2) * 1.8)) : 0.55 + 0.5 * Math.sin(t * 0.7);
+        const a = KW.col.a;
+        ctx.clearRect(0, 0, W, H);
+
+        // Left sub-panel: Polynomial fit (OLS variance vs Ridge/Lasso shrunk fit)
+        const fx0 = W * (W > 900 ? 0.42 : 0.08), fw = W * (W > 900 ? 0.26 : 0.42), fy = H * 0.52, fsc = H * 0.22;
+        ctx.strokeStyle = rgba(a, 0.22); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(fx0, fy); ctx.lineTo(fx0 + fw, fy); ctx.stroke();
+        // High-variance OLS curve (dashed)
+        ctx.setLineDash([4, 4]); ctx.strokeStyle = "rgba(244,63,94,0.65)"; ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        for (let k = 0; k <= 80; k++) {
+            const u = (k / 80) * 2 - 1, xx = fx0 + (k / 80) * fw;
+            const yOls = 0.55 * Math.sin(u * 2.6) + 0.25 * u + 0.28 * Math.cos(u * 11.5);
+            k === 0 ? ctx.moveTo(xx, fy - yOls * fsc) : ctx.lineTo(xx, fy - yOls * fsc);
+        }
+        ctx.stroke(); ctx.setLineDash([]);
+        // Regularised curve β̂_λ
+        const shrink = 1 / (1 + lam * 1.8);
+        ctx.strokeStyle = rgba(a, 0.96); ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        for (let k = 0; k <= 80; k++) {
+            const u = (k / 80) * 2 - 1, xx = fx0 + (k / 80) * fw;
+            const yReg = shrink * (0.55 * Math.sin(u * 2.6) + 0.25 * u) + (shrink * shrink * 0.28) * Math.cos(u * 11.5);
+            k === 0 ? ctx.moveTo(xx, fy - yReg * fsc) : ctx.lineTo(xx, fy - yReg * fsc);
+        }
+        ctx.stroke();
+        ctx.fillStyle = rgba(a, 0.85);
+        for (const q of pts) {
+            ctx.beginPath(); ctx.arc(fx0 + ((q.x + 1) / 2) * fw, fy - q.y * fsc, 2.6, 0, TAU); ctx.fill();
+        }
+
+        // Right sub-panel: (β1, β2) RSS Elliptical Contours + L1 Diamond (Lasso) & L2 Circle (Ridge)
+        const cx = W * 0.82, cy = H * 0.52, R = Math.min(W, H) * 0.14 * (1.15 - 0.45 * (lam / 1.5));
+        ctx.strokeStyle = rgba(a, 0.25); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(cx - 110, cy); ctx.lineTo(cx + 110, cy); ctx.moveTo(cx, cy - 110); ctx.lineTo(cx, cy + 110); ctx.stroke();
+        // L2 Ridge circle
+        ctx.strokeStyle = "rgba(34,211,238,0.55)"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke();
+        // L1 Lasso diamond |β1| + |β2| ≤ t
+        ctx.strokeStyle = rgba(a, 0.92); ctx.fillStyle = rgba(a, 0.12); ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(cx, cy - R); ctx.lineTo(cx + R, cy); ctx.lineTo(cx, cy + R); ctx.lineTo(cx - R, cy); ctx.closePath(); ctx.fill(); ctx.stroke();
+        // RSS elliptical contours around OLS hat β̂
+        const bx = cx + 52, by = cy - 64;
+        ctx.save(); ctx.translate(bx, by); ctx.rotate(-0.55);
+        for (let m = 1; m <= 4; m++) {
+            ctx.strokeStyle = `rgba(244,63,94,${0.75 - m * 0.14})`; ctx.lineWidth = 1.3;
+            ctx.beginPath(); ctx.ellipse(0, 0, m * 22, m * 11, 0, 0, TAU); ctx.stroke();
+        }
+        ctx.restore();
+        // Highlight sparse Lasso corner solution (0, R)
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(cx, cy - R, 4.5, 0, TAU); ctx.fill();
+        KW.tag(`OLS vs Ridge (L₂) & Lasso (L₁) · λ = ${lam.toFixed(2)} · sparse L₁ diamond & elliptical RSS contours`, c);
+    });
+};
+
+/* 6. PROJECT: spectral-clustering — Stochastic Block Model & Laplacian Eigenvector Community Recovery */
+SIMS["spectral-clustering"] = (c) => {
+    const ctx = c.getContext("2d");
+    const K = 5, NK = 18, N = K * NK;
+    const PAL = [[245, 158, 11], [34, 211, 238], [244, 63, 94], [16, 185, 129], [167, 139, 250]];
+    const nodes = Array.from({ length: N }, (_, i) => {
+        const cl = Math.floor(i / NK), ang = (cl / K) * TAU, r = 0.62;
+        return {
+            cl,
+            // Tangled random position vs Spectral Laplacian eigenvector position
+            rx: (Math.random() - 0.5) * 1.5, ry: (Math.random() - 0.5) * 1.5,
+            sx: Math.cos(ang) * r + (Math.random() - 0.5) * 0.24,
+            sy: Math.sin(ang) * r + (Math.random() - 0.5) * 0.24,
+            ph: Math.random() * TAU
+        };
+    });
+    const edges = [];
+    for (let i = 0; i < N; i++) {
+        for (let j = i + 1; j < N; j++) {
+            const same = nodes[i].cl === nodes[j].cl;
+            if (Math.random() < (same ? 0.34 : 0.012)) edges.push([i, j, same]);
+        }
+    }
+    let W = 0, H = 0;
+    KW.fit(c, (w, h, dpr) => { W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
+    KW.loop(c, (t) => {
+        const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < H;
+        const alpha = on ? Math.max(0, Math.min(1, p.x / W)) : 0.65 + 0.35 * Math.sin(t * 0.65);
+        const cx = W * (W > 900 ? 0.66 : 0.5), cy = H * 0.5, sc = Math.min(W, H) * 0.34;
+        ctx.clearRect(0, 0, W, H);
+
+        const pos = nodes.map((n) => ({
+            x: cx + ((1 - alpha) * n.rx + alpha * n.sx + 0.04 * Math.cos(t * 1.5 + n.ph)) * sc,
+            y: cy + ((1 - alpha) * n.ry + alpha * n.sy + 0.04 * Math.sin(t * 1.5 + n.ph)) * sc,
+            cl: n.cl
+        }));
+
+        for (const [u, v, same] of edges) {
+            ctx.strokeStyle = same ? rgba(PAL[pos[u].cl], 0.28) : "rgba(148,163,184,0.12)";
+            ctx.lineWidth = same ? 1.1 : 0.7;
+            ctx.beginPath(); ctx.moveTo(pos[u].x, pos[u].y); ctx.lineTo(pos[v].x, pos[v].y); ctx.stroke();
+        }
+        for (const q of pos) {
+            ctx.fillStyle = rgba(PAL[q.cl], 0.95);
+            ctx.beginPath(); ctx.arc(q.x, q.y, 3.3, 0, TAU); ctx.fill();
+        }
+        KW.tag(`Stochastic Block Model (K=5) · Laplacian L_sym spectral embedding = ${(alpha * 100).toFixed(0)}% (move cursor X)`, c);
+    });
+};
+
+/* 7. PROJECT: options-pricing — 3D Black-Scholes Option Price & Gamma (Γ) Surface over Spot S and Expiry τ */
+SIMS["options-pricing"] = (c) => {
+    const T = three(c, 10);
+    T.cam.position.set(0, 18, 32);
+    T.cam.lookAt(0, -1, 0);
+    const GW = 44, GH = 44, SPAN = 26, vi = (i, j) => i * (GH + 1) + j;
+    const pos = new Float32Array((GW + 1) * (GH + 1) * 3), idx = [];
+    for (let i = 0; i < GW; i++) for (let j = 0; j < GH; j++) idx.push(vi(i, j), vi(i + 1, j), vi(i, j), vi(i, j + 1));
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setIndex(idx);
+    const lm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.55 });
+    const pm = new THREE.PointsMaterial({ size: 0.14, transparent: true, opacity: 0.9 });
+    T.group.add(new THREE.LineSegments(geo, lm), new THREE.Points(geo, pm));
+    const paint = () => { T.setColor(lm, KW.col.a); T.setColor(pm, KW.col.a); };
+    paint(); addEventListener("themechange", paint);
+
+    let rx = 0.45, ry = -0.35, sig = 0.28;
+    KW.loop(c, (t, dt) => {
+        const p = KW.local(c), inside = p.x > 0 && p.y > 0 && p.x < T.width();
+        if (inside) sig = 0.14 + 0.55 * (1 - p.y / c.clientHeight);
+        else sig = 0.28 + 0.12 * Math.sin(t * 0.7);
+        let o = 0;
+        for (let i = 0; i <= GW; i++) {
+            const sNorm = (i / GW) * 2 - 1; // log(S/K)
+            for (let j = 0; j <= GH; j++) {
+                const tau = 0.08 + (j / GH) * 1.4; // time to expiry T - t
+                const d1 = (sNorm + 0.5 * sig * sig * tau) / (sig * Math.sqrt(tau));
+                const gamma = Math.exp(-0.5 * d1 * d1) / (Math.sqrt(TAU * tau) * sig);
+                const call = Math.max(0, sNorm) * 3.2 + gamma * 1.45 - 3.5;
+                pos[o] = sNorm * (SPAN * 0.5);
+                pos[o + 1] = call;
+                pos[o + 2] = (j / GH - 0.5) * SPAN;
+                o += 3;
+            }
+        }
+        geo.attributes.position.needsUpdate = true;
+        const mx = inside ? (p.x / T.width()) * 2 - 1 : 0;
+        ry += dt * 0.14 + mx * 0.015;
+        T.group.rotation.x = rx; T.group.rotation.y = ry;
+        T.renderer.render(T.scene, T.cam);
+        KW.tag(`Black–Scholes Call & Gamma surface Γ(S,τ) · implied vol σ = ${(sig * 100).toFixed(1)}% (cursor height sets σ)`, c);
+    });
+};
+
+/* 8. PROJECT: stat-arb — Co-Integrated Pairs & Ornstein-Uhlenbeck Mean-Reverting Z-Score Signal Engine */
+SIMS["stat-arb"] = (c) => {
+    const ctx = c.getContext("2d");
+    const N = 220;
+    const legA = new Float32Array(N), legB = new Float32Array(N), zBuf = new Float32Array(N);
+    const trades = [];
+    let W = 0, H = 0, common = 0, ou = 0, pos = 0, acc = 0;
+    const stepSeries = () => {
+        common = common * 0.992 + randn() * 0.18;
+        ou = ou * 0.92 + randn() * 0.42; // Ornstein-Uhlenbeck stationary spread dε = θ(μ-ε)dt + η dW
+        legA.copyWithin(0, 1); legB.copyWithin(0, 1); zBuf.copyWithin(0, 1);
+        legA[N - 1] = common + 0.5 * ou;
+        legB[N - 1] = common - 0.5 * ou;
+        zBuf[N - 1] = ou;
+        for (const tr of trades) tr.i--;
+        while (trades.length && trades[0].i < 1) trades.shift();
+        if (pos === 0 && ou > 1.75) { pos = -1; trades.push({ i: N - 1, z: ou, side: -1 }); }
+        else if (pos === 0 && ou < -1.75) { pos = 1; trades.push({ i: N - 1, z: ou, side: 1 }); }
+        else if (pos !== 0 && Math.abs(ou) < 0.3) { pos = 0; }
+    };
+    for (let i = 0; i < N; i++) stepSeries();
+    KW.fit(c, (w, h, dpr) => { W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
+    KW.tag("Co-integrated pairs & Ornstein–Uhlenbeck z-score engine · ±2σ entry bands · Sharpe = 1.8", c);
+
+    KW.loop(c, (t, dt) => {
+        acc += dt * 32;
+        while (acc >= 1) { stepSeries(); acc -= 1; }
+        const a = KW.col.a, x0 = W * (W > 900 ? 0.38 : 0.06), x1 = W * 0.96, span = x1 - x0;
+        const yTop = H * 0.32, yBot = H * 0.72, scTop = H * 0.06, scBot = H * 0.058;
+        ctx.clearRect(0, 0, W, H);
+
+        // Top pane: Co-integrated price series Y_t and β X_t
+        ctx.strokeStyle = rgba(a, 0.92); ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        for (let i = 0; i < N; i++) {
+            const x = x0 + (i / (N - 1)) * span, y = yTop - legA[i] * scTop;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(34,211,238,0.82)"; ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        for (let i = 0; i < N; i++) {
+            const x = x0 + (i / (N - 1)) * span, y = yTop - legB[i] * scTop;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Bottom pane: Stationary O-U z-score with ±2σ entry thresholds
+        ctx.setLineDash([5, 5]);
+        for (const lvl of [-2, 0, 2]) {
+            ctx.strokeStyle = lvl === 0 ? rgba(a, 0.35) : "rgba(244,63,94,0.55)";
+            ctx.beginPath(); ctx.moveTo(x0, yBot - lvl * scBot); ctx.lineTo(x1, yBot - lvl * scBot); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.strokeStyle = rgba(a, 0.95); ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        for (let i = 0; i < N; i++) {
+            const x = x0 + (i / (N - 1)) * span, y = yBot - zBuf[i] * scBot;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        for (const tr of trades) {
+            const x = x0 + (tr.i / (N - 1)) * span, y = yBot - tr.z * scBot;
+            ctx.fillStyle = tr.side > 0 ? "#10b981" : "#f43f5e";
+            ctx.beginPath(); ctx.arc(x, y, 4.5, 0, TAU); ctx.fill();
+        }
+    });
+};
+
+/* 9. PROJECT: ku-lang — Compiler Pipeline: Lexer DFA → Bison AST → LLVM SSA Control-Flow Graph (φ-nodes) */
+SIMS["ku-lang"] = (c) => {
+    const ctx = c.getContext("2d");
+    let W = 0, H = 0;
+    const NODES = [
+        { id: "entry", lbl: "entry: %0 = alloca i32", u: 0.5, v: 0.16 },
+        { id: "cond", lbl: "loop.cond: %cmp = icmp slt %i, %n", u: 0.5, v: 0.36 },
+        { id: "then", lbl: "bb.then: %x1 = add i32 %a, %b", u: 0.28, v: 0.58 },
+        { id: "else", lbl: "bb.else: %x2 = mul i32 %a, 2", u: 0.72, v: 0.58 },
+        { id: "merge", lbl: "bb.merge: %x3 = φ [%x1, then], [%x2, else]", u: 0.5, v: 0.8 }
+    ];
+    const EDGES = [[0, 1], [1, 2], [1, 3], [2, 4], [3, 4], [4, 1]];
+    KW.fit(c, (w, h, dpr) => { W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
+    KW.tag("Ku-Lang LLVM IR Control-Flow Graph · SSA φ-node dominance frontier & dataflow propagation", c);
+
+    KW.loop(c, (t) => {
+        const a = KW.col.a, x0 = W * (W > 900 ? 0.42 : 0.08), spanW = W * (W > 900 ? 0.52 : 0.84);
+        ctx.clearRect(0, 0, W, H);
+        const pts = NODES.map((n, idx) => ({
+            x: x0 + n.u * spanW + Math.sin(t * 1.4 + idx) * 6,
+            y: H * n.v + Math.cos(t * 1.2 + idx) * 4,
+            lbl: n.lbl
+        }));
+
+        // Directed CFG edges + travelling SSA dataflow tokens
+        for (let e = 0; e < EDGES.length; e++) {
+            const [u, v] = EDGES[e], p0 = pts[u], p1 = pts[v];
+            ctx.strokeStyle = rgba(a, 0.45); ctx.lineWidth = 1.6;
+            ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+            const frac = (t * 0.75 + e * 0.23) % 1;
+            const tx = p0.x + (p1.x - p0.x) * frac, ty = p0.y + (p1.y - p0.y) * frac;
+            ctx.fillStyle = "#22d3ee";
+            ctx.beginPath(); ctx.arc(tx, ty, 3.6, 0, TAU); ctx.fill();
+        }
+
+        // SSA Basic Block cards
+        ctx.font = '500 11px "JetBrains Mono", monospace';
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        pts.forEach((p, idx) => {
+            const bw = 248, bh = 34;
+            const pulse = 0.5 + 0.5 * Math.sin(t * 3 - idx * 0.9);
+            ctx.fillStyle = KW.col.light ? "rgba(255,255,255,0.88)" : "rgba(12,14,22,0.88)";
+            ctx.strokeStyle = rgba(a, 0.45 + 0.45 * pulse);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.rect(p.x - bw / 2, p.y - bh / 2, bw, bh); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = rgba(a, 0.98);
+            ctx.fillText(p.lbl, p.x, p.y);
+        });
+    });
+};
+
+/* 10. PROJECT: 8bit-computer — 8-Bit TTL Breadboard Computer Bus, Full-Adder ALU & Logic Analyser */
+SIMS["8bit-computer"] = (c) => {
+    const ctx = c.getContext("2d");
+    let W = 0, H = 0, pc = 0, regA = 0x2A, regB = 0x17, carry = 0;
+    const OPS = ["LDA 0x0E", "ADD 0x0F", "OUT", "SUB 0x0C", "JC 0x02", "JMP 0x00"];
+    KW.fit(c, (w, h, dpr) => { W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
+    KW.tag("8-Bit TTL computer · 8-line shared W-Bus, ripple-carry ALU (S = A ⊕ B ⊕ Cin) & logic-analyser trace", c);
+
+    KW.loop(c, (t) => {
+        const step = Math.floor(t * 2.5);
+        pc = step % OPS.length;
+        const busVal = ((step * 37 + 0x2A) & 0xFF);
+        regA = (busVal ^ 0x55) & 0xFF;
+        const sum = regA + regB;
+        carry = sum > 0xFF ? 1 : 0;
+
+        const a = KW.col.a, x0 = W * (W > 900 ? 0.42 : 0.08), x1 = W * 0.94, span = x1 - x0;
+        ctx.clearRect(0, 0, W, H);
+
+        // 8 parallel W-Bus bit lines (D7..D0)
+        const by0 = H * 0.24, bGap = 11;
+        ctx.font = '500 10px "JetBrains Mono", monospace';
+        for (let b = 0; b < 8; b++) {
+            const bit = (busVal >> (7 - b)) & 1, y = by0 + b * bGap;
+            ctx.strokeStyle = bit ? rgba(a, 0.92) : rgba(a, 0.2);
+            ctx.lineWidth = bit ? 2.2 : 1;
+            ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+            if (bit) {
+                const px = x0 + ((t * 220 + b * 45) % span);
+                ctx.fillStyle = "#22d3ee";
+                ctx.beginPath(); ctx.arc(px, y, 3, 0, TAU); ctx.fill();
+            }
+        }
+
+        // TTL Modules: PC, MAR/RAM, Register A, ALU (A ⊕ B ⊕ Cin), IR
+        const mods = [
+            { name: "PC", val: "0x0" + pc.toString(16).toUpperCase() },
+            { name: "REG A", val: "0x" + regA.toString(16).padStart(2, "0").toUpperCase() },
+            { name: "ALU Σ", val: "0x" + (sum & 0xFF).toString(16).padStart(2, "0").toUpperCase() + (carry ? " C=1" : " C=0") },
+            { name: "IR / CU", val: OPS[pc] }
+        ];
+        const my = H * 0.54, mw = (span - 36) / 4;
+        mods.forEach((m, i) => {
+            const mx = x0 + i * (mw + 12);
+            ctx.fillStyle = KW.col.light ? "rgba(255,255,255,0.86)" : "rgba(12,14,22,0.86)";
+            ctx.strokeStyle = rgba(a, 0.7); ctx.lineWidth = 1.4;
+            ctx.strokeRect(mx, my, mw, 52); ctx.fillRect(mx, my, mw, 52);
+            ctx.fillStyle = rgba(a, 0.98); ctx.textAlign = "center";
+            ctx.fillText(m.name, mx + mw / 2, my + 18);
+            ctx.fillStyle = "#22d3ee";
+            ctx.fillText(m.val, mx + mw / 2, my + 36);
+        });
+
+        // Bottom: 4-Channel Logic Analyser digital square-wave traces (CLK, W-BUS, ALU_OUT, WE)
+        const ly0 = H * 0.74;
+        for (let ch = 0; ch < 4; ch++) {
+            const y = ly0 + ch * 22;
+            ctx.strokeStyle = ch === 0 ? "#22d3ee" : rgba(a, 0.8 - ch * 0.12);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for (let k = 0; k <= 48; k++) {
+                const xx = x0 + (k / 48) * span;
+                const bit = ch === 0 ? (k + Math.floor(t * 8)) & 1 : ((k * (ch + 3) + Math.floor(t * 5)) >> ch) & 1;
+                const yy = y - bit * 11;
+                if (k === 0) ctx.moveTo(xx, yy);
+                else {
+                    const prevBit = ch === 0 ? (k - 1 + Math.floor(t * 8)) & 1 : (((k - 1) * (ch + 3) + Math.floor(t * 5)) >> ch) & 1;
+                    ctx.lineTo(xx, y - prevBit * 11);
+                    ctx.lineTo(xx, yy);
+                }
+            }
+            ctx.stroke();
         }
     });
 };
