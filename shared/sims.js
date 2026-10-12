@@ -622,41 +622,139 @@ NAV.hub = () => {
 };
 NAV.contact = NAV.hub;
 
-// Mathematics: sin and cos sliding past each other, with a probe joining them (phase gap π/2).
+// Mathematics: rotating Fourier epicycle rotor on the left projecting onto overlapping
+// sin/cos waves with Riemann sum bars, plus a morphing Lissajous figure on the right.
 NAV.math = () => (ctx, w, h, t) => {
-    const a = KW.col.a, b = KW.col.pal[1], mid = h / 2, A = h * 0.36, k = TAU / Math.max(w / 3, 120), ph = t * 2.2;
-    ctx.lineWidth = 1; ctx.strokeStyle = rgba(a, 0.15);
-    ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
+    const a = KW.col.a, b = KW.col.pal[1], mid = h / 2, R = h * 0.36, ph = t * 2.4;
+    const cx = 22, rx = w - 24, x0 = 48, x1 = Math.max(x0 + 40, w - 52);
+    const span = x1 - x0, k = TAU / Math.max(span / 2.2, 110);
+
+    // 1. Unit-circle Fourier phasor rotor on the left
+    ctx.strokeStyle = rgba(a, 0.32); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, mid, R, 0, TAU); ctx.stroke();
+    const px = cx + R * Math.cos(ph), py = mid - R * Math.sin(ph);
+    ctx.strokeStyle = rgba(b, 0.75); ctx.beginPath(); ctx.moveTo(cx, mid); ctx.lineTo(px, py); ctx.stroke();
+    ctx.strokeStyle = rgba(a, 0.35); ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x0, py); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = rgba(a, 1); ctx.beginPath(); ctx.arc(px, py, 2.3, 0, TAU); ctx.fill();
+
+    // 2. Riemann quadrature bars between sin(x) and cos(x)
+    ctx.fillStyle = rgba(a, 0.14);
+    for (let x = x0; x < x1; x += 8) {
+        const ys = mid - R * Math.sin(k * (x - x0) + ph);
+        const yc = mid - R * Math.cos(k * (x - x0) + ph);
+        ctx.fillRect(x, Math.min(ys, yc), 4, Math.abs(yc - ys));
+    }
+
+    // 3. Overlapping sin & cos curves
     const wave = (f, col) => {
         ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.beginPath();
-        for (let x = 0; x <= w; x += 2) { const y = mid - A * f(k * x - ph); x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+        for (let x = x0; x <= x1; x += 2) {
+            const y = mid - R * f(k * (x - x0) + ph);
+            x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
         ctx.stroke();
     };
-    wave(Math.cos, rgba(b, 0.85));
-    wave(Math.sin, rgba(a, 0.95));
-    const px = (t * 70) % w, ys = mid - A * Math.sin(k * px - ph), yc = mid - A * Math.cos(k * px - ph);
-    ctx.strokeStyle = rgba(a, 0.4); ctx.beginPath(); ctx.moveTo(px, ys); ctx.lineTo(px, yc); ctx.stroke();
-    ctx.fillStyle = rgba(a, 1); ctx.beginPath(); ctx.arc(px, ys, 2.4, 0, TAU); ctx.fill();
-    ctx.fillStyle = rgba(b, 1); ctx.beginPath(); ctx.arc(px, yc, 2.4, 0, TAU); ctx.fill();
+    wave(Math.cos, rgba(b, 0.88));
+    wave(Math.sin, rgba(a, 0.96));
+
+    // 4. Parametric Lissajous harmonic knot on the right
+    if (w > 180) {
+        ctx.strokeStyle = rgba(a, 0.85); ctx.lineWidth = 1.2; ctx.beginPath();
+        for (let i = 0; i <= 64; i++) {
+            const u = (i / 64) * TAU;
+            const lx = rx + R * 0.95 * Math.sin(3 * u + ph * 0.7);
+            const ly = mid + R * 0.95 * Math.sin(2 * u);
+            i ? ctx.lineTo(lx, ly) : ctx.moveTo(lx, ly);
+        }
+        ctx.stroke();
+    }
 };
 
-// Physics: plane EM wave travelling +x. E oscillates vertically, B along the depth axis
-// (oblique projection), in phase and perpendicular to each other and to propagation.
-NAV.physics = () => (ctx, w, h, t) => {
-    const a = KW.col.a, b = KW.col.pal[4], mid = h / 2, A = h * 0.4, k = TAU / Math.max(w / 2.5, 140), ph = t * 3;
-    const ZX = 0.6, ZY = 0.32; // screen direction of the depth (z) axis
-    const field = (col, dx, dy) => {
-        ctx.strokeStyle = rgba(col, 0.3); ctx.lineWidth = 1; ctx.beginPath();
-        for (let x = 0; x <= w; x += 6) { const v = Math.sin(k * x - ph); ctx.moveTo(x, mid); ctx.lineTo(x + v * dx, mid + v * dy); }
-        ctx.stroke();
-        ctx.strokeStyle = rgba(col, 0.9); ctx.lineWidth = 1.5; ctx.beginPath();
-        for (let x = 0; x <= w; x += 2) { const v = Math.sin(k * x - ph), X = x + v * dx, Y = mid + v * dy; x ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
-        ctx.stroke();
+// Physics: Keplerian multi-body orbital system + relativistic particle collider bursts
+// (elliptical planetary orbits, gravitational wells, and curved magnetic-field shower tracks).
+NAV.physics = () => {
+    const bursts = [];
+    let cd = 0;
+    return (ctx, w, h, t, dt) => {
+        const a = KW.col.a, b = KW.col.pal[0], mid = h / 2;
+        const wells = w > 320 ? [w * 0.22, w * 0.5, w * 0.78] : [w * 0.35, w * 0.68];
+
+        // 1. Counter-propagating collider beam line + travelling proton packets
+        ctx.strokeStyle = rgba(a, 0.16); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
+        for (let i = 0; i < 4; i++) {
+            const bx1 = ((t * 160 + i * (w / 4)) % w);
+            const bx2 = (w - ((t * 160 + i * (w / 4)) % w));
+            ctx.fillStyle = rgba(a, 0.9);
+            ctx.fillRect(bx1 - 4, mid - 1, 8, 2);
+            ctx.fillStyle = rgba(b, 0.9);
+            ctx.fillRect(bx2 - 4, mid - 1, 8, 2);
+        }
+
+        // 2. Keplerian elliptical orbits & satellites around each gravity well
+        wells.forEach((wx, idx) => {
+            const rx = Math.min(34, w * 0.08), ry = h * 0.38;
+            const tilt = (idx % 2 === 0 ? 0.28 : -0.28);
+            ctx.save();
+            ctx.translate(wx, mid);
+            ctx.rotate(tilt);
+            ctx.strokeStyle = rgba(a, 0.32); ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.stroke();
+
+            // Orbiting body with true-anomaly speed boost near perihelion
+            const ang = t * (2.6 + idx * 0.5) + idx * 2.1;
+            const ox = rx * Math.cos(ang), oy = ry * Math.sin(ang);
+            ctx.strokeStyle = rgba(a, 0.75); ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            for (let s = 0; s < 10; s++) {
+                const a0 = ang - s * 0.09;
+                s ? ctx.lineTo(rx * Math.cos(a0), ry * Math.sin(a0)) : ctx.moveTo(ox, oy);
+            }
+            ctx.stroke();
+            ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ox, oy, 2.2, 0, TAU); ctx.fill();
+
+            // Central gravity well core
+            ctx.fillStyle = rgba(a, 0.95); ctx.beginPath(); ctx.arc(0, 0, 3.2, 0, TAU); ctx.fill();
+            ctx.strokeStyle = rgba(a, 0.35); ctx.beginPath(); ctx.arc(0, 0, 6 + 2 * Math.sin(t * 4 + idx), 0, TAU); ctx.stroke();
+            ctx.restore();
+        });
+
+        // 3. Relativistic magnetic-field collision shower tracks (r = mv / qB)
+        if ((cd -= dt) <= 0 && bursts.length < 4) {
+            cd = 0.55;
+            const cx = wells[(Math.random() * wells.length) | 0];
+            bursts.push({
+                x: cx, age: 0,
+                tracks: Array.from({ length: 7 }, () => ({
+                    a0: Math.random() * TAU,
+                    curv: (Math.random() < 0.5 ? 1 : -1) * (1.2 + Math.random() * 1.8),
+                    len: 14 + Math.random() * 18,
+                    alt: Math.random() < 0.4
+                }))
+            });
+        }
+        for (const q of bursts) {
+            q.age += dt * 1.9;
+            const p = Math.min(1, q.age), alpha = (1 - p) * 0.85;
+            ctx.strokeStyle = rgba(a, alpha * 0.6); ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(q.x, mid, p * 16, 0, TAU); ctx.stroke();
+            for (const tr of q.tracks) {
+                ctx.strokeStyle = rgba(tr.alt ? b : a, alpha); ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                for (let s = 0; s <= 8; s++) {
+                    const f = (s / 8) * p;
+                    const ang = tr.a0 + tr.curv * f;
+                    const px = q.x + Math.cos(ang) * tr.len * f;
+                    const py = mid + Math.sin(ang) * tr.len * f * 0.65;
+                    s ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+                }
+                ctx.stroke();
+            }
+        }
+        while (bursts.length && bursts[0].age >= 1) bursts.shift();
     };
-    field(b, A * 0.8 * ZX, A * 0.8 * ZY); // B (behind)
-    ctx.strokeStyle = rgba(a, 0.35); ctx.lineWidth = 1; // propagation axis + arrowhead
-    ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w - 2, mid); ctx.moveTo(w - 8, mid - 3); ctx.lineTo(w - 2, mid); ctx.lineTo(w - 8, mid + 3); ctx.stroke();
-    field(a, 0, -A); // E
 };
 
 // Data science: a feed-forward net; activations travel layer to layer and light up nodes.
