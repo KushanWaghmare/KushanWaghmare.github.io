@@ -63,6 +63,7 @@
             return noiseBuf;
         };
 
+        let unlocked = false;
         const notifyUnlock = () => window.dispatchEvent(new Event("audiounlock"));
 
         const init = () => {
@@ -70,26 +71,33 @@
                 const AC = window.AudioContext || window.webkitAudioContext;
                 if (AC) {
                     ctx = new AC();
-                    noise(); // preload white-noise buffer for zero-latency warp/lock sounds
+                    noise(); // preload white-noise buffer for zero-latency warp sounds
                     ctx.onstatechange = () => {
-                        if (ctx.state === "running") notifyUnlock();
+                        if (ctx.state === "running") { unlocked = true; notifyUnlock(); }
                     };
                 }
             }
             if (ctx && ctx.state === "suspended") {
-                ctx.resume().then(notifyUnlock).catch(() => {});
+                ctx.resume().then(() => { unlocked = true; notifyUnlock(); }).catch(() => {});
             } else if (ctx && ctx.state === "running") {
+                unlocked = true;
                 notifyUnlock();
             }
         };
 
         ["pointerdown", "keydown", "touchstart"].forEach((ev) => {
-            window.addEventListener(ev, init, { passive: true });
+            window.addEventListener(ev, (e) => {
+                if (e.target && e.target.closest && e.target.closest(".sound-btn")) return;
+                unlocked = true;
+                init();
+                notifyUnlock();
+            }, { passive: true });
         });
 
         const playTone = (freqStart, freqEnd, type, duration, volume) => {
-            if (!enabled || !ctx || ctx.state !== "running") return;
+            if (!enabled || !ctx) return;
             try {
+                if (ctx.state === "suspended") ctx.resume().catch(() => {});
                 const now = ctx.currentTime;
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
@@ -109,11 +117,13 @@
 
         return {
             isEnabled: () => enabled,
-            isUnlocked: () => Boolean(ctx && ctx.state === "running"),
+            isUnlocked: () => unlocked || Boolean(ctx && ctx.state === "running"),
             unlock: () => {
                 enabled = true;
+                unlocked = true;
                 try { localStorage.setItem("kw_sound", "true"); } catch (e) {}
                 init();
+                notifyUnlock();
                 if (ctx) {
                     ctx.resume().then(() => {
                         notifyUnlock();
@@ -122,9 +132,11 @@
                 }
             },
             toggle: () => {
+                unlocked = true;
                 init();
                 enabled = !enabled;
-                try { localStorage.setItem("kw_sound", enabled); } catch (e) {}
+                try { localStorage.setItem("kw_sound", String(enabled)); } catch (e) {}
+                notifyUnlock();
                 return enabled;
             },
             snap: () => {},
@@ -582,12 +594,13 @@
             syncSound();
             window.addEventListener("audiounlock", syncSound);
             soundBtn.addEventListener("click", (e) => {
+                e.preventDefault();
                 e.stopPropagation();
-                if (!SOUND.isUnlocked() && SOUND.isEnabled()) {
+                const wasActive = SOUND.isEnabled() && SOUND.isUnlocked();
+                if (!wasActive) {
                     SOUND.unlock();
                 } else {
-                    const on = SOUND.toggle();
-                    if (on) SOUND.unlock();
+                    SOUND.toggle();
                 }
                 syncSound();
             });
