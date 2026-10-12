@@ -89,6 +89,7 @@ SIMS.physics = (c) => {
 const three = (c, shift) => {
     const renderer = new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    c.__dispose = () => renderer.dispose();
     const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
     const group = new THREE.Group();
     scene.add(group);
@@ -444,9 +445,85 @@ SIMS.hub = (c) => {
     });
 };
 
+/* ------------------------------------------------------------------ CONTACT
+   Interactive Three.js 3D node-based network graph + pulsing sonar wave rings
+   that react to the user's cursor in Neon Orange / Gold. */
+SIMS.contact = (c) => {
+    const T = three(c, 0);
+    T.cam.position.set(0, 12, 34);
+    T.cam.lookAt(0, 0, 0);
+
+    const N = 56, R = 14;
+    const pts = new Float32Array(N * 3), base = new Float32Array(N * 3), ph = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+        const u = Math.random() * TAU, v = Math.acos(2 * Math.random() - 1), r = R * (0.45 + 0.55 * Math.cbrt(Math.random()));
+        base[i * 3] = pts[i * 3] = r * Math.sin(v) * Math.cos(u);
+        base[i * 3 + 1] = pts[i * 3 + 1] = r * Math.sin(v) * Math.sin(u) * 0.55;
+        base[i * 3 + 2] = pts[i * 3 + 2] = r * Math.cos(v);
+        ph[i] = Math.random() * TAU;
+    }
+    const edges = [];
+    for (let i = 0; i < N; i++) {
+        for (let j = i + 1; j < N; j++) {
+            const dx = base[i * 3] - base[j * 3], dy = base[i * 3 + 1] - base[j * 3 + 1], dz = base[i * 3 + 2] - base[j * 3 + 2];
+            if (dx * dx + dy * dy + dz * dz < 58) edges.push(i, j);
+        }
+    }
+    const pGeo = new THREE.BufferGeometry();
+    pGeo.setAttribute("position", new THREE.BufferAttribute(pts, 3));
+    const pMat = new THREE.PointsMaterial({ size: 0.48, transparent: true, opacity: 0.9 });
+    T.group.add(new THREE.Points(pGeo, pMat));
+
+    const lPos = new Float32Array(edges.length * 3);
+    const lGeo = new THREE.BufferGeometry();
+    lGeo.setAttribute("position", new THREE.BufferAttribute(lPos, 3));
+    const lMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.25 });
+    T.group.add(new THREE.LineSegments(lGeo, lMat));
+
+    const rings = Array.from({ length: 3 }, () => {
+        const g = new THREE.RingGeometry(0.95, 1.0, 64);
+        g.rotateX(-Math.PI / 2);
+        const m = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.3 });
+        const mesh = new THREE.Mesh(g, m);
+        T.group.add(mesh);
+        return { mesh, m };
+    });
+
+    const sync = () => { T.setColor(pMat, KW.col.a); T.setColor(lMat, KW.col.a); rings.forEach((r) => T.setColor(r.m, KW.col.a)); };
+    sync(); addEventListener("themechange", sync);
+
+    let rx = 0.15, ry = 0;
+    KW.loop(c, (t, dt) => {
+        const w = T.width() || 1, p = KW.local(c);
+        const mx = Math.abs(p.x) < 2000 ? (p.x / w - 0.5) * 2 : 0;
+        const my = Math.abs(p.y) < 2000 ? (p.y / (c.clientHeight || 1) - 0.5) * 2 : 0;
+        for (let i = 0; i < N; i++) {
+            const s = 1 + 0.08 * Math.sin(t * 1.8 + ph[i]);
+            pts[i * 3] = base[i * 3] * s + mx * 2.2;
+            pts[i * 3 + 1] = base[i * 3 + 1] * s + Math.cos(t * 1.4 + ph[i]) * 0.6 - my * 1.6;
+            pts[i * 3 + 2] = base[i * 3 + 2] * s;
+        }
+        pGeo.attributes.position.needsUpdate = true;
+        for (let k = 0; k < edges.length; k++) {
+            const idx = edges[k] * 3;
+            lPos[k * 3] = pts[idx]; lPos[k * 3 + 1] = pts[idx + 1]; lPos[k * 3 + 2] = pts[idx + 2];
+        }
+        lGeo.attributes.position.needsUpdate = true;
+        rings.forEach((r, i) => {
+            const f = ((t * 0.38 + i / 3) % 1), sc = 1 + f * 18;
+            r.mesh.scale.set(sc, 1, sc);
+            r.m.opacity = (1 - f) * 0.32;
+        });
+        rx += (0.2 + my * 0.28 - rx) * 0.06;
+        ry += dt * 0.18 + mx * 0.012;
+        T.group.rotation.x = rx; T.group.rotation.y = ry;
+        T.renderer.render(T.scene, T.cam);
+    });
+};
+
 /* ------------------------------------------------------------ LIVE HEADER
-   A thin strip in the navbar on domain/project pages. One micro-animation per domain;
-   the strip follows <html data-domain>, so it changes as the project index scrolls. */
+   A thin strip in the navbar across all pages. One micro-animation per domain;
+   the strip follows <html data-domain>, morphing smoothly as sections change. */
 const NAV = {};
 const navFade = (ctx, w, h, left) => { // feather the strip's edges into the glass navbar
     ctx.save();
@@ -457,6 +534,34 @@ const navFade = (ctx, w, h, left) => { // feather the strip's edges into the gla
     ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
     ctx.restore();
 };
+
+// Intro / Contact: subtle drifting phase-space particles with faint connecting filaments.
+NAV.hub = () => {
+    const P = Array.from({ length: 28 }, () => ({
+        u: Math.random(), v: 0.18 + Math.random() * 0.64,
+        vx: (0.015 + Math.random() * 0.035) * (Math.random() < 0.5 ? 1 : -1),
+        ph: Math.random() * TAU, r: 1.2 + Math.random() * 1.3
+    }));
+    return (ctx, w, h, t, dt) => {
+        const a = KW.col.a;
+        for (const p of P) { p.u = (p.u + p.vx * dt + 1) % 1; }
+        ctx.lineWidth = 0.9; ctx.strokeStyle = rgba(a, 0.18); ctx.beginPath();
+        for (let i = 0; i < P.length; i++) {
+            const x1 = P[i].u * w, y1 = (P[i].v + 0.12 * Math.sin(t * 1.4 + P[i].ph)) * h;
+            for (let j = i + 1; j < P.length; j++) {
+                const x2 = P[j].u * w, y2 = (P[j].v + 0.12 * Math.sin(t * 1.4 + P[j].ph)) * h;
+                if (Math.abs(x1 - x2) < 54 && Math.abs(y1 - y2) < 22) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); }
+            }
+        }
+        ctx.stroke();
+        for (const p of P) {
+            const x = p.u * w, y = (p.v + 0.12 * Math.sin(t * 1.4 + p.ph)) * h;
+            ctx.fillStyle = rgba(a, 0.45 + 0.45 * Math.sin(t * 2 + p.ph));
+            ctx.beginPath(); ctx.arc(x, y, p.r, 0, TAU); ctx.fill();
+        }
+    };
+};
+NAV.contact = NAV.hub;
 
 // Mathematics: sin and cos sliding past each other, with a probe joining them (phase gap π/2).
 NAV.math = () => (ctx, w, h, t) => {

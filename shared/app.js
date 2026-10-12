@@ -28,10 +28,12 @@
         };
         f(); new ResizeObserver(f).observe(p);
     };
-    KW.loop = (c, step) => { // rAF loop that pauses off-screen / hidden tab; under reduced-motion it settles after ~200 frames
+    KW.loop = (c, step) => { // rAF loop that pauses off-screen / hidden tab and cleans up when disconnected
         let last = performance.now(), visible = true, frames = 0;
-        new IntersectionObserver((e) => (visible = e[0].isIntersecting)).observe(c);
+        const io = new IntersectionObserver((e) => (visible = e[0].isIntersecting));
+        io.observe(c);
         const tick = (now) => {
+            if (!c.isConnected) { io.disconnect(); if (c.__dispose) c.__dispose(); return; }
             const dt = Math.min((now - last) / 1000, 0.033); last = now;
             if (visible && !document.hidden) { step(now / 1000, dt); frames++; }
             if (!(REDUCED && frames > 200)) requestAnimationFrame(tick);
@@ -51,6 +53,16 @@
             if (stored !== null) enabled = stored === "true";
         } catch (e) {}
 
+        let noiseBuf = null;
+        const noise = () => {
+            if (!noiseBuf && ctx) {
+                noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+                const d = noiseBuf.getChannelData(0);
+                for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+            }
+            return noiseBuf;
+        };
+
         const notifyUnlock = () => window.dispatchEvent(new Event("audiounlock"));
 
         const init = () => {
@@ -58,6 +70,7 @@
                 const AC = window.AudioContext || window.webkitAudioContext;
                 if (AC) {
                     ctx = new AC();
+                    noise(); // preload white-noise buffer for zero-latency warp/lock sounds
                     ctx.onstatechange = () => {
                         if (ctx.state === "running") notifyUnlock();
                     };
@@ -73,16 +86,6 @@
         ["pointerdown", "keydown", "touchstart"].forEach((ev) => {
             window.addEventListener(ev, init, { passive: true });
         });
-
-        let noiseBuf = null;
-        const noise = () => {
-            if (!noiseBuf) {
-                noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-                const d = noiseBuf.getChannelData(0);
-                for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-            }
-            return noiseBuf;
-        };
 
         const playTone = (freqStart, freqEnd, type, duration, volume) => {
             if (!enabled || !ctx || ctx.state !== "running") return;
@@ -215,7 +218,7 @@
             <a href="#intro" class="snap-dot active" data-title="00 Intro" aria-label="Introduction"><span class="dot-disc"></span><span class="dot-text">00 Intro</span></a>
             ${keys.map((k, i) => `
             <a href="#domain-${k}" class="snap-dot" data-d="${k}" data-title="${pad(i)} ${SITE.domains[k].short}" aria-label="${SITE.domains[k].name}"><span class="dot-disc" style="--a:var(--rgb-${k})"></span><span class="dot-text">${pad(i)} ${SITE.domains[k].short}</span></a>`).join("")}
-            <a href="#about-contact" class="snap-dot" data-title="06 Contact" aria-label="About & Contact"><span class="dot-disc"></span><span class="dot-text">06 Contact</span></a>
+            <a href="#about-contact" class="snap-dot" data-title="06 Contact" aria-label="About & Contact"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">06 Contact</span></a>
         </nav>
 
         <section class="snap-section hero" id="intro" data-domain="hub" data-enter="zoom">
@@ -263,7 +266,8 @@
         </section>`;
         }).join("")}
 
-        <section class="snap-section about-contact-section" id="about-contact" data-domain="hub" data-enter="bottom">
+        <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-enter="bottom" style="--a:var(--rgb-contact)">
+            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:960px">
                 <div class="section-head" data-reveal><span class="idx">06</span><h2>About &amp; Profile</h2></div>
                 <div class="two-col" style="margin-bottom:36px">
@@ -369,7 +373,8 @@
         </section>`;
         }).join("")}
 
-        <section class="snap-section about-contact-section" id="domain-explore" data-domain="${key}">
+        <section class="snap-section about-contact-section" id="domain-explore" data-domain="contact" style="--a:var(--rgb-contact)">
+            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:960px">
                 <div class="section-head" data-reveal><span class="idx">${String(ps.length + 1).padStart(2, "0")}</span><h2>Explore Other Domains</h2></div>
                 <p class="lead" data-reveal style="margin-bottom:28px">Navigate through other core domains of mathematical modelling, physics simulations, stochastic calculus, and machine systems.</p>
@@ -537,10 +542,22 @@
         `;
     };
 
-    /* ---------- chrome: nav, theme toggle, sound toggle, footer ---------- */
+    /* ---------- chrome: nav, theme toggle, sound toggle, enter gate, footer ---------- */
+    const syncChromeForPage = (pageType) => {
+        const isHub = pageType === "hub";
+        const links = $(".nav .links");
+        if (links) {
+            let contactLink = $(".nav-contact-link", links);
+            if (isHub && !contactLink) {
+                links.insertAdjacentHTML("afterbegin", '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>');
+            } else if (!isHub && contactLink) {
+                contactLink.remove();
+            }
+        }
+    };
+
     const chrome = () => {
-        const active = D.dataset.domain;
-        const isHub = page === "hub";
+        const isHub = D.dataset.page === "hub";
         if (!$(".nav")) {
             document.body.insertAdjacentHTML("beforeend", `
                 <div class="progress"></div>
@@ -596,36 +613,59 @@
                 syncSound();
             });
         }
+
+        // Sleek "Initialise / Enter Experience" gate on first session load to unlock & preload audio
+        let entered = false;
+        try { entered = sessionStorage.getItem("kw_entered") === "1"; } catch (e) {}
+        if (!entered && !$("#enter-gate")) {
+            document.body.insertAdjacentHTML("beforeend", `
+                <div class="enter-gate" id="enter-gate" role="dialog" aria-label="Initialise Experience">
+                    <div class="enter-card glass">
+                        <span class="eyebrow">Real-Time Physics · WebGL · Spatial Audio</span>
+                        <h2>Kushan Waghmare</h2>
+                        <p>Initialise the interactive mathematical simulations and preloaded supersonic spatial audio engine.</p>
+                        <button type="button" class="enter-btn" id="enter-exp-btn">Initialise / Enter Experience →</button>
+                    </div>
+                </div>`);
+            const gate = $("#enter-gate");
+            const dismissGate = () => {
+                if (!gate || gate.classList.contains("out")) return;
+                SOUND.unlock();
+                try { sessionStorage.setItem("kw_entered", "1"); } catch (e) {}
+                gate.classList.add("out");
+                setTimeout(() => gate.remove(), 420);
+            };
+            gate.addEventListener("click", dismissGate);
+        }
     };
 
     /* ---------- motion: native scroll-triggered reveals and progress ---------- */
-    const motion = () => {
+    let revealIO = null;
+    const observeReveals = () => {
+        if (revealIO) revealIO.disconnect();
         if (REDUCED) {
             document.querySelectorAll("[data-reveal], [data-hero]").forEach((el) => el.classList.add("revealed"));
             return;
         }
-        const io = new IntersectionObserver((entries) => {
+        revealIO = new IntersectionObserver((entries) => {
             entries.forEach((e) => {
                 if (e.isIntersecting) {
                     e.target.classList.add("revealed");
-                    io.unobserve(e.target);
+                    revealIO.unobserve(e.target);
                 }
             });
         }, { threshold: 0.1 });
-        document.querySelectorAll("[data-reveal], [data-hero]").forEach((el) => io.observe(el));
-
-        const prog = $(".progress");
-        if (prog) {
-            const onScroll = () => {
-                const max = D.scrollHeight - window.innerHeight;
-                if (max > 0) prog.style.transform = `scaleX(${window.scrollY / max})`;
-            };
-            window.addEventListener("scroll", onScroll, { passive: true });
-        }
+        document.querySelectorAll("[data-reveal], [data-hero]").forEach((el) => revealIO.observe(el));
     };
 
     /* ---------- snap observer & supersonic warp engine ---------- */
+    let snapAbort = null, snapIO = null;
     const setupSnapObserver = () => {
+        if (snapAbort) snapAbort.abort();
+        if (snapIO) snapIO.disconnect();
+        snapAbort = new AbortController();
+        const sig = snapAbort.signal;
+
         const sections = Array.from(document.querySelectorAll(".snap-section"));
         if (!sections.length) return;
         const VECS = ["zoom", "right", "left", "bottom", "top", "right"];
@@ -682,8 +722,8 @@
                     ctx.beginPath();
                     ctx.moveTo(cx + s.cs * r1, cy + s.sn * r1);
                     ctx.lineTo(cx + s.cs * r2, cy + s.sn * r2);
-                    ctx.stroke();
                 }
+                ctx.stroke();
                 requestAnimationFrame(frame);
             };
             requestAnimationFrame(frame);
@@ -746,11 +786,12 @@
             if (warping || now - lastWarpStart < 820) return;
             if (Math.abs(e.deltaY) < 12) return;
             warpTo(curIdx + (e.deltaY > 0 ? 1 : -1));
-        }, { passive: false });
+        }, { passive: false, signal: sig });
 
         window.addEventListener("keydown", (e) => {
             if (REDUCED || window.innerWidth <= 900) return;
             if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+            if ($("#enter-gate")) return;
             if (e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey)) {
                 e.preventDefault();
                 warpTo(curIdx + 1);
@@ -758,7 +799,7 @@
                 e.preventDefault();
                 warpTo(curIdx - 1);
             }
-        });
+        }, { signal: sig });
 
         document.addEventListener("click", (e) => {
             const a = e.target.closest && e.target.closest('a[href^="#"]');
@@ -769,9 +810,9 @@
                 e.preventDefault();
                 warpTo(idx);
             }
-        });
+        }, { signal: sig });
 
-        const observer = new IntersectionObserver((entries) => {
+        snapIO = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
                 if (entry.isIntersecting) {
                     const id = entry.target.id;
@@ -796,64 +837,126 @@
             });
         }, { threshold: 0.5 });
 
-        sections.forEach((s) => observer.observe(s));
+        sections.forEach((s) => snapIO.observe(s));
     };
 
-    /* ---------- boot ---------- */
+    /* ---------- Client-Side SPA Router & Boot ---------- */
     KW.refresh();
     chrome();
     const main = $("#main");
-    if (page === "hub") {
-        if (!main.firstElementChild) main.innerHTML = hubPage();
-        const introCanvas = $("#intro canvas");
-        if (introCanvas && SIMS.hub) {
-            try { SIMS.hub(introCanvas); } catch (e) { console.warn("Hub sim:", e); }
-        }
-        keys.forEach((k) => {
-            const sc = $(`#domain-${k} canvas`);
-            if (sc && SIMS[k]) {
-                try { SIMS[k](sc); } catch (e) { console.warn(`${k} sim:`, e); }
-            }
-        });
-        setupSnapObserver();
-    } else if (page === "domain") {
-        const sim = D.dataset.domain;
-        if (!main.firstElementChild) main.innerHTML = domainPage(sim);
-        document.querySelectorAll(".snap-section canvas").forEach((c) => {
-            try { if (sim && SIMS[sim]) SIMS[sim](c); } catch (err) { console.warn("Simulation unavailable:", err); }
-        });
-        setupSnapObserver();
-    } else {
-        const p = SITE.projects.find((x) => x.id === new URLSearchParams(location.search).get("p"));
-        if (p) {
-            D.dataset.domain = p.domain;
-            KW.refresh();
-            document.title = `${p.title} · Kushan Waghmare`;
-            main.innerHTML = projectPage(p);
-            document.querySelectorAll(".snap-section canvas").forEach((c) => {
-                try { if (p.domain && SIMS[p.domain]) SIMS[p.domain](c); } catch (err) {}
-            });
-            setupSnapObserver();
-        } else {
-            if (!main.firstElementChild) main.innerHTML = projectIndexPage();
-            const introCanvas = $("#proj-index-hero canvas");
-            if (introCanvas && SIMS.hub) {
-                try { SIMS.hub(introCanvas); } catch (e) {}
-            }
-            SITE.projects.forEach((proj) => {
-                const c = $(`#proj-${proj.id} canvas`);
-                if (c && SIMS[proj.domain]) try { SIMS[proj.domain](c); } catch (e) {}
-            });
-            setupSnapObserver();
-        }
-    }
     const navCanvas = $(".nav-live canvas");
     if (navCanvas && SIMS.nav) {
         try { SIMS.nav(navCanvas); } catch (e) { console.warn("Nav sim:", e); }
     }
-    if (window.renderMathInElement) renderMathInElement(document.body, { throwOnError: false,
-        delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }] });
-    document.addEventListener("pointermove", (e) => { // spotlight follows the cursor on cards
+
+    const mountView = (urlStr, isInitial = false) => {
+        const u = new URL(urlStr, location.href);
+        const file = u.pathname.split("/").pop() || "index.html";
+        const domKey = keys.find((k) => SITE.domains[k].file === file);
+        let nextPage = "hub", nextDomain = "hub", nextTitle = "Kushan Waghmare · Portfolio";
+        if (domKey) {
+            nextPage = "domain";
+            nextDomain = domKey;
+            nextTitle = `${SITE.domains[domKey].name} · Kushan Waghmare`;
+        } else if (file === "project.html") {
+            nextPage = "project";
+            nextDomain = "hub";
+            nextTitle = "Project · Kushan Waghmare";
+        }
+
+        D.dataset.page = nextPage;
+        D.dataset.domain = nextDomain;
+        document.title = nextTitle;
+        syncChromeForPage(nextPage);
+        KW.refresh();
+        window.dispatchEvent(new Event("themechange"));
+
+        if (nextPage === "hub") {
+            if (!isInitial || !main.firstElementChild) main.innerHTML = hubPage();
+            const introCanvas = $("#intro canvas");
+            if (introCanvas && SIMS.hub) {
+                try { SIMS.hub(introCanvas); } catch (e) {}
+            }
+            keys.forEach((k) => {
+                const sc = $(`#domain-${k} canvas`);
+                if (sc && SIMS[k]) try { SIMS[k](sc); } catch (e) {}
+            });
+            const contactCanvas = $("#about-contact canvas");
+            if (contactCanvas && SIMS.contact) {
+                try { SIMS.contact(contactCanvas); } catch (e) {}
+            }
+        } else if (nextPage === "domain") {
+            if (!isInitial || !main.firstElementChild) main.innerHTML = domainPage(nextDomain);
+            document.querySelectorAll(".snap-section canvas").forEach((c) => {
+                const sec = c.closest(".snap-section");
+                const sd = sec && sec.dataset.domain === "contact" ? "contact" : nextDomain;
+                try { if (SIMS[sd]) SIMS[sd](c); } catch (err) {}
+            });
+        } else {
+            const p = SITE.projects.find((x) => x.id === u.searchParams.get("p"));
+            if (p) {
+                D.dataset.domain = p.domain;
+                KW.refresh();
+                window.dispatchEvent(new Event("themechange"));
+                document.title = `${p.title} · Kushan Waghmare`;
+                main.innerHTML = projectPage(p);
+                document.querySelectorAll(".snap-section canvas").forEach((c) => {
+                    try { if (p.domain && SIMS[p.domain]) SIMS[p.domain](c); } catch (err) {}
+                });
+            } else {
+                if (!isInitial || !main.firstElementChild) main.innerHTML = projectIndexPage();
+                const introCanvas = $("#proj-index-hero canvas");
+                if (introCanvas && SIMS.hub) try { SIMS.hub(introCanvas); } catch (e) {}
+                SITE.projects.forEach((proj) => {
+                    const c = $(`#proj-${proj.id} canvas`);
+                    if (c && SIMS[proj.domain]) try { SIMS[proj.domain](c); } catch (e) {}
+                });
+            }
+        }
+
+        if (!isInitial) window.scrollTo({ top: 0, behavior: "instant" });
+        setupSnapObserver();
+        observeReveals();
+        if (window.renderMathInElement) {
+            renderMathInElement(main, {
+                throwOnError: false,
+                delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }]
+            });
+        }
+    };
+
+    mountView(location.href, true);
+
+    // Intercept internal HTML navigation links for seamless SPA routing (keeps AudioContext alive)
+    document.addEventListener("click", (e) => {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        const a = e.target.closest && e.target.closest("a[href]");
+        if (!a || a.target === "_blank") return;
+        const raw = a.getAttribute("href");
+        if (!raw || raw.startsWith("#") || raw.startsWith("mailto:") || raw.startsWith("http")) return;
+        const u = new URL(raw, location.href);
+        if (u.origin !== location.origin) return;
+        e.preventDefault();
+        SOUND.warp(0);
+        history.pushState(null, "", u.href);
+        mountView(u.href, false);
+        setTimeout(() => SOUND.lock(), 240);
+    });
+
+    window.addEventListener("popstate", () => {
+        SOUND.warp(0);
+        mountView(location.href, false);
+    });
+
+    const prog = $(".progress");
+    if (prog) {
+        window.addEventListener("scroll", () => {
+            const max = D.scrollHeight - window.innerHeight;
+            if (max > 0) prog.style.transform = `scaleX(${window.scrollY / max})`;
+        }, { passive: true });
+    }
+
+    document.addEventListener("pointermove", (e) => {
         const c = e.target.closest && e.target.closest(".card");
         if (c) { const r = c.getBoundingClientRect(); c.style.setProperty("--mx", e.clientX - r.left + "px"); c.style.setProperty("--my", e.clientY - r.top + "px"); }
     });
@@ -890,6 +993,4 @@
             }
         }
     }, { passive: true });
-
-    motion();
 })();

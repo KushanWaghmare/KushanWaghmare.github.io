@@ -31,7 +31,7 @@ const hubPage = () => `
             <a href="#intro" class="snap-dot active" data-title="00 Intro" aria-label="Introduction"><span class="dot-disc"></span><span class="dot-text">00 Intro</span></a>
             ${keys.map((k, i) => `
             <a href="#domain-${k}" class="snap-dot" data-d="${k}" data-title="${pad(i)} ${SITE.domains[k].short}" aria-label="${SITE.domains[k].name}"><span class="dot-disc" style="--a:var(--rgb-${k})"></span><span class="dot-text">${pad(i)} ${SITE.domains[k].short}</span></a>`).join("")}
-            <a href="#about-contact" class="snap-dot" data-title="06 Contact" aria-label="About & Contact"><span class="dot-disc"></span><span class="dot-text">06 Contact</span></a>
+            <a href="#about-contact" class="snap-dot" data-title="06 Contact" aria-label="About & Contact"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">06 Contact</span></a>
         </nav>
 
         <section class="snap-section hero" id="intro" data-domain="hub" data-enter="zoom">
@@ -79,7 +79,8 @@ const hubPage = () => `
         </section>`;
         }).join("")}
 
-        <section class="snap-section about-contact-section" id="about-contact" data-domain="hub" data-enter="bottom">
+        <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-enter="bottom" style="--a:var(--rgb-contact)">
+            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:960px">
                 <div class="section-head" data-reveal><span class="idx">06</span><h2>About &amp; Profile</h2></div>
                 <div class="two-col" style="margin-bottom:36px">
@@ -185,7 +186,8 @@ const domainPage = (key) => {
     </section>`;
     }).join("")}
 
-    <section class="snap-section about-contact-section" id="domain-explore" data-domain="${key}">
+    <section class="snap-section about-contact-section" id="domain-explore" data-domain="contact" style="--a:var(--rgb-contact)">
+        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:960px">
             <div class="section-head" data-reveal><span class="idx">${String(ps.length + 1).padStart(2, "0")}</span><h2>Explore Other Domains</h2></div>
             <p class="lead" data-reveal style="margin-bottom:28px">Navigate through other core domains of mathematical modelling, physics simulations, stochastic calculus, and machine systems.</p>
@@ -315,7 +317,7 @@ for (const k of keys) {
     fs.writeFileSync(file, buildHTML({
         domain: k,
         pageType: "domain",
-        three: k === "math" || k === "datascience",
+        three: true,
         title: `${d.name} · Kushan Waghmare`,
         desc: d.blurb,
         mainContent: domainPage(k)
