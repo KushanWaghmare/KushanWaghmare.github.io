@@ -519,137 +519,208 @@ SIMS.hub = (c) => {
 };
 
 /* ------------------------------------------------------------------ CONTACT
-   Interactive Three.js 3D node-based network graph + pulsing 3D sonar wave
-   that spans the full viewport, anchors its geodesic core on the right, and reacts to the cursor. */
+   Chaotic Gravitational 3-Body Problem: r̈_i = -∑_{j≠i} G m_j (r_i - r_j) / (|r_i - r_j|² + ε²)^(3/2)
+   Three massive suns + 85 test particles integrated with 4th-order Runge-Kutta (RK4),
+   barycentre tension geometry, luminous orbital ribbons, and cursor gravitational perturbation. */
 SIMS.contact = (c) => {
-    const T = three(c, 10);
-    T.cam.position.set(0, 10, 34);
-    T.cam.lookAt(0, 0, 0);
-    KW.tag("3D relational network & cursor-reactive sonar wave · G(V,E) spatial graph", c);
+    const ctx = c.getContext("2d");
+    const G = 1, M = [1.0, 1.0, 1.0], SOFT = 0.16, TRAIL = 360, SUB = 6, DT = 0.0028, NP = 85;
+    let W = 0, Hh = 0, cx = 0, cy = 0, scale = 180;
 
-    // 70 nodes in a right-focused geodesic sphere + 50 wide-field constellation nodes across the viewport
-    const N_CORE = 70, N_WIDE = 50, N = N_CORE + N_WIDE;
-    const pts = new Float32Array(N * 3), base = new Float32Array(N * 3), cols = new Float32Array(N * 3), ph = new Float32Array(N);
-    for (let i = 0; i < N; i++) {
-        if (i < N_CORE) {
-            const u = Math.random() * TAU, v = Math.acos(2 * Math.random() - 1), r = 11.5 * (0.55 + 0.45 * Math.cbrt(Math.random()));
-            base[i * 3] = r * Math.sin(v) * Math.cos(u);
-            base[i * 3 + 1] = r * Math.sin(v) * Math.sin(u) * 0.78;
-            base[i * 3 + 2] = r * Math.cos(v);
-        } else {
-            base[i * 3] = -34 + Math.random() * 52;
-            base[i * 3 + 1] = (Math.random() - 0.5) * 28;
-            base[i * 3 + 2] = (Math.random() - 0.5) * 18;
-        }
-        pts[i * 3] = base[i * 3]; pts[i * 3 + 1] = base[i * 3 + 1]; pts[i * 3 + 2] = base[i * 3 + 2];
-        ph[i] = Math.random() * TAU;
-    }
+    // 3 primary bodies in dimensionless coordinates around origin, initialised near perturbed Figure-8 choreography
+    const b = [
+        { x: -0.97000436, y: 0.24308753, vx: 0.466203685, vy: 0.43236573, tx: new Float32Array(TRAIL), ty: new Float32Array(TRAIL) },
+        { x: 0.97000436, y: -0.24308753, vx: 0.466203685, vy: 0.43236573, tx: new Float32Array(TRAIL), ty: new Float32Array(TRAIL) },
+        { x: 0.0, y: 0.0, vx: -0.93240737, vy: -0.86473146, tx: new Float32Array(TRAIL), ty: new Float32Array(TRAIL) }
+    ];
+    let head = 0, ready = false;
 
-    const edges = [];
-    for (let i = 0; i < N; i++) {
-        for (let j = i + 1; j < N; j++) {
-            const dx = base[i * 3] - base[j * 3], dy = base[i * 3 + 1] - base[j * 3 + 1], dz = base[i * 3 + 2] - base[j * 3 + 2];
-            const lim = (i < N_CORE && j < N_CORE) ? 54 : 115;
-            if (dx * dx + dy * dy + dz * dz < lim) edges.push(i, j);
-        }
-    }
-
-    const pGeo = new THREE.BufferGeometry();
-    pGeo.setAttribute("position", new THREE.BufferAttribute(pts, 3));
-    pGeo.setAttribute("color", new THREE.BufferAttribute(cols, 3));
-    const pMat = new THREE.PointsMaterial({ size: 0.72, vertexColors: true, transparent: true, opacity: 0.96 });
-    T.group.add(new THREE.Points(pGeo, pMat));
-
-    const lPos = new Float32Array(edges.length * 3);
-    const lGeo = new THREE.BufferGeometry();
-    lGeo.setAttribute("position", new THREE.BufferAttribute(lPos, 3));
-    const lMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.42 });
-    T.group.add(new THREE.LineSegments(lGeo, lMat));
-
-    // Travelling signal packets along graph edges
-    const NPULSE = 36;
-    const sPos = new Float32Array(NPULSE * 3);
-    const sEdges = Array.from({ length: NPULSE }, () => ({
-        e: ((Math.random() * (edges.length / 2)) | 0) * 2,
-        p: Math.random(),
-        spd: 0.6 + Math.random() * 1.1
-    }));
-    const sGeo = new THREE.BufferGeometry();
-    sGeo.setAttribute("position", new THREE.BufferAttribute(sPos, 3));
-    const sMat = new THREE.PointsMaterial({ size: 1.05, transparent: true, opacity: 1 });
-    T.group.add(new THREE.Points(sGeo, sMat));
-
-    // 5 concentric 3D sonar wave rings
-    const rings = Array.from({ length: 5 }, () => {
-        const g = new THREE.RingGeometry(0.92, 1.0, 72);
-        g.rotateX(-Math.PI / 2);
-        const m = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.55 });
-        const mesh = new THREE.Mesh(g, m);
-        T.group.add(mesh);
-        return { mesh, m };
-    });
-
-    const sync = () => {
-        const gold = KW.col.light ? [217, 119, 6] : [255, 149, 0];
-        const cyan = KW.col.light ? [6, 140, 172] : [34, 211, 238];
-        for (let i = 0; i < N; i++) {
-            const c = i % 4 === 0 ? cyan : gold;
-            cols[i * 3] = c[0] / 255; cols[i * 3 + 1] = c[1] / 255; cols[i * 3 + 2] = c[2] / 255;
-        }
-        pGeo.attributes.color.needsUpdate = true;
-        T.setColor(lMat, gold);
-        T.setColor(sMat, cyan);
-        rings.forEach((r, idx) => T.setColor(r.m, idx % 2 === 0 ? gold : cyan));
+    const initTrails = () => {
+        for (let i = 0; i < 3; i++) { b[i].tx.fill(b[i].x); b[i].ty.fill(b[i].y); }
     };
-    sync(); addEventListener("themechange", sync);
+    initTrails();
 
-    let rx = 0.22, ry = 0;
-    KW.loop(c, (t, dt) => {
-        const w = T.width() || 1, h = c.clientHeight || 1, p = KW.local(c);
-        const on = p.x > 0 && p.x < w && p.y > 0 && p.y < h;
-        const mx = on ? (p.x / w - 0.5) * 2 : Math.sin(t * 0.4) * 0.25;
-        const my = on ? (p.y / h - 0.5) * 2 : Math.cos(t * 0.3) * 0.2;
+    // Massless test particles (planetary debris slinging between the 3 suns)
+    const px = new Float32Array(NP), py = new Float32Array(NP), pvx = new Float32Array(NP), pvy = new Float32Array(NP);
+    const ptx = new Float32Array(NP), pty = new Float32Array(NP);
+    const spawnParticle = (i) => {
+        const r = 0.35 + Math.random() * 1.45, a = Math.random() * TAU;
+        px[i] = Math.cos(a) * r; py[i] = Math.sin(a) * r;
+        const v = Math.sqrt(1.6 / (r + 0.3)) * (0.75 + Math.random() * 0.4);
+        pvx[i] = -Math.sin(a) * v; pvy[i] = Math.cos(a) * v;
+        ptx[i] = px[i]; pty[i] = py[i];
+    };
+    for (let i = 0; i < NP; i++) spawnParticle(i);
 
-        for (let i = 0; i < N; i++) {
-            const s = 1 + 0.1 * Math.sin(t * 1.9 + ph[i]);
-            const pull = i < N_CORE ? 2.8 : 1.4;
-            pts[i * 3] = base[i * 3] * s + mx * pull;
-            pts[i * 3 + 1] = base[i * 3 + 1] * s + Math.cos(t * 1.5 + ph[i]) * 0.75 - my * pull;
-            pts[i * 3 + 2] = base[i * 3 + 2] * s + Math.sin(t * 1.2 + ph[i]) * 0.5;
-        }
-        pGeo.attributes.position.needsUpdate = true;
-
-        for (let k = 0; k < edges.length; k++) {
-            const idx = edges[k] * 3;
-            lPos[k * 3] = pts[idx]; lPos[k * 3 + 1] = pts[idx + 1]; lPos[k * 3 + 2] = pts[idx + 2];
-        }
-        lGeo.attributes.position.needsUpdate = true;
-
-        for (let i = 0; i < NPULSE; i++) {
-            const sp = sEdges[i];
-            sp.p += dt * sp.spd;
-            if (sp.p >= 1) {
-                sp.p = 0;
-                sp.e = ((Math.random() * (edges.length / 2)) | 0) * 2;
+    const deriv = (state, mx, my, hasMouse) => {
+        const out = new Float64Array(12);
+        for (let i = 0; i < 3; i++) {
+            const xi = state[i * 4], yi = state[i * 4 + 1], vxi = state[i * 4 + 2], vyi = state[i * 4 + 3];
+            let ax = -0.08 * xi, ay = -0.08 * yi; // gentle confining potential keeps chaotic slingshots on-screen
+            for (let j = 0; j < 3; j++) {
+                if (i === j) continue;
+                const dx = state[j * 4] - xi, dy = state[j * 4 + 1] - yi;
+                const d2 = dx * dx + dy * dy + SOFT * SOFT;
+                const f = (G * M[j]) / (d2 * Math.sqrt(d2));
+                ax += f * dx; ay += f * dy;
             }
-            const u = edges[sp.e] * 3, v = edges[sp.e + 1] * 3;
-            sPos[i * 3] = pts[u] + (pts[v] - pts[u]) * sp.p;
-            sPos[i * 3 + 1] = pts[u + 1] + (pts[v + 1] - pts[u + 1]) * sp.p;
-            sPos[i * 3 + 2] = pts[u + 2] + (pts[v + 2] - pts[u + 2]) * sp.p;
+            if (hasMouse) {
+                const dx = mx - xi, dy = my - yi, d2 = dx * dx + dy * dy + 0.22;
+                const f = 0.38 / (d2 * Math.sqrt(d2));
+                ax += f * dx; ay += f * dy;
+            }
+            out[i * 4] = vxi; out[i * 4 + 1] = vyi; out[i * 4 + 2] = ax; out[i * 4 + 3] = ay;
         }
-        sGeo.attributes.position.needsUpdate = true;
+        return out;
+    };
 
-        rings.forEach((r, i) => {
-            const f = (t * 0.42 + i / rings.length) % 1, sc = 1.2 + f * 22;
-            r.mesh.scale.set(sc, 1, sc);
-            r.mesh.position.set(mx * 3.5, Math.sin(t * 2 + i) * 0.8 - my * 2, 0);
-            r.m.opacity = (1 - f) * 0.58;
-        });
+    const stepRK4 = (mx, my, hasMouse) => {
+        const s = new Float64Array(12), s2 = new Float64Array(12), s3 = new Float64Array(12), s4 = new Float64Array(12);
+        for (let i = 0; i < 3; i++) { s[i * 4] = b[i].x; s[i * 4 + 1] = b[i].y; s[i * 4 + 2] = b[i].vx; s[i * 4 + 3] = b[i].vy; }
+        const k1 = deriv(s, mx, my, hasMouse);
+        for (let i = 0; i < 12; i++) s2[i] = s[i] + 0.5 * DT * k1[i];
+        const k2 = deriv(s2, mx, my, hasMouse);
+        for (let i = 0; i < 12; i++) s3[i] = s[i] + 0.5 * DT * k2[i];
+        const k3 = deriv(s3, mx, my, hasMouse);
+        for (let i = 0; i < 12; i++) s4[i] = s[i] + DT * k3[i];
+        const k4 = deriv(s4, mx, my, hasMouse);
 
-        rx += (0.26 + my * 0.32 - rx) * 0.06;
-        ry += dt * 0.22 + mx * 0.015;
-        T.group.rotation.x = rx; T.group.rotation.y = ry;
-        T.renderer.render(T.scene, T.cam);
+        let cmx = 0, cmy = 0, cmvx = 0, cmvy = 0;
+        for (let i = 0; i < 3; i++) {
+            b[i].x += (DT / 6) * (k1[i * 4] + 2 * k2[i * 4] + 2 * k3[i * 4] + k4[i * 4]);
+            b[i].y += (DT / 6) * (k1[i * 4 + 1] + 2 * k2[i * 4 + 1] + 2 * k3[i * 4 + 1] + k4[i * 4 + 1]);
+            b[i].vx += (DT / 6) * (k1[i * 4 + 2] + 2 * k2[i * 4 + 2] + 2 * k3[i * 4 + 2] + k4[i * 4 + 2]);
+            b[i].vy += (DT / 6) * (k1[i * 4 + 3] + 2 * k2[i * 4 + 3] + 2 * k3[i * 4 + 3] + k4[i * 4 + 3]);
+            const spd = Math.hypot(b[i].vx, b[i].vy);
+            if (spd > 2.6) { b[i].vx *= 2.6 / spd; b[i].vy *= 2.6 / spd; }
+            cmx += b[i].x / 3; cmy += b[i].y / 3; cmvx += b[i].vx / 3; cmvy += b[i].vy / 3;
+        }
+        // Keep barycentre gently anchored near origin
+        for (let i = 0; i < 3; i++) {
+            b[i].x -= cmx * 0.02; b[i].y -= cmy * 0.02;
+            b[i].vx -= cmvx * 0.02; b[i].vy -= cmvy * 0.02;
+        }
+
+        // Advance massless test particles in the 3-body field
+        for (let i = 0; i < NP; i++) {
+            let ax = -0.05 * px[i], ay = -0.05 * py[i];
+            for (let j = 0; j < 3; j++) {
+                const dx = b[j].x - px[i], dy = b[j].y - py[i];
+                const d2 = dx * dx + dy * dy + 0.09;
+                const f = 0.55 / (d2 * Math.sqrt(d2));
+                ax += f * dx; ay += f * dy;
+            }
+            pvx[i] = (pvx[i] + ax * DT) * 0.9995;
+            pvy[i] = (pvy[i] + ay * DT) * 0.9995;
+            px[i] += pvx[i] * DT; py[i] += pvy[i] * DT;
+            if (px[i] * px[i] + py[i] * py[i] > 6.5) spawnParticle(i);
+        }
+    };
+
+    KW.fit(c, (w, h, dpr) => {
+        W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        cx = W * (W > 900 ? 0.64 : 0.5);
+        cy = Hh * 0.5;
+        scale = Math.min(W, Hh) * 0.28;
+        if (!ready) {
+            for (let k = 0; k < 180; k++) {
+                stepRK4(0, 0, false);
+                head = (head + 1) % TRAIL;
+                for (let i = 0; i < 3; i++) { b[i].tx[head] = b[i].x; b[i].ty[head] = b[i].y; }
+            }
+            ready = true;
+        }
+    });
+    KW.tag("Gravitational 3-body problem · r̈ᵢ = −∑ G mⱼ (rᵢ − rⱼ)/|rᵢ − rⱼ|³ · RK4 chaotic choreography", c);
+
+    KW.loop(c, () => {
+        const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < Hh;
+        const mx = (p.x - cx) / scale, my = (p.y - cy) / scale;
+
+        for (let i = 0; i < NP; i++) { ptx[i] = px[i]; pty[i] = py[i]; }
+        for (let s = 0; s < SUB; s++) stepRK4(mx, my, on);
+        head = (head + 1) % TRAIL;
+        for (let i = 0; i < 3; i++) { b[i].tx[head] = b[i].x; b[i].ty[head] = b[i].y; }
+
+        const cols = KW.col.light
+            ? [[217, 119, 6], [6, 140, 172], [225, 29, 72]]
+            : [[255, 149, 0], [34, 211, 238], [244, 63, 94]];
+
+        ctx.clearRect(0, 0, W, Hh);
+
+        // 1. Background chaotic test particles slung by the 3 bodies
+        ctx.strokeStyle = rgba(cols[0], 0.24);
+        ctx.fillStyle = rgba(cols[0], 0.55);
+        ctx.lineWidth = 1;
+        for (let i = 0; i < NP; i++) {
+            const x0 = cx + ptx[i] * scale, y0 = cy + pty[i] * scale;
+            const x1 = cx + px[i] * scale, y1 = cy + py[i] * scale;
+            ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+            ctx.beginPath(); ctx.arc(x1, y1, 1.35, 0, TAU); ctx.fill();
+        }
+
+        // 2. Instantaneous gravitational tension triangle & barycentre marker
+        const sx = b.map((q) => cx + q.x * scale), sy = b.map((q) => cy + q.y * scale);
+        ctx.save();
+        ctx.setLineDash([5, 5]);
+        for (let i = 0; i < 3; i++) {
+            const j = (i + 1) % 3;
+            const dist = Math.hypot(b[i].x - b[j].x, b[i].y - b[j].y);
+            const alpha = Math.min(0.65, 0.18 + 0.22 / (dist + 0.25));
+            ctx.strokeStyle = rgba(cols[0], alpha);
+            ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.moveTo(sx[i], sy[i]); ctx.lineTo(sx[j], sy[j]); ctx.stroke();
+        }
+        ctx.restore();
+
+        const bx = (sx[0] + sx[1] + sx[2]) / 3, by = (sy[0] + sy[1] + sy[2]) / 3;
+        ctx.strokeStyle = rgba(cols[0], 0.45);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(bx, by, 5, 0, TAU);
+        ctx.moveTo(bx - 9, by); ctx.lineTo(bx + 9, by);
+        ctx.moveTo(bx, by - 9); ctx.lineTo(bx, by + 9);
+        ctx.stroke();
+
+        // 3. Multi-band glowing orbital trails for each of the 3 suns
+        const BANDS = 4, seg = Math.floor(TRAIL / BANDS);
+        for (let i = 0; i < 3; i++) {
+            const col = cols[i];
+            for (let bnd = 0; bnd < BANDS; bnd++) {
+                const start = bnd * seg, end = bnd === BANDS - 1 ? TRAIL - 1 : (bnd + 1) * seg;
+                const frac = (bnd + 1) / BANDS;
+                ctx.strokeStyle = rgba(col, 0.12 + 0.72 * frac * frac);
+                ctx.lineWidth = 0.9 + 2.2 * frac;
+                ctx.beginPath();
+                for (let k = start; k <= end; k++) {
+                    const idx = (head + 1 + k) % TRAIL;
+                    const x = cx + b[i].tx[idx] * scale, y = cy + b[i].ty[idx] * scale;
+                    k === start ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+        }
+
+        // 4. Three luminous stellar cores with radial coronae
+        for (let i = 0; i < 3; i++) {
+            const col = cols[i], x = sx[i], y = sy[i];
+            const g = ctx.createRadialGradient(x, y, 2, x, y, 52);
+            g.addColorStop(0, "rgba(255,255,255,0.98)");
+            g.addColorStop(0.14, rgba(col, 0.92));
+            g.addColorStop(0.42, rgba(col, 0.32));
+            g.addColorStop(1, rgba(col, 0));
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(x, y, 52, 0, TAU); ctx.fill();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath(); ctx.arc(x, y, 4.5, 0, TAU); ctx.fill();
+        }
+
+        if (on) {
+            ctx.strokeStyle = rgba(cols[0], 0.75);
+            ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, TAU); ctx.stroke();
+        }
     });
 };
 

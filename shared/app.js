@@ -127,10 +127,7 @@
                 try { localStorage.setItem("kw_sound", enabled); } catch (e) {}
                 return enabled;
             },
-            snap: () => {
-                init();
-                playTone(580, 180, "sine", 0.038, 0.035);
-            },
+            snap: () => {},
             hover: () => {
                 init();
                 playTone(1800, 1800, "triangle", 0.014, 0.015);
@@ -182,19 +179,7 @@
                     o.connect(lp).connect(og).connect(bus); o.start(now); o.stop(now + 0.8);
                 } catch (e) {}
             },
-            // Mechanical lock-in when a section lands: low thump + high-passed latch click + servo tick.
-            lock: () => {
-                init();
-                if (!enabled || !ctx || ctx.state !== "running") return;
-                playTone(170, 50, "sine", 0.12, 0.09);
-                try {
-                    const now = ctx.currentTime, src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
-                    src.buffer = noise(); hp.type = "highpass"; hp.frequency.value = 2500;
-                    g.gain.setValueAtTime(0.06, now); g.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
-                    src.connect(hp).connect(g).connect(ctx.destination); src.start(now); src.stop(now + 0.04);
-                } catch (e) {}
-                setTimeout(() => playTone(2400, 2400, "triangle", 0.02, 0.02), 28);
-            }
+            lock: () => {}
         };
     })();
 
@@ -282,7 +267,7 @@
                 </div>
                 ${contactSection()}
             </div>
-            <div class="sim-tag" aria-hidden="true">3D relational network &amp; cursor-reactive sonar wave · G(V,E) spatial graph</div>
+            <div class="sim-tag" aria-hidden="true">Gravitational 3-body problem · r̈ᵢ = −∑ G mⱼ (rᵢ − rⱼ)/|rᵢ − rⱼ|³ · RK4 chaotic choreography</div>
             <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
         </section>`;
 

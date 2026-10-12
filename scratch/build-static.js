@@ -95,7 +95,7 @@ const hubPage = () => `
                 </div>
                 ${contactSection()}
             </div>
-            <div class="sim-tag" aria-hidden="true">3D relational network &amp; cursor-reactive sonar wave · G(V,E) spatial graph</div>
+            <div class="sim-tag" aria-hidden="true">Gravitational 3-body problem · r̈ᵢ = −∑ G mⱼ (rᵢ − rⱼ)/|rᵢ − rⱼ|³ · RK4 chaotic choreography</div>
             <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
         </section>`;
 
@@ -286,13 +286,13 @@ const buildHTML = ({ domain, pageType, three, title, desc, mainContent }) => `<!
     <title>${title}</title>
     <meta name="description" content="${desc}" />
     <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=10" />
+    <link rel="stylesheet" href="shared/style.css?v=11" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=10"></script>
-    <script defer src="shared/sims.js?v=10"></script>
-    <script defer src="shared/app.js?v=10"></script>
+${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=11"></script>
+    <script defer src="shared/sims.js?v=11"></script>
+    <script defer src="shared/app.js?v=11"></script>
 </head>
 <body>
     ${renderNav(domain, pageType)}
