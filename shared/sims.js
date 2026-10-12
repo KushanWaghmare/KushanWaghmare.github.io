@@ -10,17 +10,21 @@ const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
    H~ = H + O(dt^2) is conserved, so orbital energy stays bounded instead of drifting. */
 SIMS.physics = (c) => {
     const ctx = c.getContext("2d");
-    const N = 130, G = 1, M = 2e6, EPS = 14, MOUSE_M = 4e5, TL = 18, H = 1 / 120;
+    const N = 160, G = 1, M = 8.5e6, EPS = 12, MOUSE_M = 1.2e6, TL = 24, H = 1 / 120, R_EH = 48;
     const x = new Float32Array(N), y = new Float32Array(N), vx = new Float32Array(N), vy = new Float32Array(N);
     const ax = new Float32Array(N), ay = new Float32Array(N), hist = new Float32Array(N * TL * 2);
-    const m = new Float32Array(N).fill(2000);
+    const m = new Float32Array(N).fill(1500);
     let W = 0, Hh = 0, cx = 0, cy = 0, ready = false, hp = 0, acc = 0;
 
-    const spawn = (i) => {
-        const r = 110 + Math.random() * Math.min(W, Hh) * 0.42, a = Math.random() * TAU;
-        const vc = Math.sqrt((G * M * r * r) / Math.pow(r * r + EPS * EPS, 1.5)) * (0.94 + Math.random() * 0.12);
+    const spawn = (i, inward = false) => {
+        const span = Math.max(180, Math.min(W, Hh) * 0.44);
+        const u = inward ? 0.25 + Math.random() * 0.75 : Math.pow(Math.random(), 1.35);
+        const r = R_EH + 8 + u * span, a = Math.random() * TAU;
+        const vc = Math.sqrt((G * M * r * r) / Math.pow(r * r + EPS * EPS, 1.5)) * (0.96 + Math.random() * 0.07);
+        const vr = -vc * (0.015 + Math.random() * 0.025); // slight relativistic inspiral toward the black hole
         x[i] = cx + r * Math.cos(a); y[i] = cy + r * Math.sin(a);
-        vx[i] = -Math.sin(a) * vc; vy[i] = Math.cos(a) * vc;
+        vx[i] = -Math.sin(a) * vc + Math.cos(a) * vr;
+        vy[i] = Math.cos(a) * vc + Math.sin(a) * vr;
         for (let k = 0; k < TL; k++) { hist[(i * TL + k) * 2] = x[i]; hist[(i * TL + k) * 2 + 1] = y[i]; }
     };
     const accel = (mx, my, mouseOn) => {
@@ -45,29 +49,73 @@ SIMS.physics = (c) => {
     const step = (mx, my, on) => {
         for (let i = 0; i < N; i++) { vx[i] += ax[i] * H / 2; vy[i] += ay[i] * H / 2; x[i] += vx[i] * H; y[i] += vy[i] * H; }
         accel(mx, my, on);
-        for (let i = 0; i < N; i++) { vx[i] += ax[i] * H / 2; vy[i] += ay[i] * H / 2; }
+        for (let i = 0; i < N; i++) { vx[i] = (vx[i] + ax[i] * H / 2) * 0.99985; vy[i] = (vy[i] + ay[i] * H / 2) * 0.99985; }
     };
 
     KW.fit(c, (w, h, dpr) => {
         W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        cx = W * (W > 900 ? 0.68 : 0.5); cy = Hh * 0.5;
-        if (!ready) { for (let i = 0; i < N; i++) spawn(i); accel(-1e4, -1e4, false); ready = true; }
+        const ncx = W * (W > 900 ? 0.68 : 0.5), ncy = Hh * 0.5;
+        if (!ready) {
+            cx = ncx; cy = ncy;
+            for (let i = 0; i < N; i++) spawn(i, false);
+            accel(-1e4, -1e4, false);
+            ready = true;
+        } else {
+            const dcx = ncx - cx, dcy = ncy - cy;
+            cx = ncx; cy = ncy;
+            for (let i = 0; i < N; i++) {
+                x[i] += dcx; y[i] += dcy;
+                for (let k = 0; k < TL; k++) { hist[(i * TL + k) * 2] += dcx; hist[(i * TL + k) * 2 + 1] += dcy; }
+            }
+        }
     });
     KW.tag(SITE.domains.physics.tag, c);
     KW.loop(c, (t, dt) => {
         const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < Hh;
         acc = Math.min(acc + dt, 0.1);
         while (acc >= H) { step(p.x, p.y, on); acc -= H; }
+        const eh2 = R_EH * R_EH;
         for (let i = 0; i < N; i++) {
-            const dx = x[i] - cx, dy = y[i] - cy;
-            if (dx * dx + dy * dy < 2300 || Math.abs(dx) > W * 1.5 || Math.abs(dy) > Hh * 1.5) spawn(i);
+            const dx = x[i] - cx, dy = y[i] - cy, r2 = dx * dx + dy * dy;
+            if (r2 < eh2 || Math.abs(dx) > W * 1.2 || Math.abs(dy) > Hh * 1.2) spawn(i, true);
         }
         hp = (hp + 1) % TL;
         for (let i = 0; i < N; i++) { hist[(i * TL + hp) * 2] = x[i]; hist[(i * TL + hp) * 2 + 1] = y[i]; }
 
         const a = KW.col.a;
         ctx.clearRect(0, 0, W, Hh);
-        ctx.lineWidth = 1; ctx.strokeStyle = rgba(a, 0.3);
+
+        // 1. Gravitational lensing halo & back half of tilted accretion disc
+        const halo = ctx.createRadialGradient(cx, cy, R_EH - 6, cx, cy, 185);
+        halo.addColorStop(0, "rgba(0,0,0,0)");
+        halo.addColorStop(0.22, rgba(a, 0.92));
+        halo.addColorStop(0.42, rgba(a, 0.38));
+        halo.addColorStop(0.72, rgba(a, 0.12));
+        halo.addColorStop(1, rgba(a, 0));
+        ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, 185, 0, TAU); ctx.fill();
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(-0.34);
+        for (let m = 0; m < 2; m++) {
+            ctx.strokeStyle = rgba(a, 0.36 - m * 0.14);
+            ctx.lineWidth = 2.4 - m * 0.8;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 56 + m * 8, 50 + m * 6, 0, 0, TAU);
+            ctx.stroke();
+        }
+        for (let k = 0; k < 6; k++) {
+            const rx = 68 + k * 18, ry = rx * 0.28;
+            ctx.strokeStyle = rgba(a, 0.58 - k * 0.08);
+            ctx.lineWidth = 3.0 - k * 0.35;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, rx, ry, 0, Math.PI, TAU);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // 2. Orbiting particles & trails revolving around the black hole
+        ctx.lineWidth = 1.25; ctx.strokeStyle = rgba(a, 0.42);
         for (let i = 0; i < N; i++) {
             ctx.beginPath();
             for (let k = 1; k <= TL; k++) {
@@ -76,49 +124,21 @@ SIMS.physics = (c) => {
             }
             ctx.stroke();
         }
-        ctx.fillStyle = rgba(a, 0.95);
-        for (let i = 0; i < N; i++) { ctx.beginPath(); ctx.arc(x[i], y[i], 1.7, 0, TAU); ctx.fill(); }
+        ctx.fillStyle = rgba(a, 0.98);
+        for (let i = 0; i < N; i++) { ctx.beginPath(); ctx.arc(x[i], y[i], 2.0, 0, TAU); ctx.fill(); }
 
-        // Large Black Hole: gravitational lensing halo + lensed Einstein arches + back accretion disc + event horizon shadow + photon ring + front accretion stream
-        const halo = ctx.createRadialGradient(cx, cy, 42, cx, cy, 185);
-        halo.addColorStop(0, "rgba(0,0,0,0)");
-        halo.addColorStop(0.22, rgba(a, 0.94));
-        halo.addColorStop(0.42, rgba(a, 0.42));
-        halo.addColorStop(0.72, rgba(a, 0.12));
-        halo.addColorStop(1, rgba(a, 0));
-        ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, 185, 0, TAU); ctx.fill();
-
+        // 3. Event horizon shadow (Schwarzschild core) + photon ring + front accretion stream
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(-0.34);
-        // Gravitationally lensed upper/lower Einstein ring arches
-        for (let m = 0; m < 2; m++) {
-            ctx.strokeStyle = rgba(a, 0.38 - m * 0.14);
-            ctx.lineWidth = 2.4 - m * 0.8;
-            ctx.beginPath();
-            ctx.ellipse(0, 0, 56 + m * 8, 50 + m * 6, 0, 0, TAU);
-            ctx.stroke();
-        }
-        // Back half of tilted accretion disc
-        for (let k = 0; k < 6; k++) {
-            const rx = 68 + k * 18, ry = rx * 0.28;
-            ctx.strokeStyle = rgba(a, 0.62 - k * 0.08);
-            ctx.lineWidth = 3.2 - k * 0.35;
-            ctx.beginPath();
-            ctx.ellipse(0, 0, rx, ry, 0, Math.PI, TAU);
-            ctx.stroke();
-        }
-        // Event horizon shadow (large pitch-black Schwarzschild core)
         ctx.fillStyle = "#03050a";
-        ctx.beginPath(); ctx.arc(0, 0, 48, 0, TAU); ctx.fill();
-        // Relativistic photon ring + Doppler-boosted inner crescent
+        ctx.beginPath(); ctx.arc(0, 0, R_EH, 0, TAU); ctx.fill();
         ctx.strokeStyle = rgba(a, 0.96);
         ctx.lineWidth = 2.8;
-        ctx.beginPath(); ctx.arc(0, 0, 49.5, 0, TAU); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, R_EH + 1.5, 0, TAU); ctx.stroke();
         ctx.strokeStyle = "rgba(255,255,255,0.85)";
         ctx.lineWidth = 1.8;
-        ctx.beginPath(); ctx.arc(0, 0, 48.6, Math.PI * 0.65 + Math.sin(t * 2) * 0.2, Math.PI * 1.45 + Math.sin(t * 2) * 0.2); ctx.stroke();
-        // Front half of tilted accretion disc + orbiting plasma streaks passing across the shadow
+        ctx.beginPath(); ctx.arc(0, 0, R_EH + 0.6, Math.PI * 0.65 + Math.sin(t * 2) * 0.2, Math.PI * 1.45 + Math.sin(t * 2) * 0.2); ctx.stroke();
         for (let k = 0; k < 6; k++) {
             const rx = 68 + k * 18, ry = rx * 0.28, spin = t * (3.2 - k * 0.38) + k * 1.1;
             ctx.strokeStyle = rgba(a, 0.88 - k * 0.11);
