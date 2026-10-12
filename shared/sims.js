@@ -60,7 +60,7 @@ SIMS.physics = (c) => {
         while (acc >= H) { step(p.x, p.y, on); acc -= H; }
         for (let i = 0; i < N; i++) {
             const dx = x[i] - cx, dy = y[i] - cy;
-            if (dx * dx + dy * dy < 100 || Math.abs(dx) > W * 1.5 || Math.abs(dy) > Hh * 1.5) spawn(i);
+            if (dx * dx + dy * dy < 380 || Math.abs(dx) > W * 1.5 || Math.abs(dy) > Hh * 1.5) spawn(i);
         }
         hp = (hp + 1) % TL;
         for (let i = 0; i < N; i++) { hist[(i * TL + hp) * 2] = x[i]; hist[(i * TL + hp) * 2 + 1] = y[i]; }
@@ -78,9 +78,54 @@ SIMS.physics = (c) => {
         }
         ctx.fillStyle = rgba(a, 0.95);
         for (let i = 0; i < N; i++) { ctx.beginPath(); ctx.arc(x[i], y[i], 1.7, 0, TAU); ctx.fill(); }
-        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 46);
-        g.addColorStop(0, rgba(a, 0.9)); g.addColorStop(1, rgba(a, 0));
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, 46, 0, TAU); ctx.fill();
+
+        // Black hole: gravitational lensing halo + back accretion disc + event horizon shadow + photon ring + front accretion stream
+        const halo = ctx.createRadialGradient(cx, cy, 16, cx, cy, 78);
+        halo.addColorStop(0, "rgba(0,0,0,0)");
+        halo.addColorStop(0.24, rgba(a, 0.92));
+        halo.addColorStop(0.42, rgba(a, 0.38));
+        halo.addColorStop(0.72, rgba(a, 0.1));
+        halo.addColorStop(1, rgba(a, 0));
+        ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, 78, 0, TAU); ctx.fill();
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(-0.34);
+        // Back half of tilted accretion disc (gravitationally lensed upper arch)
+        for (let k = 0; k < 4; k++) {
+            const rx = 28 + k * 9.5, ry = rx * 0.28;
+            ctx.strokeStyle = rgba(a, 0.55 - k * 0.1);
+            ctx.lineWidth = 2.2 - k * 0.3;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, rx, ry, 0, Math.PI, TAU);
+            ctx.stroke();
+        }
+        // Event horizon shadow (pitch-black core)
+        ctx.fillStyle = "#03050a";
+        ctx.beginPath(); ctx.arc(0, 0, 19, 0, TAU); ctx.fill();
+        // Relativistic photon ring + Doppler-boosted inner crescent
+        ctx.strokeStyle = rgba(a, 0.95);
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.arc(0, 0, 19.8, 0, TAU); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,0.75)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(0, 0, 19.4, Math.PI * 0.65 + Math.sin(t * 2) * 0.2, Math.PI * 1.45 + Math.sin(t * 2) * 0.2); ctx.stroke();
+        // Front half of tilted accretion disc + orbiting plasma streaks passing across the shadow
+        for (let k = 0; k < 4; k++) {
+            const rx = 28 + k * 9.5, ry = rx * 0.28, spin = t * (3.2 - k * 0.45) + k * 1.3;
+            ctx.strokeStyle = rgba(a, 0.82 - k * 0.14);
+            ctx.lineWidth = 2.4 - k * 0.35;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI);
+            ctx.stroke();
+            ctx.strokeStyle = "rgba(255,255,255," + (0.55 - k * 0.1) + ")";
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, rx, ry, 0, spin % TAU, (spin % TAU) + 0.85);
+            ctx.stroke();
+        }
+        ctx.restore();
+
         if (on) { ctx.strokeStyle = rgba(a, 0.8); ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, TAU); ctx.stroke(); }
     });
 };
