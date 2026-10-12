@@ -213,10 +213,6 @@
                 <h1 data-hero>Kushan<br>Waghmare</h1>
                 <p class="lead" data-hero>Data Science &amp; Quantitative Finance student at IIT Madras, building complex systems from compilers to statistical-arbitrage models, and studying the physics underneath them.</p>
                 <div class="hero-eq glass" data-hero>$$\\dot x=\\sigma(y-x),\\quad\\dot y=x(\\rho-z)-y,\\quad\\dot z=xy-\\beta z$$</div>
-                <div class="snap-jump-pills" data-hero>
-                    <span class="snap-jump-label">Explore domains:</span>
-                    ${keys.map((k) => `<a href="#domain-${k}" class="pill jump-pill" style="--a:var(--rgb-${k})">${SITE.domains[k].name}</a>`).join("")}
-                </div>
             </div>
             <div class="sim-tag" aria-hidden="true">Lorenz system · σ=10, ρ=28, β=8/3 · RK4 · 5 domain trajectories</div>
             <a class="snap-cue" href="#domain-math">Scroll to explore domains</a>

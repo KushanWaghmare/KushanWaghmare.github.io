@@ -41,10 +41,6 @@ const hubPage = () => `
                 <h1 data-hero>Kushan<br>Waghmare</h1>
                 <p class="lead" data-hero>Data Science &amp; Quantitative Finance student at IIT Madras, building complex systems from compilers to statistical-arbitrage models, and studying the physics underneath them.</p>
                 <div class="hero-eq glass" data-hero>$$\\dot x=\\sigma(y-x),\\quad\\dot y=x(\\rho-z)-y,\\quad\\dot z=xy-\\beta z$$</div>
-                <div class="snap-jump-pills" data-hero>
-                    <span class="snap-jump-label">Explore domains:</span>
-                    ${keys.map((k) => `<a href="#domain-${k}" class="pill jump-pill" style="--a:var(--rgb-${k})">${SITE.domains[k].name}</a>`).join("")}
-                </div>
             </div>
             <div class="sim-tag" aria-hidden="true">Lorenz system · σ=10, ρ=28, β=8/3 · RK4 · 5 domain trajectories</div>
             <a class="snap-cue" href="#domain-math">Scroll to explore domains</a>
@@ -286,13 +282,13 @@ const buildHTML = ({ domain, pageType, three, title, desc, mainContent }) => `<!
     <title>${title}</title>
     <meta name="description" content="${desc}" />
     <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=14" />
+    <link rel="stylesheet" href="shared/style.css?v=15" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=14"></script>
-    <script defer src="shared/sims.js?v=14"></script>
-    <script defer src="shared/app.js?v=14"></script>
+${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=15"></script>
+    <script defer src="shared/sims.js?v=15"></script>
+    <script defer src="shared/app.js?v=15"></script>
 </head>
 <body>
     ${renderNav(domain, pageType)}
