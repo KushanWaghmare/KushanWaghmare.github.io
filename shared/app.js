@@ -51,18 +51,27 @@
             if (stored !== null) enabled = stored === "true";
         } catch (e) {}
 
+        const notifyUnlock = () => window.dispatchEvent(new Event("audiounlock"));
+
         const init = () => {
             if (!ctx) {
                 const AC = window.AudioContext || window.webkitAudioContext;
-                if (AC) ctx = new AC();
+                if (AC) {
+                    ctx = new AC();
+                    ctx.onstatechange = () => {
+                        if (ctx.state === "running") notifyUnlock();
+                    };
+                }
             }
             if (ctx && ctx.state === "suspended") {
-                ctx.resume().catch(() => {});
+                ctx.resume().then(notifyUnlock).catch(() => {});
+            } else if (ctx && ctx.state === "running") {
+                notifyUnlock();
             }
         };
 
-        ["pointerdown", "keydown", "wheel", "touchstart"].forEach((ev) => {
-            window.addEventListener(ev, init, { once: true, passive: true });
+        ["pointerdown", "keydown", "touchstart"].forEach((ev) => {
+            window.addEventListener(ev, init, { passive: true });
         });
 
         let noiseBuf = null;
@@ -97,6 +106,18 @@
 
         return {
             isEnabled: () => enabled,
+            isUnlocked: () => Boolean(ctx && ctx.state === "running"),
+            unlock: () => {
+                enabled = true;
+                try { localStorage.setItem("kw_sound", "true"); } catch (e) {}
+                init();
+                if (ctx) {
+                    ctx.resume().then(() => {
+                        notifyUnlock();
+                        playTone(520, 880, "sine", 0.08, 0.045);
+                    }).catch(() => {});
+                }
+            },
             toggle: () => {
                 init();
                 enabled = !enabled;
@@ -525,11 +546,11 @@
                 <div class="progress"></div>
                 <header class="nav glass">
                     <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
-                    ${isHub ? '' : '<div class="nav-live" aria-hidden="true"><canvas></canvas></div>'}
+                    <div class="nav-live" aria-hidden="true"><canvas></canvas></div>
                     <nav class="links" aria-label="Navigation">
                         ${isHub ? '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>' : ''}
                         <button class="theme-btn" type="button" aria-label="Switch theme"></button>
-                        <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Toggle sound"></button>
+                        <button class="sound-btn needs-unlock" type="button" aria-label="Enable sound effects" title="Enable audio">🔇 <span class="sound-label">Enable Audio</span></button>
                     </nav>
                 </header>
                 <main id="main"></main>
@@ -550,15 +571,29 @@
         if (soundBtn) {
             const syncSound = () => {
                 const on = SOUND.isEnabled();
-                soundBtn.textContent = on ? "🔊" : "🔇";
-                soundBtn.setAttribute("aria-label", on ? "Mute sound effects" : "Enable sound effects");
+                const unlocked = SOUND.isUnlocked();
+                const active = on && unlocked;
+                const waiting = on && !unlocked;
+                soundBtn.innerHTML = waiting
+                    ? `🔇 <span class="sound-label">Enable Audio</span>`
+                    : active
+                    ? `🔊 <span class="sound-label">Audio On</span>`
+                    : `🔇 <span class="sound-label">Muted</span>`;
+                soundBtn.setAttribute("aria-label", active ? "Mute sound effects" : "Enable sound effects");
+                soundBtn.classList.toggle("needs-unlock", waiting);
                 soundBtn.classList.toggle("muted", !on);
             };
             syncSound();
-            soundBtn.addEventListener("click", () => {
-                const on = SOUND.toggle();
+            window.addEventListener("audiounlock", syncSound);
+            soundBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (!SOUND.isUnlocked() && SOUND.isEnabled()) {
+                    SOUND.unlock();
+                } else {
+                    const on = SOUND.toggle();
+                    if (on) SOUND.unlock();
+                }
                 syncSound();
-                if (on) SOUND.click();
             });
         }
     };

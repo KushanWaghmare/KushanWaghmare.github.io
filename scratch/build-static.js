@@ -262,11 +262,11 @@ const renderNav = (active, pageType) => {
     <div class="progress"></div>
     <header class="nav glass">
         <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
-        ${isHub ? '' : '<div class="nav-live" aria-hidden="true"><canvas></canvas></div>'}
+        <div class="nav-live" aria-hidden="true"><canvas></canvas></div>
         <nav class="links" aria-label="Navigation">
             ${isHub ? '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>' : ''}
             <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
-            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Toggle sound">🔊</button>
+            <button class="sound-btn needs-unlock" type="button" aria-label="Enable sound effects" title="Enable audio">🔇 <span class="sound-label">Enable Audio</span></button>
         </nav>
     </header>`;
 };

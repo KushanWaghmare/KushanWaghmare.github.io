@@ -202,18 +202,30 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 
 .sound-btn {
     margin-left: 8px;
-    width: 36px; height: 36px;
-    display: grid; place-items: center;
-    border-radius: 10px;
+    height: 36px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 99px;
     border: 1px solid var(--glass-line);
     background: transparent;
     color: var(--fg);
-    font-size: 14px;
+    font: 500 11px var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
     cursor: pointer;
-    transition: transform 0.2s, border-color 0.25s, color 0.25s, opacity 0.25s;
+    transition: transform 0.2s, border-color 0.25s, color 0.25s, background-color 0.25s, opacity 0.25s;
 }
-.sound-btn:hover { border-color: var(--accent); color: var(--accent); transform: scale(1.08); }
-.sound-btn.muted { opacity: 0.55; }
+.sound-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+.sound-btn.needs-unlock {
+    border-color: rgba(var(--a), 0.55);
+    background: rgba(var(--a), 0.1);
+    color: var(--accent);
+}
+.sound-btn.muted { opacity: 0.65; }
+@media (max-width: 640px) { .sound-btn { padding: 0 10px; } .sound-btn .sound-label { display: none; } }
 
 /* ---------- Hero ---------- */
 .hero {

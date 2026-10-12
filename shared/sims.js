@@ -607,13 +607,25 @@ NAV.cs = () => {
 
 SIMS.nav = (c) => {
     const ctx = c.getContext("2d"), inst = {};
-    let W = 0, Hh = 0;
+    let W = 0, Hh = 0, cur = null, prev = null, mix = 1;
     KW.fit(c, (w, h, dpr) => { W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
     KW.loop(c, (t, dt) => {
         ctx.clearRect(0, 0, W, Hh);
         if (W < 40) return;
         const d = document.documentElement.dataset.domain, k = NAV[d] ? d : "math";
-        (inst[k] || (inst[k] = NAV[k]()))(ctx, W, Hh, t, dt);
-        navFade(ctx, W, Hh, k !== "cs");
+        if (!cur) cur = k;
+        else if (k !== cur) { prev = cur; cur = k; mix = 0; }
+        if (mix < 1) {
+            mix = Math.min(1, mix + dt * 3.2);
+            if (prev) {
+                ctx.save(); ctx.globalAlpha = 1 - mix;
+                (inst[prev] || (inst[prev] = NAV[prev]()))(ctx, W, Hh, t, dt);
+                ctx.restore();
+            }
+        }
+        ctx.save(); ctx.globalAlpha = mix;
+        (inst[cur] || (inst[cur] = NAV[cur]()))(ctx, W, Hh, t, dt);
+        ctx.restore();
+        navFade(ctx, W, Hh, cur !== "cs" && (mix >= 1 || prev !== "cs"));
     });
 };
