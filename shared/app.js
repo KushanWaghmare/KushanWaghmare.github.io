@@ -822,7 +822,8 @@
                         dot.classList.toggle("active", isCurrent);
                     });
                     if (!warping && lastId !== null && lastId !== id) {
-                        SOUND.snap();
+                        if (window.innerWidth <= 900) SOUND.warp(0);
+                        else SOUND.snap();
                     }
                     lastId = id;
                 }

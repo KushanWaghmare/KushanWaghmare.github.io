@@ -25,19 +25,19 @@ html[data-theme="dark"] {
 }
 html[data-theme="light"] {
     color-scheme: light;
-    --bg: #f4f3ee;
-    --bg-rgb: 244, 243, 238;
-    --fg: #12141b;
-    --muted: #585e70;
-    --line: #0000001a;
-    --glass: #ffffff9e;
-    --glass-line: #0000001a;
+    --bg: #f6f7fb;
+    --bg-rgb: 246, 247, 251;
+    --fg: #0f172a;
+    --muted: #475569;
+    --line: #0f172a1c;
+    --glass: #ffffffd9;
+    --glass-line: #0f172a1f;
     --rgb-hub: 37, 99, 235;
-    --rgb-math: 176, 20, 48;
-    --rgb-physics: 6, 140, 172;
-    --rgb-datascience: 176, 98, 0;
-    --rgb-quant: 4, 140, 98;
-    --rgb-cs: 106, 44, 214;
+    --rgb-math: 190, 18, 60;
+    --rgb-physics: 2, 132, 199;
+    --rgb-datascience: 180, 83, 9;
+    --rgb-quant: 5, 150, 105;
+    --rgb-cs: 109, 40, 217;
     --rgb-contact: 217, 119, 6;
 }
 html[data-domain="math"] { --a: var(--rgb-math); }
@@ -697,12 +697,52 @@ html[data-page="project"] body {
 .snap-section.warp-land > .snap-inner { transition: transform 0.75s cubic-bezier(0.12, 1, 0.25, 1), opacity 0.4s ease-out, filter 0.55s ease-out; }
 .snap-section.warp-land > canvas { transition: transform 0.9s cubic-bezier(0.12, 1, 0.25, 1), opacity 0.7s ease-out; }
 
-@media (max-width: 900px) {
+@@media (max-width: 900px) {
     .snap-pager { display: none; }
-    .snap-section { padding: 90px 20px 60px; min-height: auto; }
+    .snap-section, .snap-section.hero {
+        padding: 84px 18px 76px;
+        min-height: 100svh;
+        justify-content: center;
+    }
+    .about-contact-section {
+        min-height: auto;
+        padding-top: 88px;
+        padding-bottom: 40px;
+    }
     html[data-page="hub"], html[data-page="hub"] body,
     html[data-page="domain"], html[data-page="domain"] body,
-    html[data-page="project"], html[data-page="project"] body { scroll-snap-type: none; }
+    html[data-page="project"], html[data-page="project"] body {
+        scroll-snap-type: y proximity;
+    }
+    .snap-section::after, .hero::after {
+        background: radial-gradient(circle at 50% 45%, rgba(var(--a), 0.14), transparent 72%),
+                    linear-gradient(180deg, rgba(var(--bg-rgb), 0.72) 0%, rgba(var(--bg-rgb), 0.58) 55%, rgba(var(--bg-rgb), 0.78) 100%);
+    }
+    .snap-inner { width: 100%; gap: 12px; }
+    .hero h1 { font-size: clamp(36px, 11vw, 64px); margin: 10px 0 14px; }
+    .snap-title { font-size: clamp(30px, 8.5vw, 52px); }
+    .snap-lead, .lead { font-size: 15px; line-height: 1.6; }
+    .hero-eq, .snap-eq {
+        padding: 8px 14px;
+        margin-top: 10px;
+        font-size: 0.88rem;
+        max-width: calc(100vw - 36px);
+    }
+    .snap-cta-btn { padding: 10px 18px; font-size: 11.5px; width: 100%; justify-content: center; }
+    .snap-actions { width: 100%; gap: 10px; }
+    .snap-cue { left: 18px; bottom: 36px; font-size: 10px; }
+    .sim-tag {
+        left: 18px;
+        right: 18px;
+        bottom: 12px;
+        max-width: none;
+        text-align: left;
+        font-size: 9.5px;
+        opacity: 0.78;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 }
 
 /* ---------- Sections & cards ---------- */
@@ -775,6 +815,15 @@ html[data-page="project"] body {
     overflow: hidden;
     box-shadow: 0 20px 48px -20px rgba(0, 0, 0, 0.5);
 }
+html[data-theme="light"] .glass {
+    box-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.08);
+}
+html[data-theme="light"] .contact-card {
+    box-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.12);
+}
+html[data-theme="light"] .hero h1 {
+    text-shadow: 0 0 36px rgba(var(--a), 0.14);
+}
 .contact-card::before {
     content: "";
     position: absolute;
@@ -820,7 +869,7 @@ html[data-page="project"] body {
 }
 .contact-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 28px;
     padding-top: 28px;
     border-top: 1px solid var(--line);
@@ -904,10 +953,18 @@ a.contact-value:hover {
 @media (max-width: 860px) {
     .full { display: none; }
     .short { display: inline; }
-    .two-col, .pn { grid-template-columns: 1fr; }
+    .two-col, .pn { grid-template-columns: 1fr; gap: 20px; }
     .brand span { display: none; }
-    .sim-tag { max-width: 90%; text-align: left; left: clamp(20px, 6vw, 96px); right: auto; bottom: 64px; }
-    .links a { padding: 9px 8px; }
+    .links a { padding: 7px 8px; }
+    .nav { inset: 10px 10px auto 10px; padding: 6px 8px 6px 12px; }
+    .nav-live { height: 28px; margin: 0 8px; }
+    .theme-btn, .sound-btn { width: 32px; height: 32px; margin-left: 5px; font-size: 14px; }
+    .contact-card { padding: 22px 18px; gap: 20px; }
+    .contact-grid { grid-template-columns: 1fr; gap: 18px; padding-top: 18px; }
+    .snap-arch-grid li { padding: 14px 16px 14px 48px; }
+    .math-block { padding: 16px 18px; }
+    .enter-card { padding: 24px 20px; margin: 16px; }
+    .enter-btn { width: 100%; padding: 12px 16px; font-size: 11px; }
 }
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }

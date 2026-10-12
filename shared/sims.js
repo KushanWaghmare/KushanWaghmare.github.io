@@ -146,7 +146,7 @@ SIMS.physics = (c) => {
             ctx.beginPath();
             ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI);
             ctx.stroke();
-            ctx.strokeStyle = "rgba(255,255,255," + (0.62 - k * 0.08) + ")";
+            ctx.strokeStyle = KW.col.light ? rgba(a, 0.95 - k * 0.1) : "rgba(255,255,255," + (0.62 - k * 0.08) + ")";
             ctx.lineWidth = 2.0 - k * 0.18;
             ctx.beginPath();
             ctx.ellipse(0, 0, rx, ry, 0, spin % TAU, (spin % TAU) + 0.9);
@@ -627,7 +627,7 @@ SIMS.contact = (c) => {
 
     KW.fit(c, (w, h, dpr) => {
         W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        cx = W * (W > 900 ? 0.72 : 0.55);
+        cx = W * (W > 900 ? 0.72 : 0.5);
         cy = Hh * 0.5;
         scale = Math.min(W, Hh) * 0.28;
         if (!ready) {
@@ -713,14 +713,14 @@ SIMS.contact = (c) => {
         for (let i = 0; i < 3; i++) {
             const col = cols[i], x = sx[i], y = sy[i];
             const g = ctx.createRadialGradient(x, y, 2, x, y, 52);
-            g.addColorStop(0, "rgba(255,255,255,0.98)");
+            g.addColorStop(0, KW.col.light ? rgba(col, 0.95) : "rgba(255,255,255,0.98)");
             g.addColorStop(0.14, rgba(col, 0.92));
             g.addColorStop(0.42, rgba(col, 0.32));
             g.addColorStop(1, rgba(col, 0));
             ctx.fillStyle = g;
             ctx.beginPath(); ctx.arc(x, y, 52, 0, TAU); ctx.fill();
 
-            ctx.fillStyle = "#ffffff";
+            ctx.fillStyle = KW.col.light ? rgba(col, 1) : "#ffffff";
             ctx.beginPath(); ctx.arc(x, y, 4.5, 0, TAU); ctx.fill();
         }
 
@@ -756,7 +756,7 @@ SIMS["mobius-surfaces"] = (c) => {
     const nLines = new THREE.LineSegments(nGeo, nm); nLines.frustumCulled = false;
     T.group.add(ls, nLines);
 
-    const paint = () => { T.setColor(lm, KW.col.a); T.setColor(nm, [255, 210, 220]); };
+    const paint = () => { T.setColor(lm, KW.col.a); T.setColor(nm, KW.col.light ? [190, 24, 93] : [255, 210, 220]); };
     paint(); addEventListener("themechange", paint);
 
     let rx = 0.85, ry = 0, f = 0;
@@ -1022,7 +1022,7 @@ SIMS["regularised-regression"] = (c) => {
         ctx.clearRect(0, 0, W, H);
 
         // Left sub-panel: Polynomial fit (OLS variance vs Ridge/Lasso shrunk fit)
-        const fx0 = W * (W > 900 ? 0.42 : 0.08), fw = W * (W > 900 ? 0.26 : 0.42), fy = H * 0.52, fsc = H * 0.22;
+        const fx0 = W * (W > 900 ? 0.42 : 0.06), fw = W * (W > 900 ? 0.26 : 0.40), fy = H * 0.52, fsc = H * 0.22;
         ctx.strokeStyle = rgba(a, 0.22); ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(fx0, fy); ctx.lineTo(fx0 + fw, fy); ctx.stroke();
         // High-variance OLS curve (dashed)
@@ -1050,25 +1050,26 @@ SIMS["regularised-regression"] = (c) => {
         }
 
         // Right sub-panel: (β1, β2) RSS Elliptical Contours + L1 Diamond (Lasso) & L2 Circle (Ridge)
-        const cx = W * 0.82, cy = H * 0.52, R = Math.min(W, H) * 0.14 * (1.15 - 0.45 * (lam / 1.5));
+        const cx = W * (W > 900 ? 0.82 : 0.74), cy = H * 0.52, axL = Math.min(110, W * 0.21), scR = axL / 110;
+        const R = Math.min(W, H) * 0.14 * (1.15 - 0.45 * (lam / 1.5));
         ctx.strokeStyle = rgba(a, 0.25); ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(cx - 110, cy); ctx.lineTo(cx + 110, cy); ctx.moveTo(cx, cy - 110); ctx.lineTo(cx, cy + 110); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx - axL, cy); ctx.lineTo(cx + axL, cy); ctx.moveTo(cx, cy - axL); ctx.lineTo(cx, cy + axL); ctx.stroke();
         // L2 Ridge circle
-        ctx.strokeStyle = "rgba(34,211,238,0.55)"; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = KW.col.light ? "rgba(2,132,199,0.65)" : "rgba(34,211,238,0.55)"; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke();
         // L1 Lasso diamond |β1| + |β2| ≤ t
         ctx.strokeStyle = rgba(a, 0.92); ctx.fillStyle = rgba(a, 0.12); ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(cx, cy - R); ctx.lineTo(cx + R, cy); ctx.lineTo(cx, cy + R); ctx.lineTo(cx - R, cy); ctx.closePath(); ctx.fill(); ctx.stroke();
         // RSS elliptical contours around OLS hat β̂
-        const bx = cx + 52, by = cy - 64;
+        const bx = cx + 52 * scR, by = cy - 64 * scR;
         ctx.save(); ctx.translate(bx, by); ctx.rotate(-0.55);
         for (let m = 1; m <= 4; m++) {
             ctx.strokeStyle = `rgba(244,63,94,${0.75 - m * 0.14})`; ctx.lineWidth = 1.3;
-            ctx.beginPath(); ctx.ellipse(0, 0, m * 22, m * 11, 0, 0, TAU); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(0, 0, m * 22 * scR, m * 11 * scR, 0, 0, TAU); ctx.stroke();
         }
         ctx.restore();
         // Highlight sparse Lasso corner solution (0, R)
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = KW.col.light ? "#0f172a" : "#ffffff";
         ctx.beginPath(); ctx.arc(cx, cy - R, 4.5, 0, TAU); ctx.fill();
         KW.tag(`OLS vs Ridge (L₂) & Lasso (L₁) · λ = ${lam.toFixed(2)} · sparse L₁ diamond & elliptical RSS contours`, c);
     });
@@ -1207,7 +1208,7 @@ SIMS["stat-arb"] = (c) => {
             i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         }
         ctx.stroke();
-        ctx.strokeStyle = "rgba(34,211,238,0.82)"; ctx.lineWidth = 1.6;
+        ctx.strokeStyle = KW.col.light ? "rgba(2,132,199,0.85)" : "rgba(34,211,238,0.82)"; ctx.lineWidth = 1.6;
         ctx.beginPath();
         for (let i = 0; i < N; i++) {
             const x = x0 + (i / (N - 1)) * span, y = yTop - legB[i] * scTop;
@@ -1255,6 +1256,7 @@ SIMS["ku-lang"] = (c) => {
 
     KW.loop(c, (t) => {
         const a = KW.col.a, x0 = W * (W > 900 ? 0.42 : 0.08), spanW = W * (W > 900 ? 0.52 : 0.84);
+        const cyan = KW.col.light ? "#0284c7" : "#22d3ee";
         ctx.clearRect(0, 0, W, H);
         const pts = NODES.map((n, idx) => ({
             x: x0 + n.u * spanW + Math.sin(t * 1.4 + idx) * 6,
@@ -1269,22 +1271,22 @@ SIMS["ku-lang"] = (c) => {
             ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
             const frac = (t * 0.75 + e * 0.23) % 1;
             const tx = p0.x + (p1.x - p0.x) * frac, ty = p0.y + (p1.y - p0.y) * frac;
-            ctx.fillStyle = "#22d3ee";
+            ctx.fillStyle = cyan;
             ctx.beginPath(); ctx.arc(tx, ty, 3.6, 0, TAU); ctx.fill();
         }
 
         // SSA Basic Block cards
-        ctx.font = '500 11px "JetBrains Mono", monospace';
+        const mob = W <= 900, bw = mob ? Math.min(200, Math.max(134, spanW * 0.46)) : 248, bh = mob ? 30 : 34;
+        ctx.font = (mob ? '500 8.5px' : '500 11px') + ' "JetBrains Mono", monospace';
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         pts.forEach((p, idx) => {
-            const bw = 248, bh = 34;
             const pulse = 0.5 + 0.5 * Math.sin(t * 3 - idx * 0.9);
-            ctx.fillStyle = KW.col.light ? "rgba(255,255,255,0.88)" : "rgba(12,14,22,0.88)";
+            ctx.fillStyle = KW.col.light ? "rgba(255,255,255,0.9)" : "rgba(12,14,22,0.88)";
             ctx.strokeStyle = rgba(a, 0.45 + 0.45 * pulse);
             ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.rect(p.x - bw / 2, p.y - bh / 2, bw, bh); ctx.fill(); ctx.stroke();
             ctx.fillStyle = rgba(a, 0.98);
-            ctx.fillText(p.lbl, p.x, p.y);
+            ctx.fillText(p.lbl, p.x, p.y, bw - 10);
         });
     });
 };
@@ -1305,12 +1307,13 @@ SIMS["8bit-computer"] = (c) => {
         const sum = regA + regB;
         carry = sum > 0xFF ? 1 : 0;
 
-        const a = KW.col.a, x0 = W * (W > 900 ? 0.42 : 0.08), x1 = W * 0.94, span = x1 - x0;
+        const a = KW.col.a, x0 = W * (W > 900 ? 0.42 : 0.06), x1 = W * 0.94, span = x1 - x0;
+        const cyan = KW.col.light ? "#0284c7" : "#22d3ee";
         ctx.clearRect(0, 0, W, H);
 
         // 8 parallel W-Bus bit lines (D7..D0)
         const by0 = H * 0.24, bGap = 11;
-        ctx.font = '500 10px "JetBrains Mono", monospace';
+        ctx.font = (W > 900 ? '500 10px' : '500 8.5px') + ' "JetBrains Mono", monospace';
         for (let b = 0; b < 8; b++) {
             const bit = (busVal >> (7 - b)) & 1, y = by0 + b * bGap;
             ctx.strokeStyle = bit ? rgba(a, 0.92) : rgba(a, 0.2);
@@ -1318,7 +1321,7 @@ SIMS["8bit-computer"] = (c) => {
             ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
             if (bit) {
                 const px = x0 + ((t * 220 + b * 45) % span);
-                ctx.fillStyle = "#22d3ee";
+                ctx.fillStyle = cyan;
                 ctx.beginPath(); ctx.arc(px, y, 3, 0, TAU); ctx.fill();
             }
         }
@@ -1330,23 +1333,23 @@ SIMS["8bit-computer"] = (c) => {
             { name: "ALU Σ", val: "0x" + (sum & 0xFF).toString(16).padStart(2, "0").toUpperCase() + (carry ? " C=1" : " C=0") },
             { name: "IR / CU", val: OPS[pc] }
         ];
-        const my = H * 0.54, mw = (span - 36) / 4;
+        const my = H * 0.54, gap = W > 900 ? 12 : 6, mw = (span - gap * 3) / 4;
         mods.forEach((m, i) => {
-            const mx = x0 + i * (mw + 12);
-            ctx.fillStyle = KW.col.light ? "rgba(255,255,255,0.86)" : "rgba(12,14,22,0.86)";
+            const mx = x0 + i * (mw + gap);
+            ctx.fillStyle = KW.col.light ? "rgba(255,255,255,0.9)" : "rgba(12,14,22,0.86)";
             ctx.strokeStyle = rgba(a, 0.7); ctx.lineWidth = 1.4;
             ctx.strokeRect(mx, my, mw, 52); ctx.fillRect(mx, my, mw, 52);
             ctx.fillStyle = rgba(a, 0.98); ctx.textAlign = "center";
-            ctx.fillText(m.name, mx + mw / 2, my + 18);
-            ctx.fillStyle = "#22d3ee";
-            ctx.fillText(m.val, mx + mw / 2, my + 36);
+            ctx.fillText(m.name, mx + mw / 2, my + 18, mw - 6);
+            ctx.fillStyle = cyan;
+            ctx.fillText(m.val, mx + mw / 2, my + 36, mw - 6);
         });
 
         // Bottom: 4-Channel Logic Analyser digital square-wave traces (CLK, W-BUS, ALU_OUT, WE)
         const ly0 = H * 0.74;
         for (let ch = 0; ch < 4; ch++) {
             const y = ly0 + ch * 22;
-            ctx.strokeStyle = ch === 0 ? "#22d3ee" : rgba(a, 0.8 - ch * 0.12);
+            ctx.strokeStyle = ch === 0 ? cyan : rgba(a, 0.8 - ch * 0.12);
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             for (let k = 0; k <= 48; k++) {
@@ -1498,7 +1501,7 @@ NAV.physics = () => {
                 s ? ctx.lineTo(rx * Math.cos(a0), ry * Math.sin(a0)) : ctx.moveTo(ox, oy);
             }
             ctx.stroke();
-            ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ox, oy, 2.2, 0, TAU); ctx.fill();
+            ctx.fillStyle = KW.col.light ? rgba(a, 1) : "#fff"; ctx.beginPath(); ctx.arc(ox, oy, 2.2, 0, TAU); ctx.fill();
 
             // Central gravity well core
             ctx.fillStyle = rgba(a, 0.95); ctx.beginPath(); ctx.arc(0, 0, 3.2, 0, TAU); ctx.fill();
