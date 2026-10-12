@@ -719,8 +719,8 @@
         const warpTo = (targetIdx) => {
             if (targetIdx < 0 || targetIdx >= sections.length || targetIdx === curIdx) return;
             const next = sections[targetIdx];
-            if (REDUCED || window.innerWidth <= 900) {
-                next.scrollIntoView({ behavior: REDUCED ? "instant" : "smooth" });
+            if (REDUCED) {
+                next.scrollIntoView({ behavior: "instant" });
                 return;
             }
             if (warping) return;
@@ -766,17 +766,56 @@
         };
         KW.warpTo = warpTo;
 
+        const canScrollInside = (dir) => {
+            const cur = sections[curIdx];
+            if (!cur) return false;
+            const r = cur.getBoundingClientRect();
+            if (dir > 0 && r.bottom > window.innerHeight + 16) return true;
+            if (dir < 0 && r.top < -16) return true;
+            return false;
+        };
+
         window.addEventListener("wheel", (e) => {
-            if (REDUCED || window.innerWidth <= 900 || e.ctrlKey || e.metaKey) return;
+            if (REDUCED || e.ctrlKey || e.metaKey) return;
+            if ($("#enter-gate")) return;
+            const dir = e.deltaY > 0 ? 1 : -1;
+            if (canScrollInside(dir)) return;
             e.preventDefault();
             const now = performance.now();
             if (warping || now - lastWarpStart < 820) return;
             if (Math.abs(e.deltaY) < 12) return;
-            warpTo(curIdx + (e.deltaY > 0 ? 1 : -1));
+            warpTo(curIdx + dir);
+        }, { passive: false, signal: sig });
+
+        let touchStartX = 0, touchStartY = 0, touchConsumed = false;
+        window.addEventListener("touchstart", (e) => {
+            if (REDUCED || !e.touches || e.touches.length !== 1) return;
+            if ($("#enter-gate")) return;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchConsumed = false;
+        }, { passive: true, signal: sig });
+
+        window.addEventListener("touchmove", (e) => {
+            if (REDUCED || !e.touches || e.touches.length !== 1) return;
+            if ($("#enter-gate")) return;
+            const dx = touchStartX - e.touches[0].clientX;
+            const dy = touchStartY - e.touches[0].clientY;
+            if (Math.abs(dx) > Math.abs(dy)) return;
+            const dir = dy > 0 ? 1 : -1;
+            if (canScrollInside(dir)) return;
+            if (e.cancelable) e.preventDefault();
+            if (touchConsumed) return;
+            const now = performance.now();
+            if (warping || now - lastWarpStart < 760) return;
+            if (Math.abs(dy) > 28) {
+                touchConsumed = true;
+                warpTo(curIdx + dir);
+            }
         }, { passive: false, signal: sig });
 
         window.addEventListener("keydown", (e) => {
-            if (REDUCED || window.innerWidth <= 900) return;
+            if (REDUCED) return;
             if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
             if ($("#enter-gate")) return;
             if (e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey)) {
@@ -793,7 +832,7 @@
             if (!a) return;
             const id = a.getAttribute("href").slice(1);
             const idx = sections.findIndex((s) => s.id === id);
-            if (idx !== -1 && !REDUCED && window.innerWidth > 900) {
+            if (idx !== -1 && !REDUCED) {
                 e.preventDefault();
                 warpTo(idx);
             }
@@ -817,8 +856,7 @@
                         dot.classList.toggle("active", isCurrent);
                     });
                     if (!warping && lastId !== null && lastId !== id) {
-                        if (window.innerWidth <= 900) SOUND.warp(0);
-                        else SOUND.snap();
+                        SOUND.snap();
                     }
                     lastId = id;
                 }
