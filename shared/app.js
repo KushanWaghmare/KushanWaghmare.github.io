@@ -299,11 +299,6 @@
                     <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="contact-value">github.com/KushanWaghmare</a>
                     <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="pill">View GitHub →</a>
                 </div>
-                <div class="contact-item">
-                    <span class="contact-label">Affiliations &amp; Location</span>
-                    <span class="contact-value">IIT Madras · Chennai, India</span>
-                    <span class="contact-sub">Vidya Bharati Mahavidyalaya · Amravati</span>
-                </div>
             </div>
         </div>`;
 

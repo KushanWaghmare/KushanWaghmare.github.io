@@ -697,7 +697,7 @@ html[data-page="project"] body {
 .snap-section.warp-land > .snap-inner { transition: transform 0.75s cubic-bezier(0.12, 1, 0.25, 1), opacity 0.4s ease-out, filter 0.55s ease-out; }
 .snap-section.warp-land > canvas { transition: transform 0.9s cubic-bezier(0.12, 1, 0.25, 1), opacity 0.7s ease-out; }
 
-@@media (max-width: 900px) {
+@media (max-width: 900px) {
     .snap-pager { display: none; }
     .snap-section, .snap-section.hero {
         padding: 84px 18px 76px;
