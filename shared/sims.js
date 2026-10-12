@@ -800,33 +800,79 @@ NAV.datascience = () => {
     };
 };
 
-// Quant: a geometric Brownian motion path generated live (plotted in log-price, auto-ranged).
+// Quant: live-streaming OHLC candlestick chart with high/low wicks, EMA overlay, and live-ticking active bar.
 NAV.quant = () => {
-    const STEP = 3, RATE = 45, MU = 0.05, SIG = 0.9, H = 1 / RATE;
-    const pts = []; let X = 0, acc = 0, lo = 0, hi = 0, init = false;
-    const next = () => (X += (MU - (SIG * SIG) / 2) * H + SIG * Math.sqrt(H) * randn());
+    const CW = 9, bars = [];
+    let price = 100, ema = 100, tickAcc = 0, barAcc = 0, lo = 0, hi = 0, init = false;
+    const spawnBar = () => {
+        const o = price;
+        let c = o, h = o, l = o;
+        for (let k = 0; k < 6; k++) {
+            c += randn() * 0.45;
+            if (c > h) h = c;
+            if (c < l) l = c;
+        }
+        price = c;
+        ema = ema * 0.82 + c * 0.18;
+        bars.push({ o, h: h + Math.random() * 0.35, l: l - Math.random() * 0.35, c, ema });
+    };
     return (ctx, w, h, t, dt) => {
-        const n = Math.ceil(w / STEP) + 2;
-        if (!init) { for (let i = 0; i < n; i++) pts.push(next()); init = true; }
-        acc += dt * RATE;
-        while (acc >= 1) { acc--; pts.push(next()); }
-        while (pts.length > n) pts.shift();
+        const n = Math.ceil(w / CW) + 2;
+        if (!init) { for (let i = 0; i < n; i++) spawnBar(); init = true; }
+        tickAcc += dt * 18;
+        while (tickAcc >= 1) {
+            tickAcc--;
+            const cur = bars[bars.length - 1];
+            cur.c += randn() * 0.28;
+            if (cur.c > cur.h) cur.h = cur.c;
+            if (cur.c < cur.l) cur.l = cur.c;
+            price = cur.c;
+            cur.ema = cur.ema * 0.94 + cur.c * 0.06;
+            ema = cur.ema;
+        }
+        barAcc += dt * 2.4;
+        while (barAcc >= 1) {
+            barAcc--;
+            bars.push({ o: price, h: price + 0.15, l: price - 0.15, c: price, ema });
+        }
+        while (bars.length > n) bars.shift();
+
         let mn = Infinity, mx = -Infinity;
-        for (const v of pts) { if (v < mn) mn = v; if (v > mx) mx = v; }
+        for (const b of bars) { if (b.l < mn) mn = b.l; if (b.h > mx) mx = b.h; }
         if (lo === hi) { lo = mn; hi = mx; }
-        lo += (mn - lo) * 0.08; hi += (mx - hi) * 0.08;
-        const span = Math.max(hi - lo, 1e-3), a = KW.col.a;
-        const px = (i) => w - 8 - (pts.length - 1 - i + acc) * STEP, py = (v) => h - 4 - ((v - lo) / span) * (h - 8);
-        const g = ctx.createLinearGradient(0, 0, 0, h);
-        g.addColorStop(0, rgba(a, 0.28)); g.addColorStop(1, rgba(a, 0));
-        ctx.beginPath(); ctx.moveTo(px(0), h);
-        pts.forEach((v, i) => ctx.lineTo(px(i), py(v)));
-        ctx.lineTo(px(pts.length - 1), h); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
-        ctx.beginPath(); pts.forEach((v, i) => (i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(i), py(v))));
-        ctx.strokeStyle = rgba(a, 0.95); ctx.lineWidth = 1.4; ctx.stroke();
-        const lx = px(pts.length - 1), ly = py(pts[pts.length - 1]), f = (t * 1.5) % 1;
-        ctx.fillStyle = rgba(a, 1); ctx.beginPath(); ctx.arc(lx, ly, 2.5, 0, TAU); ctx.fill();
-        ctx.strokeStyle = rgba(a, 1 - f); ctx.beginPath(); ctx.arc(lx, ly, 2.5 + f * 6, 0, TAU); ctx.stroke();
+        lo += (mn - lo) * 0.12; hi += (mx - hi) * 0.12;
+        const span = Math.max(hi - lo, 1e-3);
+        const bull = KW.col.pal[3] || KW.col.a, bear = KW.col.pal[0] || [224, 40, 64], maCol = KW.col.pal[2] || [245, 158, 11];
+        const px = (i) => w - 10 - (bars.length - 1 - i + barAcc) * CW;
+        const py = (v) => h - 3 - ((v - lo) / span) * (h - 6);
+
+        // Dashed live price level
+        const lastY = py(bars[bars.length - 1].c);
+        ctx.save();
+        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = rgba(bull, 0.35);
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, lastY); ctx.lineTo(w, lastY); ctx.stroke();
+        ctx.restore();
+
+        // Candlesticks (wicks + bodies)
+        for (let i = 0; i < bars.length; i++) {
+            const b = bars[i], x = px(i), up = b.c >= b.o, col = up ? bull : bear;
+            const yH = py(b.h), yL = py(b.l), yO = py(b.o), yC = py(b.c);
+            const top = Math.min(yO, yC), bh = Math.max(1.8, Math.abs(yC - yO));
+            ctx.strokeStyle = rgba(col, 0.85);
+            ctx.lineWidth = 1.1;
+            ctx.beginPath(); ctx.moveTo(x, yH); ctx.lineTo(x, yL); ctx.stroke();
+            ctx.fillStyle = rgba(col, i === bars.length - 1 ? 1 : 0.88);
+            ctx.fillRect(x - 2.6, top, 5.2, bh);
+        }
+
+        // Exponential Moving Average (EMA) line
+        ctx.strokeStyle = rgba(maCol, 0.78);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        bars.forEach((b, i) => (i ? ctx.lineTo(px(i), py(b.ema)) : ctx.moveTo(px(i), py(b.ema))));
+        ctx.stroke();
     };
 };
 
