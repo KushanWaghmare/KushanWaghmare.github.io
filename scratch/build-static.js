@@ -266,7 +266,7 @@ const renderNav = (active, pageType) => {
         <nav class="links" aria-label="Navigation">
             ${isHub ? '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>' : ''}
             <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
-            <button class="sound-btn needs-unlock" type="button" aria-label="Enable sound effects" title="Enable audio">🔇 <span class="sound-label">Enable Audio</span></button>
+            <button class="sound-btn needs-unlock" type="button" aria-label="Enable sound effects" title="Enable audio">🔇</button>
         </nav>
     </header>`;
 };
@@ -282,13 +282,13 @@ const buildHTML = ({ domain, pageType, three, title, desc, mainContent }) => `<!
     <title>${title}</title>
     <meta name="description" content="${desc}" />
     <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=15" />
+    <link rel="stylesheet" href="shared/style.css?v=16" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=15"></script>
-    <script defer src="shared/sims.js?v=15"></script>
-    <script defer src="shared/app.js?v=15"></script>
+${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=16"></script>
+    <script defer src="shared/sims.js?v=16"></script>
+    <script defer src="shared/app.js?v=16"></script>
 </head>
 <body>
     ${renderNav(domain, pageType)}

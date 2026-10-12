@@ -206,19 +206,15 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 
 .sound-btn {
     margin-left: 8px;
-    height: 36px;
-    padding: 0 12px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: 99px;
+    width: 36px; height: 36px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
     border: 1px solid var(--glass-line);
     background: transparent;
     color: var(--fg);
-    font: 500 11px var(--mono);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    white-space: nowrap;
+    font-size: 15px;
     cursor: pointer;
     transition: transform 0.2s, border-color 0.25s, color 0.25s, background-color 0.25s, opacity 0.25s;
 }
@@ -229,7 +225,6 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
     color: var(--accent);
 }
 .sound-btn.muted { opacity: 0.65; }
-@media (max-width: 640px) { .sound-btn { padding: 0 10px; } .sound-btn .sound-label { display: none; } }
 
 /* ---------- Hero ---------- */
 .hero {

@@ -550,7 +550,7 @@
                     <nav class="links" aria-label="Navigation">
                         ${isHub ? '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>' : ''}
                         <button class="theme-btn" type="button" aria-label="Switch theme"></button>
-                        <button class="sound-btn needs-unlock" type="button" aria-label="Enable sound effects" title="Enable audio">🔇 <span class="sound-label">Enable Audio</span></button>
+                        <button class="sound-btn needs-unlock" type="button" aria-label="Enable sound effects" title="Enable audio">🔇</button>
                     </nav>
                 </header>
                 <main id="main"></main>
@@ -574,11 +574,7 @@
                 const unlocked = SOUND.isUnlocked();
                 const active = on && unlocked;
                 const waiting = on && !unlocked;
-                soundBtn.innerHTML = waiting
-                    ? `🔇 <span class="sound-label">Enable Audio</span>`
-                    : active
-                    ? `🔊 <span class="sound-label">Audio On</span>`
-                    : `🔇 <span class="sound-label">Muted</span>`;
+                soundBtn.textContent = active ? "🔊" : "🔇";
                 soundBtn.setAttribute("aria-label", active ? "Mute sound effects" : "Enable sound effects");
                 soundBtn.classList.toggle("needs-unlock", waiting);
                 soundBtn.classList.toggle("muted", !on);
