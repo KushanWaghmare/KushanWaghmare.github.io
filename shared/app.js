@@ -65,6 +65,16 @@
             window.addEventListener(ev, init, { once: true, passive: true });
         });
 
+        let noiseBuf = null;
+        const noise = () => {
+            if (!noiseBuf) {
+                noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+                const d = noiseBuf.getChannelData(0);
+                for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+            }
+            return noiseBuf;
+        };
+
         const playTone = (freqStart, freqEnd, type, duration, volume) => {
             if (!enabled || !ctx || ctx.state !== "running") return;
             try {
@@ -114,6 +124,52 @@
                 init();
                 playTone(523, 523, "sine", 0.07, 0.045);
                 setTimeout(() => playTone(784, 784, "sine", 0.09, 0.045), 65);
+            },
+            // Supersonic woosh: band-passed noise sweeping up then down (air rush) plus a
+            // low-passed sawtooth whose pitch climbs and drops (turbine Doppler), panned from the entry side.
+            warp: (pan = 0) => {
+                init();
+                if (!enabled || !ctx || ctx.state !== "running") return;
+                try {
+                    const now = ctx.currentTime;
+                    let bus = ctx.destination;
+                    if (ctx.createStereoPanner) {
+                        const p = ctx.createStereoPanner();
+                        p.pan.setValueAtTime(pan, now); p.pan.linearRampToValueAtTime(0, now + 0.6);
+                        p.connect(ctx.destination); bus = p;
+                    }
+                    const src = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+                    src.buffer = noise(); bp.type = "bandpass"; bp.Q.value = 0.9;
+                    bp.frequency.setValueAtTime(350, now);
+                    bp.frequency.exponentialRampToValueAtTime(4200, now + 0.3);
+                    bp.frequency.exponentialRampToValueAtTime(600, now + 0.75);
+                    g.gain.setValueAtTime(0.0001, now);
+                    g.gain.exponentialRampToValueAtTime(0.11, now + 0.28);
+                    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.78);
+                    src.connect(bp).connect(g).connect(bus); src.start(now); src.stop(now + 0.8);
+                    const o = ctx.createOscillator(), lp = ctx.createBiquadFilter(), og = ctx.createGain();
+                    o.type = "sawtooth"; lp.type = "lowpass"; lp.frequency.value = 900;
+                    o.frequency.setValueAtTime(70, now);
+                    o.frequency.exponentialRampToValueAtTime(260, now + 0.3);
+                    o.frequency.exponentialRampToValueAtTime(55, now + 0.75);
+                    og.gain.setValueAtTime(0.0001, now);
+                    og.gain.exponentialRampToValueAtTime(0.025, now + 0.25);
+                    og.gain.exponentialRampToValueAtTime(0.0001, now + 0.75);
+                    o.connect(lp).connect(og).connect(bus); o.start(now); o.stop(now + 0.8);
+                } catch (e) {}
+            },
+            // Mechanical lock-in when a section lands: low thump + high-passed latch click + servo tick.
+            lock: () => {
+                init();
+                if (!enabled || !ctx || ctx.state !== "running") return;
+                playTone(170, 50, "sine", 0.12, 0.09);
+                try {
+                    const now = ctx.currentTime, src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
+                    src.buffer = noise(); hp.type = "highpass"; hp.frequency.value = 2500;
+                    g.gain.setValueAtTime(0.06, now); g.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
+                    src.connect(hp).connect(g).connect(ctx.destination); src.start(now); src.stop(now + 0.04);
+                } catch (e) {}
+                setTimeout(() => playTone(2400, 2400, "triangle", 0.02, 0.02), 28);
             }
         };
     })();
@@ -132,6 +188,7 @@
             ${short ? "" : `<a class="cue" href="#content">Scroll</a>`}
         </section>`;
 
+    const VEC = ["right", "left", "bottom", "top", "right"];
     const hubPage = () => `
         <nav class="snap-pager" aria-label="Section navigation">
             <a href="#intro" class="snap-dot active" data-title="00 Intro" aria-label="Introduction"><span class="dot-disc"></span><span class="dot-text">00 Intro</span></a>
@@ -140,7 +197,7 @@
             <a href="#about-contact" class="snap-dot" data-title="06 Contact" aria-label="About & Contact"><span class="dot-disc"></span><span class="dot-text">06 Contact</span></a>
         </nav>
 
-        <section class="snap-section hero" id="intro" data-domain="hub">
+        <section class="snap-section hero" id="intro" data-domain="hub" data-enter="zoom">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-hero>Data Science · Quantitative Finance · IIT Madras</div>
@@ -161,7 +218,7 @@
             const nextKey = keys[i + 1] ? `domain-${keys[i + 1]}` : "about-contact";
             const nextLabel = keys[i + 1] ? `Next: ${SITE.domains[keys[i + 1]].name}` : "Next: About & Contact";
             return `
-        <section class="snap-section domain-snap" id="domain-${k}" data-domain="${k}" style="--a:var(--rgb-${k})">
+        <section class="snap-section domain-snap" id="domain-${k}" data-domain="${k}" data-enter="${VEC[i]}" style="--a:var(--rgb-${k})">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>${pad(i)} / ${d.label}</div>
@@ -185,7 +242,7 @@
         </section>`;
         }).join("")}
 
-        <section class="snap-section about-contact-section" id="about-contact" data-domain="hub">
+        <section class="snap-section about-contact-section" id="about-contact" data-domain="hub" data-enter="bottom">
             <div class="snap-inner" style="max-width:960px">
                 <div class="section-head" data-reveal><span class="idx">06</span><h2>About &amp; Profile</h2></div>
                 <div class="two-col" style="margin-bottom:36px">
@@ -468,6 +525,7 @@
                 <div class="progress"></div>
                 <header class="nav glass">
                     <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
+                    ${isHub ? '' : '<div class="nav-live" aria-hidden="true"><canvas></canvas></div>'}
                     <nav class="links" aria-label="Navigation">
                         ${isHub ? '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>' : ''}
                         <button class="theme-btn" type="button" aria-label="Switch theme"></button>
@@ -531,17 +589,159 @@
         }
     };
 
-    /* ---------- snap observer across all page types ---------- */
+    /* ---------- snap observer & supersonic warp engine ---------- */
     const setupSnapObserver = () => {
-        const sections = document.querySelectorAll(".snap-section");
+        const sections = Array.from(document.querySelectorAll(".snap-section"));
         if (!sections.length) return;
+        const VECS = ["zoom", "right", "left", "bottom", "top", "right"];
+        sections.forEach((s, i) => {
+            if (!s.dataset.enter) s.dataset.enter = VECS[i % VECS.length];
+        });
+
         const dots = document.querySelectorAll(".snap-dot");
-        let lastId = null;
+        let lastId = null, curIdx = 0, warping = false, lastWarpStart = 0;
+
+        let warpCanvas = $(".warp");
+        if (!warpCanvas && !REDUCED) {
+            warpCanvas = document.createElement("canvas");
+            warpCanvas.className = "warp";
+            warpCanvas.setAttribute("aria-hidden", "true");
+            document.body.appendChild(warpCanvas);
+        }
+
+        const triggerStreak = (dir) => {
+            if (!warpCanvas || REDUCED) return;
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const w = window.innerWidth, h = window.innerHeight;
+            warpCanvas.width = w * dpr;
+            warpCanvas.height = h * dpr;
+            const ctx = warpCanvas.getContext("2d");
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            const cx = dir === "right" ? w * 0.68 : dir === "left" ? w * 0.32 : w * 0.5;
+            const cy = dir === "bottom" ? h * 0.68 : dir === "top" ? h * 0.32 : h * 0.5;
+            const stars = Array.from({ length: 85 }, () => {
+                const ang = Math.random() * Math.PI * 2;
+                const r0 = 18 + Math.random() * Math.min(w, h) * 0.28;
+                const spd = 650 + Math.random() * 1400;
+                const lw = 0.8 + Math.random() * 1.8;
+                const core = Math.random() < 0.35;
+                return { cs: Math.cos(ang), sn: Math.sin(ang), r: r0, spd, lw, core };
+            });
+            warpCanvas.classList.add("on");
+            setTimeout(() => warpCanvas.classList.remove("on"), 360);
+            const t0 = performance.now();
+            const [cr, cg, cb] = KW.col.a;
+            const frame = (now) => {
+                const el = (now - t0) / 1000;
+                ctx.clearRect(0, 0, w, h);
+                if (el > 0.56) return;
+                const env = Math.sin(Math.min(1, el / 0.52) * Math.PI);
+                ctx.lineCap = "round";
+                for (const s of stars) {
+                    const r1 = s.r + s.spd * el * 0.55;
+                    const r2 = s.r + s.spd * el * 1.25;
+                    ctx.lineWidth = s.lw;
+                    ctx.strokeStyle = s.core
+                        ? `rgba(255,255,255,${(0.75 * env).toFixed(3)})`
+                        : `rgba(${cr},${cg},${cb},${(0.65 * env).toFixed(3)})`;
+                    ctx.beginPath();
+                    ctx.moveTo(cx + s.cs * r1, cy + s.sn * r1);
+                    ctx.lineTo(cx + s.cs * r2, cy + s.sn * r2);
+                    ctx.stroke();
+                }
+                requestAnimationFrame(frame);
+            };
+            requestAnimationFrame(frame);
+        };
+
+        const warpTo = (targetIdx) => {
+            if (targetIdx < 0 || targetIdx >= sections.length || targetIdx === curIdx) return;
+            const next = sections[targetIdx];
+            if (REDUCED || window.innerWidth <= 900) {
+                next.scrollIntoView({ behavior: REDUCED ? "instant" : "smooth" });
+                return;
+            }
+            if (warping) return;
+            warping = true;
+            lastWarpStart = performance.now();
+            const cur = sections[curIdx];
+            curIdx = targetIdx;
+
+            const d = next.dataset.domain;
+            if (d && D.dataset.domain !== d) {
+                D.dataset.domain = d;
+                KW.refresh();
+                window.dispatchEvent(new Event("themechange"));
+            }
+            dots.forEach((dot) => dot.classList.toggle("active", dot.getAttribute("href") === "#" + next.id));
+
+            const enter = next.dataset.enter || "bottom";
+            const pan = enter === "right" ? 0.65 : enter === "left" ? -0.65 : 0;
+            SOUND.warp(pan);
+            triggerStreak(enter);
+
+            next.querySelectorAll("[data-reveal], [data-hero]").forEach((el) => el.classList.add("revealed"));
+            cur.classList.add("warp-out");
+            next.classList.add("warp-in");
+
+            setTimeout(() => {
+                window.scrollTo({ top: next.offsetTop, behavior: "instant" });
+                void next.offsetWidth;
+                cur.classList.remove("warp-out");
+                next.classList.remove("warp-in");
+                next.classList.add("warp-land");
+            }, 210);
+
+            setTimeout(() => {
+                SOUND.lock();
+                SOUND.snap();
+            }, 460);
+
+            setTimeout(() => {
+                next.classList.remove("warp-land");
+                warping = false;
+            }, 760);
+        };
+        KW.warpTo = warpTo;
+
+        window.addEventListener("wheel", (e) => {
+            if (REDUCED || window.innerWidth <= 900 || e.ctrlKey || e.metaKey) return;
+            e.preventDefault();
+            const now = performance.now();
+            if (warping || now - lastWarpStart < 820) return;
+            if (Math.abs(e.deltaY) < 12) return;
+            warpTo(curIdx + (e.deltaY > 0 ? 1 : -1));
+        }, { passive: false });
+
+        window.addEventListener("keydown", (e) => {
+            if (REDUCED || window.innerWidth <= 900) return;
+            if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+            if (e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey)) {
+                e.preventDefault();
+                warpTo(curIdx + 1);
+            } else if (e.key === "ArrowUp" || e.key === "PageUp" || (e.key === " " && e.shiftKey)) {
+                e.preventDefault();
+                warpTo(curIdx - 1);
+            }
+        });
+
+        document.addEventListener("click", (e) => {
+            const a = e.target.closest && e.target.closest('a[href^="#"]');
+            if (!a) return;
+            const id = a.getAttribute("href").slice(1);
+            const idx = sections.findIndex((s) => s.id === id);
+            if (idx !== -1 && !REDUCED && window.innerWidth > 900) {
+                e.preventDefault();
+                warpTo(idx);
+            }
+        });
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
                 if (entry.isIntersecting) {
                     const id = entry.target.id;
+                    const idx = sections.indexOf(entry.target);
+                    if (!warping && idx !== -1) curIdx = idx;
                     const d = entry.target.dataset.domain;
                     if (d && D.dataset.domain !== d) {
                         D.dataset.domain = d;
@@ -553,7 +753,7 @@
                         const isCurrent = href === "#" + id;
                         dot.classList.toggle("active", isCurrent);
                     });
-                    if (lastId !== null && lastId !== id) {
+                    if (!warping && lastId !== null && lastId !== id) {
                         SOUND.snap();
                     }
                     lastId = id;
@@ -592,14 +792,15 @@
         const p = SITE.projects.find((x) => x.id === new URLSearchParams(location.search).get("p"));
         if (p) {
             D.dataset.domain = p.domain;
+            KW.refresh();
             document.title = `${p.title} · Kushan Waghmare`;
             main.innerHTML = projectPage(p);
             document.querySelectorAll(".snap-section canvas").forEach((c) => {
                 try { if (p.domain && SIMS[p.domain]) SIMS[p.domain](c); } catch (err) {}
             });
             setupSnapObserver();
-        } else if (!main.firstElementChild) {
-            main.innerHTML = projectIndexPage();
+        } else {
+            if (!main.firstElementChild) main.innerHTML = projectIndexPage();
             const introCanvas = $("#proj-index-hero canvas");
             if (introCanvas && SIMS.hub) {
                 try { SIMS.hub(introCanvas); } catch (e) {}
@@ -610,6 +811,10 @@
             });
             setupSnapObserver();
         }
+    }
+    const navCanvas = $(".nav-live canvas");
+    if (navCanvas && SIMS.nav) {
+        try { SIMS.nav(navCanvas); } catch (e) { console.warn("Nav sim:", e); }
     }
     if (window.renderMathInElement) renderMathInElement(document.body, { throwOnError: false,
         delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }] });

@@ -25,6 +25,7 @@ const hero = (inner, short) => `
             ${short ? "" : `<a class="cue" href="#content">Scroll</a>`}
         </section>`;
 
+const VEC = ["right", "left", "bottom", "top", "right"];
 const hubPage = () => `
         <nav class="snap-pager" aria-label="Section navigation">
             <a href="#intro" class="snap-dot active" data-title="00 Intro" aria-label="Introduction"><span class="dot-disc"></span><span class="dot-text">00 Intro</span></a>
@@ -33,7 +34,7 @@ const hubPage = () => `
             <a href="#about-contact" class="snap-dot" data-title="06 Contact" aria-label="About & Contact"><span class="dot-disc"></span><span class="dot-text">06 Contact</span></a>
         </nav>
 
-        <section class="snap-section hero" id="intro" data-domain="hub">
+        <section class="snap-section hero" id="intro" data-domain="hub" data-enter="zoom">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-hero>Data Science · Quantitative Finance · IIT Madras</div>
@@ -54,7 +55,7 @@ const hubPage = () => `
             const nextKey = keys[i + 1] ? `domain-${keys[i + 1]}` : "about-contact";
             const nextLabel = keys[i + 1] ? `Next: ${SITE.domains[keys[i + 1]].name}` : "Next: About & Contact";
             return `
-        <section class="snap-section domain-snap" id="domain-${k}" data-domain="${k}" style="--a:var(--rgb-${k})">
+        <section class="snap-section domain-snap" id="domain-${k}" data-domain="${k}" data-enter="${VEC[i]}" style="--a:var(--rgb-${k})">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>${pad(i)} / ${d.label}</div>
@@ -78,7 +79,7 @@ const hubPage = () => `
         </section>`;
         }).join("")}
 
-        <section class="snap-section about-contact-section" id="about-contact" data-domain="hub">
+        <section class="snap-section about-contact-section" id="about-contact" data-domain="hub" data-enter="bottom">
             <div class="snap-inner" style="max-width:960px">
                 <div class="section-head" data-reveal><span class="idx">06</span><h2>About &amp; Profile</h2></div>
                 <div class="two-col" style="margin-bottom:36px">
@@ -261,6 +262,7 @@ const renderNav = (active, pageType) => {
     <div class="progress"></div>
     <header class="nav glass">
         <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
+        ${isHub ? '' : '<div class="nav-live" aria-hidden="true"><canvas></canvas></div>'}
         <nav class="links" aria-label="Navigation">
             ${isHub ? '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>' : ''}
             <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>

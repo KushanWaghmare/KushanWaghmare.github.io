@@ -443,3 +443,177 @@ SIMS.hub = (c) => {
         T.renderer.render(T.scene, T.cam);
     });
 };
+
+/* ------------------------------------------------------------ LIVE HEADER
+   A thin strip in the navbar on domain/project pages. One micro-animation per domain;
+   the strip follows <html data-domain>, so it changes as the project index scrolls. */
+const NAV = {};
+const navFade = (ctx, w, h, left) => { // feather the strip's edges into the glass navbar
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-in";
+    const g = ctx.createLinearGradient(0, 0, w, 0);
+    g.addColorStop(0, left ? "rgba(0,0,0,0)" : "#000"); g.addColorStop(0.07, "#000");
+    g.addColorStop(0.93, "#000"); g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+};
+
+// Mathematics: sin and cos sliding past each other, with a probe joining them (phase gap π/2).
+NAV.math = () => (ctx, w, h, t) => {
+    const a = KW.col.a, b = KW.col.pal[1], mid = h / 2, A = h * 0.36, k = TAU / Math.max(w / 3, 120), ph = t * 2.2;
+    ctx.lineWidth = 1; ctx.strokeStyle = rgba(a, 0.15);
+    ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
+    const wave = (f, col) => {
+        ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.beginPath();
+        for (let x = 0; x <= w; x += 2) { const y = mid - A * f(k * x - ph); x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+        ctx.stroke();
+    };
+    wave(Math.cos, rgba(b, 0.85));
+    wave(Math.sin, rgba(a, 0.95));
+    const px = (t * 70) % w, ys = mid - A * Math.sin(k * px - ph), yc = mid - A * Math.cos(k * px - ph);
+    ctx.strokeStyle = rgba(a, 0.4); ctx.beginPath(); ctx.moveTo(px, ys); ctx.lineTo(px, yc); ctx.stroke();
+    ctx.fillStyle = rgba(a, 1); ctx.beginPath(); ctx.arc(px, ys, 2.4, 0, TAU); ctx.fill();
+    ctx.fillStyle = rgba(b, 1); ctx.beginPath(); ctx.arc(px, yc, 2.4, 0, TAU); ctx.fill();
+};
+
+// Physics: plane EM wave travelling +x. E oscillates vertically, B along the depth axis
+// (oblique projection), in phase and perpendicular to each other and to propagation.
+NAV.physics = () => (ctx, w, h, t) => {
+    const a = KW.col.a, b = KW.col.pal[4], mid = h / 2, A = h * 0.4, k = TAU / Math.max(w / 2.5, 140), ph = t * 3;
+    const ZX = 0.6, ZY = 0.32; // screen direction of the depth (z) axis
+    const field = (col, dx, dy) => {
+        ctx.strokeStyle = rgba(col, 0.3); ctx.lineWidth = 1; ctx.beginPath();
+        for (let x = 0; x <= w; x += 6) { const v = Math.sin(k * x - ph); ctx.moveTo(x, mid); ctx.lineTo(x + v * dx, mid + v * dy); }
+        ctx.stroke();
+        ctx.strokeStyle = rgba(col, 0.9); ctx.lineWidth = 1.5; ctx.beginPath();
+        for (let x = 0; x <= w; x += 2) { const v = Math.sin(k * x - ph), X = x + v * dx, Y = mid + v * dy; x ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
+        ctx.stroke();
+    };
+    field(b, A * 0.8 * ZX, A * 0.8 * ZY); // B (behind)
+    ctx.strokeStyle = rgba(a, 0.35); ctx.lineWidth = 1; // propagation axis + arrowhead
+    ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w - 2, mid); ctx.moveTo(w - 8, mid - 3); ctx.lineTo(w - 2, mid); ctx.lineTo(w - 8, mid + 3); ctx.stroke();
+    field(a, 0, -A); // E
+};
+
+// Data science: a feed-forward net; activations travel layer to layer and light up nodes.
+NAV.datascience = () => {
+    let W = 0, layers = [], pulses = [], spawn = 0;
+    const pick = (l) => l[(Math.random() * l.length) | 0];
+    const build = (w, h) => {
+        W = w; pulses = [];
+        const L = Math.max(4, Math.floor(w / 70));
+        layers = Array.from({ length: L }, (_, l) => {
+            const n = 2 + (l % 3), x = 8 + (l * (w - 16)) / (L - 1);
+            return Array.from({ length: n }, (_, i) => ({ x, y: (h * (i + 1)) / (n + 1), act: 0 }));
+        });
+    };
+    return (ctx, w, h, t, dt) => {
+        if (w !== W) build(w, h);
+        const a = KW.col.a, b = KW.col.pal[1];
+        ctx.lineWidth = 1; ctx.strokeStyle = rgba(a, 0.09); ctx.beginPath();
+        for (let l = 0; l < layers.length - 1; l++) for (const u of layers[l]) for (const v of layers[l + 1]) { ctx.moveTo(u.x, u.y); ctx.lineTo(v.x, v.y); }
+        ctx.stroke();
+        if ((spawn -= dt) <= 0 && pulses.length < 90) { spawn = 0.12; pulses.push({ l: 0, u: pick(layers[0]), v: pick(layers[1]), p: 0 }); }
+        for (const q of pulses) {
+            q.p += dt * 2.2;
+            if (q.p >= 1) {
+                q.v.act = 1;
+                if (q.l + 2 < layers.length && Math.random() < 0.85) { q.l++; q.u = q.v; q.v = pick(layers[q.l + 1]); q.p = 0; } else q.dead = true;
+            }
+        }
+        pulses = pulses.filter((q) => !q.dead);
+        ctx.strokeStyle = rgba(b, 0.9); ctx.lineWidth = 1.4; ctx.beginPath();
+        for (const q of pulses) {
+            const p0 = Math.max(0, q.p - 0.18);
+            ctx.moveTo(q.u.x + (q.v.x - q.u.x) * p0, q.u.y + (q.v.y - q.u.y) * p0);
+            ctx.lineTo(q.u.x + (q.v.x - q.u.x) * q.p, q.u.y + (q.v.y - q.u.y) * q.p);
+        }
+        ctx.stroke();
+        for (const l of layers) for (const n of l) {
+            n.act *= Math.exp(-dt * 3);
+            ctx.fillStyle = rgba(a, 0.3 + 0.7 * n.act);
+            ctx.beginPath(); ctx.arc(n.x, n.y, 2 + n.act * 2, 0, TAU); ctx.fill();
+            if (n.act > 0.2) { ctx.strokeStyle = rgba(a, n.act * 0.5); ctx.beginPath(); ctx.arc(n.x, n.y, 4 + (1 - n.act) * 6, 0, TAU); ctx.stroke(); }
+        }
+    };
+};
+
+// Quant: a geometric Brownian motion path generated live (plotted in log-price, auto-ranged).
+NAV.quant = () => {
+    const STEP = 3, RATE = 45, MU = 0.05, SIG = 0.9, H = 1 / RATE;
+    const pts = []; let X = 0, acc = 0, lo = 0, hi = 0, init = false;
+    const next = () => (X += (MU - (SIG * SIG) / 2) * H + SIG * Math.sqrt(H) * randn());
+    return (ctx, w, h, t, dt) => {
+        const n = Math.ceil(w / STEP) + 2;
+        if (!init) { for (let i = 0; i < n; i++) pts.push(next()); init = true; }
+        acc += dt * RATE;
+        while (acc >= 1) { acc--; pts.push(next()); }
+        while (pts.length > n) pts.shift();
+        let mn = Infinity, mx = -Infinity;
+        for (const v of pts) { if (v < mn) mn = v; if (v > mx) mx = v; }
+        if (lo === hi) { lo = mn; hi = mx; }
+        lo += (mn - lo) * 0.08; hi += (mx - hi) * 0.08;
+        const span = Math.max(hi - lo, 1e-3), a = KW.col.a;
+        const px = (i) => w - 8 - (pts.length - 1 - i + acc) * STEP, py = (v) => h - 4 - ((v - lo) / span) * (h - 8);
+        const g = ctx.createLinearGradient(0, 0, 0, h);
+        g.addColorStop(0, rgba(a, 0.28)); g.addColorStop(1, rgba(a, 0));
+        ctx.beginPath(); ctx.moveTo(px(0), h);
+        pts.forEach((v, i) => ctx.lineTo(px(i), py(v)));
+        ctx.lineTo(px(pts.length - 1), h); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+        ctx.beginPath(); pts.forEach((v, i) => (i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(i), py(v))));
+        ctx.strokeStyle = rgba(a, 0.95); ctx.lineWidth = 1.4; ctx.stroke();
+        const lx = px(pts.length - 1), ly = py(pts[pts.length - 1]), f = (t * 1.5) % 1;
+        ctx.fillStyle = rgba(a, 1); ctx.beginPath(); ctx.arc(lx, ly, 2.5, 0, TAU); ctx.fill();
+        ctx.strokeStyle = rgba(a, 1 - f); ctx.beginPath(); ctx.arc(lx, ly, 2.5 + f * 6, 0, TAU); ctx.stroke();
+    };
+};
+
+// Computer science: insertion sort stepping through a shuffled array, with a blinking prompt.
+NAV.cs = () => {
+    const LABEL = 64; let arr = [], gen = null, done = false, hold = 0, cmp = [-1, -1], steps = 0;
+    function* isort(v) {
+        for (let i = 1; i < v.length; i++) {
+            let j = i;
+            while (j > 0 && v[j - 1] > v[j]) { [v[j - 1], v[j]] = [v[j], v[j - 1]]; yield [j - 1, j]; j--; }
+            yield [j, i];
+        }
+    }
+    const shuffle = () => {
+        for (let i = arr.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [arr[i], arr[j]] = [arr[j], arr[i]]; }
+        gen = isort(arr); done = false; steps = 0;
+    };
+    return (ctx, w, h, t, dt) => {
+        const n = Math.max(12, Math.floor((w - LABEL) / 5));
+        if (n !== arr.length) { arr = Array.from({ length: n }, (_, i) => (i + 1) / n); shuffle(); }
+        if (!done) {
+            for (let k = Math.ceil(n * 6 * dt); k > 0; k--) {
+                const r = gen.next();
+                if (r.done) { done = true; hold = 1.4; cmp = [-1, -1]; break; }
+                cmp = r.value; steps++;
+            }
+        } else if ((hold -= dt) <= 0) shuffle();
+        const a = KW.col.a, muted = KW.col.light ? [80, 82, 95] : [150, 156, 172];
+        ctx.font = '500 10px "JetBrains Mono", ui-monospace, monospace'; ctx.textBaseline = "middle";
+        ctx.fillStyle = rgba(muted, 1); ctx.fillText(`$ isort${t % 1 < 0.5 ? "▊" : ""}`, 0, h / 2 - 6);
+        ctx.fillStyle = rgba(a, 0.9); ctx.fillText(done ? "sorted ✓" : `#${String(steps).padStart(5, "0")}`, 0, h / 2 + 7);
+        const bw = (w - LABEL) / n;
+        for (let i = 0; i < n; i++) {
+            const bh = arr[i] * (h - 6), hot = i === cmp[0] || i === cmp[1];
+            ctx.fillStyle = rgba(a, hot ? 1 : done ? 0.8 : 0.3);
+            ctx.fillRect(LABEL + i * bw, h - 3 - bh, Math.max(bw - 1, 1), bh);
+        }
+    };
+};
+
+SIMS.nav = (c) => {
+    const ctx = c.getContext("2d"), inst = {};
+    let W = 0, Hh = 0;
+    KW.fit(c, (w, h, dpr) => { W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
+    KW.loop(c, (t, dt) => {
+        ctx.clearRect(0, 0, W, Hh);
+        if (W < 40) return;
+        const d = document.documentElement.dataset.domain, k = NAV[d] ? d : "math";
+        (inst[k] || (inst[k] = NAV[k]()))(ctx, W, Hh, t, dt);
+        navFade(ctx, W, Hh, k !== "cs");
+    });
+};

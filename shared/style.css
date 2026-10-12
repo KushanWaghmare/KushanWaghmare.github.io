@@ -135,6 +135,17 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 .brand { font: 700 14px var(--mono); letter-spacing: 0.08em; white-space: nowrap; }
 .brand b { color: var(--accent); font-weight: 700; }
 .links { display: flex; align-items: center; gap: 2px; }
+
+/* Live header strip on domain/project pages (fills the space left by the Contact link) */
+.nav-live {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 36px;
+    margin: 0 clamp(12px, 3vw, 36px);
+    pointer-events: none;
+}
+.nav-live canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .links a {
     position: relative;
     font: 500 12px var(--mono);
@@ -631,6 +642,31 @@ html[data-page="project"] body {
     margin-top: 18px;
     margin-bottom: 24px;
 }
+
+/* ---------- Supersonic warp transition (hub) ---------- */
+.warp { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 45; pointer-events: none; }
+.snap-section[data-enter="right"]  { --warp-from: translate3d(85vw, 0, 0) scaleX(1.8); }
+.snap-section[data-enter="left"]   { --warp-from: translate3d(-85vw, 0, 0) scaleX(1.8); }
+.snap-section[data-enter="bottom"] { --warp-from: translate3d(0, 75vh, 0) scaleY(1.6); }
+.snap-section[data-enter="top"]    { --warp-from: translate3d(0, -75vh, 0) scaleY(1.6); }
+.snap-section[data-enter="zoom"]   { --warp-from: scale(0.2); }
+
+.snap-section.warp-out > .snap-inner {
+    transform: scale(1.6);
+    opacity: 0;
+    filter: blur(14px);
+    transition: transform 0.34s cubic-bezier(0.6, 0, 1, 0.4), opacity 0.3s ease-in, filter 0.3s ease-in;
+}
+.snap-section.warp-out > canvas {
+    transform: scale(1.25);
+    opacity: 0.15;
+    filter: blur(6px);
+    transition: transform 0.34s cubic-bezier(0.6, 0, 1, 0.4), opacity 0.3s ease-in, filter 0.3s ease-in;
+}
+.snap-section.warp-in > .snap-inner { transform: var(--warp-from, scale(0.2)); opacity: 0; filter: blur(16px); transition: none; }
+.snap-section.warp-in > canvas { transform: scale(0.85); opacity: 0; transition: none; }
+.snap-section.warp-land > .snap-inner { transition: transform 0.75s cubic-bezier(0.12, 1, 0.25, 1), opacity 0.4s ease-out, filter 0.55s ease-out; }
+.snap-section.warp-land > canvas { transition: transform 0.9s cubic-bezier(0.12, 1, 0.25, 1), opacity 0.7s ease-out; }
 
 @media (max-width: 900px) {
     .snap-pager { display: none; }
