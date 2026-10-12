@@ -200,16 +200,16 @@
     const VEC = ["right", "left", "bottom", "top", "right"];
     const hubPage = () => `
         <nav class="snap-pager" aria-label="Section navigation">
-            <a href="#intro" class="snap-dot active" data-title="00 Intro" aria-label="Introduction"><span class="dot-disc"></span><span class="dot-text">00 Intro</span></a>
+            <a href="#intro" class="snap-dot active" data-title="00 Intro" aria-label="Introduction"><span class="dot-disc" style="--a:var(--rgb-hub)"></span><span class="dot-text">00 Intro</span></a>
             ${keys.map((k, i) => `
             <a href="#domain-${k}" class="snap-dot" data-d="${k}" data-title="${pad(i)} ${SITE.domains[k].short}" aria-label="${SITE.domains[k].name}"><span class="dot-disc" style="--a:var(--rgb-${k})"></span><span class="dot-text">${pad(i)} ${SITE.domains[k].short}</span></a>`).join("")}
             <a href="#about-contact" class="snap-dot" data-title="06 Contact" aria-label="About & Contact"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">06 Contact</span></a>
         </nav>
 
-        <section class="snap-section hero" id="intro" data-domain="hub" data-enter="zoom">
+        <section class="snap-section hero" id="intro" data-domain="hub" data-enter="zoom" style="--a:var(--rgb-hub)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
-                <div class="eyebrow" data-hero>Data Science · Quantitative Finance · IIT Madras</div>
+                <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>00 / Data Science · Quantitative Finance · IIT Madras</div>
                 <h1 data-hero>Kushan<br>Waghmare</h1>
                 <p class="lead" data-hero>Data Science &amp; Quantitative Finance student at IIT Madras, building complex systems from compilers to statistical-arbitrage models, and studying the physics underneath them.</p>
                 <div class="hero-eq glass" data-hero>$$\\dot x=\\sigma(y-x),\\quad\\dot y=x(\\rho-z)-y,\\quad\\dot z=xy-\\beta z$$</div>

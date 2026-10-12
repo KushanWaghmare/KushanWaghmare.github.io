@@ -15,7 +15,7 @@ html[data-theme="dark"] {
     --line: #ffffff17;
     --glass: #10121a8c;
     --glass-line: #ffffff1f;
-    --rgb-hub: 59, 130, 246;         /* electric cobalt blue */
+    --rgb-hub: 217, 70, 239;         /* electric fuchsia / magenta */
     --rgb-math: 224, 40, 64;         /* crimson */
     --rgb-physics: 34, 211, 238;     /* electric cyan */
     --rgb-datascience: 245, 158, 11; /* amber */
@@ -32,7 +32,7 @@ html[data-theme="light"] {
     --line: #0000001a;
     --glass: #ffffff9e;
     --glass-line: #0000001a;
-    --rgb-hub: 37, 99, 235;
+    --rgb-hub: 162, 28, 175;
     --rgb-math: 176, 20, 48;
     --rgb-physics: 6, 140, 172;
     --rgb-datascience: 176, 98, 0;
@@ -47,7 +47,7 @@ html[data-domain="quant"] { --a: var(--rgb-quant); }
 html[data-domain="cs"] { --a: var(--rgb-cs); }
 html[data-domain="contact"] { --a: var(--rgb-contact); }
 html[data-domain="hub"] { --a: var(--rgb-hub); }
-html { --accent: rgb(var(--a)); }
+html, .snap-section, .snap-dot, .pill, .snap-cta-btn { --accent: rgb(var(--a)); }
 
 /* ---------- Scroll reveal ---------- */
 [data-reveal], [data-hero] {
@@ -259,9 +259,20 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
     letter-spacing: -0.045em;
     font-weight: 700;
     margin: 18px 0 22px;
+    text-shadow: 0 0 48px rgba(var(--a), 0.26);
 }
 .hero.short-hero h1 { font-size: clamp(34px, 5.4vw, 72px); }
-.hero-eq { display: inline-block; max-width: 100%; overflow-x: auto; padding: 8px 22px; margin-top: 26px; font-size: 1.05rem; color: var(--fg); }
+.hero-eq {
+    display: inline-block;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 8px 22px;
+    margin-top: 26px;
+    font-size: 1.05rem;
+    color: var(--fg);
+    border-color: rgba(var(--a), 0.36);
+    box-shadow: 0 8px 30px -10px rgba(var(--a), 0.22);
+}
 .hero-eq .katex, .math-block .eq .katex { color: var(--fg); }
 .sim-tag {
     position: absolute;
@@ -335,7 +346,7 @@ html[data-page="project"] body {
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background: radial-gradient(circle at 75% 50%, rgba(var(--a), 0.09), transparent 70%),
+    background: radial-gradient(circle at 75% 50%, rgba(var(--a), 0.16), transparent 70%),
                 linear-gradient(90deg, rgba(var(--bg-rgb), 0.92) 0%, rgba(var(--bg-rgb), 0.65) 45%, rgba(var(--bg-rgb), 0.15) 100%);
 }
 

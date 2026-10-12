@@ -501,7 +501,11 @@ SIMS.hub = (c) => {
         T.group.add(line, head);
         return { state, buf, geo, lm, head, place };
     });
-    const paint = () => tr.forEach((q, n) => { T.setColor(q.lm, KW.col.pal[n]); T.setColor(q.head.material, KW.col.pal[n]); });
+    const paint = () => tr.forEach((q, n) => {
+        const col = n < 2 ? KW.col.a : KW.col.pal[n];
+        T.setColor(q.lm, col);
+        T.setColor(q.head.material, col);
+    });
     paint(); addEventListener("themechange", paint);
     KW.tag("Lorenz system · σ=10, ρ=28, β=8/3 · RK4 · 5 domain trajectories, initial separation 10⁻³", c);
 
