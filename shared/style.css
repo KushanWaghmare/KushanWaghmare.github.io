@@ -583,6 +583,13 @@ html[data-page="project"] body {
 .about-contact-section {
     padding-bottom: 32px;
 }
+.about-contact-section::after {
+    background: radial-gradient(circle at 76% 50%, rgba(var(--a), 0.16), transparent 68%),
+                linear-gradient(90deg, rgba(var(--bg-rgb), 0.72) 0%, rgba(var(--bg-rgb), 0.28) 54%, rgba(var(--bg-rgb), 0.04) 100%);
+}
+.about-contact-section .snap-inner {
+    max-width: 780px;
+}
 
 .snap-foot {
     border-top: none;

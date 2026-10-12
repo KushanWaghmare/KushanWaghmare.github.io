@@ -446,76 +446,135 @@ SIMS.hub = (c) => {
 };
 
 /* ------------------------------------------------------------------ CONTACT
-   Interactive Three.js 3D node-based network graph + pulsing sonar wave rings
-   that react to the user's cursor in Neon Orange / Gold. */
+   Interactive Three.js 3D node-based network graph + pulsing 3D sonar wave
+   that spans the full viewport, anchors its geodesic core on the right, and reacts to the cursor. */
 SIMS.contact = (c) => {
-    const T = three(c, 0);
-    T.cam.position.set(0, 12, 34);
+    const T = three(c, 10);
+    T.cam.position.set(0, 10, 34);
     T.cam.lookAt(0, 0, 0);
+    KW.tag("3D relational network & cursor-reactive sonar wave · G(V,E) spatial graph", c);
 
-    const N = 56, R = 14;
-    const pts = new Float32Array(N * 3), base = new Float32Array(N * 3), ph = new Float32Array(N);
+    // 70 nodes in a right-focused geodesic sphere + 50 wide-field constellation nodes across the viewport
+    const N_CORE = 70, N_WIDE = 50, N = N_CORE + N_WIDE;
+    const pts = new Float32Array(N * 3), base = new Float32Array(N * 3), cols = new Float32Array(N * 3), ph = new Float32Array(N);
     for (let i = 0; i < N; i++) {
-        const u = Math.random() * TAU, v = Math.acos(2 * Math.random() - 1), r = R * (0.45 + 0.55 * Math.cbrt(Math.random()));
-        base[i * 3] = pts[i * 3] = r * Math.sin(v) * Math.cos(u);
-        base[i * 3 + 1] = pts[i * 3 + 1] = r * Math.sin(v) * Math.sin(u) * 0.55;
-        base[i * 3 + 2] = pts[i * 3 + 2] = r * Math.cos(v);
+        if (i < N_CORE) {
+            const u = Math.random() * TAU, v = Math.acos(2 * Math.random() - 1), r = 11.5 * (0.55 + 0.45 * Math.cbrt(Math.random()));
+            base[i * 3] = r * Math.sin(v) * Math.cos(u);
+            base[i * 3 + 1] = r * Math.sin(v) * Math.sin(u) * 0.78;
+            base[i * 3 + 2] = r * Math.cos(v);
+        } else {
+            base[i * 3] = -34 + Math.random() * 52;
+            base[i * 3 + 1] = (Math.random() - 0.5) * 28;
+            base[i * 3 + 2] = (Math.random() - 0.5) * 18;
+        }
+        pts[i * 3] = base[i * 3]; pts[i * 3 + 1] = base[i * 3 + 1]; pts[i * 3 + 2] = base[i * 3 + 2];
         ph[i] = Math.random() * TAU;
     }
+
     const edges = [];
     for (let i = 0; i < N; i++) {
         for (let j = i + 1; j < N; j++) {
             const dx = base[i * 3] - base[j * 3], dy = base[i * 3 + 1] - base[j * 3 + 1], dz = base[i * 3 + 2] - base[j * 3 + 2];
-            if (dx * dx + dy * dy + dz * dz < 58) edges.push(i, j);
+            const lim = (i < N_CORE && j < N_CORE) ? 54 : 115;
+            if (dx * dx + dy * dy + dz * dz < lim) edges.push(i, j);
         }
     }
+
     const pGeo = new THREE.BufferGeometry();
     pGeo.setAttribute("position", new THREE.BufferAttribute(pts, 3));
-    const pMat = new THREE.PointsMaterial({ size: 0.48, transparent: true, opacity: 0.9 });
+    pGeo.setAttribute("color", new THREE.BufferAttribute(cols, 3));
+    const pMat = new THREE.PointsMaterial({ size: 0.72, vertexColors: true, transparent: true, opacity: 0.96 });
     T.group.add(new THREE.Points(pGeo, pMat));
 
     const lPos = new Float32Array(edges.length * 3);
     const lGeo = new THREE.BufferGeometry();
     lGeo.setAttribute("position", new THREE.BufferAttribute(lPos, 3));
-    const lMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.25 });
+    const lMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.42 });
     T.group.add(new THREE.LineSegments(lGeo, lMat));
 
-    const rings = Array.from({ length: 3 }, () => {
-        const g = new THREE.RingGeometry(0.95, 1.0, 64);
+    // Travelling signal packets along graph edges
+    const NPULSE = 36;
+    const sPos = new Float32Array(NPULSE * 3);
+    const sEdges = Array.from({ length: NPULSE }, () => ({
+        e: ((Math.random() * (edges.length / 2)) | 0) * 2,
+        p: Math.random(),
+        spd: 0.6 + Math.random() * 1.1
+    }));
+    const sGeo = new THREE.BufferGeometry();
+    sGeo.setAttribute("position", new THREE.BufferAttribute(sPos, 3));
+    const sMat = new THREE.PointsMaterial({ size: 1.05, transparent: true, opacity: 1 });
+    T.group.add(new THREE.Points(sGeo, sMat));
+
+    // 5 concentric 3D sonar wave rings
+    const rings = Array.from({ length: 5 }, () => {
+        const g = new THREE.RingGeometry(0.92, 1.0, 72);
         g.rotateX(-Math.PI / 2);
-        const m = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.3 });
+        const m = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.55 });
         const mesh = new THREE.Mesh(g, m);
         T.group.add(mesh);
         return { mesh, m };
     });
 
-    const sync = () => { T.setColor(pMat, KW.col.a); T.setColor(lMat, KW.col.a); rings.forEach((r) => T.setColor(r.m, KW.col.a)); };
+    const sync = () => {
+        const gold = KW.col.light ? [217, 119, 6] : [255, 149, 0];
+        const cyan = KW.col.light ? [6, 140, 172] : [34, 211, 238];
+        for (let i = 0; i < N; i++) {
+            const c = i % 4 === 0 ? cyan : gold;
+            cols[i * 3] = c[0] / 255; cols[i * 3 + 1] = c[1] / 255; cols[i * 3 + 2] = c[2] / 255;
+        }
+        pGeo.attributes.color.needsUpdate = true;
+        T.setColor(lMat, gold);
+        T.setColor(sMat, cyan);
+        rings.forEach((r, idx) => T.setColor(r.m, idx % 2 === 0 ? gold : cyan));
+    };
     sync(); addEventListener("themechange", sync);
 
-    let rx = 0.15, ry = 0;
+    let rx = 0.22, ry = 0;
     KW.loop(c, (t, dt) => {
-        const w = T.width() || 1, p = KW.local(c);
-        const mx = Math.abs(p.x) < 2000 ? (p.x / w - 0.5) * 2 : 0;
-        const my = Math.abs(p.y) < 2000 ? (p.y / (c.clientHeight || 1) - 0.5) * 2 : 0;
+        const w = T.width() || 1, h = c.clientHeight || 1, p = KW.local(c);
+        const on = p.x > 0 && p.x < w && p.y > 0 && p.y < h;
+        const mx = on ? (p.x / w - 0.5) * 2 : Math.sin(t * 0.4) * 0.25;
+        const my = on ? (p.y / h - 0.5) * 2 : Math.cos(t * 0.3) * 0.2;
+
         for (let i = 0; i < N; i++) {
-            const s = 1 + 0.08 * Math.sin(t * 1.8 + ph[i]);
-            pts[i * 3] = base[i * 3] * s + mx * 2.2;
-            pts[i * 3 + 1] = base[i * 3 + 1] * s + Math.cos(t * 1.4 + ph[i]) * 0.6 - my * 1.6;
-            pts[i * 3 + 2] = base[i * 3 + 2] * s;
+            const s = 1 + 0.1 * Math.sin(t * 1.9 + ph[i]);
+            const pull = i < N_CORE ? 2.8 : 1.4;
+            pts[i * 3] = base[i * 3] * s + mx * pull;
+            pts[i * 3 + 1] = base[i * 3 + 1] * s + Math.cos(t * 1.5 + ph[i]) * 0.75 - my * pull;
+            pts[i * 3 + 2] = base[i * 3 + 2] * s + Math.sin(t * 1.2 + ph[i]) * 0.5;
         }
         pGeo.attributes.position.needsUpdate = true;
+
         for (let k = 0; k < edges.length; k++) {
             const idx = edges[k] * 3;
             lPos[k * 3] = pts[idx]; lPos[k * 3 + 1] = pts[idx + 1]; lPos[k * 3 + 2] = pts[idx + 2];
         }
         lGeo.attributes.position.needsUpdate = true;
+
+        for (let i = 0; i < NPULSE; i++) {
+            const sp = sEdges[i];
+            sp.p += dt * sp.spd;
+            if (sp.p >= 1) {
+                sp.p = 0;
+                sp.e = ((Math.random() * (edges.length / 2)) | 0) * 2;
+            }
+            const u = edges[sp.e] * 3, v = edges[sp.e + 1] * 3;
+            sPos[i * 3] = pts[u] + (pts[v] - pts[u]) * sp.p;
+            sPos[i * 3 + 1] = pts[u + 1] + (pts[v + 1] - pts[u + 1]) * sp.p;
+            sPos[i * 3 + 2] = pts[u + 2] + (pts[v + 2] - pts[u + 2]) * sp.p;
+        }
+        sGeo.attributes.position.needsUpdate = true;
+
         rings.forEach((r, i) => {
-            const f = ((t * 0.38 + i / 3) % 1), sc = 1 + f * 18;
+            const f = (t * 0.42 + i / rings.length) % 1, sc = 1.2 + f * 22;
             r.mesh.scale.set(sc, 1, sc);
-            r.m.opacity = (1 - f) * 0.32;
+            r.mesh.position.set(mx * 3.5, Math.sin(t * 2 + i) * 0.8 - my * 2, 0);
+            r.m.opacity = (1 - f) * 0.58;
         });
-        rx += (0.2 + my * 0.28 - rx) * 0.06;
-        ry += dt * 0.18 + mx * 0.012;
+
+        rx += (0.26 + my * 0.32 - rx) * 0.06;
+        ry += dt * 0.22 + mx * 0.015;
         T.group.rotation.x = rx; T.group.rotation.y = ry;
         T.renderer.render(T.scene, T.cam);
     });

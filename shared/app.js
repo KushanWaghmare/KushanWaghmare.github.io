@@ -268,7 +268,7 @@
 
         <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-enter="bottom" style="--a:var(--rgb-contact)">
             <canvas aria-hidden="true"></canvas>
-            <div class="snap-inner" style="max-width:960px">
+            <div class="snap-inner">
                 <div class="section-head" data-reveal><span class="idx">06</span><h2>About &amp; Profile</h2></div>
                 <div class="two-col" style="margin-bottom:36px">
                     <div data-reveal>
@@ -282,6 +282,7 @@
                 </div>
                 ${contactSection()}
             </div>
+            <div class="sim-tag" aria-hidden="true">3D relational network &amp; cursor-reactive sonar wave · G(V,E) spatial graph</div>
             <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
         </section>`;
 
@@ -375,7 +376,7 @@
 
         <section class="snap-section about-contact-section" id="domain-explore" data-domain="contact" style="--a:var(--rgb-contact)">
             <canvas aria-hidden="true"></canvas>
-            <div class="snap-inner" style="max-width:960px">
+            <div class="snap-inner">
                 <div class="section-head" data-reveal><span class="idx">${String(ps.length + 1).padStart(2, "0")}</span><h2>Explore Other Domains</h2></div>
                 <p class="lead" data-reveal style="margin-bottom:28px">Navigate through other core domains of mathematical modelling, physics simulations, stochastic calculus, and machine systems.</p>
                 <div class="pills" data-reveal style="margin-bottom:36px">
@@ -385,6 +386,7 @@
                 </div>
                 ${contactSection()}
             </div>
+            <div class="sim-tag" aria-hidden="true">3D relational network &amp; cursor-reactive sonar wave · G(V,E) spatial graph</div>
             <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
         </section>`;
     };
