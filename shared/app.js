@@ -53,28 +53,36 @@
             if (stored !== null) enabled = stored === "true";
         } catch (e) {}
 
+        let unlocked = false;
+        const notifyUnlock = () => window.dispatchEvent(new Event("audiounlock"));
+
         let noiseBuf = null;
         const noise = () => {
-            if (!noiseBuf && ctx) {
-                noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-                const d = noiseBuf.getChannelData(0);
-                for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+            if (!ctx) init();
+            if (!ctx) return null;
+            if (!noiseBuf) {
+                try {
+                    const sr = ctx.sampleRate || 44100;
+                    noiseBuf = ctx.createBuffer(1, sr, sr);
+                    const d = noiseBuf.getChannelData(0);
+                    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+                } catch (e) {
+                    noiseBuf = null;
+                }
             }
             return noiseBuf;
         };
-
-        let unlocked = false;
-        const notifyUnlock = () => window.dispatchEvent(new Event("audiounlock"));
 
         const init = () => {
             if (!ctx) {
                 const AC = window.AudioContext || window.webkitAudioContext;
                 if (AC) {
-                    ctx = new AC();
-                    noise(); // preload white-noise buffer for zero-latency warp sounds
-                    ctx.onstatechange = () => {
-                        if (ctx.state === "running") { unlocked = true; notifyUnlock(); }
-                    };
+                    try {
+                        ctx = new AC();
+                        ctx.onstatechange = () => {
+                            if (ctx.state === "running") { unlocked = true; notifyUnlock(); }
+                        };
+                    } catch (e) {}
                 }
             }
             if (ctx && ctx.state === "suspended") {
@@ -85,17 +93,20 @@
             }
         };
 
-        ["pointerdown", "keydown", "touchstart"].forEach((ev) => {
-            window.addEventListener(ev, (e) => {
-                if (e.target && e.target.closest && e.target.closest(".sound-btn")) return;
+        // Auto-unlock on any user interaction (click, touch, wheel, key)
+        ["pointerdown", "keydown", "touchstart", "touchend", "click", "wheel"].forEach((ev) => {
+            window.addEventListener(ev, () => {
+                if (!ctx) init();
+                else if (ctx.state === "suspended") ctx.resume().catch(() => {});
                 unlocked = true;
-                init();
                 notifyUnlock();
             }, { passive: true });
         });
 
         const playTone = (freqStart, freqEnd, type, duration, volume) => {
-            if (!enabled || !ctx) return;
+            if (!enabled) return;
+            init();
+            if (!ctx) return;
             try {
                 if (ctx.state === "suspended") ctx.resume().catch(() => {});
                 const now = ctx.currentTime;
@@ -126,69 +137,96 @@
                 notifyUnlock();
                 if (ctx) {
                     ctx.resume().then(() => {
+                        unlocked = true;
                         notifyUnlock();
-                        playTone(520, 880, "sine", 0.08, 0.045);
+                        playTone(520, 880, "sine", 0.08, 0.05);
                     }).catch(() => {});
                 }
             },
             toggle: () => {
-                unlocked = true;
-                init();
                 enabled = !enabled;
                 try { localStorage.setItem("kw_sound", String(enabled)); } catch (e) {}
+                if (enabled) {
+                    init();
+                    unlocked = true;
+                }
                 notifyUnlock();
                 return enabled;
             },
-            snap: () => {},
+            snap: () => {
+                // Supersonic snap
+                SOUND.warp(0);
+            },
             hover: () => {
-                init();
                 playTone(1800, 1800, "triangle", 0.014, 0.015);
             },
             click: () => {
-                init();
                 playTone(900, 420, "sine", 0.028, 0.04);
             },
             theme: () => {
-                init();
                 playTone(520, 720, "sine", 0.045, 0.04);
                 setTimeout(() => playTone(720, 960, "sine", 0.05, 0.04), 40);
             },
             copy: () => {
-                init();
                 playTone(523, 523, "sine", 0.07, 0.045);
                 setTimeout(() => playTone(784, 784, "sine", 0.09, 0.045), 65);
             },
-            // Supersonic woosh: band-passed noise sweeping up then down (air rush) plus a
+            // Supersonic whoosh: band-passed noise sweeping up then down (air rush) plus a
             // low-passed sawtooth whose pitch climbs and drops (turbine Doppler), panned from the entry side.
             warp: (pan = 0) => {
+                if (!enabled) return;
                 init();
-                if (!enabled || !ctx || ctx.state !== "running") return;
+                if (!ctx) return;
                 try {
+                    if (ctx.state === "suspended") ctx.resume().catch(() => {});
                     const now = ctx.currentTime;
                     let bus = ctx.destination;
                     if (ctx.createStereoPanner) {
-                        const p = ctx.createStereoPanner();
-                        p.pan.setValueAtTime(pan, now); p.pan.linearRampToValueAtTime(0, now + 0.6);
-                        p.connect(ctx.destination); bus = p;
+                        try {
+                            const p = ctx.createStereoPanner();
+                            p.pan.setValueAtTime(pan, now);
+                            p.pan.linearRampToValueAtTime(0, now + 0.6);
+                            p.connect(ctx.destination);
+                            bus = p;
+                        } catch (e) { bus = ctx.destination; }
                     }
-                    const src = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
-                    src.buffer = noise(); bp.type = "bandpass"; bp.Q.value = 0.9;
-                    bp.frequency.setValueAtTime(350, now);
-                    bp.frequency.exponentialRampToValueAtTime(4200, now + 0.3);
-                    bp.frequency.exponentialRampToValueAtTime(600, now + 0.75);
-                    g.gain.setValueAtTime(0.0001, now);
-                    g.gain.exponentialRampToValueAtTime(0.11, now + 0.28);
-                    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.78);
-                    src.connect(bp).connect(g).connect(bus); src.start(now); src.stop(now + 0.8);
-                    const o = ctx.createOscillator(), lp = ctx.createBiquadFilter(), og = ctx.createGain();
-                    o.type = "sawtooth"; lp.type = "lowpass"; lp.frequency.value = 900;
+                    const nb = noise();
+                    if (nb) {
+                        const src = ctx.createBufferSource();
+                        const bp = ctx.createBiquadFilter();
+                        const g = ctx.createGain();
+                        src.buffer = nb;
+                        bp.type = "bandpass";
+                        bp.Q.value = 0.9;
+                        bp.frequency.setValueAtTime(350, now);
+                        bp.frequency.exponentialRampToValueAtTime(4200, now + 0.3);
+                        bp.frequency.exponentialRampToValueAtTime(600, now + 0.75);
+                        g.gain.setValueAtTime(0.0001, now);
+                        g.gain.exponentialRampToValueAtTime(0.12, now + 0.28);
+                        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.78);
+                        src.connect(bp);
+                        bp.connect(g);
+                        g.connect(bus);
+                        src.start(now);
+                        src.stop(now + 0.8);
+                    }
+                    const o = ctx.createOscillator();
+                    const lp = ctx.createBiquadFilter();
+                    const og = ctx.createGain();
+                    o.type = "sawtooth";
+                    lp.type = "lowpass";
+                    lp.frequency.value = 900;
                     o.frequency.setValueAtTime(70, now);
                     o.frequency.exponentialRampToValueAtTime(260, now + 0.3);
                     o.frequency.exponentialRampToValueAtTime(55, now + 0.75);
                     og.gain.setValueAtTime(0.0001, now);
-                    og.gain.exponentialRampToValueAtTime(0.025, now + 0.25);
+                    og.gain.exponentialRampToValueAtTime(0.032, now + 0.25);
                     og.gain.exponentialRampToValueAtTime(0.0001, now + 0.75);
-                    o.connect(lp).connect(og).connect(bus); o.start(now); o.stop(now + 0.8);
+                    o.connect(lp);
+                    lp.connect(og);
+                    og.connect(bus);
+                    o.start(now);
+                    o.stop(now + 0.8);
                 } catch (e) {}
             },
             lock: () => {}
@@ -591,8 +629,10 @@
             soundBtn.addEventListener("click", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const wasActive = SOUND.isEnabled() && SOUND.isUnlocked();
-                if (!wasActive) {
+                if (!SOUND.isEnabled()) {
+                    SOUND.toggle();
+                    SOUND.unlock();
+                } else if (!SOUND.isUnlocked()) {
                     SOUND.unlock();
                 } else {
                     SOUND.toggle();
