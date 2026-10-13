@@ -261,7 +261,7 @@ const renderNav = (active, pageType) => {
         <nav class="links" aria-label="Navigation">
             ${isHub ? '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>' : ''}
             <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
-            <button class="sound-btn needs-unlock" type="button" aria-label="Enable sound effects" title="Enable audio">🔇</button>
+            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Mute audio">🔊</button>
         </nav>
     </header>`;
 };

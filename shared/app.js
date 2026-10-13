@@ -55,13 +55,69 @@
         let unlocked = false;
         const notifyUnlock = () => window.dispatchEvent(new Event("audiounlock"));
 
+        const init = () => {
+            if (!ctx) {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (AC) {
+                    try {
+                        ctx = new AC();
+                        ctx.onstatechange = () => {
+                            if (ctx.state === "running") {
+                                unlocked = true;
+                                notifyUnlock();
+                            }
+                        };
+                    } catch (e) {}
+                }
+            }
+            if (ctx && ctx.state === "suspended") {
+                ctx.resume().then(() => {
+                    unlocked = true;
+                    notifyUnlock();
+                }).catch(() => {});
+            } else if (ctx && ctx.state === "running") {
+                unlocked = true;
+                notifyUnlock();
+            }
+        };
+
+        const unlockAudio = () => {
+            if (!ctx) init();
+            if (ctx && ctx.state === "suspended") {
+                ctx.resume().then(() => {
+                    unlocked = true;
+                    notifyUnlock();
+                }).catch(() => {});
+            } else if (ctx && ctx.state === "running") {
+                unlocked = true;
+                notifyUnlock();
+            }
+        };
+
+        // Capture-phase gesture listeners guarantee wakeup before any stopPropagation
+        ["pointerdown", "touchstart", "touchend", "click", "keydown", "wheel"].forEach((ev) => {
+            window.addEventListener(ev, unlockAudio, { passive: true, capture: true });
+        });
+
+        // Resume audio on visibility change / window focus if returning to tab
+        document.addEventListener("visibilitychange", () => {
+            if (!document.hidden && enabled && ctx && ctx.state === "suspended") {
+                ctx.resume().then(() => { unlocked = true; notifyUnlock(); }).catch(() => {});
+            }
+        });
+        window.addEventListener("focus", () => {
+            if (enabled && ctx && ctx.state === "suspended") {
+                ctx.resume().then(() => { unlocked = true; notifyUnlock(); }).catch(() => {});
+            }
+        });
+
         let noiseBuf = null;
         const noise = () => {
             if (!ctx) init();
             if (!ctx) return null;
-            if (!noiseBuf) {
+            const sr = ctx.sampleRate || 44100;
+            if (!noiseBuf || noiseBuf.sampleRate !== sr) {
                 try {
-                    const sr = ctx.sampleRate || 44100;
                     noiseBuf = ctx.createBuffer(1, sr, sr);
                     const d = noiseBuf.getChannelData(0);
                     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -72,57 +128,38 @@
             return noiseBuf;
         };
 
-        const init = () => {
-            if (!ctx) {
-                const AC = window.AudioContext || window.webkitAudioContext;
-                if (AC) {
-                    try {
-                        ctx = new AC();
-                        ctx.onstatechange = () => {
-                            if (ctx.state === "running") { unlocked = true; notifyUnlock(); }
-                        };
-                    } catch (e) {}
-                }
-            }
-            if (ctx && ctx.state === "suspended") {
-                ctx.resume().then(() => { unlocked = true; notifyUnlock(); }).catch(() => {});
-            } else if (ctx && ctx.state === "running") {
-                unlocked = true;
-                notifyUnlock();
-            }
-        };
-
-        // Auto-unlock on any user interaction (click, touch, wheel, key)
-        ["pointerdown", "keydown", "touchstart", "touchend", "click", "wheel"].forEach((ev) => {
-            window.addEventListener(ev, () => {
-                if (!ctx) init();
-                else if (ctx.state === "suspended") ctx.resume().catch(() => {});
-                unlocked = true;
-                notifyUnlock();
-            }, { passive: true });
-        });
-
-        const playTone = (freqStart, freqEnd, type, duration, volume) => {
+        const withContext = (cb) => {
             if (!enabled) return;
             init();
             if (!ctx) return;
-            try {
-                if (ctx.state === "suspended") ctx.resume().catch(() => {});
-                const now = ctx.currentTime;
+            if (ctx.state === "running") {
+                try { cb(ctx.currentTime); } catch (e) {}
+            } else {
+                ctx.resume().then(() => {
+                    unlocked = true;
+                    notifyUnlock();
+                    try { cb(ctx.currentTime); } catch (e) {}
+                }).catch(() => {});
+            }
+        };
+
+        const playTone = (freqStart, freqEnd, type, duration, volume) => {
+            withContext((now) => {
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
+                const safeVol = Math.max(volume || 0.03, 0.001);
                 osc.type = type || "sine";
                 osc.frequency.setValueAtTime(freqStart, now);
                 if (freqEnd && freqEnd !== freqStart) {
                     osc.frequency.exponentialRampToValueAtTime(Math.max(freqEnd, 20), now + duration);
                 }
-                gain.gain.setValueAtTime(volume, now);
+                gain.gain.setValueAtTime(safeVol, now);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
                 osc.connect(gain);
                 gain.connect(ctx.destination);
                 osc.start(now);
-                osc.stop(now + duration);
-            } catch (e) {}
+                osc.stop(now + duration + 0.02);
+            });
         };
 
         return {
@@ -147,34 +184,38 @@
                 try { localStorage.setItem("kw_sound", String(enabled)); } catch (e) {}
                 if (enabled) {
                     init();
-                    unlocked = true;
+                    if (ctx && ctx.state === "suspended") {
+                        ctx.resume().then(() => {
+                            unlocked = true;
+                            notifyUnlock();
+                            playTone(520, 880, "sine", 0.08, 0.05);
+                        }).catch(() => {});
+                    } else {
+                        unlocked = true;
+                        notifyUnlock();
+                        playTone(520, 880, "sine", 0.08, 0.05);
+                    }
+                } else {
+                    notifyUnlock();
                 }
-                notifyUnlock();
                 return enabled;
             },
             hover: () => {
-                playTone(1800, 1800, "triangle", 0.014, 0.015);
+                playTone(1600, 1600, "triangle", 0.025, 0.025);
             },
             click: () => {
-                playTone(900, 420, "sine", 0.028, 0.04);
+                playTone(900, 420, "sine", 0.035, 0.05);
             },
             theme: () => {
-                playTone(520, 720, "sine", 0.045, 0.04);
-                setTimeout(() => playTone(720, 960, "sine", 0.05, 0.04), 40);
+                playTone(520, 720, "sine", 0.045, 0.045);
+                setTimeout(() => playTone(720, 960, "sine", 0.05, 0.045), 40);
             },
             copy: () => {
-                playTone(523, 523, "sine", 0.07, 0.045);
-                setTimeout(() => playTone(784, 784, "sine", 0.09, 0.045), 65);
+                playTone(523, 523, "sine", 0.07, 0.05);
+                setTimeout(() => playTone(784, 784, "sine", 0.09, 0.05), 65);
             },
-            // Supersonic whoosh: band-passed noise sweeping up then down (air rush) plus a
-            // low-passed sawtooth whose pitch climbs and drops (turbine Doppler), panned from the entry side.
             warp: (pan = 0) => {
-                if (!enabled) return;
-                init();
-                if (!ctx) return;
-                try {
-                    if (ctx.state === "suspended") ctx.resume().catch(() => {});
-                    const now = ctx.currentTime;
+                withContext((now) => {
                     let bus = ctx.destination;
                     if (ctx.createStereoPanner) {
                         try {
@@ -203,7 +244,7 @@
                         bp.connect(g);
                         g.connect(bus);
                         src.start(now);
-                        src.stop(now + 0.8);
+                        src.stop(now + 0.85);
                     }
                     const o = ctx.createOscillator();
                     const lp = ctx.createBiquadFilter();
@@ -221,8 +262,8 @@
                     lp.connect(og);
                     og.connect(bus);
                     o.start(now);
-                    o.stop(now + 0.8);
-                } catch (e) {}
+                    o.stop(now + 0.85);
+                });
             }
         };
     })();
@@ -344,12 +385,9 @@
         if (soundBtn) {
             const syncSound = () => {
                 const on = SOUND.isEnabled();
-                const unlocked = SOUND.isUnlocked();
-                const active = on && unlocked;
-                const waiting = on && !unlocked;
-                soundBtn.textContent = active ? "🔊" : "🔇";
-                soundBtn.setAttribute("aria-label", active ? "Mute sound effects" : "Enable sound effects");
-                soundBtn.classList.toggle("needs-unlock", waiting);
+                soundBtn.textContent = on ? "🔊" : "🔇";
+                soundBtn.setAttribute("aria-label", on ? "Mute sound effects" : "Enable sound effects");
+                soundBtn.title = on ? "Mute audio" : "Enable audio";
                 soundBtn.classList.toggle("muted", !on);
             };
             syncSound();
@@ -357,14 +395,7 @@
             soundBtn.addEventListener("click", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (!SOUND.isEnabled()) {
-                    SOUND.toggle();
-                    SOUND.unlock();
-                } else if (!SOUND.isUnlocked()) {
-                    SOUND.unlock();
-                } else {
-                    SOUND.toggle();
-                }
+                SOUND.toggle();
                 syncSound();
             });
         }
@@ -666,6 +697,60 @@
     };
 
     initPage();
+
+    /* ---------- Seamless Fast Page Transition (preserves Web Audio) ---------- */
+    const loadPage = async (urlStr, push = true) => {
+        try {
+            SOUND.warp(0);
+            const res = await fetch(urlStr);
+            if (!res.ok) throw new Error("Fetch failed");
+            const text = await res.text();
+            const doc = new DOMParser().parseFromString(text, "text/html");
+            const newMain = doc.querySelector("#main");
+            if (!newMain) { location.href = urlStr; return; }
+
+            const newDomain = doc.documentElement.dataset.domain || "hub";
+            const newPage = doc.documentElement.dataset.page || "hub";
+
+            const navLinks = $(".nav .links");
+            if (navLinks) {
+                const contactLink = $(".nav-contact-link", navLinks);
+                if (newPage === "hub" && !contactLink) {
+                    navLinks.insertAdjacentHTML("afterbegin", '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>');
+                } else if (newPage !== "hub" && contactLink) {
+                    contactLink.remove();
+                }
+            }
+
+            main.innerHTML = newMain.innerHTML;
+            document.title = doc.title;
+            D.dataset.domain = newDomain;
+            D.dataset.page = newPage;
+            KW.refresh();
+
+            if (push) history.pushState(null, "", urlStr);
+            window.scrollTo({ top: 0, behavior: "instant" });
+            initPage();
+        } catch (e) {
+            location.href = urlStr;
+        }
+    };
+
+    document.addEventListener("click", (e) => {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        const a = e.target.closest && e.target.closest("a[href]");
+        if (!a || a.target === "_blank") return;
+        const raw = a.getAttribute("href");
+        if (!raw || raw.startsWith("#") || raw.startsWith("mailto:") || raw.startsWith("tel:") || raw.startsWith("javascript:")) return;
+        const u = new URL(raw, location.href);
+        if (u.origin !== location.origin) return;
+        e.preventDefault();
+        loadPage(u.href, true);
+    });
+
+    window.addEventListener("popstate", () => {
+        loadPage(location.href, false);
+    });
 
     const prog = $(".progress");
     if (prog) {
