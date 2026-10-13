@@ -153,10 +153,7 @@
                 notifyUnlock();
                 return enabled;
             },
-            snap: () => {
-                // Supersonic snap
-                SOUND.warp(0);
-            },
+            snap: () => {},
             hover: () => {
                 playTone(1800, 1800, "triangle", 0.014, 0.015);
             },
@@ -797,11 +794,6 @@
             }, 210);
 
             setTimeout(() => {
-                SOUND.lock();
-                SOUND.snap();
-            }, 460);
-
-            setTimeout(() => {
                 next.classList.remove("warp-land");
                 warping = false;
             }, 760);
@@ -885,7 +877,7 @@
                         dot.classList.toggle("active", isCurrent);
                     });
                     if (!warping && lastId !== null && lastId !== id) {
-                        SOUND.snap();
+                        SOUND.warp(0);
                     }
                     lastId = id;
                 }
