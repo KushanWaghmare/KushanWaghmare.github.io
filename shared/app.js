@@ -748,6 +748,8 @@
 
             setTimeout(() => {
                 window.scrollTo({ top: next.offsetTop, behavior: "instant" });
+                document.documentElement.scrollTop = next.offsetTop;
+                document.body.scrollTop = next.offsetTop;
                 void next.offsetWidth;
                 cur.classList.remove("warp-out");
                 next.classList.remove("warp-in");
@@ -766,25 +768,14 @@
         };
         KW.warpTo = warpTo;
 
-        const canScrollInside = (dir) => {
-            const cur = sections[curIdx];
-            if (!cur) return false;
-            const r = cur.getBoundingClientRect();
-            if (dir > 0 && r.bottom > window.innerHeight + 16) return true;
-            if (dir < 0 && r.top < -16) return true;
-            return false;
-        };
-
         window.addEventListener("wheel", (e) => {
             if (REDUCED || e.ctrlKey || e.metaKey) return;
             if ($("#enter-gate")) return;
-            const dir = e.deltaY > 0 ? 1 : -1;
-            if (canScrollInside(dir)) return;
             e.preventDefault();
             const now = performance.now();
-            if (warping || now - lastWarpStart < 820) return;
-            if (Math.abs(e.deltaY) < 12) return;
-            warpTo(curIdx + dir);
+            if (warping || now - lastWarpStart < 780) return;
+            if (Math.abs(e.deltaY) < 10) return;
+            warpTo(curIdx + (e.deltaY > 0 ? 1 : -1));
         }, { passive: false, signal: sig });
 
         let touchStartX = 0, touchStartY = 0, touchConsumed = false;
@@ -802,15 +793,13 @@
             const dx = touchStartX - e.touches[0].clientX;
             const dy = touchStartY - e.touches[0].clientY;
             if (Math.abs(dx) > Math.abs(dy)) return;
-            const dir = dy > 0 ? 1 : -1;
-            if (canScrollInside(dir)) return;
             if (e.cancelable) e.preventDefault();
             if (touchConsumed) return;
             const now = performance.now();
             if (warping || now - lastWarpStart < 760) return;
             if (Math.abs(dy) > 28) {
                 touchConsumed = true;
-                warpTo(curIdx + dir);
+                warpTo(curIdx + (dy > 0 ? 1 : -1));
             }
         }, { passive: false, signal: sig });
 
