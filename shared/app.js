@@ -19,13 +19,39 @@
         if (!el) el = $(".sim-tag");
         if (el && el.textContent !== t) el.textContent = t;
     };
+    KW.onClick = (c, fn) => {
+        const sec = (c && c.closest) ? (c.closest(".snap-section, .hero") || c.parentElement) : null;
+        const handler = (e) => {
+            if (e.target.closest && e.target.closest("a, button, input, select, textarea, [role='button']")) return;
+            if (sec && !sec.contains(e.target)) return;
+            fn(e);
+        };
+        window.addEventListener("click", handler);
+        const oldDispose = c.__dispose;
+        c.__dispose = () => {
+            window.removeEventListener("click", handler);
+            if (oldDispose) oldDispose();
+        };
+    };
     KW.fit = (c, cb) => { // size canvas to its parent, call cb(w,h,dpr) now and on every resize
         const p = c.parentElement;
+        if (!p) return;
         const f = () => {
-            const dpr = Math.min(devicePixelRatio || 1, 2), w = p.clientWidth, h = p.clientHeight;
-            c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); cb(w, h, dpr);
+            const dpr = Math.min(devicePixelRatio || 1, 2);
+            const w = p.clientWidth || 300;
+            const h = Math.max(p.clientHeight || 150, 1);
+            c.width = Math.round(w * dpr);
+            c.height = Math.round(h * dpr);
+            cb(w, h, dpr);
         };
-        f(); new ResizeObserver(f).observe(p);
+        f();
+        const ro = new ResizeObserver(f);
+        ro.observe(p);
+        const oldDispose = c.__dispose;
+        c.__dispose = () => {
+            try { ro.disconnect(); } catch (e) {}
+            if (oldDispose) oldDispose();
+        };
     };
     KW.loop = (c, step) => { // rAF loop that pauses off-screen / hidden tab and cleans up when disconnected
         let last = performance.now(), visible = true, frames = 0;
@@ -436,7 +462,13 @@
         });
 
         const dots = document.querySelectorAll(".snap-dot");
-        let lastId = null, curIdx = 0, warping = false, lastWarpStart = 0;
+        let curIdx = 0;
+        const initialIdx = sections.findIndex((s) => {
+            const r = s.getBoundingClientRect();
+            return r.top >= -window.innerHeight * 0.45 && r.top < window.innerHeight * 0.55;
+        });
+        if (initialIdx !== -1) curIdx = initialIdx;
+        let lastId = sections[curIdx] ? sections[curIdx].id : null, warping = false, lastWarpStart = 0;
 
         let warpCanvas = $(".warp");
         if (!warpCanvas && !REDUCED) {
@@ -503,6 +535,7 @@
             lastWarpStart = performance.now();
             const cur = sections[curIdx];
             curIdx = targetIdx;
+            lastId = next.id;
 
             const d = next.dataset.domain;
             if (d && D.dataset.domain !== d) {
@@ -688,12 +721,16 @@
 
         setupSnapObserver();
         observeReveals();
-        if (window.renderMathInElement) {
-            renderMathInElement(main, {
-                throwOnError: false,
-                delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }]
-            });
-        }
+        const renderMath = () => {
+            if (window.renderMathInElement) {
+                renderMathInElement(main, {
+                    throwOnError: false,
+                    delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }]
+                });
+            }
+        };
+        renderMath();
+        if (!window.renderMathInElement) window.addEventListener("load", renderMath, { once: true });
     };
 
     initPage();
@@ -729,7 +766,14 @@
             KW.refresh();
 
             if (push) history.pushState(null, "", urlStr);
-            window.scrollTo({ top: 0, behavior: "instant" });
+            const targetUrl = new URL(urlStr, location.origin);
+            if (targetUrl.hash) {
+                const targetEl = document.querySelector(targetUrl.hash);
+                if (targetEl) targetEl.scrollIntoView({ behavior: "instant" });
+                else window.scrollTo({ top: 0, behavior: "instant" });
+            } else {
+                window.scrollTo({ top: 0, behavior: "instant" });
+            }
             initPage();
         } catch (e) {
             location.href = urlStr;

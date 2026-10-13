@@ -158,18 +158,35 @@ SIMS.physics = (c) => {
     });
 };
 
-/* ---------------------------------------------------------------- THREE.JS */
 const three = (c, shift) => {
     const renderer = new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-    c.__dispose = () => renderer.dispose();
+    const disposers = [() => {
+        try { renderer.dispose(); } catch (e) {}
+    }];
+    const oldDispose = c.__dispose;
+    c.__dispose = () => {
+        disposers.forEach((fn) => { try { fn(); } catch (e) {} });
+        if (oldDispose) oldDispose();
+    };
     const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
     const group = new THREE.Group();
     scene.add(group);
     let W = 0;
-    KW.fit(c, (w, h) => { W = w; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); group.position.x = w > 900 ? shift : 0; });
+    KW.fit(c, (w, h) => {
+        W = w;
+        renderer.setSize(w, h, false);
+        cam.aspect = w / Math.max(h, 1);
+        cam.updateProjectionMatrix();
+        group.position.x = w > 900 ? shift : 0;
+    });
     const setColor = (mat, rgb) => { if (rgb && rgb.length >= 3) mat.color.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255); };
-    return { renderer, scene, cam, group, setColor, width: () => W };
+    const onTheme = (fn) => {
+        fn();
+        window.addEventListener("themechange", fn);
+        disposers.push(() => window.removeEventListener("themechange", fn));
+    };
+    return { renderer, scene, cam, group, setColor, onTheme, width: () => W };
 };
 
 /* ------------------------------------------------------------- DATA SCIENCE
@@ -260,12 +277,9 @@ SIMS.datascience = (c) => {
         T.setColor(tm, KW.col.a);
         T.setColor(pm, KW.col.a);
     };
-    paint();
-    addEventListener("themechange", paint);
-    addEventListener("click", (e) => {
-        if (!e.target.closest("a,button")) {
-            for (let i = 0; i < NP; i++) reseed(i);
-        }
+    T.onTheme(paint);
+    KW.onClick(c, () => {
+        for (let i = 0; i < NP; i++) reseed(i);
     });
 
     KW.tag(SITE.domains.datascience.tag, c);
@@ -273,8 +287,8 @@ SIMS.datascience = (c) => {
     let rx = 0.58, ry = 0;
     KW.loop(c, (t, dt) => {
         const p = KW.local(c), inside = p.x > 0 && p.y > 0 && p.x < T.width();
-        const mx = inside ? (p.x / T.width() - 0.5) * 22 : undefined;
-        const mz = inside ? (p.y / c.clientHeight - 0.5) * 22 : undefined;
+        const mx = inside ? (p.x / Math.max(T.width(), 1) - 0.5) * 22 : undefined;
+        const mz = inside ? (p.y / Math.max(c.clientHeight, 1) - 0.5) * 22 : undefined;
 
         let o = 0;
         for (let i = 0; i <= GW; i++) {
@@ -319,8 +333,8 @@ SIMS.datascience = (c) => {
         trailGeo.attributes.position.needsUpdate = true;
         headGeo.attributes.position.needsUpdate = true;
 
-        const curX = inside ? (p.x / T.width()) * 2 - 1 : 0;
-        const curY = inside ? (p.y / c.clientHeight) * 2 - 1 : 0;
+        const curX = inside ? (p.x / Math.max(T.width(), 1)) * 2 - 1 : 0;
+        const curY = inside ? (p.y / Math.max(c.clientHeight, 1)) * 2 - 1 : 0;
         rx += (0.58 + curY * 0.22 - rx) * 0.05;
         ry += dt * 0.12 + (curX * 0.015);
         T.group.rotation.x = rx;
@@ -404,7 +418,7 @@ SIMS.cs = (c) => {
         for (let i = 0; i < cols; i++) grid[i] = Math.random() < 0.5 ? 1 : 0;
         for (let r = 1; r < rows; r++) next();
     });
-    addEventListener("click", (e) => { if (!e.target.closest("a,button")) { ri = (ri + 1) % RULES.length; tag(); } });
+    KW.onClick(c, () => { ri = (ri + 1) % RULES.length; tag(); });
     tag();
     KW.loop(c, (t, dt) => {
         acc += dt * ROWS_PER_S;
@@ -449,7 +463,7 @@ SIMS.math = (c) => {
     const pt = new THREE.Points(geo, pm); pt.frustumCulled = false;
     T.group.add(ls, pt);
     const paint = () => { T.setColor(lm, KW.col.a); T.setColor(pm, KW.col.a); };
-    paint(); addEventListener("themechange", paint);
+    T.onTheme(paint);
 
     let rx = 0.75, ry = 0;
     KW.tag("Riemannian figure-8 immersion · ∬_M K dA = 2π χ(M) · cursor controls manifold orientation", c);
@@ -468,7 +482,7 @@ SIMS.math = (c) => {
         }
         geo.attributes.position.needsUpdate = true;
         const p = KW.local(c), inside = p.x > 0 && p.y > 0 && p.x < T.width();
-        const mx = inside ? (p.x / T.width()) * 2 - 1 : 0, my = inside ? (p.y / c.clientHeight) * 2 - 1 : 0;
+        const mx = inside ? (p.x / Math.max(T.width(), 1)) * 2 - 1 : 0, my = inside ? (p.y / Math.max(c.clientHeight, 1)) * 2 - 1 : 0;
         rx += (0.75 + my * 0.45 - rx) * 0.05;
         ry += dt * 0.18 + mx * 0.02;
         T.group.rotation.x = rx; T.group.rotation.y = ry;
@@ -506,7 +520,7 @@ SIMS.hub = (c) => {
         T.setColor(q.lm, col);
         T.setColor(q.head.material, col);
     });
-    paint(); addEventListener("themechange", paint);
+    T.onTheme(paint);
     KW.tag("Lorenz system · σ=10, ρ=28, β=8/3 · RK4 · 5 domain trajectories, initial separation 10⁻³", c);
 
     let rx = 0.15, ry = 0;
@@ -518,7 +532,7 @@ SIMS.hub = (c) => {
             q.head.position.set(q.buf[(LEN - 1) * 3], q.buf[(LEN - 1) * 3 + 1], q.buf[(LEN - 1) * 3 + 2]);
         }
         const p = KW.local(c), inside = p.x > 0 && p.y > 0 && p.x < T.width();
-        const mx = inside ? (p.x / T.width()) * 2 - 1 : 0, my = inside ? (p.y / c.clientHeight) * 2 - 1 : 0;
+        const mx = inside ? (p.x / Math.max(T.width(), 1)) * 2 - 1 : 0, my = inside ? (p.y / Math.max(c.clientHeight, 1)) * 2 - 1 : 0;
         rx += (0.15 + my * 0.3 - rx) * 0.05;
         ry += dt * 0.12 + mx * 0.01;
         T.group.rotation.x = rx; T.group.rotation.y = ry;
@@ -643,7 +657,7 @@ SIMS.contact = (c) => {
 
     KW.loop(c, () => {
         const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < Hh;
-        const mx = (p.x - cx) / scale, my = (p.y - cy) / scale;
+        const mx = (p.x - cx) / Math.max(scale, 1e-4), my = (p.y - cy) / Math.max(scale, 1e-4);
 
         for (let i = 0; i < NP; i++) { ptx[i] = px[i]; pty[i] = py[i]; }
         for (let s = 0; s < SUB; s++) stepRK4(mx, my, on);
@@ -757,7 +771,7 @@ SIMS["mobius-surfaces"] = (c) => {
     T.group.add(ls, nLines);
 
     const paint = () => { T.setColor(lm, KW.col.a); T.setColor(nm, KW.col.light ? [190, 24, 93] : [255, 210, 220]); };
-    paint(); addEventListener("themechange", paint);
+    T.onTheme(paint);
 
     let rx = 0.85, ry = 0, f = 0;
     KW.loop(c, (t, dt) => {
@@ -780,7 +794,7 @@ SIMS["mobius-surfaces"] = (c) => {
         geo.attributes.position.needsUpdate = true;
         nGeo.attributes.position.needsUpdate = true;
         const p = KW.local(c), inside = p.x > 0 && p.y > 0 && p.x < T.width();
-        const mx = inside ? (p.x / T.width()) * 2 - 1 : 0, my = inside ? (p.y / c.clientHeight) * 2 - 1 : 0;
+        const mx = inside ? (p.x / Math.max(T.width(), 1)) * 2 - 1 : 0, my = inside ? (p.y / Math.max(c.clientHeight, 1)) * 2 - 1 : 0;
         rx += (0.85 + my * 0.5 - rx) * 0.05; ry += dt * 0.16 + mx * 0.02;
         T.group.rotation.x = rx; T.group.rotation.y = ry;
         T.renderer.render(T.scene, T.cam);
@@ -796,10 +810,10 @@ SIMS["fourier-spectral"] = (c) => {
     const wave = new Float32Array(320);
     let head = 0;
     KW.fit(c, (w, h, dpr) => { W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
-    addEventListener("click", (e) => { if (!e.target.closest("a,button")) mode = (mode + 1) % MODES.length; });
+    KW.onClick(c, () => { mode = (mode + 1) % MODES.length; });
     KW.loop(c, (t) => {
         const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < H;
-        if (on) K = Math.max(1, Math.min(21, Math.round(1 + (1 - p.y / H) * 20)));
+        if (on) K = Math.max(1, Math.min(21, Math.round(1 + (1 - p.y / Math.max(H, 1)) * 20)));
         const a = KW.col.a, cx = W * (W > 900 ? 0.52 : 0.34), cy = H * 0.42, baseR = Math.min(W, H) * 0.14;
         ctx.clearRect(0, 0, W, H);
 
@@ -939,15 +953,15 @@ SIMS["split-step-schrodinger"] = (c) => {
         }
     };
     initPacket();
-    addEventListener("click", (e) => { if (!e.target.closest("a,button")) initPacket(); });
+    KW.onClick(c, () => initPacket());
     KW.fit(c, (w, h, dpr) => { W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
     KW.tag("Split-step Fourier TDSE · Re(ψ), Im(ψ), |ψ(x,t)|² tunnelling through barrier V(x) · click to relaunch packet", c);
 
     KW.loop(c, () => {
         const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < H;
         if (on) {
-            bx = Math.max(0.38, Math.min(0.78, (p.x - W * 0.35) / (W * 0.58)));
-            bh = Math.max(0.15, Math.min(1.15, 1.2 - p.y / H));
+            bx = Math.max(0.38, Math.min(0.78, (p.x - W * 0.35) / Math.max(W * 0.58, 1)));
+            bh = Math.max(0.15, Math.min(1.15, 1.2 - p.y / Math.max(H, 1)));
         }
         for (let i = 0; i < M; i++) {
             const u = i / M;
@@ -1139,12 +1153,12 @@ SIMS["options-pricing"] = (c) => {
     const pm = new THREE.PointsMaterial({ size: 0.14, transparent: true, opacity: 0.9 });
     T.group.add(new THREE.LineSegments(geo, lm), new THREE.Points(geo, pm));
     const paint = () => { T.setColor(lm, KW.col.a); T.setColor(pm, KW.col.a); };
-    paint(); addEventListener("themechange", paint);
+    T.onTheme(paint);
 
     let rx = 0.45, ry = -0.35, sig = 0.28;
     KW.loop(c, (t, dt) => {
         const p = KW.local(c), inside = p.x > 0 && p.y > 0 && p.x < T.width();
-        if (inside) sig = 0.14 + 0.55 * (1 - p.y / c.clientHeight);
+        if (inside) sig = 0.14 + 0.55 * (1 - p.y / Math.max(c.clientHeight, 1));
         else sig = 0.28 + 0.12 * Math.sin(t * 0.7);
         let o = 0;
         for (let i = 0; i <= GW; i++) {
@@ -1161,7 +1175,7 @@ SIMS["options-pricing"] = (c) => {
             }
         }
         geo.attributes.position.needsUpdate = true;
-        const mx = inside ? (p.x / T.width()) * 2 - 1 : 0;
+        const mx = inside ? (p.x / Math.max(T.width(), 1)) * 2 - 1 : 0;
         ry += dt * 0.14 + mx * 0.015;
         T.group.rotation.x = rx; T.group.rotation.y = ry;
         T.renderer.render(T.scene, T.cam);
@@ -1307,7 +1321,7 @@ SIMS["8bit-computer"] = (c) => {
         const sum = regA + regB;
         carry = sum > 0xFF ? 1 : 0;
 
-        const a = KW.col.a, x0 = W * (W > 900 ? 0.42 : 0.06), x1 = W * 0.94, span = x1 - x0;
+        const a = KW.col.a, x0 = W * (W > 900 ? 0.42 : 0.06), x1 = W * 0.94, span = Math.max(x1 - x0, 1);
         const cyan = KW.col.light ? "#0284c7" : "#22d3ee";
         ctx.clearRect(0, 0, W, H);
 
@@ -1472,9 +1486,10 @@ NAV.physics = () => {
         // 1. Counter-propagating collider beam line + travelling proton packets
         ctx.strokeStyle = rgba(a, 0.16); ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
+        const mw = Math.max(w, 1);
         for (let i = 0; i < 4; i++) {
-            const bx1 = ((t * 160 + i * (w / 4)) % w);
-            const bx2 = (w - ((t * 160 + i * (w / 4)) % w));
+            const bx1 = ((t * 160 + i * (mw / 4)) % mw);
+            const bx2 = (mw - ((t * 160 + i * (mw / 4)) % mw));
             ctx.fillStyle = rgba(a, 0.9);
             ctx.fillRect(bx1 - 4, mid - 1, 8, 2);
             ctx.fillStyle = rgba(b, 0.9);
@@ -1707,7 +1722,7 @@ SIMS.nav = (c) => {
     KW.fit(c, (w, h, dpr) => { W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
     KW.loop(c, (t, dt) => {
         ctx.clearRect(0, 0, W, Hh);
-        if (W < 40) return;
+        if (W < 76) return;
         const d = document.documentElement.dataset.domain, k = NAV[d] ? d : "math";
         if (!cur) cur = k;
         else if (k !== cur) { prev = cur; cur = k; mix = 0; }
