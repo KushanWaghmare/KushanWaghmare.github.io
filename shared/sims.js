@@ -745,6 +745,8 @@ SIMS.contact = (c) => {
         }
     });
 };
+SIMS.papers = SIMS.datascience;
+SIMS.courses = SIMS.cs;
 
 /* ======================================================== PROJECT SIMULATIONS
    Dedicated, equation-matched simulation for each of the 10 projects. */
@@ -1715,6 +1717,8 @@ NAV.cs = () => {
         }
     };
 };
+NAV.papers = NAV.datascience;
+NAV.courses = NAV.cs;
 
 SIMS.nav = (c) => {
     const ctx = c.getContext("2d"), inst = {};

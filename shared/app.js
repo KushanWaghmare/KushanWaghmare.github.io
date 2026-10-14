@@ -652,6 +652,10 @@
                 const sc = $(`#domain-${k} canvas`);
                 if (sc && SIMS[k]) try { SIMS[k](sc); } catch (e) {}
             });
+            const papersCanvas = $("#section-papers canvas");
+            if (papersCanvas && (SIMS.papers || SIMS.datascience)) try { (SIMS.papers || SIMS.datascience)(papersCanvas); } catch (e) {}
+            const coursesCanvas = $("#section-courses canvas");
+            if (coursesCanvas && (SIMS.courses || SIMS.cs)) try { (SIMS.courses || SIMS.cs)(coursesCanvas); } catch (e) {}
             const contactCanvas = $("#about-contact canvas");
             if (contactCanvas && SIMS.contact) try { SIMS.contact(contactCanvas); } catch (e) {}
         } else if (curPage === "domain" || curPage === "papers" || curPage === "courses") {
@@ -719,13 +723,6 @@
                 if (contactLink) {
                     contactLink.setAttribute("href", newPage === "hub" ? "#about-contact" : "index.html#about-contact");
                 }
-                navLinks.querySelectorAll(".nav-item").forEach((a) => {
-                    const href = a.getAttribute("href");
-                    const isActive = (newPage === "hub" && href === "index.html") ||
-                                     (newPage === "papers" && href === "papers.html") ||
-                                     (newPage === "courses" && href === "courses.html");
-                    a.classList.toggle("active", isActive);
-                });
             }
 
             main.innerHTML = newMain.innerHTML;

@@ -21,6 +21,8 @@ html[data-theme="dark"] {
     --rgb-datascience: 245, 158, 11; /* amber */
     --rgb-quant: 16, 185, 129;       /* emerald */
     --rgb-cs: 139, 92, 246;          /* violet */
+    --rgb-papers: 6, 182, 212;       /* cyan */
+    --rgb-courses: 236, 72, 153;     /* rose */
     --rgb-contact: 255, 149, 0;      /* neon orange / gold */
 }
 html[data-theme="light"] {
@@ -38,6 +40,8 @@ html[data-theme="light"] {
     --rgb-datascience: 180, 83, 9;
     --rgb-quant: 5, 150, 105;
     --rgb-cs: 109, 40, 217;
+    --rgb-papers: 14, 116, 144;
+    --rgb-courses: 190, 24, 93;
     --rgb-contact: 217, 119, 6;
 }
 html[data-domain="math"] { --a: var(--rgb-math); }
@@ -45,6 +49,8 @@ html[data-domain="physics"] { --a: var(--rgb-physics); }
 html[data-domain="datascience"] { --a: var(--rgb-datascience); }
 html[data-domain="quant"] { --a: var(--rgb-quant); }
 html[data-domain="cs"] { --a: var(--rgb-cs); }
+html[data-domain="papers"] { --a: var(--rgb-papers); }
+html[data-domain="courses"] { --a: var(--rgb-courses); }
 html[data-domain="contact"] { --a: var(--rgb-contact); }
 html[data-domain="hub"] { --a: var(--rgb-hub); }
 html, .snap-section, .snap-dot, .pill, .snap-cta-btn { --accent: rgb(var(--a)); }
