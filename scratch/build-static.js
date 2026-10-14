@@ -291,7 +291,7 @@ const papersPage = () => {
         <a href="#papers-contact" class="snap-dot" data-title="${String(papers.length + 1).padStart(2, "0")} Contact" aria-label="Contact & Collaboration"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">${String(papers.length + 1).padStart(2, "0")} Contact</span></a>
     </nav>
 
-    <section class="snap-section hero" id="papers-hero" data-domain="hub">
+    <section class="snap-section hero" id="papers-hero" data-domain="papers">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Research Papers</div>
@@ -303,7 +303,7 @@ const papersPage = () => {
                 ${papers.map((p) => `<a href="#paper-${p.id}" class="pill jump-pill" style="--a:var(--rgb-${p.domain})"><strong>${p.title.split(" ")[0]} ${p.title.split(" ")[1]}…</strong></a>`).join("")}
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Lorenz system · σ=10, ρ=28, β=8/3 · RK4 · 5 domain trajectories</div>
+        <div class="sim-tag" aria-hidden="true">Citation network &amp; semantic embedding graph · F_rep = k²/d, F_attr = d²/k · dynamic citation flux</div>
         <a class="snap-cue" href="#paper-${papers[0].id}">Scroll to research papers</a>
     </section>
 
@@ -376,7 +376,7 @@ const coursesPage = () => {
         <a href="#courses-contact" class="snap-dot" data-title="${String(tracks.length + 1).padStart(2, "0")} Contact" aria-label="Academic Inquiries"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">${String(tracks.length + 1).padStart(2, "0")} Contact</span></a>
     </nav>
 
-    <section class="snap-section hero" id="courses-hero" data-domain="hub">
+    <section class="snap-section hero" id="courses-hero" data-domain="courses">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Coursework</div>
@@ -388,7 +388,7 @@ const coursesPage = () => {
                 ${tracks.map((tr) => `<a href="#track-${tr.track}" class="pill jump-pill" style="--a:var(--rgb-${tr.domain})"><strong>${tr.degree.split(" ")[0]} ${tr.degree.split(" ")[1]}…</strong></a>`).join("")}
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Lorenz system · σ=10, ρ=28, β=8/3 · RK4 · 5 domain trajectories</div>
+        <div class="sim-tag" aria-hidden="true">Quantum harmonic ladder &amp; syllabus energy eigenstates · E_n = ℏω(n + ½) · stationary wave harmonics</div>
         <a class="snap-cue" href="#track-${tracks[0].track}">Scroll to curricula</a>
     </section>
 
@@ -526,7 +526,7 @@ console.log("Wrote project.html");
 
 // 4. Papers page
 fs.writeFileSync(path.join(root, "papers.html"), buildHTML({
-    domain: "datascience",
+    domain: "papers",
     pageType: "papers",
     three: true,
     title: "Research Papers & Publications · Kushan Waghmare",
@@ -537,7 +537,7 @@ console.log("Wrote papers.html");
 
 // 5. Courses page
 fs.writeFileSync(path.join(root, "courses.html"), buildHTML({
-    domain: "cs",
+    domain: "courses",
     pageType: "courses",
     three: true,
     title: "Academic Coursework & Curricula · Kushan Waghmare",

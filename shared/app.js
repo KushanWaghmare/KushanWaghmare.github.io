@@ -632,11 +632,11 @@
             curTitle = "Project · Kushan Waghmare";
         } else if (file === "papers.html") {
             curPage = "papers";
-            curDomain = "datascience";
+            curDomain = "papers";
             curTitle = "Research Papers & Publications · Kushan Waghmare";
         } else if (file === "courses.html") {
             curPage = "courses";
-            curDomain = "cs";
+            curDomain = "courses";
             curTitle = "Academic Coursework & Curricula · Kushan Waghmare";
         }
 

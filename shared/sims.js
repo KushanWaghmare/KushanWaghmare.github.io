@@ -745,8 +745,168 @@ SIMS.contact = (c) => {
         }
     });
 };
-SIMS.papers = SIMS.datascience;
-SIMS.courses = SIMS.cs;
+
+/* ------------------------------------------------------------- PAPERS
+   Dynamic Citation Knowledge Graph & Semantic Embedding Field.
+   Nodes represent publications in semantic space; edges denote citation connections. */
+SIMS.papers = (c) => {
+    const ctx = c.getContext("2d");
+    const N = 36, R_CONN = 130;
+    const x = new Float32Array(N), y = new Float32Array(N);
+    const vx = new Float32Array(N), vy = new Float32Array(N);
+    const rad = new Float32Array(N), cluster = new Uint8Array(N);
+    let W = 0, Hh = 0, ready = false;
+
+    const initNodes = () => {
+        const cx = W * (W > 900 ? 0.65 : 0.5), cy = Hh * 0.5;
+        const centers = [{ x: cx - 130, y: cy - 60 }, { x: cx + 120, y: cy - 40 }, { x: cx, y: cy + 90 }];
+        for (let i = 0; i < N; i++) {
+            const cl = i % 3; cluster[i] = cl;
+            const ang = Math.random() * TAU, dist = 15 + Math.random() * 105;
+            x[i] = centers[cl].x + Math.cos(ang) * dist;
+            y[i] = centers[cl].y + Math.sin(ang) * dist;
+            vx[i] = (Math.random() - 0.5) * 6; vy[i] = (Math.random() - 0.5) * 6;
+            rad[i] = 2.4 + (i % 4 === 0 ? 3.2 : 1.4);
+        }
+    };
+
+    KW.fit(c, (w, h, dpr) => {
+        W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        if (!ready) { initNodes(); ready = true; }
+    });
+    KW.tag("Citation network & semantic embedding graph · F_rep = k²/d, F_attr = d²/k · dynamic citation flux", c);
+
+    KW.loop(c, (t, dt) => {
+        const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < Hh;
+        const col = KW.col.a;
+        ctx.clearRect(0, 0, W, Hh);
+        const cx = W * (W > 900 ? 0.65 : 0.5), cy = Hh * 0.5;
+
+        for (let i = 0; i < N; i++) {
+            vx[i] += (cx - x[i]) * 0.08 * dt;
+            vy[i] += (cy - y[i]) * 0.08 * dt;
+            if (on) {
+                const dx = p.x - x[i], dy = p.y - y[i], d2 = dx * dx + dy * dy;
+                if (d2 < 36000 && d2 > 4) {
+                    const f = 160 / Math.sqrt(d2);
+                    vx[i] += dx * f * dt; vy[i] += dy * f * dt;
+                }
+            }
+            vx[i] *= 0.985; vy[i] *= 0.985;
+            x[i] += vx[i] * dt * 60; y[i] += vy[i] * dt * 60;
+        }
+
+        ctx.lineWidth = 1;
+        for (let i = 0; i < N; i++) {
+            for (let j = i + 1; j < N; j++) {
+                const dx = x[i] - x[j], dy = y[i] - y[j], d = Math.sqrt(dx * dx + dy * dy);
+                if (d < R_CONN) {
+                    const same = cluster[i] === cluster[j];
+                    ctx.strokeStyle = rgba(col, (1 - d / R_CONN) * (same ? 0.32 : 0.12));
+                    ctx.beginPath(); ctx.moveTo(x[i], y[i]); ctx.lineTo(x[j], y[j]); ctx.stroke();
+                }
+            }
+        }
+
+        const waveR = (t * 70) % 210;
+        if (on) {
+            ctx.strokeStyle = rgba(col, (1 - waveR / 210) * 0.35);
+            ctx.beginPath(); ctx.arc(p.x, p.y, waveR, 0, TAU); ctx.stroke();
+        }
+
+        for (let i = 0; i < N; i++) {
+            const glow = on && Math.hypot(p.x - x[i], p.y - y[i]) < 55;
+            ctx.fillStyle = rgba(col, glow ? 0.95 : 0.6);
+            ctx.beginPath(); ctx.arc(x[i], y[i], rad[i] + (glow ? 2 : 0), 0, TAU); ctx.fill();
+        }
+    });
+};
+
+/* ------------------------------------------------------------- COURSES
+   Quantum Harmonic Energy Well & Curriculum Eigenstates.
+   Quantized energy levels E_n = ℏω(n + ½) with standing probability waves. */
+SIMS.courses = (c) => {
+    const ctx = c.getContext("2d");
+    const LEVELS = 6, NP = 32;
+    const px = new Float32Array(NP), pl = new Uint8Array(NP), ps = new Float32Array(NP);
+    let W = 0, Hh = 0, ready = false;
+
+    const initParticles = () => {
+        for (let i = 0; i < NP; i++) {
+            px[i] = (Math.random() - 0.5) * 2;
+            pl[i] = Math.floor(Math.random() * LEVELS);
+            ps[i] = (0.4 + Math.random() * 0.8) * (Math.random() < 0.5 ? 1 : -1);
+        }
+    };
+
+    KW.fit(c, (w, h, dpr) => {
+        W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        if (!ready) { initParticles(); ready = true; }
+    });
+    KW.tag("Quantum harmonic ladder & syllabus energy eigenstates · E_n = ℏω(n + ½) · stationary wave harmonics", c);
+
+    KW.loop(c, (t) => {
+        const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < Hh;
+        const col = KW.col.a;
+        ctx.clearRect(0, 0, W, Hh);
+        const cx = W * (W > 900 ? 0.66 : 0.5), cy = Hh * 0.5;
+        const spanX = Math.min(W * 0.38, 270), spanY = Math.min(Hh * 0.36, 175);
+
+        // Confining harmonic potential parabola V(x) = k x²
+        ctx.strokeStyle = rgba(col, 0.22); ctx.lineWidth = 1.2; ctx.beginPath();
+        for (let s = -30; s <= 30; s++) {
+            const u = s / 30;
+            const x = cx + u * spanX;
+            const y = cy + spanY - (1 - u * u) * (spanY * 1.8);
+            s === -30 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Quantized energy levels & probability waveforms ψ_n(x)
+        for (let n = 0; n < LEVELS; n++) {
+            const frac = (n + 0.5) / LEVELS;
+            const ly = cy + spanY * 0.8 - frac * spanY * 1.5;
+            const halfW = spanX * Math.sqrt(Math.max(0.08, frac));
+
+            ctx.strokeStyle = rgba(col, 0.25); ctx.setLineDash([3, 4]); ctx.beginPath();
+            ctx.moveTo(cx - halfW, ly); ctx.lineTo(cx + halfW, ly); ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.strokeStyle = rgba(col, 0.72); ctx.lineWidth = 1.4; ctx.beginPath();
+            const freq = (n + 1) * 1.7;
+            for (let s = -22; s <= 22; s++) {
+                const u = s / 22;
+                const wx = cx + u * halfW;
+                const amp = Math.sin((n + 1) * Math.PI * (u * 0.5 + 0.5)) * Math.cos(t * freq);
+                const wy = ly - amp * 13;
+                s === -22 ? ctx.moveTo(wx, wy) : ctx.lineTo(wx, wy);
+            }
+            ctx.stroke();
+        }
+
+        // Quantum probability particles
+        for (let i = 0; i < NP; i++) {
+            const n = pl[i];
+            const frac = (n + 0.5) / LEVELS;
+            const ly = cy + spanY * 0.8 - frac * spanY * 1.5;
+            const halfW = spanX * Math.sqrt(Math.max(0.08, frac));
+
+            px[i] += ps[i] * 0.016;
+            if (px[i] > 1 || px[i] < -1) {
+                ps[i] *= -1;
+                px[i] = Math.max(-1, Math.min(1, px[i]));
+                if (Math.random() < 0.25) pl[i] = Math.floor(Math.random() * LEVELS);
+            }
+            ctx.fillStyle = rgba(col, 0.85); ctx.beginPath();
+            ctx.arc(cx + px[i] * halfW, ly, 2.2, 0, TAU); ctx.fill();
+        }
+
+        if (on) {
+            ctx.strokeStyle = rgba(col, 0.4); ctx.lineWidth = 1; ctx.beginPath();
+            ctx.arc(p.x, p.y, 8, 0, TAU); ctx.stroke();
+        }
+    });
+};
 
 /* ======================================================== PROJECT SIMULATIONS
    Dedicated, equation-matched simulation for each of the 10 projects. */
@@ -1717,8 +1877,44 @@ NAV.cs = () => {
         }
     };
 };
-NAV.papers = NAV.datascience;
-NAV.courses = NAV.cs;
+
+// Research Papers: citation signal pulse traveling along a horizontal graph filament
+NAV.papers = () => {
+    const nodes = [0.08, 0.22, 0.38, 0.52, 0.68, 0.82, 0.94];
+    return (ctx, w, h, t) => {
+        const a = KW.col.a, mid = h / 2;
+        ctx.strokeStyle = rgba(a, 0.25); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(w * 0.05, mid); ctx.lineTo(w * 0.95, mid); ctx.stroke();
+
+        const px = w * ((t * 0.45) % 1);
+        for (let i = 0; i < nodes.length; i++) {
+            const nx = w * nodes[i];
+            const hot = Math.abs(px - nx) < 24;
+            ctx.fillStyle = rgba(a, hot ? 1 : 0.4);
+            ctx.beginPath();
+            ctx.arc(nx, mid + Math.sin(t * 2.4 + i) * 3, hot ? 3.2 : 2, 0, TAU);
+            ctx.fill();
+        }
+        ctx.fillStyle = rgba(a, 0.9);
+        ctx.beginPath(); ctx.arc(px, mid, 2.5, 0, TAU); ctx.fill();
+    };
+};
+
+// Academic Coursework: discrete syllabus ladder & quantized standing harmonics
+NAV.courses = () => {
+    return (ctx, w, h, t) => {
+        const a = KW.col.a, mid = h / 2, bars = 16;
+        const bw = w / (bars * 2.2);
+        for (let i = 0; i < bars; i++) {
+            const x = (i + 0.5) * (w / bars);
+            const env = Math.sin((i / (bars - 1)) * Math.PI);
+            const amp = Math.sin(t * 3.2 + i * 0.6) * 0.5 + 0.5;
+            const bh = Math.max(3, env * (h * 0.32 + amp * (h * 0.38)));
+            ctx.fillStyle = rgba(a, 0.28 + 0.65 * env);
+            ctx.fillRect(x - bw / 2, mid - bh / 2, bw, bh);
+        }
+    };
+};
 
 SIMS.nav = (c) => {
     const ctx = c.getContext("2d"), inst = {};

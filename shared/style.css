@@ -21,8 +21,8 @@ html[data-theme="dark"] {
     --rgb-datascience: 245, 158, 11; /* amber */
     --rgb-quant: 16, 185, 129;       /* emerald */
     --rgb-cs: 139, 92, 246;          /* violet */
-    --rgb-papers: 6, 182, 212;       /* cyan */
-    --rgb-courses: 236, 72, 153;     /* rose */
+    --rgb-papers: 163, 230, 53;      /* electric lime / chartreuse */
+    --rgb-courses: 236, 72, 153;     /* neon fuchsia / rose */
     --rgb-contact: 255, 149, 0;      /* neon orange / gold */
 }
 html[data-theme="light"] {
@@ -40,7 +40,7 @@ html[data-theme="light"] {
     --rgb-datascience: 180, 83, 9;
     --rgb-quant: 5, 150, 105;
     --rgb-cs: 109, 40, 217;
-    --rgb-papers: 14, 116, 144;
+    --rgb-papers: 101, 163, 13;
     --rgb-courses: 190, 24, 93;
     --rgb-contact: 217, 119, 6;
 }
