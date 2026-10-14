@@ -1,8 +1,6 @@
 // Pre-renders full semantic HTML into each page for SEO and fast initial paint.
 const fs = require("fs");
 const path = require("path");
-const vm = require("vm");
-
 const root = path.resolve(__dirname, "..");
 const dataCode = fs.readFileSync(path.join(root, "shared", "data.js"), "utf8");
 const SITE = new Function(dataCode + "\nreturn SITE;")();
@@ -11,19 +9,6 @@ const keys = Object.keys(SITE.domains);
 const pad = (n) => String(n + 1).padStart(2, "0");
 const list = (key) => SITE.projects.filter((p) => p.domain === key);
 const tags = (a) => a.map((t) => `<span class="tag">${t}</span>`).join("");
-
-const card = (p, i) => `
-        <a class="card glass" href="project.html?p=${p.id}" data-reveal>
-            <span class="no">${pad(i)} <span class="dot"></span> ${p.status}</span>
-            <h3>${p.title}</h3><p>${p.summary}</p>
-            <div class="tags">${tags(p.tags)}</div><span class="go">Open project</span>
-        </a>`;
-
-const hero = (inner, short) => `
-        <section class="hero${short ? " short-hero" : ""}"><canvas aria-hidden="true"></canvas>
-            <div class="hero-inner">${inner}</div><div class="sim-tag" aria-hidden="true"></div>
-            ${short ? "" : `<a class="cue" href="#content">Scroll</a>`}
-        </section>`;
 
 const VEC = ["right", "left", "bottom", "top", "right"];
 const hubPage = () => `
@@ -117,9 +102,6 @@ const contactSection = () => `
                 </div>
             </div>
         </div>`;
-
-const others = (key) => `<div class="pills" data-reveal>${keys.filter((k) => k !== key).map((k) =>
-    `<a class="pill" style="--a:var(--rgb-${k})" href="${SITE.domains[k].file}">${SITE.domains[k].name}</a>`).join("")}</div>`;
 
 const domainPage = (key) => {
     const d = SITE.domains[key], ps = list(key);

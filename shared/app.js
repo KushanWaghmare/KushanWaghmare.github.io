@@ -4,7 +4,6 @@
     const keys = Object.keys(SITE.domains);
     const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const $ = (s, r = document) => r.querySelector(s);
-    const pad = (n) => String(n + 1).padStart(2, "0");
     const list = (key) => SITE.projects.filter((p) => p.domain === key);
 
     /* ---------- helpers used by sims.js ---------- */
@@ -107,34 +106,17 @@
             }
         };
 
-        const unlockAudio = () => {
-            if (!ctx) init();
-            if (ctx && ctx.state === "suspended") {
-                ctx.resume().then(() => {
-                    unlocked = true;
-                    notifyUnlock();
-                }).catch(() => {});
-            } else if (ctx && ctx.state === "running") {
-                unlocked = true;
-                notifyUnlock();
-            }
-        };
-
         // Capture-phase gesture listeners guarantee wakeup before any stopPropagation
         ["pointerdown", "touchstart", "touchend", "click", "keydown", "wheel"].forEach((ev) => {
-            window.addEventListener(ev, unlockAudio, { passive: true, capture: true });
+            window.addEventListener(ev, init, { passive: true, capture: true });
         });
 
         // Resume audio on visibility change / window focus if returning to tab
         document.addEventListener("visibilitychange", () => {
-            if (!document.hidden && enabled && ctx && ctx.state === "suspended") {
-                ctx.resume().then(() => { unlocked = true; notifyUnlock(); }).catch(() => {});
-            }
+            if (!document.hidden && enabled && ctx && ctx.state === "suspended") init();
         });
         window.addEventListener("focus", () => {
-            if (enabled && ctx && ctx.state === "suspended") {
-                ctx.resume().then(() => { unlocked = true; notifyUnlock(); }).catch(() => {});
-            }
+            if (enabled && ctx && ctx.state === "suspended") init();
         });
 
         let noiseBuf = null;
@@ -190,37 +172,12 @@
 
         return {
             isEnabled: () => enabled,
-            isUnlocked: () => unlocked || Boolean(ctx && ctx.state === "running"),
-            unlock: () => {
-                enabled = true;
-                unlocked = true;
-                try { localStorage.setItem("kw_sound", "true"); } catch (e) {}
-                init();
-                notifyUnlock();
-                if (ctx) {
-                    ctx.resume().then(() => {
-                        unlocked = true;
-                        notifyUnlock();
-                        playTone(520, 880, "sine", 0.08, 0.05);
-                    }).catch(() => {});
-                }
-            },
             toggle: () => {
                 enabled = !enabled;
                 try { localStorage.setItem("kw_sound", String(enabled)); } catch (e) {}
                 if (enabled) {
                     init();
-                    if (ctx && ctx.state === "suspended") {
-                        ctx.resume().then(() => {
-                            unlocked = true;
-                            notifyUnlock();
-                            playTone(520, 880, "sine", 0.08, 0.05);
-                        }).catch(() => {});
-                    } else {
-                        unlocked = true;
-                        notifyUnlock();
-                        playTone(520, 880, "sine", 0.08, 0.05);
-                    }
+                    playTone(520, 880, "sine", 0.08, 0.05);
                 } else {
                     notifyUnlock();
                 }
@@ -569,7 +526,6 @@
                 warping = false;
             }, 760);
         };
-        KW.warpTo = warpTo;
 
         window.addEventListener("wheel", (e) => {
             if (REDUCED || e.ctrlKey || e.metaKey) return;
@@ -808,14 +764,6 @@
     window.addEventListener("popstate", () => {
         loadPage(location.href, false);
     });
-
-    const prog = $(".progress");
-    if (prog) {
-        window.addEventListener("scroll", () => {
-            const max = D.scrollHeight - window.innerHeight;
-            if (max > 0) prog.style.transform = `scaleX(${window.scrollY / max})`;
-        }, { passive: true });
-    }
 
     document.addEventListener("pointermove", (e) => {
         const c = e.target.closest && e.target.closest(".card");

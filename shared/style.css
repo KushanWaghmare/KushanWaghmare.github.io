@@ -123,6 +123,11 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
     background: var(--accent);
     transform: scaleX(0);
     transform-origin: left;
+    animation: progress-grow linear;
+    animation-timeline: scroll();
+}
+@keyframes progress-grow {
+    to { transform: scaleX(1); }
 }
 
 /* ---------- Navigation ---------- */
@@ -178,17 +183,6 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
     border-color: var(--accent);
     transform: translateY(-1px);
 }
-.nav-hub-link {
-    --la: var(--a);
-    border: 1px solid var(--line);
-    border-radius: 99px;
-    padding: 6px 12px !important;
-    color: var(--fg) !important;
-}
-.nav-hub-link:hover {
-    border-color: var(--accent);
-    color: var(--accent) !important;
-}
 
 .short { display: none; }
 .theme-btn {
@@ -220,11 +214,6 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
     transition: transform 0.2s, border-color 0.25s, color 0.25s, background-color 0.25s, opacity 0.25s;
 }
 .sound-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
-.sound-btn.needs-unlock {
-    border-color: rgba(var(--a), 0.55);
-    background: rgba(var(--a), 0.1);
-    color: var(--accent);
-}
 .sound-btn.muted { opacity: 0.65; }
 
 /* ---------- Hero ---------- */
@@ -951,11 +940,6 @@ html[data-theme="light"] .hero h1 {
 a.contact-value:hover {
     color: var(--accent);
     text-decoration: underline;
-}
-.contact-sub {
-    font-size: 13.5px;
-    color: var(--muted);
-    line-height: 1.5;
 }
 .copy-btn {
     cursor: pointer;
