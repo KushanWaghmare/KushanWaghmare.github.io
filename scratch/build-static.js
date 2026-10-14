@@ -448,12 +448,26 @@ const coursesPage = () => {
 };
 
 const renderNav = (active, pageType) => {
+    const isPapers = pageType === "papers";
+    const isCourses = pageType === "courses";
+    const badge = isPapers
+        ? `<span class="nav-domain-pill" style="--a:var(--rgb-papers)"><span class="nav-pill-dot"></span>Papers</span>`
+        : isCourses
+        ? `<span class="nav-domain-pill" style="--a:var(--rgb-courses)"><span class="nav-pill-dot"></span>Coursework</span>`
+        : "";
+    const backLink = (isPapers || isCourses)
+        ? `<a href="index.html" class="nav-back-link"><span class="full">← Hub</span><span class="short">←</span></a>`
+        : "";
     return `
     <div class="progress"></div>
     <header class="nav glass">
-        <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
+        <div class="nav-brand-group">
+            <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
+            ${badge}
+        </div>
         <div class="nav-live" aria-hidden="true"><canvas></canvas></div>
         <nav class="links" aria-label="Navigation">
+            ${backLink}
             <a href="${pageType === 'hub' ? '#about-contact' : 'index.html#about-contact'}" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>
             <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
             <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Mute audio">🔊</button>

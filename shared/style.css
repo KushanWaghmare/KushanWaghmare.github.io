@@ -149,6 +149,36 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 }
 .brand { font: 700 14px var(--mono); letter-spacing: 0.08em; white-space: nowrap; }
 .brand b { color: var(--accent); font-weight: 700; }
+.nav-brand-group { display: flex; align-items: center; gap: 10px; }
+.nav-domain-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font: 600 11px var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 10px;
+    border-radius: 99px;
+    background: rgba(var(--a), 0.12);
+    border: 1px solid rgba(var(--a), 0.35);
+    color: rgb(var(--a));
+}
+.nav-pill-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgb(var(--a));
+    box-shadow: 0 0 8px rgb(var(--a));
+}
+.nav-back-link {
+    font: 500 12px var(--mono);
+    color: var(--muted);
+    padding: 6px 10px !important;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: color 0.2s, background 0.2s;
+}
+.nav-back-link:hover { color: var(--fg) !important; background: var(--line) !important; }
 .links { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .links a.active { color: var(--accent) !important; background: rgba(var(--a), 0.12); }
 

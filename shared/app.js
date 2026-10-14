@@ -717,11 +717,23 @@
             const newDomain = doc.documentElement.dataset.domain || "hub";
             const newPage = doc.documentElement.dataset.page || "hub";
 
-            const navLinks = $(".nav .links");
-            if (navLinks) {
-                const contactLink = $(".nav-contact-link", navLinks);
-                if (contactLink) {
-                    contactLink.setAttribute("href", newPage === "hub" ? "#about-contact" : "index.html#about-contact");
+            const newNav = doc.querySelector("header.nav");
+            const curNav = $("header.nav");
+            if (newNav && curNav) {
+                const curBrandGroup = $(".nav-brand-group", curNav);
+                const newBrandGroup = $(".nav-brand-group", newNav);
+                if (curBrandGroup && newBrandGroup) curBrandGroup.innerHTML = newBrandGroup.innerHTML;
+                const curLinks = $(".links", curNav);
+                const newLinks = $(".links", newNav);
+                if (curLinks && newLinks) {
+                    const curBack = $(".nav-back-link", curLinks);
+                    const newBack = $(".nav-back-link", newLinks);
+                    if (curBack) curBack.remove();
+                    if (newBack) curLinks.prepend(newBack.cloneNode(true));
+                    const contactLink = $(".nav-contact-link", curLinks);
+                    if (contactLink) {
+                        contactLink.setAttribute("href", newPage === "hub" ? "#about-contact" : "index.html#about-contact");
+                    }
                 }
             }
 

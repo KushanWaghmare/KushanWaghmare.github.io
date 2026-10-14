@@ -747,163 +747,224 @@ SIMS.contact = (c) => {
 };
 
 /* ------------------------------------------------------------- PAPERS
-   Dynamic Citation Knowledge Graph & Semantic Embedding Field.
-   Nodes represent publications in semantic space; edges denote citation connections. */
+   Poincaré Hyperbolic Disk of Research Papers & Citation Geodesics.
+   Non-Euclidean metric ds² = 4|dz|²/(1 - |z|²)² on the unit disk D².
+   Cursor induces a dynamic conformal Möbius automorphism z ↦ (z - z₀)/(1 - z̄₀z). */
 SIMS.papers = (c) => {
     const ctx = c.getContext("2d");
-    const N = 36, R_CONN = 130;
-    const x = new Float32Array(N), y = new Float32Array(N);
-    const vx = new Float32Array(N), vy = new Float32Array(N);
-    const rad = new Float32Array(N), cluster = new Uint8Array(N);
-    let W = 0, Hh = 0, ready = false;
-
-    const initNodes = () => {
-        const cx = W * (W > 900 ? 0.65 : 0.5), cy = Hh * 0.5;
-        const centers = [{ x: cx - 130, y: cy - 60 }, { x: cx + 120, y: cy - 40 }, { x: cx, y: cy + 90 }];
-        for (let i = 0; i < N; i++) {
-            const cl = i % 3; cluster[i] = cl;
-            const ang = Math.random() * TAU, dist = 15 + Math.random() * 105;
-            x[i] = centers[cl].x + Math.cos(ang) * dist;
-            y[i] = centers[cl].y + Math.sin(ang) * dist;
-            vx[i] = (Math.random() - 0.5) * 6; vy[i] = (Math.random() - 0.5) * 6;
-            rad[i] = 2.4 + (i % 4 === 0 ? 3.2 : 1.4);
-        }
-    };
-
-    KW.fit(c, (w, h, dpr) => {
-        W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        if (!ready) { initNodes(); ready = true; }
+    const N = 26;
+    const nodes = Array.from({ length: N }, (_, i) => {
+        const u = 0.18 + Math.pow(Math.random(), 0.75) * 0.72;
+        const th = Math.random() * TAU;
+        return { r: u, th, spd: 0.03 + (i % 5) * 0.012, sz: 2.2 + (i % 3 === 0 ? 1.8 : 0) };
     });
-    KW.tag("Citation network & semantic embedding graph · F_rep = k²/d, F_attr = d²/k · dynamic citation flux", c);
-
-    KW.loop(c, (t, dt) => {
-        const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < Hh;
-        const col = KW.col.a;
-        ctx.clearRect(0, 0, W, Hh);
-        const cx = W * (W > 900 ? 0.65 : 0.5), cy = Hh * 0.5;
-
-        for (let i = 0; i < N; i++) {
-            vx[i] += (cx - x[i]) * 0.08 * dt;
-            vy[i] += (cy - y[i]) * 0.08 * dt;
-            if (on) {
-                const dx = p.x - x[i], dy = p.y - y[i], d2 = dx * dx + dy * dy;
-                if (d2 < 36000 && d2 > 4) {
-                    const f = 160 / Math.sqrt(d2);
-                    vx[i] += dx * f * dt; vy[i] += dy * f * dt;
-                }
-            }
-            vx[i] *= 0.985; vy[i] *= 0.985;
-            x[i] += vx[i] * dt * 60; y[i] += vy[i] * dt * 60;
+    const links = [];
+    for (let i = 0; i < N; i++) {
+        for (let j = i + 1; j < N; j++) {
+            if ((i * 5 + j * 11) % 7 === 0) links.push([i, j]);
         }
+    }
+    let W = 0, Hh = 0;
 
-        ctx.lineWidth = 1;
-        for (let i = 0; i < N; i++) {
-            for (let j = i + 1; j < N; j++) {
-                const dx = x[i] - x[j], dy = y[i] - y[j], d = Math.sqrt(dx * dx + dy * dy);
-                if (d < R_CONN) {
-                    const same = cluster[i] === cluster[j];
-                    ctx.strokeStyle = rgba(col, (1 - d / R_CONN) * (same ? 0.32 : 0.12));
-                    ctx.beginPath(); ctx.moveTo(x[i], y[i]); ctx.lineTo(x[j], y[j]); ctx.stroke();
-                }
-            }
-        }
-
-        const waveR = (t * 70) % 210;
-        if (on) {
-            ctx.strokeStyle = rgba(col, (1 - waveR / 210) * 0.35);
-            ctx.beginPath(); ctx.arc(p.x, p.y, waveR, 0, TAU); ctx.stroke();
-        }
-
-        for (let i = 0; i < N; i++) {
-            const glow = on && Math.hypot(p.x - x[i], p.y - y[i]) < 55;
-            ctx.fillStyle = rgba(col, glow ? 0.95 : 0.6);
-            ctx.beginPath(); ctx.arc(x[i], y[i], rad[i] + (glow ? 2 : 0), 0, TAU); ctx.fill();
-        }
-    });
-};
-
-/* ------------------------------------------------------------- COURSES
-   Quantum Harmonic Energy Well & Curriculum Eigenstates.
-   Quantized energy levels E_n = ℏω(n + ½) with standing probability waves. */
-SIMS.courses = (c) => {
-    const ctx = c.getContext("2d");
-    const LEVELS = 6, NP = 32;
-    const px = new Float32Array(NP), pl = new Uint8Array(NP), ps = new Float32Array(NP);
-    let W = 0, Hh = 0, ready = false;
-
-    const initParticles = () => {
-        for (let i = 0; i < NP; i++) {
-            px[i] = (Math.random() - 0.5) * 2;
-            pl[i] = Math.floor(Math.random() * LEVELS);
-            ps[i] = (0.4 + Math.random() * 0.8) * (Math.random() < 0.5 ? 1 : -1);
-        }
-    };
-
-    KW.fit(c, (w, h, dpr) => {
-        W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        if (!ready) { initParticles(); ready = true; }
-    });
-    KW.tag("Quantum harmonic ladder & syllabus energy eigenstates · E_n = ℏω(n + ½) · stationary wave harmonics", c);
+    KW.fit(c, (w, h, dpr) => { W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
+    KW.tag("Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics", c);
 
     KW.loop(c, (t) => {
         const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < Hh;
         const col = KW.col.a;
         ctx.clearRect(0, 0, W, Hh);
-        const cx = W * (W > 900 ? 0.66 : 0.5), cy = Hh * 0.5;
-        const spanX = Math.min(W * 0.38, 270), spanY = Math.min(Hh * 0.36, 175);
 
-        // Confining harmonic potential parabola V(x) = k x²
-        ctx.strokeStyle = rgba(col, 0.22); ctx.lineWidth = 1.2; ctx.beginPath();
-        for (let s = -30; s <= 30; s++) {
-            const u = s / 30;
-            const x = cx + u * spanX;
-            const y = cy + spanY - (1 - u * u) * (spanY * 1.8);
-            s === -30 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        const cx = W * (W > 900 ? 0.65 : 0.5), cy = Hh * 0.5;
+        const R = Math.min(W * 0.38, Hh * 0.44, 250);
+
+        let z0x = 0, z0y = 0;
+        if (on) {
+            const mx = (p.x - cx) / R, my = (p.y - cy) / R;
+            const md = Math.hypot(mx, my);
+            if (md < 0.95) { z0x = mx * 0.38; z0y = my * 0.38; }
         }
+
+        // 1. Boundary circle of Poincaré disk |z| = 1
+        ctx.strokeStyle = rgba(col, 0.42);
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, TAU);
         ctx.stroke();
 
-        // Quantized energy levels & probability waveforms ψ_n(x)
-        for (let n = 0; n < LEVELS; n++) {
-            const frac = (n + 0.5) / LEVELS;
-            const ly = cy + spanY * 0.8 - frac * spanY * 1.5;
-            const halfW = spanX * Math.sqrt(Math.max(0.08, frac));
+        // 2. Concentric horocycle guides
+        ctx.strokeStyle = rgba(col, 0.1);
+        ctx.lineWidth = 1;
+        [0.32, 0.62, 0.86].forEach((hr) => {
+            ctx.beginPath(); ctx.arc(cx, cy, R * hr, 0, TAU); ctx.stroke();
+        });
 
-            ctx.strokeStyle = rgba(col, 0.25); ctx.setLineDash([3, 4]); ctx.beginPath();
-            ctx.moveTo(cx - halfW, ly); ctx.lineTo(cx + halfW, ly); ctx.stroke();
-            ctx.setLineDash([]);
+        // 3. Conformal mapping: z ↦ (z - z0)/(1 - conj(z0)*z)
+        const pos = [];
+        for (let i = 0; i < N; i++) {
+            const nd = nodes[i];
+            const th = nd.th + t * nd.spd;
+            const zx = nd.r * Math.cos(th), zy = nd.r * Math.sin(th);
+            const numX = zx - z0x, numY = zy - z0y;
+            const denX = 1 - (z0x * zx + z0y * zy);
+            const denY = -(z0x * zy - z0y * zx);
+            const d2 = denX * denX + denY * denY || 1;
+            const wx = (numX * denX + numY * denY) / d2;
+            const wy = (numY * denX - numX * denY) / d2;
+            pos.push({ x: cx + wx * R, y: cy + wy * R, d: Math.hypot(wx, wy) });
+        }
 
-            ctx.strokeStyle = rgba(col, 0.72); ctx.lineWidth = 1.4; ctx.beginPath();
-            const freq = (n + 1) * 1.7;
-            for (let s = -22; s <= 22; s++) {
-                const u = s / 22;
-                const wx = cx + u * halfW;
-                const amp = Math.sin((n + 1) * Math.PI * (u * 0.5 + 0.5)) * Math.cos(t * freq);
-                const wy = ly - amp * 13;
-                s === -22 ? ctx.moveTo(wx, wy) : ctx.lineTo(wx, wy);
-            }
+        // 4. Hyperbolic geodesic arcs between papers
+        ctx.lineWidth = 1;
+        for (const [i, j] of links) {
+            const p1 = pos[i], p2 = pos[j];
+            if (p1.d > 0.98 || p2.d > 0.98) continue;
+            const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
+            const bend = 0.28;
+            const ctrlX = midX * (1 - bend) + cx * bend;
+            const ctrlY = midY * (1 - bend) + cy * bend;
+            const alpha = Math.max(0.08, 0.36 - Math.max(p1.d, p2.d) * 0.28);
+            ctx.strokeStyle = rgba(col, alpha);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.quadraticCurveTo(ctrlX, ctrlY, p2.x, p2.y);
             ctx.stroke();
         }
 
-        // Quantum probability particles
-        for (let i = 0; i < NP; i++) {
-            const n = pl[i];
-            const frac = (n + 0.5) / LEVELS;
-            const ly = cy + spanY * 0.8 - frac * spanY * 1.5;
-            const halfW = spanX * Math.sqrt(Math.max(0.08, frac));
+        // 5. Radial citation pulse
+        const pulseR = ((t * 0.22) % 1) * R;
+        ctx.strokeStyle = rgba(col, (1 - pulseR / R) * 0.22);
+        ctx.beginPath();
+        ctx.arc(cx, cy, pulseR, 0, TAU);
+        ctx.stroke();
 
-            px[i] += ps[i] * 0.016;
-            if (px[i] > 1 || px[i] < -1) {
-                ps[i] *= -1;
-                px[i] = Math.max(-1, Math.min(1, px[i]));
-                if (Math.random() < 0.25) pl[i] = Math.floor(Math.random() * LEVELS);
-            }
-            ctx.fillStyle = rgba(col, 0.85); ctx.beginPath();
-            ctx.arc(cx + px[i] * halfW, ly, 2.2, 0, TAU); ctx.fill();
+        // 6. Paper publication nodes
+        for (let i = 0; i < N; i++) {
+            const pt = pos[i];
+            if (pt.d > 0.99) continue;
+            const fade = Math.max(0.18, 1 - pt.d * pt.d);
+            ctx.fillStyle = rgba(col, fade * 0.9);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, nodes[i].sz * (0.8 + 0.4 * fade), 0, TAU);
+            ctx.fill();
         }
 
         if (on) {
-            ctx.strokeStyle = rgba(col, 0.4); ctx.lineWidth = 1; ctx.beginPath();
-            ctx.arc(p.x, p.y, 8, 0, TAU); ctx.stroke();
+            ctx.strokeStyle = rgba(col, 0.65);
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 7, 0, TAU);
+            ctx.stroke();
+        }
+    });
+};
+
+/* ------------------------------------------------------------- COURSES
+   Curriculum Directed Acyclic Graph (DAG) & Prerequisite Flow Matrix.
+   Milestone columns (Foundations → Core → Honours → Capstone) with prerequisite
+   cables, logic gates, and active academic signal pulses. */
+SIMS.courses = (c) => {
+    const ctx = c.getContext("2d");
+    const COLS = 4;
+    const TIERS = [
+        { label: "FOUNDATIONS", count: 4 },
+        { label: "CORE CURRICULA", count: 5 },
+        { label: "HONOURS", count: 4 },
+        { label: "CAPSTONE", count: 3 }
+    ];
+    let W = 0, Hh = 0;
+
+    const edges = [];
+    TIERS.forEach((t, col) => {
+        if (col < COLS - 1) {
+            const nextCount = TIERS[col + 1].count;
+            for (let i = 0; i < t.count; i++) {
+                const j1 = Math.min(nextCount - 1, (i * nextCount / t.count) | 0);
+                const j2 = Math.min(nextCount - 1, j1 + 1);
+                edges.push({ c1: col, r1: i, c2: col + 1, r2: j1 });
+                if (j2 !== j1 && (i + col) % 2 === 0) edges.push({ c1: col, r1: i, c2: col + 1, r2: j2 });
+            }
+        }
+    });
+
+    KW.fit(c, (w, h, dpr) => { W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
+    KW.tag("Curriculum Directed Acyclic Graph (DAG) · topological sort · prerequisite signal conduction", c);
+
+    KW.loop(c, (t) => {
+        const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < Hh;
+        const col = KW.col.a;
+        ctx.clearRect(0, 0, W, Hh);
+
+        const left = W > 900 ? W * 0.38 : W * 0.08;
+        const totalW = W > 900 ? W * 0.56 : W * 0.84;
+        const colGap = totalW / (COLS - 1);
+        const top = Hh * 0.18, bot = Hh * 0.82, totalH = bot - top;
+
+        const nodes = [];
+        for (let cIdx = 0; cIdx < COLS; cIdx++) {
+            const count = TIERS[cIdx].count;
+            const x = left + cIdx * colGap;
+            const tierNodes = [];
+            for (let r = 0; r < count; r++) {
+                const y = top + (r + 0.5) * (totalH / count);
+                tierNodes.push({ x, y });
+            }
+            nodes.push(tierNodes);
+        }
+
+        // Tier headers
+        ctx.font = '600 10px "JetBrains Mono", ui-monospace, monospace';
+        ctx.fillStyle = rgba(col, 0.45);
+        ctx.textAlign = "center";
+        for (let cIdx = 0; cIdx < COLS; cIdx++) {
+            ctx.fillText(TIERS[cIdx].label, left + cIdx * colGap, top - 24);
+        }
+
+        // Prerequisite cables
+        for (const e of edges) {
+            const p1 = nodes[e.c1][e.r1], p2 = nodes[e.c2][e.r2];
+            const dx = (p2.x - p1.x) * 0.5;
+            ctx.strokeStyle = rgba(col, 0.16);
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.bezierCurveTo(p1.x + dx, p1.y, p2.x - dx, p2.y, p2.x, p2.y);
+            ctx.stroke();
+
+            // Prerequisite signal packets
+            const phase = (t * 0.55 + (e.r1 * 3 + e.r2 * 7) * 0.1) % 1;
+            const omt = 1 - phase;
+            const bx = omt * omt * omt * p1.x + 3 * omt * omt * phase * (p1.x + dx) + 3 * omt * phase * phase * (p2.x - dx) + phase * phase * phase * p2.x;
+            const by = omt * omt * omt * p1.y + 3 * omt * omt * phase * p1.y + 3 * omt * phase * phase * p2.y + phase * phase * phase * p2.y;
+            ctx.fillStyle = rgba(col, 0.85);
+            ctx.beginPath();
+            ctx.arc(bx, by, 2.4, 0, TAU);
+            ctx.fill();
+        }
+
+        // Course logic chips
+        for (let cIdx = 0; cIdx < COLS; cIdx++) {
+            const tier = nodes[cIdx];
+            for (let r = 0; r < tier.length; r++) {
+                const pt = tier[r];
+                const hover = on && Math.hypot(p.x - pt.x, p.y - pt.y) < 30;
+
+                const bw = 52, bh = 22;
+                ctx.fillStyle = hover ? rgba(col, 0.25) : rgba(col, 0.08);
+                ctx.strokeStyle = hover ? rgba(col, 0.95) : rgba(col, 0.35);
+                ctx.lineWidth = 1.2;
+                ctx.fillRect(pt.x - bw / 2, pt.y - bh / 2, bw, bh);
+                ctx.strokeRect(pt.x - bw / 2, pt.y - bh / 2, bw, bh);
+
+                ctx.font = '500 9px "JetBrains Mono", ui-monospace, monospace';
+                ctx.fillStyle = hover ? rgba(col, 1) : rgba(col, 0.7);
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(`C${cIdx + 1}0${r + 1}`, pt.x, pt.y);
+
+                ctx.fillStyle = rgba(col, 0.85);
+                ctx.fillRect(pt.x - bw / 2 - 2, pt.y - 2, 4, 4);
+                ctx.fillRect(pt.x + bw / 2 - 2, pt.y - 2, 4, 4);
+            }
         }
     });
 };
@@ -1878,40 +1939,63 @@ NAV.cs = () => {
     };
 };
 
-// Research Papers: citation signal pulse traveling along a horizontal graph filament
+// Research Papers: Poincaré hyperbolic disk gauge with citation stream telemetry
 NAV.papers = () => {
-    const nodes = [0.08, 0.22, 0.38, 0.52, 0.68, 0.82, 0.94];
     return (ctx, w, h, t) => {
-        const a = KW.col.a, mid = h / 2;
-        ctx.strokeStyle = rgba(a, 0.25); ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(w * 0.05, mid); ctx.lineTo(w * 0.95, mid); ctx.stroke();
+        const a = KW.col.a, mid = h / 2, R = Math.min(h * 0.38, 12);
+        const cx = 18;
+        // Mini Poincaré disk glyph
+        ctx.strokeStyle = rgba(a, 0.45); ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(cx, mid, R, 0, TAU); ctx.stroke();
+        const sweep = t * 2.2;
+        ctx.strokeStyle = rgba(a, 0.9); ctx.beginPath();
+        ctx.arc(cx, mid, R, sweep, sweep + 1.6); ctx.stroke();
+        ctx.fillStyle = rgba(a, 1); ctx.beginPath();
+        ctx.arc(cx + Math.cos(sweep) * R * 0.6, mid + Math.sin(sweep) * R * 0.6, 2, 0, TAU); ctx.fill();
 
-        const px = w * ((t * 0.45) % 1);
-        for (let i = 0; i < nodes.length; i++) {
-            const nx = w * nodes[i];
-            const hot = Math.abs(px - nx) < 24;
-            ctx.fillStyle = rgba(a, hot ? 1 : 0.4);
-            ctx.beginPath();
-            ctx.arc(nx, mid + Math.sin(t * 2.4 + i) * 3, hot ? 3.2 : 2, 0, TAU);
-            ctx.fill();
-        }
-        ctx.fillStyle = rgba(a, 0.9);
-        ctx.beginPath(); ctx.arc(px, mid, 2.5, 0, TAU); ctx.fill();
+        // Citation stream horizon
+        const x0 = 38, x1 = w - 16;
+        ctx.strokeStyle = rgba(a, 0.22); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x0, mid); ctx.lineTo(x1, mid); ctx.stroke();
+        const px = x0 + (x1 - x0) * ((t * 0.5) % 1);
+        ctx.fillStyle = rgba(a, 0.95); ctx.beginPath(); ctx.arc(px, mid, 2.5, 0, TAU); ctx.fill();
+
+        [0.25, 0.55, 0.82].forEach((frac) => {
+            const bx = x0 + (x1 - x0) * frac;
+            const hot = Math.abs(px - bx) < 16;
+            ctx.fillStyle = rgba(a, hot ? 1 : 0.35);
+            ctx.fillRect(bx - 3, mid - 4, 6, 8);
+        });
     };
 };
 
-// Academic Coursework: discrete syllabus ladder & quantized standing harmonics
+// Academic Coursework: 4-stage prerequisite pipeline [FND] → [CORE] → [HNR] → [DEG]
 NAV.courses = () => {
+    const labels = ["FND", "CORE", "HNR", "DEG"];
     return (ctx, w, h, t) => {
-        const a = KW.col.a, mid = h / 2, bars = 16;
-        const bw = w / (bars * 2.2);
-        for (let i = 0; i < bars; i++) {
-            const x = (i + 0.5) * (w / bars);
-            const env = Math.sin((i / (bars - 1)) * Math.PI);
-            const amp = Math.sin(t * 3.2 + i * 0.6) * 0.5 + 0.5;
-            const bh = Math.max(3, env * (h * 0.32 + amp * (h * 0.38)));
-            ctx.fillStyle = rgba(a, 0.28 + 0.65 * env);
-            ctx.fillRect(x - bw / 2, mid - bh / 2, bw, bh);
+        const a = KW.col.a, mid = h / 2, n = labels.length;
+        const x0 = 18, span = w - 36, gap = span / (n - 1);
+        ctx.font = '700 8.5px "JetBrains Mono", ui-monospace, monospace';
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+
+        ctx.strokeStyle = rgba(a, 0.25); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x0, mid); ctx.lineTo(x0 + span, mid); ctx.stroke();
+
+        const cycle = (t * 0.7) % (n - 1);
+        const stage = Math.floor(cycle), frac = cycle - stage;
+        const sx = x0 + stage * gap + frac * gap;
+        ctx.fillStyle = rgba(a, 0.95); ctx.beginPath(); ctx.arc(sx, mid, 2.6, 0, TAU); ctx.fill();
+
+        for (let i = 0; i < n; i++) {
+            const x = x0 + i * gap;
+            const active = i <= stage + (frac > 0.5 ? 1 : 0);
+            ctx.fillStyle = rgba(a, active ? 0.2 : 0.08);
+            ctx.strokeStyle = rgba(a, active ? 0.9 : 0.35);
+            ctx.lineWidth = 1;
+            ctx.fillRect(x - 14, mid - 7, 28, 14);
+            ctx.strokeRect(x - 14, mid - 7, 28, 14);
+            ctx.fillStyle = rgba(a, active ? 1 : 0.45);
+            ctx.fillText(labels[i], x, mid);
         }
     };
 };
