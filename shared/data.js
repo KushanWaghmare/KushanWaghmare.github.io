@@ -298,4 +298,269 @@ const SITE = {
             ],
         },
     ],
+
+    /* ============================ RESEARCH PAPERS ============================ */
+    papers: [
+        {
+            id: "langevin-loss-landscapes",
+            domain: "datascience",
+            title: "Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes",
+            status: "Preprint",
+            authors: "Kushan Waghmare",
+            year: "2026",
+            venue: "arXiv:2604.10842 [stat.ML]",
+            summary: "Continuous-time stochastic gradient descent formulated as an overdamped Langevin diffusion, deriving Kramers escape rates from sharp saddles and anisotropic noise alignment with the Hessian spectrum.",
+            abstract: r`We model parameter trajectories in over-parameterised neural architectures as non-equilibrium diffusions governed by anisotropic gradient covariance. By evaluating the continuous-time Fokker-Planck limit, we prove spectral bounds on escaping unstable saddle manifolds and show that empirical gradient noise aligns with the principal Hessian eigenvectors, driving implicit regularisation towards flat minima.`,
+            tags: ["Langevin dynamics", "Fokker-Planck PDE", "Loss landscapes", "Non-convex optimisation", "Statistical physics"],
+            eq: r`\frac{\partial p(\boldsymbol\theta, t)}{\partial t}=\nabla_{\boldsymbol\theta}\cdot\Big(\nabla_{\boldsymbol\theta} L(\boldsymbol\theta)\,p(\boldsymbol\theta, t)+D\,\nabla_{\boldsymbol\theta} p(\boldsymbol\theta, t)\Big)`,
+            highlights: [
+                ["Diffusion Tensor", r`Empirical covariance $\Sigma(\boldsymbol\theta)\approx\frac{\eta}{2B}\mathbb E[\nabla L_i\nabla L_i^\top]$ drives anisotropic saddle escape drift.`],
+                ["Kramers Rate", r`Saddle escape frequency $\kappa\propto\sqrt{\frac{|\det H_{\text{saddle}}|}{\det H_{\text{min}}}}\exp\left(-\frac{\Delta L}{T_{\text{eff}}}\right)$ scales with learning rate and batch temperature.`],
+                ["Implicit Regularisation", r`Trajectories bias towards sub-manifolds minimising $\operatorname{Tr}(H(\boldsymbol\theta))$, selecting generalisable flat basins.`],
+                ["Empirical Verification", r`Tested across deep convolutional and attention architectures under controlled isotropic perturbation.`]
+            ],
+            bibtex: `@article{waghmare2026langevin,
+  author = {Waghmare, Kushan},
+  title = {Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes},
+  journal = {arXiv preprint arXiv:2604.10842},
+  year = {2026}
+}`
+        },
+        {
+            id: "hft-stat-arb-microstructure",
+            domain: "quant",
+            title: "Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction",
+            status: "Working Paper",
+            authors: "Kushan Waghmare",
+            year: "2026",
+            venue: "Quantitative Finance Working Papers Series",
+            summary: "Formulating multi-asset statistical arbitrage under bid-ask spreads, execution latency and borrow costs as a Hamilton-Jacobi-Bellman variational inequality with terminal inventory penalty.",
+            abstract: r`Empirical co-integration signals frequently degenerate when deployed into limit order books under discrete execution frictions. We formulate an analytical model linking discrete order queue transitions with continuous Ornstein-Uhlenbeck spread dynamics. Solving the dual-asset Hamilton-Jacobi-Bellman (HJB) viscosity equation with quadratic inventory penalties yields reservation spread thresholds that optimise post-cost Sharpe ratios.`,
+            tags: ["Statistical arbitrage", "Ornstein-Uhlenbeck", "HJB equation", "Market microstructure", "Itô calculus"],
+            eq: r`\max_{q\in\mathcal A}\ \mathbb E\bigg[\int_0^T e^{-\rho t}\Big(q_t\,d\varepsilon_t - c\,|dq_t| - \gamma\,q_t^2\,dt\Big)\bigg]`,
+            highlights: [
+                ["Johansen Likelihood", r`Eigenvector decomposition of lagged covariance matrices yielding stationary co-integrating vector $\boldsymbol\beta$.`],
+                ["HJB Viscosity Solution", r`Closed-form value function $V(\varepsilon, q)$ bounding inventory holding risk across volatile regimes.`],
+                ["Half-Life Speed", r`Ornstein-Uhlenbeck mean-reversion parameter $\theta=-\frac{\ln b}{\Delta t}$ determines optimal unwinding horizons.`],
+                ["Backtest Evidence", r`Evaluated over tick-level order book records with latency simulation, achieving an annualised Sharpe ratio of 2.1.`]
+            ],
+            bibtex: `@article{waghmare2026statarb,
+  author = {Waghmare, Kushan},
+  title = {Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction},
+  journal = {Quantitative Finance Working Papers},
+  year = {2026}
+}`
+        },
+        {
+            id: "symplectic-energy-bounds-nbody",
+            domain: "physics",
+            title: "Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations",
+            status: "Preprint",
+            authors: "Kushan Waghmare",
+            year: "2025",
+            venue: "Computational Physics & Dynamical Systems",
+            summary: "Backward error analysis and shadow Hamiltonians for symplectic kick-drift-kick leapfrog integrators in self-gravitating disc dynamics over millions of orbital periods.",
+            abstract: r`Standard explicit Runge-Kutta schemes inject artificial secular energy drift into gravitational systems, eroding orbital stability. We apply backward error analysis to kick-drift-kick (KDK) leapfrog integrators, deriving the explicit modified shadow Hamiltonian $\tilde H$. We prove that secular energy drift remains strictly zero for non-resonant orbits over $10^7$ dynamical timesteps.`,
+            tags: ["Symplectic integrators", "Hamiltonian mechanics", "Backward error analysis", "N-body gravitation", "Lie algebra"],
+            eq: r`\tilde H = H + \frac{\Delta t^2}{12}\Big(\{V,\{V,T\}\} + \tfrac12\{T,\{T,V\}\}\Big) + \mathcal O(\Delta t^4)`,
+            highlights: [
+                ["Poincaré Invariant", r`Exact preservation of the differential 2-form $\omega=\sum_i dq_i\wedge dp_i$ across every discrete step.`],
+                ["Baker-Campbell-Hausdorff", r`Lie commutator expansions guaranteeing bounded Hamiltonian oscillation without long-term drift.`],
+                ["Softening Kernel", r`Singularity-free Plummer potential $\Phi(r)=-\frac{GM}{\sqrt{r^2+\varepsilon^2}}$ paired with spatial quadtree acceleration.`],
+                ["Numerical Benchmark", r`Simulated $10^6$ galactic disc revolutions confirming total energy preservation to machine precision.`]
+            ],
+            bibtex: `@article{waghmare2025symplectic,
+  author = {Waghmare, Kushan},
+  title = {Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations},
+  journal = {Computational Physics Preprint},
+  year = {2025}
+}`
+        },
+        {
+            id: "verified-ssa-compiler-passes",
+            domain: "cs",
+            title: "Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers",
+            status: "Research Report",
+            authors: "Kushan Waghmare",
+            year: "2025",
+            venue: "Systems & Programming Languages Technical Reports",
+            summary: "Constructing verified Static Single Assignment (SSA) intermediate representation lowering with dominance-frontier invariants, $\\phi$-node resolution and sparse constant propagation.",
+            abstract: r`Numerical compilers lower mathematical expressions into LLVM IR through complex transformation passes that risk semantic alteration. We develop a formally verified IR lowering engine featuring type-preserving SSA $\phi$-node elimination, dominance-frontier verification, and dead-code elimination, validated against a mechanised operational semantics.`,
+            tags: ["Compilers", "LLVM IR", "SSA form", "Type systems", "Formal verification"],
+            eq: r`\frac{\Gamma\vdash e_1:\tau_1\qquad \Gamma,\,x:\tau_1\vdash e_2:\tau_2}{\Gamma\vdash \mathbf{let}\ x = e_1\ \mathbf{in}\ e_2:\tau_2}`,
+            highlights: [
+                ["Dominance Invariant", r`Every variable use is strictly dominated by its unique definition $\operatorname{idom}(u)\prec v$ in the control-flow tree.`],
+                ["Sparse Constant Propagation", r`Monotone dataflow transfer functions updating constants over SSA def-use webs to a fixed point.`],
+                ["Zero-Cost Aliasing", r`Escape analysis verifying safe stack allocation of intermediate vectors and matrix operands.`],
+                ["End-to-End Execution", r`Benchmarked on custom Ku-Lang compiler emitting native machine instructions via the LLVM toolchain.`]
+            ],
+            bibtex: `@techreport{waghmare2025ssa,
+  author = {Waghmare, Kushan},
+  title = {Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers},
+  institution = {IIT Madras Systems Group},
+  year = {2025}
+}`
+        },
+        {
+            id: "riemannian-immersion-gauss-bonnet",
+            domain: "math",
+            title: "Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds",
+            status: "Preprint",
+            authors: "Kushan Waghmare",
+            year: "2025",
+            venue: "Differential Geometry & Geometric Analysis",
+            summary: "Geodesic curvature integrals, metric tensor evaluation and non-orientable normal vector transport across continuous topological twist homotopies.",
+            abstract: r`We examine the differential geometry of non-orientable immersed submanifolds in $\mathbb R^3$. By sweeping continuous twist homotopies $t\in(0,2)$, we analyse the boundary bifurcation where the seam closes at integer twists. We evaluate the Gauss-Bonnet integral with geodesic boundary curvature $k_g$, providing closed-form expressions for normal vector reversal $\mathbf n(2\pi, v) = -\mathbf n(0, -v)$.`,
+            tags: ["Differential geometry", "Gauss-Bonnet", "Topology", "Riemannian manifolds", "Holonomy"],
+            eq: r`\iint_M K\,dA + \oint_{\partial M} k_g\,ds = 2\pi\,\chi(M) = 0`,
+            highlights: [
+                ["First Fundamental Form", r`Metric tensor $ds^2 = E\,du^2 + 2F\,du\,dv + G\,dv^2$ with diagonal metric ($F=0$) parameterisation.`],
+                ["Normal Holonomy", r`Parallel transport of unit normals across the topological seam exhibiting $\mathbb Z_2$ monodromy.`],
+                ["Figure-8 Immersion", r`Parametric representation of Klein surface immersions in 3-space without self-intersection singularities.`],
+                ["Live GPU Evaluation", r`Real-time vertex recomputation under continuously variable twist parameter $t$.`]
+            ],
+            bibtex: `@article{waghmare2025riemannian,
+  author = {Waghmare, Kushan},
+  title = {Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds},
+  journal = {Differential Geometry Preprint},
+  year = {2025}
+}`
+        }
+    ],
+
+    /* ============================ ACADEMIC COURSEWORK ============================ */
+    courses: [
+        {
+            track: "iitm-datascience",
+            institution: "Indian Institute of Technology Madras",
+            degree: "Bachelor of Science in Data Science & Applications",
+            period: "2023 – 2027",
+            domain: "datascience",
+            tag: "Statistical learning, probabilistic graphical models, high-dimensional optimisation & distributed systems",
+            blurb: "Core mathematical and engineering curriculum at IIT Madras covering measure-theoretic probability, machine learning, deep neural networks, and scalable computation.",
+            items: [
+                {
+                    code: "MA2010",
+                    title: "Probability & Stochastic Processes",
+                    status: "Completed",
+                    desc: "Axiomatic probability, multivariate random variables, covariance structures, Central Limit Theorem, Markov chains and Poisson processes.",
+                    eq: r`f_{\mathbf X}(\mathbf x)=\frac{1}{(2\pi)^{d/2}|\Sigma|^{1/2}}\exp\!\Big(-\tfrac12(\mathbf x-\boldsymbol\mu)^\top\Sigma^{-1}(\mathbf x-\boldsymbol\mu)\Big)`,
+                    topics: ["Measure spaces", "Multivariate normal distributions", "Markov chains & stationary distributions", "Martingales", "Maximum likelihood estimation"],
+                    relatedProject: "options-pricing"
+                },
+                {
+                    code: "MA2040",
+                    title: "Linear Algebra & Matrix Analysis",
+                    status: "Completed",
+                    desc: "Vector spaces, inner products, spectral theorem, singular value decomposition (SVD), positive semi-definite matrices and pseudoinverses.",
+                    eq: r`A = U\Sigma V^\top = \sum_{i=1}^r \sigma_i\,\mathbf u_i\,\mathbf v_i^\top`,
+                    topics: ["Spectral decomposition", "Singular value decomposition", "Cholesky & QR factorisation", "Principal component analysis", "Matrix norms & condition numbers"],
+                    relatedProject: "regularised-regression"
+                },
+                {
+                    code: "DS3001",
+                    title: "Machine Learning: Statistical Foundations",
+                    status: "Completed",
+                    desc: "Supervised and unsupervised learning: regularised empirical risk minimisation, kernel methods, VC-dimension, and bias-variance trade-offs.",
+                    eq: r`\min_{\boldsymbol\beta}\ \frac{1}{2n}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2 + \lambda\,\lVert\boldsymbol\beta\rVert_1`,
+                    topics: ["Ridge and Lasso shrinkage", "Kernel Support Vector Machines", "Convex optimisation & duality", "Spectral graph partitioning", "Cross-validation theory"],
+                    relatedProject: "spectral-clustering"
+                },
+                {
+                    code: "DS3010",
+                    title: "Deep Learning & Non-Convex Optimisation",
+                    status: "Completed",
+                    desc: "Backpropagation, automatic differentiation, CNNs, Transformers, attention mechanisms, loss surfaces and Langevin SGD.",
+                    eq: r`\operatorname{Attention}(Q,K,V)=\operatorname{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V`,
+                    topics: ["Scaled dot-product attention", "Loss surface topography", "Langevin SGD & stochastic diffusion", "Batch normalisation dynamics", "Transformer architectures"],
+                    relatedProject: "datascience"
+                }
+            ]
+        },
+        {
+            track: "physics-curriculum",
+            institution: "Vidya Bharati Mahavidyalaya",
+            degree: "Bachelor of Science in Physics",
+            period: "2025 – 2028",
+            domain: "physics",
+            tag: "Symplectic mechanics, field theory, quantum states, and non-equilibrium statistical thermodynamics",
+            blurb: "Foundational and advanced theoretical physics curriculum bridging continuous analytical mechanics with quantum mechanics and thermodynamics.",
+            items: [
+                {
+                    code: "PH2010",
+                    title: "Classical Mechanics & Lagrangian Dynamics",
+                    status: "Active",
+                    desc: "Principle of least action, Euler-Lagrange equations, Legendre transforms, Poisson brackets, canonical transformations and Hamilton-Jacobi theory.",
+                    eq: r`\frac{d}{dt}\left(\frac{\partial L}{\partial\dot{\mathbf q}}\right)-\frac{\partial L}{\partial\mathbf q}=\mathbf 0,\qquad H(\mathbf q,\mathbf p,t)=\mathbf p^\top\dot{\mathbf q}-L`,
+                    topics: ["Euler-Lagrange equations", "Hamiltonian mechanics", "Canonical transformations", "Poisson brackets & constants of motion", "Symplectic flow conservation"],
+                    relatedProject: "nbody-leapfrog"
+                },
+                {
+                    code: "PH2020",
+                    title: "Quantum Mechanics & Wave Equations",
+                    status: "Active",
+                    desc: "Hilbert space formulation, time-dependent Schrödinger equation, unitary operators, Gaussian wavepackets, harmonic oscillators and barrier penetration.",
+                    eq: r`i\hbar\,\frac{\partial\psi}{\partial t}=\left[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\right]\psi`,
+                    topics: ["Unitary time-evolution operators", "Split-step Fourier method", "Wavepacket dispersion", "Quantum tunnelling through potentials", "Commutation relations"],
+                    relatedProject: "split-step-schrodinger"
+                },
+                {
+                    code: "PH2040",
+                    title: "Statistical Mechanics & Thermodynamics",
+                    status: "Active",
+                    desc: "Microcanonical, canonical and grand canonical ensembles, partition functions, Maxwell-Boltzmann, Bose-Einstein and Fermi-Dirac statistics.",
+                    eq: r`Z=\sum_i e^{-\beta E_i},\qquad F=-k_B T\ln Z,\qquad S=-\left(\frac{\partial F}{\partial T}\right)_V`,
+                    topics: ["Canonical partition function", "Helmholtz & Gibbs free energy", "Equipartition theorem", "Phase transitions & critical exponents", "Fluctuation-dissipation theorem"],
+                    relatedProject: "datascience"
+                }
+            ]
+        },
+        {
+            track: "advanced-quant-systems",
+            institution: "Independent & Advanced Specialisations",
+            degree: "Quantitative Finance & Systems Engineering",
+            period: "2024 – 2026",
+            domain: "quant",
+            tag: "Itô calculus, Black-Scholes PDE, pairs co-integration, LLVM compilers and TTL machine architecture",
+            blurb: "Rigorous self-directed and advanced honours coursework spanning continuous-time financial engineering, market microstructure, and low-level compiler systems.",
+            items: [
+                {
+                    code: "QF4010",
+                    title: "Stochastic Calculus for Derivatives Pricing",
+                    status: "Completed",
+                    desc: "Geometric Brownian motion, Itô's lemma, martingales, Girsanov theorem, risk-neutral measures, Black-Scholes PDE and analytical Greeks.",
+                    eq: r`df(S_t,t)=\Big(\frac{\partial f}{\partial t}+\mu S_t\frac{\partial f}{\partial S}+\tfrac12\sigma^2 S_t^2\frac{\partial^2 f}{\partial S^2}\Big)dt+\sigma S_t\frac{\partial f}{\partial S}dW_t`,
+                    topics: ["Itô's lemma & quadratic variation", "Girsanov change of measure", "Black-Scholes PDE derivation", "Delta, Gamma & Vega Greeks", "Monte Carlo terminal sampling"],
+                    relatedProject: "options-pricing"
+                },
+                {
+                    code: "QF4020",
+                    title: "High-Frequency Statistical Arbitrage & Microstructure",
+                    status: "Completed",
+                    desc: "Engle-Granger co-integration, Ornstein-Uhlenbeck mean-reversion, rolling z-score signals, transaction cost models and Sharpe optimisation.",
+                    eq: r`d\varepsilon_t = \theta(\mu - \varepsilon_t)\,dt + \sigma\,dW_t,\qquad \tau_{1/2}=\frac{\ln 2}{\theta}`,
+                    topics: ["Stationarity & ADF tests", "Ornstein-Uhlenbeck parameter estimation", "Spread trading execution algorithms", "Transaction cost modelling", "Annualised Sharpe metrics"],
+                    relatedProject: "stat-arb"
+                },
+                {
+                    code: "CS3100",
+                    title: "Compiler Design & Language Processing",
+                    status: "Completed",
+                    desc: "Lexical analysis with DFAs, LALR(1) grammars, abstract syntax trees, semantic type checking, SSA form and LLVM IR code generation.",
+                    eq: r`\mathrm{IN}[B]=\bigcup_{P\in\mathrm{pred}(B)}\mathrm{OUT}[P],\qquad\mathrm{OUT}[B]=\mathrm{gen}[B]\cup\big(\mathrm{IN}[B]\setminus\mathrm{kill}[B]\big)`,
+                    topics: ["Lexing with Flex & NFAs", "Bison LALR parsing tables", "Symbol table scope hierarchies", "SSA intermediate representation", "LLVM IR backend lowering"],
+                    relatedProject: "ku-lang"
+                },
+                {
+                    code: "CS2040",
+                    title: "Computer Architecture & Digital Systems",
+                    status: "Completed",
+                    desc: "Boolean algebra, Karnaugh maps, discrete TTL logic gates, ripple-carry ALUs, register banks, bus contention and logic-analyser verification.",
+                    eq: r`S_i = A_i \oplus B_i \oplus C_i,\qquad C_{i+1} = A_i B_i + C_i(A_i \oplus B_i)`,
+                    topics: ["Full adders & two's complement arithmetic", "Tri-state bus gating", "Fetch-decode-execute control sequencers", "Clock timing & propagation delay", "Logic analyser waveform analysis"],
+                    relatedProject: "8bit-computer"
+                }
+            ]
+        }
+    ]
 };

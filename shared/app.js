@@ -674,6 +674,14 @@
             curPage = "project";
             curDomain = "hub";
             curTitle = "Project · Kushan Waghmare";
+        } else if (file === "papers.html") {
+            curPage = "papers";
+            curDomain = "datascience";
+            curTitle = "Research Papers & Publications · Kushan Waghmare";
+        } else if (file === "courses.html") {
+            curPage = "courses";
+            curDomain = "cs";
+            curTitle = "Academic Coursework & Curricula · Kushan Waghmare";
         }
 
         D.dataset.page = curPage;
@@ -690,11 +698,11 @@
             });
             const contactCanvas = $("#about-contact canvas");
             if (contactCanvas && SIMS.contact) try { SIMS.contact(contactCanvas); } catch (e) {}
-        } else if (curPage === "domain") {
+        } else if (curPage === "domain" || curPage === "papers" || curPage === "courses") {
             document.querySelectorAll(".snap-section canvas").forEach((c) => {
                 const sec = c.closest(".snap-section");
-                const pid = sec && sec.id && sec.id.startsWith("proj-") ? sec.id.slice(5) : null;
-                const sd = (pid && SIMS[pid]) ? pid : (sec && sec.dataset.domain === "contact" ? "contact" : curDomain);
+                const pid = sec && sec.id && sec.id.startsWith("proj-") ? sec.id.slice(5) : (sec && sec.id && sec.id.startsWith("paper-") ? sec.id.slice(6) : (sec && sec.id && sec.id.startsWith("track-") ? sec.id.slice(6) : null));
+                const sd = (pid && SIMS[pid]) ? pid : (sec && sec.dataset.domain ? sec.dataset.domain : curDomain);
                 try { if (SIMS[sd]) SIMS[sd](c); } catch (err) {}
             });
         } else {
@@ -752,11 +760,16 @@
             const navLinks = $(".nav .links");
             if (navLinks) {
                 const contactLink = $(".nav-contact-link", navLinks);
-                if (newPage === "hub" && !contactLink) {
-                    navLinks.insertAdjacentHTML("afterbegin", '<a href="#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>');
-                } else if (newPage !== "hub" && contactLink) {
-                    contactLink.remove();
+                if (contactLink) {
+                    contactLink.setAttribute("href", newPage === "hub" ? "#about-contact" : "index.html#about-contact");
                 }
+                navLinks.querySelectorAll(".nav-item").forEach((a) => {
+                    const href = a.getAttribute("href");
+                    const isActive = (newPage === "hub" && href === "index.html") ||
+                                     (newPage === "papers" && href === "papers.html") ||
+                                     (newPage === "courses" && href === "courses.html");
+                    a.classList.toggle("active", isActive);
+                });
             }
 
             main.innerHTML = newMain.innerHTML;

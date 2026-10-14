@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en-GB" data-domain="cs" data-page="courses">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Academic Coursework & Curricula · Kushan Waghmare</title>
+    <meta name="description" content="Academic coursework and curricula at IIT Madras, Vidya Bharati Mahavidyalaya, and advanced specialisations in quantitative finance and computer systems." />
+    <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
+    <link rel="stylesheet" href="shared/style.css?v=23" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script defer src="shared/data.js?v=23"></script>
+    <script defer src="shared/sims.js?v=23"></script>
+    <script defer src="shared/app.js?v=23"></script>
+</head>
+<body>
+    
+    <div class="progress"></div>
+    <header class="nav glass">
+        <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
+        <div class="nav-live" aria-hidden="true"><canvas></canvas></div>
+        <nav class="links" aria-label="Navigation">
+            <a href="index.html" class="nav-item "><span class="full">Work</span><span class="short">Work</span></a>
+            <a href="papers.html" class="nav-item "><span class="full">Papers</span><span class="short">Papers</span></a>
+            <a href="courses.html" class="nav-item active"><span class="full">Courses</span><span class="short">Courses</span></a>
+            <a href="index.html#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>
+            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
+            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Mute audio">🔊</button>
+        </nav>
+    </header>
+    <main id="main">
+    <nav class="snap-pager" aria-label="Section navigation">
+        <a href="#courses-hero" class="snap-dot active" data-title="00 Overview" aria-label="Courses Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+        
+        <a href="#track-iitm-datascience" class="snap-dot" data-title="01 Bachelor of Science in Data Science & Applications" aria-label="Bachelor of Science in Data Science & Applications"><span class="dot-disc" style="--a:var(--rgb-datascience)"></span><span class="dot-text">01 Bachelor of Scienc…</span></a>
+        <a href="#track-physics-curriculum" class="snap-dot" data-title="02 Bachelor of Science in Physics" aria-label="Bachelor of Science in Physics"><span class="dot-disc" style="--a:var(--rgb-physics)"></span><span class="dot-text">02 Bachelor of Scienc…</span></a>
+        <a href="#track-advanced-quant-systems" class="snap-dot" data-title="03 Quantitative Finance & Systems Engineering" aria-label="Quantitative Finance & Systems Engineering"><span class="dot-disc" style="--a:var(--rgb-quant)"></span><span class="dot-text">03 Quantitative Finan…</span></a>
+        <a href="#courses-contact" class="snap-dot" data-title="04 Contact" aria-label="Academic Inquiries"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">04 Contact</span></a>
+    </nav>
+
+    <section class="snap-section hero" id="courses-hero" data-domain="hub">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="crumbs" data-hero><a href="index.html">Home</a> / Coursework</div>
+            <h1 data-hero>Academic Coursework &amp;<br>Curricula</h1>
+            <p class="lead" data-hero>Core and honours academic coursework across Indian Institute of Technology Madras, Vidya Bharati Mahavidyalaya, and advanced specialisations in stochastic calculus, machine learning, and systems architecture.</p>
+            <div class="hero-eq glass" data-hero>$$A = U\Sigma V^\top = \sum_{i=1}^r \sigma_i\,\mathbf u_i\,\mathbf v_i^\top,\qquad i\hbar\,\frac{\partial\psi}{\partial t}=\Big[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\Big]\psi$$</div>
+            <div class="snap-jump-pills" data-hero>
+                <span class="snap-jump-label">Academic tracks:</span>
+                <a href="#track-iitm-datascience" class="pill jump-pill" style="--a:var(--rgb-datascience)"><strong>Bachelor of…</strong></a><a href="#track-physics-curriculum" class="pill jump-pill" style="--a:var(--rgb-physics)"><strong>Bachelor of…</strong></a><a href="#track-advanced-quant-systems" class="pill jump-pill" style="--a:var(--rgb-quant)"><strong>Quantitative Finance…</strong></a>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Lorenz system · σ=10, ρ=28, β=8/3 · RK4 · 5 domain trajectories</div>
+        <a class="snap-cue" href="#track-iitm-datascience">Scroll to curricula</a>
+    </section>
+
+    
+    <section class="snap-section project-snap" id="track-iitm-datascience" data-domain="datascience" style="--a:var(--rgb-datascience)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner" style="max-width:1080px">
+            <div class="eyebrow" data-reveal>
+                <span class="domain-badge" style="background:var(--accent)"></span>
+                Track 01 / 03 · Indian Institute of Technology Madras · 2023 – 2027
+            </div>
+            <h2 class="snap-title" data-reveal>Bachelor of Science in Data Science & Applications</h2>
+            <p class="lead snap-lead" data-reveal>Core mathematical and engineering curriculum at IIT Madras covering measure-theoretic probability, machine learning, deep neural networks, and scalable computation.</p>
+            <div class="course-grid" data-reveal>
+                
+                <div class="course-card glass" style="--a:var(--rgb-datascience)">
+                    <div class="course-card-head">
+                        <span class="course-code">MA2010</span>
+                        <span class="tag-status">Completed</span>
+                    </div>
+                    <h3>Probability & Stochastic Processes</h3>
+                    <p>Axiomatic probability, multivariate random variables, covariance structures, Central Limit Theorem, Markov chains and Poisson processes.</p>
+                    <div class="eq glass" style="padding:10px 14px;border-radius:10px;margin:4px 0">$$f_{\mathbf X}(\mathbf x)=\frac{1}{(2\pi)^{d/2}|\Sigma|^{1/2}}\exp\!\Big(-\tfrac12(\mathbf x-\boldsymbol\mu)^\top\Sigma^{-1}(\mathbf x-\boldsymbol\mu)\Big)$$</div>
+                    <div class="course-topics">
+                        <span>Measure spaces</span><span>Multivariate normal distributions</span><span>Markov chains & stationary distributions</span><span>Martingales</span><span>Maximum likelihood estimation</span>
+                    </div>
+                    
+                    <div style="margin-top:auto;padding-top:10px">
+                        <a href="project.html?p=options-pricing" class="pill" style="font-size:11px">Inspect Project Application →</a>
+                    </div>
+                </div>
+                <div class="course-card glass" style="--a:var(--rgb-datascience)">
+                    <div class="course-card-head">
+                        <span class="course-code">MA2040</span>
+                        <span class="tag-status">Completed</span>
+                    </div>
+                    <h3>Linear Algebra & Matrix Analysis</h3>
+                    <p>Vector spaces, inner products, spectral theorem, singular value decomposition (SVD), positive semi-definite matrices and pseudoinverses.</p>
+                    <div class="eq glass" style="padding:10px 14px;border-radius:10px;margin:4px 0">$$A = U\Sigma V^\top = \sum_{i=1}^r \sigma_i\,\mathbf u_i\,\mathbf v_i^\top$$</div>
+                    <div class="course-topics">
+                        <span>Spectral decomposition</span><span>Singular value decomposition</span><span>Cholesky & QR factorisation</span><span>Principal component analysis</span><span>Matrix norms & condition numbers</span>
+                    </div>
+                    
+                    <div style="margin-top:auto;padding-top:10px">
+                        <a href="project.html?p=regularised-regression" class="pill" style="font-size:11px">Inspect Project Application →</a>
+                    </div>
+                </div>
+                <div class="course-card glass" style="--a:var(--rgb-datascience)">
+                    <div class="course-card-head">
+                        <span class="course-code">DS3001</span>
+                        <span class="tag-status">Completed</span>
+                    </div>
+                    <h3>Machine Learning: Statistical Foundations</h3>
+                    <p>Supervised and unsupervised learning: regularised empirical risk minimisation, kernel methods, VC-dimension, and bias-variance trade-offs.</p>
+                    <div class="eq glass" style="padding:10px 14px;border-radius:10px;margin:4px 0">$$\min_{\boldsymbol\beta}\ \frac{1}{2n}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2 + \lambda\,\lVert\boldsymbol\beta\rVert_1$$</div>
+                    <div class="course-topics">
+                        <span>Ridge and Lasso shrinkage</span><span>Kernel Support Vector Machines</span><span>Convex optimisation & duality</span><span>Spectral graph partitioning</span><span>Cross-validation theory</span>
+                    </div>
+                    
+                    <div style="margin-top:auto;padding-top:10px">
+                        <a href="project.html?p=spectral-clustering" class="pill" style="font-size:11px">Inspect Project Application →</a>
+                    </div>
+                </div>
+                <div class="course-card glass" style="--a:var(--rgb-datascience)">
+                    <div class="course-card-head">
+                        <span class="course-code">DS3010</span>
+                        <span class="tag-status">Completed</span>
+                    </div>
+                    <h3>Deep Learning & Non-Convex Optimisation</h3>
+                    <p>Backpropagation, automatic differentiation, CNNs, Transformers, attention mechanisms, loss surfaces and Langevin SGD.</p>
+                    <div class="eq glass" style="padding:10px 14px;border-radius:10px;margin:4px 0">$$\operatorname{Attention}(Q,K,V)=\operatorname{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V$$</div>
+                    <div class="course-topics">
+                        <span>Scaled dot-product attention</span><span>Loss surface topography</span><span>Langevin SGD & stochastic diffusion</span><span>Batch normalisation dynamics</span><span>Transformer architectures</span>
+                    </div>
+                    
+                    <div style="margin-top:auto;padding-top:10px">
+                        <a href="project.html?p=datascience" class="pill" style="font-size:11px">Inspect Project Application →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Statistical learning, probabilistic graphical models, high-dimensional optimisation & distributed systems</div>
+        <a class="snap-cue" href="#track-physics-curriculum">Next: Bachelor of Science in Physics…</a>
+    </section>
+    <section class="snap-section project-snap" id="track-physics-curriculum" data-domain="physics" style="--a:var(--rgb-physics)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner" style="max-width:1080px">
+            <div class="eyebrow" data-reveal>
+                <span class="domain-badge" style="background:var(--accent)"></span>
+                Track 02 / 03 · Vidya Bharati Mahavidyalaya · 2025 – 2028
+            </div>
+            <h2 class="snap-title" data-reveal>Bachelor of Science in Physics</h2>
+            <p class="lead snap-lead" data-reveal>Foundational and advanced theoretical physics curriculum bridging continuous analytical mechanics with quantum mechanics and thermodynamics.</p>
+            <div class="course-grid" data-reveal>
+                
+                <div class="course-card glass" style="--a:var(--rgb-physics)">
+                    <div class="course-card-head">
+                        <span class="course-code">PH2010</span>
+                        <span class="tag-status">Active</span>
+                    </div>
+                    <h3>Classical Mechanics & Lagrangian Dynamics</h3>
+                    <p>Principle of least action, Euler-Lagrange equations, Legendre transforms, Poisson brackets, canonical transformations and Hamilton-Jacobi theory.</p>
+                    <div class="eq glass" style="padding:10px 14px;border-radius:10px;margin:4px 0">$$\frac{d}{dt}\left(\frac{\partial L}{\partial\dot{\mathbf q}}\right)-\frac{\partial L}{\partial\mathbf q}=\mathbf 0,\qquad H(\mathbf q,\mathbf p,t)=\mathbf p^\top\dot{\mathbf q}-L$$</div>
+                    <div class="course-topics">
+                        <span>Euler-Lagrange equations</span><span>Hamiltonian mechanics</span><span>Canonical transformations</span><span>Poisson brackets & constants of motion</span><span>Symplectic flow conservation</span>
+                    </div>
+                    
+                    <div style="margin-top:auto;padding-top:10px">
+                        <a href="project.html?p=nbody-leapfrog" class="pill" style="font-size:11px">Inspect Project Application →</a>
+                    </div>
+                </div>
+                <div class="course-card glass" style="--a:var(--rgb-physics)">
+                    <div class="course-card-head">
+                        <span class="course-code">PH2020</span>
+                        <span class="tag-status">Active</span>
+                    </div>
+                    <h3>Quantum Mechanics & Wave Equations</h3>
+                    <p>Hilbert space formulation, time-dependent Schrödinger equation, unitary operators, Gaussian wavepackets, harmonic oscillators and barrier penetration.</p>
+                    <div class="eq glass" style="padding:10px 14px;border-radius:10px;margin:4px 0">$$i\hbar\,\frac{\partial\psi}{\partial t}=\left[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\right]\psi$$</div>
+                    <div class="course-topics">
+                        <span>Unitary time-evolution operators</span><span>Split-step Fourier method</span><span>Wavepacket dispersion</span><span>Quantum tunnelling through potentials</span><span>Commutation relations</span>
+                    </div>
+                    
+                    <div style="margin-top:auto;padding-top:10px">
+                        <a href="project.html?p=split-step-schrodinger" class="pill" style="font-size:11px">Inspect Project Application →</a>
+                    </div>
+                </div>
+                <div class="course-card glass" style="--a:var(--rgb-physics)">
+                    <div class="course-card-head">
+                        <span class="course-code">PH2040</span>
+                        <span class="tag-status">Active</span>
+                    </div>
+                    <h3>Statistical Mechanics & Thermodynamics</h3>
+                    <p>Microcanonical, canonical and grand canonical ensembles, partition functions, Maxwell-Boltzmann, Bose-Einstein and Fermi-Dirac statistics.</p>
+                    <div class="eq glass" style="padding:10px 14px;border-radius:10px;margin:4px 0">$$Z=\sum_i e^{-\beta E_i},\qquad F=-k_B T\ln Z,\qquad S=-\left(\frac{\partial F}{\partial T}\right)_V$$</div>
+                    <div class="course-topics">
+                        <span>Canonical partition function</span><span>Helmholtz & Gibbs free energy</span><span>Equipartition theorem</span><span>Phase transitions & critical exponents</span><span>Fluctuation-dissipation theorem</span>
+                    </div>
+                    
+                    <div style="margin-top:auto;padding-top:10px">
+                        <a href="project.html?p=datascience" class="pill" style="font-size:11px">Inspect Project Application →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Symplectic mechanics, field theory, quantum states, and non-equilibrium statistical thermodynamics</div>
+        <a class="snap-cue" href="#track-advanced-quant-systems">Next: Quantitative Finance & Systems E…</a>
+    </section>
+    <section class="snap-section project-snap" id="track-advanced-quant-systems" data-domain="quant" style="--a:var(--rgb-quant)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner" style="max-width:1080px">
+            <div class="eyebrow" data-reveal>
+                <span class="domain-badge" style="background:var(--accent)"></span>
+                Track 03 / 03 · Independent & Advanced Specialisations · 2024 – 2026
+            </div>
+            <h2 class="snap-title" data-reveal>Quantitative Finance & Systems Engineering</h2>
+            <p class="lead snap-lead" data-reveal>Rigorous self-directed and advanced honours coursework spanning continuous-time financial engineering, market microstructure, and low-level compiler systems.</p>
+            <div class="course-grid" data-reveal>
+                
+                <div class="course-card glass" style="--a:var(--rgb-quant)">
+                    <div class="course-card-head">
+                        <span class="course-code">QF4010</span>
+                        <span class="tag-status">Completed</span>
+                    </div>
+                    <h3>Stochastic Calculus for Derivatives Pricing</h3>
+                    <p>Geometric Brownian motion, Itô's lemma, martingales, Girsanov theorem, risk-neutral measures, Black-Scholes PDE and analytical Greeks.</p>
+                    <div class="eq glass" style="padding:10px 14px;border-radius:10px;margin:4px 0">$$df(S_t,t)=\Big(\frac{\partial f}{\partial t}+\mu S_t\frac{\partial f}{\partial S}+\tfrac12\sigma^2 S_t^2\frac{\partial^2 f}{\partial S^2}\Big)dt+\sigma S_t\frac{\partial f}{\partial S}dW_t$$</div>
+                    <div class="course-topics">
+                        <span>Itô's lemma & quadratic variation</span><span>Girsanov change of measure</span><span>Black-Scholes PDE derivation</span><span>Delta, Gamma & Vega Greeks</span><span>Monte Carlo terminal sampling</span>
+                    </div>
+                    
+                    <div style="margin-top:auto;padding-top:10px">
+                        <a href="project.html?p=options-pricing" class="pill" style="font-size:11px">Inspect Project Application →</a>
+                    </div>
+                </div>
+                <div class="course-card glass" style="--a:var(--rgb-quant)">
+                    <div class="course-card-head">
+                        <span class="course-code">QF4020</span>
+                        <span class="tag-status">Completed</span>
+                    </div>
+                    <h3>High-Frequency Statistical Arbitrage & Microstructure</h3>
+                    <p>Engle-Granger co-integration, Ornstein-Uhlenbeck mean-reversion, rolling z-score signals, transaction cost models and Sharpe optimisation.</p>
+                    <div class="eq glass" style="padding:10px 14px;border-radius:10px;margin:4px 0">$$d\varepsilon_t = \theta(\mu - \varepsilon_t)\,dt + \sigma\,dW_t,\qquad \tau_{1/2}=\frac{\ln 2}{\theta}$$</div>
+                    <div class="course-topics">
+                        <span>Stationarity & ADF tests</span><span>Ornstein-Uhlenbeck parameter estimation</span><span>Spread trading execution algorithms</span><span>Transaction cost modelling</span><span>Annualised Sharpe metrics</span>
+                    </div>
+                    
+                    <div style="margin-top:auto;padding-top:10px">
+                        <a href="project.html?p=stat-arb" class="pill" style="font-size:11px">Inspect Project Application →</a>
+                    </div>
+                </div>
+                <div class="course-card glass" style="--a:var(--rgb-quant)">
+                    <div class="course-card-head">
+                        <span class="course-code">CS3100</span>
+                        <span class="tag-status">Completed</span>
+                    </div>
+                    <h3>Compiler Design & Language Processing</h3>
+                    <p>Lexical analysis with DFAs, LALR(1) grammars, abstract syntax trees, semantic type checking, SSA form and LLVM IR code generation.</p>
+                    <div class="eq glass" style="padding:10px 14px;border-radius:10px;margin:4px 0">$$\mathrm{IN}[B]=\bigcup_{P\in\mathrm{pred}(B)}\mathrm{OUT}[P],\qquad\mathrm{OUT}[B]=\mathrm{gen}[B]\cup\big(\mathrm{IN}[B]\setminus\mathrm{kill}[B]\big)$$</div>
+                    <div class="course-topics">
+                        <span>Lexing with Flex & NFAs</span><span>Bison LALR parsing tables</span><span>Symbol table scope hierarchies</span><span>SSA intermediate representation</span><span>LLVM IR backend lowering</span>
+                    </div>
+                    
+                    <div style="margin-top:auto;padding-top:10px">
+                        <a href="project.html?p=ku-lang" class="pill" style="font-size:11px">Inspect Project Application →</a>
+                    </div>
+                </div>
+                <div class="course-card glass" style="--a:var(--rgb-quant)">
+                    <div class="course-card-head">
+                        <span class="course-code">CS2040</span>
+                        <span class="tag-status">Completed</span>
+                    </div>
+                    <h3>Computer Architecture & Digital Systems</h3>
+                    <p>Boolean algebra, Karnaugh maps, discrete TTL logic gates, ripple-carry ALUs, register banks, bus contention and logic-analyser verification.</p>
+                    <div class="eq glass" style="padding:10px 14px;border-radius:10px;margin:4px 0">$$S_i = A_i \oplus B_i \oplus C_i,\qquad C_{i+1} = A_i B_i + C_i(A_i \oplus B_i)$$</div>
+                    <div class="course-topics">
+                        <span>Full adders & two's complement arithmetic</span><span>Tri-state bus gating</span><span>Fetch-decode-execute control sequencers</span><span>Clock timing & propagation delay</span><span>Logic analyser waveform analysis</span>
+                    </div>
+                    
+                    <div style="margin-top:auto;padding-top:10px">
+                        <a href="project.html?p=8bit-computer" class="pill" style="font-size:11px">Inspect Project Application →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Itô calculus, Black-Scholes PDE, pairs co-integration, LLVM compilers and TTL machine architecture</div>
+        <a class="snap-cue" href="#courses-contact">Next: Academic Contact</a>
+    </section>
+
+    <section class="snap-section about-contact-section" id="courses-contact" data-domain="contact" style="--a:var(--rgb-contact)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner">
+            <div class="section-head" data-reveal><span class="idx">04</span><h2>Academic Transcripts &amp; Verification</h2></div>
+            <p class="lead" data-reveal style="margin-bottom:28px">Official academic transcripts, syllabi, and coursework credentials available upon request for institutional and professional review.</p>
+            <div class="pills" data-reveal style="margin-bottom:36px">
+                <a class="pill" href="papers.html">Explore Research Papers →</a>
+                <a class="pill" href="index.html">← Back to Portfolio Hub</a>
+            </div>
+            
+        <div class="contact-card glass" data-reveal>
+            <div class="contact-header">
+                <span class="contact-status"><span class="status-dot"></span> Available for research &amp; engineering opportunities</span>
+                <h3 class="contact-title">Let's build something rigorous together.</h3>
+                <p class="contact-lead">Interested in collaborative research, machine learning engineering, quantitative modelling, or high-performance systems? Reach out directly via email or inspect my code repositories.</p>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-item">
+                    <span class="contact-label">Direct Email</span>
+                    <a href="mailto:kushanwaghmare@gmail.com" class="contact-value">kushanwaghmare@gmail.com</a>
+                    <button type="button" class="copy-btn pill" data-copy="kushanwaghmare@gmail.com" aria-label="Copy email address to clipboard">
+                        <span class="copy-icon">⎘</span> <span class="copy-text">Copy Email</span>
+                    </button>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-label">Code Repositories</span>
+                    <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="contact-value">github.com/KushanWaghmare</a>
+                    <a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener" class="pill">View GitHub →</a>
+                </div>
+            </div>
+        </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Gravitational 3-body problem · r̈ᵢ = −∑ G mⱼ (rᵢ − rⱼ)/|rᵢ − rⱼ|³ · RK4 chaotic choreography</div>
+        <footer class="foot snap-foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+    </section></main>
+    <footer class="foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+</body>
+</html>

@@ -138,7 +138,8 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 }
 .brand { font: 700 14px var(--mono); letter-spacing: 0.08em; white-space: nowrap; }
 .brand b { color: var(--accent); font-weight: 700; }
-.links { display: flex; align-items: center; gap: 2px; }
+.links { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.links a.active { color: var(--accent) !important; background: rgba(var(--a), 0.12); }
 
 /* Live header strip on domain/project pages (fills the space left by the Contact link) */
 .nav-live {
@@ -658,6 +659,70 @@ html[data-page="project"] body {
     margin-bottom: 24px;
 }
 
+/* ---------- Course & Paper cards ---------- */
+.course-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+    gap: 16px;
+    width: 100%;
+    margin-top: 16px;
+}
+.course-card {
+    padding: 22px 24px;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.course-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.course-code {
+    font: 700 13px var(--mono);
+    color: var(--accent);
+    letter-spacing: 0.05em;
+}
+.course-card h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+.course-card p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+}
+.course-topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+.course-topics span {
+    font: 500 11px var(--mono);
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(var(--a), 0.08);
+    color: var(--fg);
+    border: 1px solid rgba(var(--a), 0.15);
+}
+.paper-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font: 500 12px var(--mono);
+    color: var(--muted);
+    margin-top: 6px;
+}
+.paper-meta .venue {
+    color: var(--accent);
+}
+
 /* ---------- Supersonic warp transition (hub) ---------- */
 .warp { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 45; pointer-events: none; }
 .snap-section[data-enter="right"]  { --warp-from: translate3d(85vw, 0, 0) scaleX(1.8); }
@@ -942,6 +1007,11 @@ a.contact-value:hover {
     .contact-grid { grid-template-columns: 1fr; gap: 18px; padding-top: 18px; }
     .snap-arch-grid li { padding: 14px 16px 14px 48px; }
     .math-block { padding: 16px 18px; }
+}
+@media (max-width: 680px) {
+    .nav-live { display: none; }
+    .links a { padding: 6px 6px; font-size: 11px; }
+    .course-grid { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
