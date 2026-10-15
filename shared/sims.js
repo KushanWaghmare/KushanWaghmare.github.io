@@ -848,35 +848,6 @@ SIMS.cs = (c) => {
             ctx.stroke();
             ctx.restore();
         }
-
-        // 7. Micro-Telemetry HUD Bar
-        if (W > 540) {
-            ctx.save();
-            ctx.font = "9.5px 'JetBrains Mono', monospace";
-            const clkFreq = (3.98 + 0.04 * Math.sin(t * 3.5)).toFixed(2);
-            const hudText = `SYS_CLK: ${clkFreq} MHz · SSA DOMINANCE: PASS · PIPELINE: IF·ID·EX·MEM·WB · CYC: #${clkCycle}`;
-            const tw = ctx.measureText(hudText).width;
-            const hbx = W - tw - 24;
-            const hby = H - 22;
-
-            ctx.fillStyle = isLt ? "rgba(255,255,255,0.78)" : "rgba(10,14,22,0.75)";
-            ctx.fillRect(hbx - 6, hby - 12, tw + 12, 18);
-            ctx.strokeStyle = isLt ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)";
-            ctx.strokeRect(hbx - 6, hby - 12, tw + 12, 18);
-
-            ctx.fillStyle = rgba(a, 0.95);
-            ctx.beginPath();
-            ctx.arc(hbx, hby - 3, 2.5, 0, TAU);
-            ctx.fill();
-
-            ctx.fillStyle = isLt ? "rgba(15,23,42,0.8)" : "rgba(241,245,249,0.8)";
-            ctx.fillText(hudText, hbx + 8, hby);
-            ctx.restore();
-        }
-
-        if (++frame % 30 === 0 && !inside) {
-            KW.tag(`Compiler SSA control flow graph & TTL pipeline · dominance frontiers · click to trigger clock cycle`, c);
-        }
     });
 };
 
