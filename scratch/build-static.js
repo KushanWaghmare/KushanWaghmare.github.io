@@ -370,101 +370,96 @@ const paperDetailPage = (p) => {
     const next = i >= 0 && i < papers.length - 1 ? papers[i + 1] : null;
     return `
     <nav class="snap-pager" aria-label="Paper section navigation">
-        <a href="#paper-hero" class="snap-dot active" data-title="00 Paper" aria-label="Paper Overview"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">00 Paper</span></a>
-        <a href="#paper-abstract" class="snap-dot" data-title="01 Abstract" aria-label="Abstract"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">01 Abstract</span></a>
-        <a href="#paper-math" class="snap-dot" data-title="02 Formulation" aria-label="Formulation"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">02 Formulation</span></a>
-        <a href="#paper-highlights" class="snap-dot" data-title="03 Highlights" aria-label="Highlights"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">03 Highlights</span></a>
-        <a href="#paper-cite" class="snap-dot" data-title="04 Citation" aria-label="BibTeX & Citation"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">04 Citation</span></a>
+        <a href="#paper-hero" class="snap-dot active" data-title="00 Overview" aria-label="Paper Overview"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">00 Overview</span></a>
+        <a href="#paper-theory" class="snap-dot" data-title="01 Theory &amp; Proofs" aria-label="Theory and Proofs"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">01 Theory &amp; Proofs</span></a>
+        <a href="#paper-cite" class="snap-dot" data-title="02 Citation &amp; Sibling Papers" aria-label="Citation and Sibling Papers"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">02 Citation &amp; Siblings</span></a>
     </nav>
 
     <section class="snap-section hero" id="paper-hero" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner" style="max-width:960px">
-            <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / ${p.title}</div>
+        <div class="snap-inner" style="max-width:980px">
+            <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>${p.title.length > 42 ? p.title.slice(0, 40) + "…" : p.title}</span></div>
             <div class="eyebrow" data-hero>
                 <span class="domain-badge" style="background:var(--accent)"></span>
                 Paper ${pad(i >= 0 ? i : 0)} / ${String(papers.length).padStart(2, "0")} · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-${p.domain})">${d.name}</span> · ${p.year}
             </div>
-            <h1 data-hero style="font-size:clamp(26px, 3.8vw, 48px);line-height:1.15;max-width:960px">${p.title}</h1>
-            <p class="lead" data-hero>${p.summary}</p>
-            <div class="tags" style="margin-top:14px" data-hero>${tags([p.status, p.venue, p.authors, ...p.tags])}</div>
-            <div class="snap-jump-pills" data-hero style="margin-top:20px">
-                <a href="#paper-abstract" class="pill jump-pill" style="--a:var(--rgb-papers)">01 Abstract</a>
-                <a href="#paper-math" class="pill jump-pill" style="--a:var(--rgb-papers)">02 Formulation</a>
-                <a href="#paper-highlights" class="pill jump-pill" style="--a:var(--rgb-papers)">03 Highlights</a>
-                <a href="#paper-cite" class="pill jump-pill" style="--a:var(--rgb-papers)">04 BibTeX</a>
+            <h1 data-hero style="font-size:clamp(24px, 3.2vw, 42px);line-height:1.2;max-width:980px">${p.title}</h1>
+            <div class="paper-meta" data-hero>
+                <span class="venue">${p.venue}</span>
+                <span>·</span>
+                <span>${p.authors}</span>
+                <span class="tag-status">${p.status}</span>
             </div>
-        </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
-        <a class="snap-cue" href="#paper-abstract">Scroll to abstract</a>
-    </section>
-
-    <section class="snap-section project-snap" id="paper-abstract" data-domain="papers" style="--a:var(--rgb-papers)">
-        <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner" style="max-width:920px">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>01 / Executive Abstract</div>
-            <h2 class="snap-title" data-reveal style="font-size:clamp(26px, 3.4vw, 44px)">Context &amp; Abstract</h2>
-            <div class="snap-overview-card glass" data-reveal style="padding:26px 30px">
-                <div class="paper-section-tag" style="margin-bottom:8px">Full Abstract · ${p.venue}</div>
-                <p style="font-size:16px;line-height:1.85;color:var(--fg)">${p.abstract}</p>
+            <div class="snap-overview-card glass" data-hero style="padding:20px 26px;margin-top:14px;max-width:980px">
+                <div class="paper-section-tag" style="margin-bottom:8px">Executive Abstract</div>
+                <p style="font-size:15px;line-height:1.75;color:var(--fg);margin:0">${p.abstract}</p>
             </div>
-            <div class="snap-actions" data-reveal style="margin-top:16px">
-                <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="${p.bibtex.replace(/"/g, '&quot;')}" aria-label="Copy BibTeX Citation">
-                    <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX Citation</span>
+            <div class="snap-actions" data-hero style="margin-top:16px">
+                <a href="#paper-theory" class="snap-cta-btn glass" style="--a:var(--rgb-papers)">
+                    <span>Inspect Mathematical Formulation &amp; Proofs</span>
+                    <span class="arr">↓</span>
+                </a>
+                <button type="button" class="copy-btn pill" data-copy="${p.bibtex.replace(/"/g, '&quot;')}" aria-label="Copy BibTeX Citation">
+                    <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX</span>
                 </button>
-                <a href="#paper-math" class="pill jump-pill" style="--a:var(--rgb-papers)">Inspect Governing Equations →</a>
+                <a href="papers.html" class="pill">← All Papers</a>
             </div>
         </div>
         <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
-        <a class="snap-cue" href="#paper-math">Next: Formulation</a>
+        <a class="snap-cue" href="#paper-theory">Next: Formulation &amp; Proofs</a>
     </section>
 
-    <section class="snap-section project-snap" id="paper-math" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section project-snap" id="paper-theory" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner" style="max-width:920px">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>02 / Theoretical Formulation</div>
-            <h2 class="snap-title" data-reveal style="font-size:clamp(26px, 3.4vw, 44px)">Analytical &amp; Numerical Equations</h2>
-            <div class="snap-overview-card glass" data-reveal style="padding:24px 28px">
-                <div class="paper-section-tag" style="margin-bottom:8px">Governing Analytical Model</div>
-                <div class="hero-eq glass snap-eq" style="align-self:stretch;padding:16px 22px;margin:8px 0;font-size:1.05rem">$$${p.eq}$$</div>
-                <p style="color:var(--muted);font-size:14.5px;margin-top:8px">Theoretical formulation derived in <strong>${p.venue}</strong> (${p.year}), proving asymptotic convergence and spectral bounds.</p>
+        <div class="snap-inner" style="max-width:980px">
+            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>01 / Theoretical Foundations &amp; Proofs</div>
+            <h2 class="snap-title" data-reveal style="font-size:clamp(24px, 3.2vw, 42px)">Analytical Model &amp; Core Contributions</h2>
+            <div class="snap-overview-card glass" data-reveal style="padding:20px 26px;max-width:980px">
+                <div class="paper-section-tag" style="margin-bottom:6px">Governing Analytical Model · ${p.venue}</div>
+                <div class="hero-eq glass snap-eq" style="align-self:stretch;padding:14px 20px;margin:8px 0;font-size:1.05rem">$$${p.eq}$$</div>
+                <p style="color:var(--muted);font-size:13.5px;margin:4px 0 0">Continuous-time formulation derived in <strong>${p.venue}</strong> (${p.year}), proving asymptotic convergence and spectral bounds.</p>
             </div>
-        </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
-        <a class="snap-cue" href="#paper-highlights">Next: Key Findings</a>
-    </section>
-
-    <section class="snap-section project-snap" id="paper-highlights" data-domain="papers" style="--a:var(--rgb-papers)">
-        <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner" style="max-width:960px">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>03 / Core Contributions</div>
-            <h2 class="snap-title" data-reveal style="font-size:clamp(26px, 3.4vw, 44px)">Key Findings &amp; Proofs</h2>
-            <ol class="snap-arch-grid" data-reveal>
+            <ol class="snap-arch-grid" data-reveal style="max-width:980px;margin-top:16px">
                 ${p.highlights.map(([n, t]) => `<li class="glass"><strong>${n}</strong><span>${t}</span></li>`).join("")}
             </ol>
         </div>
         <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
-        <a class="snap-cue" href="#paper-cite">Next: Citation &amp; BibTeX</a>
+        <a class="snap-cue" href="#paper-cite">Next: Citation &amp; Related Papers</a>
     </section>
 
     <section class="snap-section about-contact-section" id="paper-cite" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner" style="max-width:920px">
-            <div class="section-head" data-reveal><span class="idx">04</span><h2>Citation, Code &amp; Inquiries</h2></div>
-            <p class="lead" data-reveal style="margin-bottom:20px">Official academic reference citation for research papers and preprints. Copy the BibTeX entry directly for LaTeX documentation.</p>
-            <div class="contact-card glass" data-reveal style="padding:28px 32px">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-                    <span class="contact-status"><span class="status-dot"></span> BibTeX Citation Record</span>
+        <div class="snap-inner" style="max-width:980px">
+            <div class="section-head" data-reveal><span class="idx">02</span><h2>Citation, Code &amp; Sibling Papers</h2></div>
+            <p class="lead" data-reveal style="margin-bottom:16px">Official academic reference citation for LaTeX publications, along with sibling deep-dives across research domains.</p>
+            <div class="contact-card glass" data-reveal style="padding:22px 28px;max-width:980px">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+                    <span class="contact-status"><span class="status-dot"></span> BibTeX Citation Record · LaTeX</span>
                     <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="${p.bibtex.replace(/"/g, '&quot;')}" aria-label="Copy BibTeX Citation">
                         <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX</span>
                     </button>
                 </div>
-                <pre class="eq glass" style="padding:16px 20px;border-radius:10px;font-family:var(--mono);font-size:12.5px;color:var(--fg);overflow-x:auto;white-space:pre;margin:12px 0"><code>${p.bibtex}</code></pre>
+                <pre class="eq glass" style="padding:14px 18px;border-radius:10px;font-family:var(--mono);font-size:12px;color:var(--fg);overflow-x:auto;white-space:pre;margin:10px 0"><code>${p.bibtex}</code></pre>
+                <div class="pn snap-nav-grid" style="margin-top:14px;margin-bottom:14px">
+                    ${prev ? `
+                    <a class="card glass" href="paper.html?p=${prev.id}">
+                        <span class="no">← Previous Paper</span>
+                        <h3 style="font-size:15px;line-height:1.25">${prev.title}</h3>
+                        <p style="font-size:12.5px">${prev.summary}</p>
+                        <span class="go">Read paper deep-dive</span>
+                    </a>` : ""}
+                    ${next ? `
+                    <a class="card glass" href="paper.html?p=${next.id}">
+                        <span class="no">Next Paper →</span>
+                        <h3 style="font-size:15px;line-height:1.25">${next.title}</h3>
+                        <p style="font-size:12.5px">${next.summary}</p>
+                        <span class="go">Read paper deep-dive</span>
+                    </a>` : ""}
+                </div>
                 <div class="pills" style="margin-top:14px">
-                    ${prev ? `<a class="pill" href="paper.html?p=${prev.id}">← Previous: ${prev.title.slice(0, 24)}…</a>` : ""}
-                    ${next ? `<a class="pill" href="paper.html?p=${next.id}">Next: ${next.title.slice(0, 24)}… →</a>` : ""}
                     <a class="pill" href="papers.html">← All Research Papers</a>
                     <a class="pill" href="${d.file}">Explore ${d.name} Domain →</a>
+                    <a class="pill" href="index.html">← Back to Hub</a>
                 </div>
             </div>
         </div>
@@ -585,9 +580,6 @@ const renderNav = (active, pageType) => {
     </header>`;
 };
 
-const renderFoot = (pageType) => pageType === "hub" ? "" : `
-    <footer class="foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>`;
-
 const buildHTML = ({ domain, pageType, three, title, desc, mainContent }) => `<!doctype html>
 <html lang="en-GB" data-domain="${domain}" data-page="${pageType}">
 <head>
@@ -606,7 +598,7 @@ ${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.j
 </head>
 <body>
     ${renderNav(domain, pageType)}
-    <main id="main">${mainContent}</main>${renderFoot(pageType)}
+    <main id="main">${mainContent}</main>
 </body>
 </html>
 `;

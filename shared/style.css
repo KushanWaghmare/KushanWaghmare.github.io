@@ -303,20 +303,17 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
     color: var(--muted);
 }
 
-/* ---------- Snap-scrolling layout on index.html (hub), domain pages, and project pages ---------- */
-html[data-page="hub"],
-html[data-page="domain"],
-html[data-page="project"] {
+/* ---------- Snap-scrolling layout across all pages ---------- */
+html {
     scroll-snap-type: y mandatory;
     scroll-behavior: smooth;
 }
-html[data-page="hub"] body,
-html[data-page="domain"] body,
-html[data-page="project"] body {
+body {
     scroll-snap-type: y mandatory;
     overflow-y: scroll;
     scroll-behavior: smooth;
 }
+
 
 .snap-section {
     position: relative;
