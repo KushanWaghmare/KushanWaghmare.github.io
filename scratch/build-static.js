@@ -93,8 +93,12 @@ const hubPage = () => `
                 <p class="lead snap-lead" data-reveal>Core and honours academic coursework across Indian Institute of Technology Madras and Vidya Bharati Mahavidyalaya in data science, physics, and computer systems.</p>
                 <div class="hero-eq glass snap-eq" data-reveal>$$A = U\\Sigma V^\\top = \\sum_{i=1}^r \\sigma_i\\,\\mathbf u_i\\,\\mathbf v_i^\\top,\\qquad i\\hbar\\,\\frac{\\partial\\psi}{\\partial t}=\\Big[-\\frac{\\hbar^2}{2m}\\nabla^2+V(\\mathbf r)\\Big]\\psi$$</div>
                 <div class="snap-projects" data-reveal>
-                    <span class="snap-proj-label">Academic tracks:</span>
-                    ${SITE.courses.map(tr => `<a href="courses.html#track-${tr.track}" class="snap-proj-pill glass"><strong>${tr.degree}</strong><span class="tag-status">${tr.institution}</span></a>`).join("")}
+                    <span class="snap-proj-label">Core courses:</span>
+                    ${SITE.courses.flatMap(tr => tr.items).slice(0, 6).map(c => `<a href="courses.html#track-${c.code.startsWith('MA') || c.code.startsWith('DS') ? 'iitm-datascience' : c.code.startsWith('PH') ? 'physics-curriculum' : 'advanced-quant-systems'}" class="snap-proj-pill glass"><strong>${c.title}</strong><span class="tag-status">${c.code}</span></a>`).join("")}
+                </div>
+                <div class="snap-projects" data-reveal style="margin-top:10px">
+                    <span class="snap-proj-label">Curricula:</span>
+                    ${SITE.courses.map(tr => `<a href="courses.html#track-${tr.track}" class="snap-proj-pill glass"><strong>${tr.degree.replace("Bachelor of Science in ", "BSc ")}</strong><span class="tag-status">${tr.institution.replace("Indian Institute of Technology", "IIT").replace("Vidya Bharati Mahavidyalaya", "VBMV").replace("Independent & Advanced Specialisations", "Honours")}</span></a>`).join("")}
                 </div>
                 <div class="snap-actions" data-reveal>
                     <a href="courses.html" class="snap-cta-btn glass" style="--a:var(--rgb-courses)">
@@ -588,13 +592,13 @@ const buildHTML = ({ domain, pageType, three, title, desc, mainContent }) => `<!
     <title>${title}</title>
     <meta name="description" content="${desc}" />
     <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=24" />
+    <link rel="stylesheet" href="shared/style.css?v=25" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=24"></script>
-    <script defer src="shared/sims.js?v=24"></script>
-    <script defer src="shared/app.js?v=24"></script>
+${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=25"></script>
+    <script defer src="shared/sims.js?v=25"></script>
+    <script defer src="shared/app.js?v=25"></script>
 </head>
 <body>
     ${renderNav(domain, pageType)}

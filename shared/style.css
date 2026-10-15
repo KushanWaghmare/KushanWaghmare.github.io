@@ -686,18 +686,45 @@ body {
 
 /* ---------- Course & Paper cards ---------- */
 .course-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
-    gap: 16px;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 18px;
     width: 100%;
     margin-top: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 16px;
+    padding-top: 4px;
+    padding-left: 2px;
+    padding-right: 2px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+.course-grid::-webkit-scrollbar {
+    height: 6px;
+}
+.course-grid::-webkit-scrollbar-track {
+    background: rgba(var(--a), 0.08);
+    border-radius: 99px;
+}
+.course-grid::-webkit-scrollbar-thumb {
+    background: rgba(var(--a), 0.35);
+    border-radius: 99px;
+}
+.course-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--a), 0.65);
 }
 .course-card {
+    flex: 0 0 clamp(290px, 30vw, 360px);
+    scroll-snap-align: start;
     padding: 22px 24px;
     border-radius: 14px;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    box-sizing: border-box;
 }
 .course-card-head {
     display: flex;
@@ -935,9 +962,9 @@ body {
 }
 
 .course-inner {
-    max-width: 1140px;
+    max-width: min(1340px, 94vw);
     width: 100%;
-    max-height: calc(100svh - 130px);
+    max-height: calc(100svh - 110px);
     overflow-y: auto;
     scrollbar-width: thin;
     padding-right: 8px;
@@ -1240,7 +1267,7 @@ a.contact-value:hover {
 @media (max-width: 680px) {
     .nav-live { display: none; }
     .links a { padding: 6px 6px; font-size: 11px; }
-    .course-grid { grid-template-columns: 1fr; }
+    .course-card { flex: 0 0 clamp(270px, 82vw, 340px); }
 }
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
