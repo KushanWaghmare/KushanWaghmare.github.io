@@ -33,17 +33,17 @@
     </header>
     <main id="main">
     <nav class="snap-pager" aria-label="Section navigation">
-        <a href="#papers-hero" class="snap-dot active" data-title="00 Overview" aria-label="Papers Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+        <a href="#papers-hero" class="snap-dot active" data-title="00 Overview" aria-label="Papers Overview"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">00 Overview</span></a>
         
-        <a href="#paper-langevin-loss-landscapes" class="snap-dot" data-title="01 Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes" aria-label="Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes"><span class="dot-disc" style="--a:var(--rgb-datascience)"></span><span class="dot-text">01 Non-Equilibrium Thermo…</span></a>
-        <a href="#paper-hft-stat-arb-microstructure" class="snap-dot" data-title="02 Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction" aria-label="Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction"><span class="dot-disc" style="--a:var(--rgb-quant)"></span><span class="dot-text">02 Continuous-Time Co-Int…</span></a>
-        <a href="#paper-symplectic-energy-bounds-nbody" class="snap-dot" data-title="03 Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations" aria-label="Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations"><span class="dot-disc" style="--a:var(--rgb-physics)"></span><span class="dot-text">03 Symplectic Preservatio…</span></a>
-        <a href="#paper-verified-ssa-compiler-passes" class="snap-dot" data-title="04 Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers" aria-label="Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers"><span class="dot-disc" style="--a:var(--rgb-cs)"></span><span class="dot-text">04 Formal Verification an…</span></a>
-        <a href="#paper-riemannian-immersion-gauss-bonnet" class="snap-dot" data-title="05 Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds" aria-label="Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds"><span class="dot-disc" style="--a:var(--rgb-math)"></span><span class="dot-text">05 Curvature Transport & …</span></a>
+        <a href="#paper-langevin-loss-landscapes" class="snap-dot" data-title="01 Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes" aria-label="Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">01 Non-Equilibrium Thermo…</span></a>
+        <a href="#paper-hft-stat-arb-microstructure" class="snap-dot" data-title="02 Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction" aria-label="Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">02 Continuous-Time Co-Int…</span></a>
+        <a href="#paper-symplectic-energy-bounds-nbody" class="snap-dot" data-title="03 Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations" aria-label="Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">03 Symplectic Preservatio…</span></a>
+        <a href="#paper-verified-ssa-compiler-passes" class="snap-dot" data-title="04 Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers" aria-label="Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">04 Formal Verification an…</span></a>
+        <a href="#paper-riemannian-immersion-gauss-bonnet" class="snap-dot" data-title="05 Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds" aria-label="Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">05 Curvature Transport & …</span></a>
         <a href="#papers-contact" class="snap-dot" data-title="06 Contact" aria-label="Contact & Collaboration"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">06 Contact</span></a>
     </nav>
 
-    <section class="snap-section hero" id="papers-hero" data-domain="papers">
+    <section class="snap-section hero" id="papers-hero" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Research Papers</div>
@@ -52,217 +52,267 @@
             <div class="hero-eq glass" data-hero>$$\frac{\partial p(\boldsymbol\theta, t)}{\partial t}=\nabla_{\boldsymbol\theta}\cdot\Big(\nabla_{\boldsymbol\theta} L(\boldsymbol\theta)\,p(\boldsymbol\theta, t)+D\,\nabla_{\boldsymbol\theta} p(\boldsymbol\theta, t)\Big)$$</div>
             <div class="snap-jump-pills" data-hero>
                 <span class="snap-jump-label">Selected papers:</span>
-                <a href="#paper-langevin-loss-landscapes" class="pill jump-pill" style="--a:var(--rgb-datascience)"><strong>Non-Equilibrium Thermodynamics…</strong></a><a href="#paper-hft-stat-arb-microstructure" class="pill jump-pill" style="--a:var(--rgb-quant)"><strong>Continuous-Time Co-Integration…</strong></a><a href="#paper-symplectic-energy-bounds-nbody" class="pill jump-pill" style="--a:var(--rgb-physics)"><strong>Symplectic Preservation…</strong></a><a href="#paper-verified-ssa-compiler-passes" class="pill jump-pill" style="--a:var(--rgb-cs)"><strong>Formal Verification…</strong></a><a href="#paper-riemannian-immersion-gauss-bonnet" class="pill jump-pill" style="--a:var(--rgb-math)"><strong>Curvature Transport…</strong></a>
+                <a href="#paper-langevin-loss-landscapes" class="pill jump-pill" style="--a:var(--rgb-papers)"><strong>Non-Equilibrium Thermodynamics…</strong></a><a href="#paper-hft-stat-arb-microstructure" class="pill jump-pill" style="--a:var(--rgb-papers)"><strong>Continuous-Time Co-Integration…</strong></a><a href="#paper-symplectic-energy-bounds-nbody" class="pill jump-pill" style="--a:var(--rgb-papers)"><strong>Symplectic Preservation…</strong></a><a href="#paper-verified-ssa-compiler-passes" class="pill jump-pill" style="--a:var(--rgb-papers)"><strong>Formal Verification…</strong></a><a href="#paper-riemannian-immersion-gauss-bonnet" class="pill jump-pill" style="--a:var(--rgb-papers)"><strong>Curvature Transport…</strong></a>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Citation network &amp; semantic embedding graph · F_rep = k²/d, F_attr = d²/k · dynamic citation flux</div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
         <a class="snap-cue" href="#paper-langevin-loss-landscapes">Scroll to research papers</a>
     </section>
 
     
-    <section class="snap-section project-snap" id="paper-langevin-loss-landscapes" data-domain="datascience" style="--a:var(--rgb-datascience)">
+    <section class="snap-section project-snap paper-snap" id="paper-langevin-loss-landscapes" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner">
+        <div class="snap-inner paper-inner">
             <div class="eyebrow" data-reveal>
                 <span class="domain-badge" style="background:var(--accent)"></span>
-                Paper 01 / 05 · Data Science · 2026
+                Paper 01 / 05 · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-datascience)">Data Science</span> · 2026
             </div>
-            <h2 class="snap-title" data-reveal>Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes</h2>
+            <h2 class="paper-title" data-reveal>Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes</h2>
             <div class="paper-meta" data-reveal>
                 <span class="venue">arXiv:2604.10842 [stat.ML]</span>
                 <span>·</span>
                 <span>Kushan Waghmare</span>
                 <span class="tag-status">Preprint</span>
             </div>
-            <p class="lead snap-lead" data-reveal style="margin-top:14px">Continuous-time stochastic gradient descent formulated as an overdamped Langevin diffusion, deriving Kramers escape rates from sharp saddles and anisotropic noise alignment with the Hessian spectrum.</p>
-            <div class="snap-overview-card glass" data-reveal style="margin-top:14px">
-                <p><strong>Abstract: </strong>We model parameter trajectories in over-parameterised neural architectures as non-equilibrium diffusions governed by anisotropic gradient covariance. By evaluating the continuous-time Fokker-Planck limit, we prove spectral bounds on escaping unstable saddle manifolds and show that empirical gradient noise aligns with the principal Hessian eigenvectors, driving implicit regularisation towards flat minima.</p>
-            </div>
-            <div class="hero-eq glass snap-eq" data-reveal>$$\frac{\partial p(\boldsymbol\theta, t)}{\partial t}=\nabla_{\boldsymbol\theta}\cdot\Big(\nabla_{\boldsymbol\theta} L(\boldsymbol\theta)\,p(\boldsymbol\theta, t)+D\,\nabla_{\boldsymbol\theta} p(\boldsymbol\theta, t)\Big)$$</div>
-            <ol class="snap-arch-grid" data-reveal>
-                <li class="glass"><strong>Diffusion Tensor</strong><span>Empirical covariance $\Sigma(\boldsymbol\theta)\approx\frac{\eta}{2B}\mathbb E[\nabla L_i\nabla L_i^\top]$ drives anisotropic saddle escape drift.</span></li><li class="glass"><strong>Kramers Rate</strong><span>Saddle escape frequency $\kappa\propto\sqrt{\frac{|\det H_{\text{saddle}}|}{\det H_{\text{min}}}}\exp\left(-\frac{\Delta L}{T_{\text{eff}}}\right)$ scales with learning rate and batch temperature.</span></li><li class="glass"><strong>Implicit Regularisation</strong><span>Trajectories bias towards sub-manifolds minimising $\operatorname{Tr}(H(\boldsymbol\theta))$, selecting generalisable flat basins.</span></li><li class="glass"><strong>Empirical Verification</strong><span>Tested across deep convolutional and attention architectures under controlled isotropic perturbation.</span></li>
-            </ol>
-            <div class="snap-projects" data-reveal style="margin-top:18px">
-                <span class="snap-proj-label">Topics:</span>
-                <span class="snap-proj-pill glass"><strong>Langevin dynamics</strong></span><span class="snap-proj-pill glass"><strong>Fokker-Planck PDE</strong></span><span class="snap-proj-pill glass"><strong>Loss landscapes</strong></span><span class="snap-proj-pill glass"><strong>Non-convex optimisation</strong></span><span class="snap-proj-pill glass"><strong>Statistical physics</strong></span>
-            </div>
-            <div class="snap-actions" data-reveal style="margin-top:20px">
-                <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-datascience)" data-copy="@article{waghmare2026langevin,
+            <div class="paper-grid" data-reveal>
+                <div class="paper-col-main">
+                    <p class="paper-summary">Continuous-time stochastic gradient descent formulated as an overdamped Langevin diffusion, deriving Kramers escape rates from sharp saddles and anisotropic noise alignment with the Hessian spectrum.</p>
+                    <div class="paper-abstract-card glass">
+                        <div class="paper-section-tag">Abstract</div>
+                        <p>We model parameter trajectories in over-parameterised neural architectures as non-equilibrium diffusions governed by anisotropic gradient covariance. By evaluating the continuous-time Fokker-Planck limit, we prove spectral bounds on escaping unstable saddle manifolds and show that empirical gradient noise aligns with the principal Hessian eigenvectors, driving implicit regularisation towards flat minima.</p>
+                    </div>
+                    <div class="paper-actions">
+                        <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="@article{waghmare2026langevin,
   author = {Waghmare, Kushan},
   title = {Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes},
   journal = {arXiv preprint arXiv:2604.10842},
   year = {2026}
 }" aria-label="Copy BibTeX Citation">
-                    <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX Citation</span>
-                </button>
-                <a href="datascience.html" class="pill jump-pill">Explore Data Science Domain →</a>
+                            <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX Citation</span>
+                        </button>
+                        <a href="datascience.html" class="pill jump-pill">Explore Data Science Domain →</a>
+                    </div>
+                </div>
+                <div class="paper-col-side">
+                    <div class="paper-eq-card glass">
+                        <div class="paper-section-tag">Governing Equation</div>
+                        <div class="paper-eq">$$\frac{\partial p(\boldsymbol\theta, t)}{\partial t}=\nabla_{\boldsymbol\theta}\cdot\Big(\nabla_{\boldsymbol\theta} L(\boldsymbol\theta)\,p(\boldsymbol\theta, t)+D\,\nabla_{\boldsymbol\theta} p(\boldsymbol\theta, t)\Big)$$</div>
+                    </div>
+                    <ol class="paper-highlights-grid">
+                        <li class="glass"><strong>Diffusion Tensor</strong><span>Empirical covariance $\Sigma(\boldsymbol\theta)\approx\frac{\eta}{2B}\mathbb E[\nabla L_i\nabla L_i^\top]$ drives anisotropic saddle escape drift.</span></li><li class="glass"><strong>Kramers Rate</strong><span>Saddle escape frequency $\kappa\propto\sqrt{\frac{|\det H_{\text{saddle}}|}{\det H_{\text{min}}}}\exp\left(-\frac{\Delta L}{T_{\text{eff}}}\right)$ scales with learning rate and batch temperature.</span></li><li class="glass"><strong>Implicit Regularisation</strong><span>Trajectories bias towards sub-manifolds minimising $\operatorname{Tr}(H(\boldsymbol\theta))$, selecting generalisable flat basins.</span></li><li class="glass"><strong>Empirical Verification</strong><span>Tested across deep convolutional and attention architectures under controlled isotropic perturbation.</span></li>
+                    </ol>
+                    <div class="snap-projects" style="margin-top:6px">
+                        <span class="snap-proj-label">Topics:</span>
+                        <span class="snap-proj-pill glass"><strong>Langevin dynamics</strong></span><span class="snap-proj-pill glass"><strong>Fokker-Planck PDE</strong></span><span class="snap-proj-pill glass"><strong>Loss landscapes</strong></span><span class="snap-proj-pill glass"><strong>Non-convex optimisation</strong></span><span class="snap-proj-pill glass"><strong>Statistical physics</strong></span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Loss landscape · Langevin SGD: v ← 0.86v - η∇L + 0.05ξ · move cursor to alter curvature · click to reseed</div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
         <a class="snap-cue" href="#paper-hft-stat-arb-microstructure">Next: Continuous-Time Co-Integration &…</a>
     </section>
-    <section class="snap-section project-snap" id="paper-hft-stat-arb-microstructure" data-domain="quant" style="--a:var(--rgb-quant)">
+    <section class="snap-section project-snap paper-snap" id="paper-hft-stat-arb-microstructure" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner">
+        <div class="snap-inner paper-inner">
             <div class="eyebrow" data-reveal>
                 <span class="domain-badge" style="background:var(--accent)"></span>
-                Paper 02 / 05 · Quant Finance · 2026
+                Paper 02 / 05 · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-quant)">Quant Finance</span> · 2026
             </div>
-            <h2 class="snap-title" data-reveal>Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction</h2>
+            <h2 class="paper-title" data-reveal>Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction</h2>
             <div class="paper-meta" data-reveal>
                 <span class="venue">Quantitative Finance Working Papers Series</span>
                 <span>·</span>
                 <span>Kushan Waghmare</span>
                 <span class="tag-status">Working Paper</span>
             </div>
-            <p class="lead snap-lead" data-reveal style="margin-top:14px">Formulating multi-asset statistical arbitrage under bid-ask spreads, execution latency and borrow costs as a Hamilton-Jacobi-Bellman variational inequality with terminal inventory penalty.</p>
-            <div class="snap-overview-card glass" data-reveal style="margin-top:14px">
-                <p><strong>Abstract: </strong>Empirical co-integration signals frequently degenerate when deployed into limit order books under discrete execution frictions. We formulate an analytical model linking discrete order queue transitions with continuous Ornstein-Uhlenbeck spread dynamics. Solving the dual-asset Hamilton-Jacobi-Bellman (HJB) viscosity equation with quadratic inventory penalties yields reservation spread thresholds that optimise post-cost Sharpe ratios.</p>
-            </div>
-            <div class="hero-eq glass snap-eq" data-reveal>$$\max_{q\in\mathcal A}\ \mathbb E\bigg[\int_0^T e^{-\rho t}\Big(q_t\,d\varepsilon_t - c\,|dq_t| - \gamma\,q_t^2\,dt\Big)\bigg]$$</div>
-            <ol class="snap-arch-grid" data-reveal>
-                <li class="glass"><strong>Johansen Likelihood</strong><span>Eigenvector decomposition of lagged covariance matrices yielding stationary co-integrating vector $\boldsymbol\beta$.</span></li><li class="glass"><strong>HJB Viscosity Solution</strong><span>Closed-form value function $V(\varepsilon, q)$ bounding inventory holding risk across volatile regimes.</span></li><li class="glass"><strong>Half-Life Speed</strong><span>Ornstein-Uhlenbeck mean-reversion parameter $\theta=-\frac{\ln b}{\Delta t}$ determines optimal unwinding horizons.</span></li><li class="glass"><strong>Backtest Evidence</strong><span>Evaluated over tick-level order book records with latency simulation, achieving an annualised Sharpe ratio of 2.1.</span></li>
-            </ol>
-            <div class="snap-projects" data-reveal style="margin-top:18px">
-                <span class="snap-proj-label">Topics:</span>
-                <span class="snap-proj-pill glass"><strong>Statistical arbitrage</strong></span><span class="snap-proj-pill glass"><strong>Ornstein-Uhlenbeck</strong></span><span class="snap-proj-pill glass"><strong>HJB equation</strong></span><span class="snap-proj-pill glass"><strong>Market microstructure</strong></span><span class="snap-proj-pill glass"><strong>Itô calculus</strong></span>
-            </div>
-            <div class="snap-actions" data-reveal style="margin-top:20px">
-                <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-quant)" data-copy="@article{waghmare2026statarb,
+            <div class="paper-grid" data-reveal>
+                <div class="paper-col-main">
+                    <p class="paper-summary">Formulating multi-asset statistical arbitrage under bid-ask spreads, execution latency and borrow costs as a Hamilton-Jacobi-Bellman variational inequality with terminal inventory penalty.</p>
+                    <div class="paper-abstract-card glass">
+                        <div class="paper-section-tag">Abstract</div>
+                        <p>Empirical co-integration signals frequently degenerate when deployed into limit order books under discrete execution frictions. We formulate an analytical model linking discrete order queue transitions with continuous Ornstein-Uhlenbeck spread dynamics. Solving the dual-asset Hamilton-Jacobi-Bellman (HJB) viscosity equation with quadratic inventory penalties yields reservation spread thresholds that optimise post-cost Sharpe ratios.</p>
+                    </div>
+                    <div class="paper-actions">
+                        <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="@article{waghmare2026statarb,
   author = {Waghmare, Kushan},
   title = {Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction},
   journal = {Quantitative Finance Working Papers},
   year = {2026}
 }" aria-label="Copy BibTeX Citation">
-                    <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX Citation</span>
-                </button>
-                <a href="quant.html" class="pill jump-pill">Explore Quant Finance Domain →</a>
+                            <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX Citation</span>
+                        </button>
+                        <a href="quant.html" class="pill jump-pill">Explore Quant Finance Domain →</a>
+                    </div>
+                </div>
+                <div class="paper-col-side">
+                    <div class="paper-eq-card glass">
+                        <div class="paper-section-tag">Governing Equation</div>
+                        <div class="paper-eq">$$\max_{q\in\mathcal A}\ \mathbb E\bigg[\int_0^T e^{-\rho t}\Big(q_t\,d\varepsilon_t - c\,|dq_t| - \gamma\,q_t^2\,dt\Big)\bigg]$$</div>
+                    </div>
+                    <ol class="paper-highlights-grid">
+                        <li class="glass"><strong>Johansen Likelihood</strong><span>Eigenvector decomposition of lagged covariance matrices yielding stationary co-integrating vector $\boldsymbol\beta$.</span></li><li class="glass"><strong>HJB Viscosity Solution</strong><span>Closed-form value function $V(\varepsilon, q)$ bounding inventory holding risk across volatile regimes.</span></li><li class="glass"><strong>Half-Life Speed</strong><span>Ornstein-Uhlenbeck mean-reversion parameter $\theta=-\frac{\ln b}{\Delta t}$ determines optimal unwinding horizons.</span></li><li class="glass"><strong>Backtest Evidence</strong><span>Evaluated over tick-level order book records with latency simulation, achieving an annualised Sharpe ratio of 2.1.</span></li>
+                    </ol>
+                    <div class="snap-projects" style="margin-top:6px">
+                        <span class="snap-proj-label">Topics:</span>
+                        <span class="snap-proj-pill glass"><strong>Statistical arbitrage</strong></span><span class="snap-proj-pill glass"><strong>Ornstein-Uhlenbeck</strong></span><span class="snap-proj-pill glass"><strong>HJB equation</strong></span><span class="snap-proj-pill glass"><strong>Market microstructure</strong></span><span class="snap-proj-pill glass"><strong>Itô calculus</strong></span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Geometric Brownian motion · 70 paths · cursor height sets σ</div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
         <a class="snap-cue" href="#paper-symplectic-energy-bounds-nbody">Next: Symplectic Preservation and Exac…</a>
     </section>
-    <section class="snap-section project-snap" id="paper-symplectic-energy-bounds-nbody" data-domain="physics" style="--a:var(--rgb-physics)">
+    <section class="snap-section project-snap paper-snap" id="paper-symplectic-energy-bounds-nbody" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner">
+        <div class="snap-inner paper-inner">
             <div class="eyebrow" data-reveal>
                 <span class="domain-badge" style="background:var(--accent)"></span>
-                Paper 03 / 05 · Physics · 2025
+                Paper 03 / 05 · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-physics)">Physics</span> · 2025
             </div>
-            <h2 class="snap-title" data-reveal>Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations</h2>
+            <h2 class="paper-title" data-reveal>Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations</h2>
             <div class="paper-meta" data-reveal>
                 <span class="venue">Computational Physics & Dynamical Systems</span>
                 <span>·</span>
                 <span>Kushan Waghmare</span>
                 <span class="tag-status">Preprint</span>
             </div>
-            <p class="lead snap-lead" data-reveal style="margin-top:14px">Backward error analysis and shadow Hamiltonians for symplectic kick-drift-kick leapfrog integrators in self-gravitating disc dynamics over millions of orbital periods.</p>
-            <div class="snap-overview-card glass" data-reveal style="margin-top:14px">
-                <p><strong>Abstract: </strong>Standard explicit Runge-Kutta schemes inject artificial secular energy drift into gravitational systems, eroding orbital stability. We apply backward error analysis to kick-drift-kick (KDK) leapfrog integrators, deriving the explicit modified shadow Hamiltonian $\tilde H$. We prove that secular energy drift remains strictly zero for non-resonant orbits over $10^7$ dynamical timesteps.</p>
-            </div>
-            <div class="hero-eq glass snap-eq" data-reveal>$$\tilde H = H + \frac{\Delta t^2}{12}\Big(\{V,\{V,T\}\} + \tfrac12\{T,\{T,V\}\}\Big) + \mathcal O(\Delta t^4)$$</div>
-            <ol class="snap-arch-grid" data-reveal>
-                <li class="glass"><strong>Poincaré Invariant</strong><span>Exact preservation of the differential 2-form $\omega=\sum_i dq_i\wedge dp_i$ across every discrete step.</span></li><li class="glass"><strong>Baker-Campbell-Hausdorff</strong><span>Lie commutator expansions guaranteeing bounded Hamiltonian oscillation without long-term drift.</span></li><li class="glass"><strong>Softening Kernel</strong><span>Singularity-free Plummer potential $\Phi(r)=-\frac{GM}{\sqrt{r^2+\varepsilon^2}}$ paired with spatial quadtree acceleration.</span></li><li class="glass"><strong>Numerical Benchmark</strong><span>Simulated $10^6$ galactic disc revolutions confirming total energy preservation to machine precision.</span></li>
-            </ol>
-            <div class="snap-projects" data-reveal style="margin-top:18px">
-                <span class="snap-proj-label">Topics:</span>
-                <span class="snap-proj-pill glass"><strong>Symplectic integrators</strong></span><span class="snap-proj-pill glass"><strong>Hamiltonian mechanics</strong></span><span class="snap-proj-pill glass"><strong>Backward error analysis</strong></span><span class="snap-proj-pill glass"><strong>N-body gravitation</strong></span><span class="snap-proj-pill glass"><strong>Lie algebra</strong></span>
-            </div>
-            <div class="snap-actions" data-reveal style="margin-top:20px">
-                <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-physics)" data-copy="@article{waghmare2025symplectic,
+            <div class="paper-grid" data-reveal>
+                <div class="paper-col-main">
+                    <p class="paper-summary">Backward error analysis and shadow Hamiltonians for symplectic kick-drift-kick leapfrog integrators in self-gravitating disc dynamics over millions of orbital periods.</p>
+                    <div class="paper-abstract-card glass">
+                        <div class="paper-section-tag">Abstract</div>
+                        <p>Standard explicit Runge-Kutta schemes inject artificial secular energy drift into gravitational systems, eroding orbital stability. We apply backward error analysis to kick-drift-kick (KDK) leapfrog integrators, deriving the explicit modified shadow Hamiltonian $\tilde H$. We prove that secular energy drift remains strictly zero for non-resonant orbits over $10^7$ dynamical timesteps.</p>
+                    </div>
+                    <div class="paper-actions">
+                        <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="@article{waghmare2025symplectic,
   author = {Waghmare, Kushan},
   title = {Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations},
   journal = {Computational Physics Preprint},
   year = {2025}
 }" aria-label="Copy BibTeX Citation">
-                    <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX Citation</span>
-                </button>
-                <a href="physics.html" class="pill jump-pill">Explore Physics Domain →</a>
+                            <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX Citation</span>
+                        </button>
+                        <a href="physics.html" class="pill jump-pill">Explore Physics Domain →</a>
+                    </div>
+                </div>
+                <div class="paper-col-side">
+                    <div class="paper-eq-card glass">
+                        <div class="paper-section-tag">Governing Equation</div>
+                        <div class="paper-eq">$$\tilde H = H + \frac{\Delta t^2}{12}\Big(\{V,\{V,T\}\} + \tfrac12\{T,\{T,V\}\}\Big) + \mathcal O(\Delta t^4)$$</div>
+                    </div>
+                    <ol class="paper-highlights-grid">
+                        <li class="glass"><strong>Poincaré Invariant</strong><span>Exact preservation of the differential 2-form $\omega=\sum_i dq_i\wedge dp_i$ across every discrete step.</span></li><li class="glass"><strong>Baker-Campbell-Hausdorff</strong><span>Lie commutator expansions guaranteeing bounded Hamiltonian oscillation without long-term drift.</span></li><li class="glass"><strong>Softening Kernel</strong><span>Singularity-free Plummer potential $\Phi(r)=-\frac{GM}{\sqrt{r^2+\varepsilon^2}}$ paired with spatial quadtree acceleration.</span></li><li class="glass"><strong>Numerical Benchmark</strong><span>Simulated $10^6$ galactic disc revolutions confirming total energy preservation to machine precision.</span></li>
+                    </ol>
+                    <div class="snap-projects" style="margin-top:6px">
+                        <span class="snap-proj-label">Topics:</span>
+                        <span class="snap-proj-pill glass"><strong>Symplectic integrators</strong></span><span class="snap-proj-pill glass"><strong>Hamiltonian mechanics</strong></span><span class="snap-proj-pill glass"><strong>Backward error analysis</strong></span><span class="snap-proj-pill glass"><strong>N-body gravitation</strong></span><span class="snap-proj-pill glass"><strong>Lie algebra</strong></span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">N-body · leapfrog (KDK) · your cursor is a point mass</div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
         <a class="snap-cue" href="#paper-verified-ssa-compiler-passes">Next: Formal Verification and Type Pre…</a>
     </section>
-    <section class="snap-section project-snap" id="paper-verified-ssa-compiler-passes" data-domain="cs" style="--a:var(--rgb-cs)">
+    <section class="snap-section project-snap paper-snap" id="paper-verified-ssa-compiler-passes" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner">
+        <div class="snap-inner paper-inner">
             <div class="eyebrow" data-reveal>
                 <span class="domain-badge" style="background:var(--accent)"></span>
-                Paper 04 / 05 · Computer Science · 2025
+                Paper 04 / 05 · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-cs)">Computer Science</span> · 2025
             </div>
-            <h2 class="snap-title" data-reveal>Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers</h2>
+            <h2 class="paper-title" data-reveal>Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers</h2>
             <div class="paper-meta" data-reveal>
                 <span class="venue">Systems & Programming Languages Technical Reports</span>
                 <span>·</span>
                 <span>Kushan Waghmare</span>
                 <span class="tag-status">Research Report</span>
             </div>
-            <p class="lead snap-lead" data-reveal style="margin-top:14px">Constructing verified Static Single Assignment (SSA) intermediate representation lowering with dominance-frontier invariants, $\phi$-node resolution and sparse constant propagation.</p>
-            <div class="snap-overview-card glass" data-reveal style="margin-top:14px">
-                <p><strong>Abstract: </strong>Numerical compilers lower mathematical expressions into LLVM IR through complex transformation passes that risk semantic alteration. We develop a formally verified IR lowering engine featuring type-preserving SSA $\phi$-node elimination, dominance-frontier verification, and dead-code elimination, validated against a mechanised operational semantics.</p>
-            </div>
-            <div class="hero-eq glass snap-eq" data-reveal>$$\frac{\Gamma\vdash e_1:\tau_1\qquad \Gamma,\,x:\tau_1\vdash e_2:\tau_2}{\Gamma\vdash \mathbf{let}\ x = e_1\ \mathbf{in}\ e_2:\tau_2}$$</div>
-            <ol class="snap-arch-grid" data-reveal>
-                <li class="glass"><strong>Dominance Invariant</strong><span>Every variable use is strictly dominated by its unique definition $\operatorname{idom}(u)\prec v$ in the control-flow tree.</span></li><li class="glass"><strong>Sparse Constant Propagation</strong><span>Monotone dataflow transfer functions updating constants over SSA def-use webs to a fixed point.</span></li><li class="glass"><strong>Zero-Cost Aliasing</strong><span>Escape analysis verifying safe stack allocation of intermediate vectors and matrix operands.</span></li><li class="glass"><strong>End-to-End Execution</strong><span>Benchmarked on custom Ku-Lang compiler emitting native machine instructions via the LLVM toolchain.</span></li>
-            </ol>
-            <div class="snap-projects" data-reveal style="margin-top:18px">
-                <span class="snap-proj-label">Topics:</span>
-                <span class="snap-proj-pill glass"><strong>Compilers</strong></span><span class="snap-proj-pill glass"><strong>LLVM IR</strong></span><span class="snap-proj-pill glass"><strong>SSA form</strong></span><span class="snap-proj-pill glass"><strong>Type systems</strong></span><span class="snap-proj-pill glass"><strong>Formal verification</strong></span>
-            </div>
-            <div class="snap-actions" data-reveal style="margin-top:20px">
-                <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-cs)" data-copy="@techreport{waghmare2025ssa,
+            <div class="paper-grid" data-reveal>
+                <div class="paper-col-main">
+                    <p class="paper-summary">Constructing verified Static Single Assignment (SSA) intermediate representation lowering with dominance-frontier invariants, $\phi$-node resolution and sparse constant propagation.</p>
+                    <div class="paper-abstract-card glass">
+                        <div class="paper-section-tag">Abstract</div>
+                        <p>Numerical compilers lower mathematical expressions into LLVM IR through complex transformation passes that risk semantic alteration. We develop a formally verified IR lowering engine featuring type-preserving SSA $\phi$-node elimination, dominance-frontier verification, and dead-code elimination, validated against a mechanised operational semantics.</p>
+                    </div>
+                    <div class="paper-actions">
+                        <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="@techreport{waghmare2025ssa,
   author = {Waghmare, Kushan},
   title = {Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers},
   institution = {IIT Madras Systems Group},
   year = {2025}
 }" aria-label="Copy BibTeX Citation">
-                    <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX Citation</span>
-                </button>
-                <a href="cs.html" class="pill jump-pill">Explore Computer Science Domain →</a>
+                            <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX Citation</span>
+                        </button>
+                        <a href="cs.html" class="pill jump-pill">Explore Computer Science Domain →</a>
+                    </div>
+                </div>
+                <div class="paper-col-side">
+                    <div class="paper-eq-card glass">
+                        <div class="paper-section-tag">Governing Equation</div>
+                        <div class="paper-eq">$$\frac{\Gamma\vdash e_1:\tau_1\qquad \Gamma,\,x:\tau_1\vdash e_2:\tau_2}{\Gamma\vdash \mathbf{let}\ x = e_1\ \mathbf{in}\ e_2:\tau_2}$$</div>
+                    </div>
+                    <ol class="paper-highlights-grid">
+                        <li class="glass"><strong>Dominance Invariant</strong><span>Every variable use is strictly dominated by its unique definition $\operatorname{idom}(u)\prec v$ in the control-flow tree.</span></li><li class="glass"><strong>Sparse Constant Propagation</strong><span>Monotone dataflow transfer functions updating constants over SSA def-use webs to a fixed point.</span></li><li class="glass"><strong>Zero-Cost Aliasing</strong><span>Escape analysis verifying safe stack allocation of intermediate vectors and matrix operands.</span></li><li class="glass"><strong>End-to-End Execution</strong><span>Benchmarked on custom Ku-Lang compiler emitting native machine instructions via the LLVM toolchain.</span></li>
+                    </ol>
+                    <div class="snap-projects" style="margin-top:6px">
+                        <span class="snap-proj-label">Topics:</span>
+                        <span class="snap-proj-pill glass"><strong>Compilers</strong></span><span class="snap-proj-pill glass"><strong>LLVM IR</strong></span><span class="snap-proj-pill glass"><strong>SSA form</strong></span><span class="snap-proj-pill glass"><strong>Type systems</strong></span><span class="snap-proj-pill glass"><strong>Formal verification</strong></span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Elementary cellular automaton · click to cycle the rule</div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
         <a class="snap-cue" href="#paper-riemannian-immersion-gauss-bonnet">Next: Curvature Transport & Non-Orient…</a>
     </section>
-    <section class="snap-section project-snap" id="paper-riemannian-immersion-gauss-bonnet" data-domain="math" style="--a:var(--rgb-math)">
+    <section class="snap-section project-snap paper-snap" id="paper-riemannian-immersion-gauss-bonnet" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner">
+        <div class="snap-inner paper-inner">
             <div class="eyebrow" data-reveal>
                 <span class="domain-badge" style="background:var(--accent)"></span>
-                Paper 05 / 05 · Mathematics · 2025
+                Paper 05 / 05 · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-math)">Mathematics</span> · 2025
             </div>
-            <h2 class="snap-title" data-reveal>Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds</h2>
+            <h2 class="paper-title" data-reveal>Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds</h2>
             <div class="paper-meta" data-reveal>
                 <span class="venue">Differential Geometry & Geometric Analysis</span>
                 <span>·</span>
                 <span>Kushan Waghmare</span>
                 <span class="tag-status">Preprint</span>
             </div>
-            <p class="lead snap-lead" data-reveal style="margin-top:14px">Geodesic curvature integrals, metric tensor evaluation and non-orientable normal vector transport across continuous topological twist homotopies.</p>
-            <div class="snap-overview-card glass" data-reveal style="margin-top:14px">
-                <p><strong>Abstract: </strong>We examine the differential geometry of non-orientable immersed submanifolds in $\mathbb R^3$. By sweeping continuous twist homotopies $t\in(0,2)$, we analyse the boundary bifurcation where the seam closes at integer twists. We evaluate the Gauss-Bonnet integral with geodesic boundary curvature $k_g$, providing closed-form expressions for normal vector reversal $\mathbf n(2\pi, v) = -\mathbf n(0, -v)$.</p>
-            </div>
-            <div class="hero-eq glass snap-eq" data-reveal>$$\iint_M K\,dA + \oint_{\partial M} k_g\,ds = 2\pi\,\chi(M) = 0$$</div>
-            <ol class="snap-arch-grid" data-reveal>
-                <li class="glass"><strong>First Fundamental Form</strong><span>Metric tensor $ds^2 = E\,du^2 + 2F\,du\,dv + G\,dv^2$ with diagonal metric ($F=0$) parameterisation.</span></li><li class="glass"><strong>Normal Holonomy</strong><span>Parallel transport of unit normals across the topological seam exhibiting $\mathbb Z_2$ monodromy.</span></li><li class="glass"><strong>Figure-8 Immersion</strong><span>Parametric representation of Klein surface immersions in 3-space without self-intersection singularities.</span></li><li class="glass"><strong>Live GPU Evaluation</strong><span>Real-time vertex recomputation under continuously variable twist parameter $t$.</span></li>
-            </ol>
-            <div class="snap-projects" data-reveal style="margin-top:18px">
-                <span class="snap-proj-label">Topics:</span>
-                <span class="snap-proj-pill glass"><strong>Differential geometry</strong></span><span class="snap-proj-pill glass"><strong>Gauss-Bonnet</strong></span><span class="snap-proj-pill glass"><strong>Topology</strong></span><span class="snap-proj-pill glass"><strong>Riemannian manifolds</strong></span><span class="snap-proj-pill glass"><strong>Holonomy</strong></span>
-            </div>
-            <div class="snap-actions" data-reveal style="margin-top:20px">
-                <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-math)" data-copy="@article{waghmare2025riemannian,
+            <div class="paper-grid" data-reveal>
+                <div class="paper-col-main">
+                    <p class="paper-summary">Geodesic curvature integrals, metric tensor evaluation and non-orientable normal vector transport across continuous topological twist homotopies.</p>
+                    <div class="paper-abstract-card glass">
+                        <div class="paper-section-tag">Abstract</div>
+                        <p>We examine the differential geometry of non-orientable immersed submanifolds in $\mathbb R^3$. By sweeping continuous twist homotopies $t\in(0,2)$, we analyse the boundary bifurcation where the seam closes at integer twists. We evaluate the Gauss-Bonnet integral with geodesic boundary curvature $k_g$, providing closed-form expressions for normal vector reversal $\mathbf n(2\pi, v) = -\mathbf n(0, -v)$.</p>
+                    </div>
+                    <div class="paper-actions">
+                        <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="@article{waghmare2025riemannian,
   author = {Waghmare, Kushan},
   title = {Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds},
   journal = {Differential Geometry Preprint},
   year = {2025}
 }" aria-label="Copy BibTeX Citation">
-                    <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX Citation</span>
-                </button>
-                <a href="math.html" class="pill jump-pill">Explore Mathematics Domain →</a>
+                            <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX Citation</span>
+                        </button>
+                        <a href="math.html" class="pill jump-pill">Explore Mathematics Domain →</a>
+                    </div>
+                </div>
+                <div class="paper-col-side">
+                    <div class="paper-eq-card glass">
+                        <div class="paper-section-tag">Governing Equation</div>
+                        <div class="paper-eq">$$\iint_M K\,dA + \oint_{\partial M} k_g\,ds = 2\pi\,\chi(M) = 0$$</div>
+                    </div>
+                    <ol class="paper-highlights-grid">
+                        <li class="glass"><strong>First Fundamental Form</strong><span>Metric tensor $ds^2 = E\,du^2 + 2F\,du\,dv + G\,dv^2$ with diagonal metric ($F=0$) parameterisation.</span></li><li class="glass"><strong>Normal Holonomy</strong><span>Parallel transport of unit normals across the topological seam exhibiting $\mathbb Z_2$ monodromy.</span></li><li class="glass"><strong>Figure-8 Immersion</strong><span>Parametric representation of Klein surface immersions in 3-space without self-intersection singularities.</span></li><li class="glass"><strong>Live GPU Evaluation</strong><span>Real-time vertex recomputation under continuously variable twist parameter $t$.</span></li>
+                    </ol>
+                    <div class="snap-projects" style="margin-top:6px">
+                        <span class="snap-proj-label">Topics:</span>
+                        <span class="snap-proj-pill glass"><strong>Differential geometry</strong></span><span class="snap-proj-pill glass"><strong>Gauss-Bonnet</strong></span><span class="snap-proj-pill glass"><strong>Topology</strong></span><span class="snap-proj-pill glass"><strong>Riemannian manifolds</strong></span><span class="snap-proj-pill glass"><strong>Holonomy</strong></span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Möbius immersion · non-orientable topological manifold · cursor controls twist & angle</div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
         <a class="snap-cue" href="#papers-contact">Next: Collaboration & Contact</a>
     </section>
 

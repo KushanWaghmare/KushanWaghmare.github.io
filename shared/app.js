@@ -529,6 +529,14 @@
 
         window.addEventListener("wheel", (e) => {
             if (REDUCED || e.ctrlKey || e.metaKey) return;
+            const scrollEl = e.target && e.target.closest && e.target.closest(".snap-inner, .scrollable");
+            if (scrollEl && scrollEl.scrollHeight > scrollEl.clientHeight + 4) {
+                const atTop = scrollEl.scrollTop <= 2;
+                const atBottom = scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4;
+                if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) {
+                    return;
+                }
+            }
             e.preventDefault();
             const now = performance.now();
             if (warping || now - lastWarpStart < 780) return;
@@ -549,6 +557,14 @@
             const dx = touchStartX - e.touches[0].clientX;
             const dy = touchStartY - e.touches[0].clientY;
             if (Math.abs(dx) > Math.abs(dy)) return;
+            const scrollEl = e.target && e.target.closest && e.target.closest(".snap-inner, .scrollable");
+            if (scrollEl && scrollEl.scrollHeight > scrollEl.clientHeight + 4) {
+                const atTop = scrollEl.scrollTop <= 2;
+                const atBottom = scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4;
+                if ((dy < 0 && !atTop) || (dy > 0 && !atBottom)) {
+                    return;
+                }
+            }
             if (e.cancelable) e.preventDefault();
             if (touchConsumed || warping || performance.now() - lastWarpStart < 760) return;
             if (Math.abs(dy) > 28) {

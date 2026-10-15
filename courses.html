@@ -33,15 +33,15 @@
     </header>
     <main id="main">
     <nav class="snap-pager" aria-label="Section navigation">
-        <a href="#courses-hero" class="snap-dot active" data-title="00 Overview" aria-label="Courses Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
+        <a href="#courses-hero" class="snap-dot active" data-title="00 Overview" aria-label="Courses Overview"><span class="dot-disc" style="--a:var(--rgb-courses)"></span><span class="dot-text">00 Overview</span></a>
         
-        <a href="#track-iitm-datascience" class="snap-dot" data-title="01 Bachelor of Science in Data Science & Applications" aria-label="Bachelor of Science in Data Science & Applications"><span class="dot-disc" style="--a:var(--rgb-datascience)"></span><span class="dot-text">01 Bachelor of Scienc…</span></a>
-        <a href="#track-physics-curriculum" class="snap-dot" data-title="02 Bachelor of Science in Physics" aria-label="Bachelor of Science in Physics"><span class="dot-disc" style="--a:var(--rgb-physics)"></span><span class="dot-text">02 Bachelor of Scienc…</span></a>
-        <a href="#track-advanced-quant-systems" class="snap-dot" data-title="03 Quantitative Finance & Systems Engineering" aria-label="Quantitative Finance & Systems Engineering"><span class="dot-disc" style="--a:var(--rgb-quant)"></span><span class="dot-text">03 Quantitative Finan…</span></a>
+        <a href="#track-iitm-datascience" class="snap-dot" data-title="01 Bachelor of Science in Data Science & Applications" aria-label="Bachelor of Science in Data Science & Applications"><span class="dot-disc" style="--a:var(--rgb-courses)"></span><span class="dot-text">01 Bachelor of Scienc…</span></a>
+        <a href="#track-physics-curriculum" class="snap-dot" data-title="02 Bachelor of Science in Physics" aria-label="Bachelor of Science in Physics"><span class="dot-disc" style="--a:var(--rgb-courses)"></span><span class="dot-text">02 Bachelor of Scienc…</span></a>
+        <a href="#track-advanced-quant-systems" class="snap-dot" data-title="03 Quantitative Finance & Systems Engineering" aria-label="Quantitative Finance & Systems Engineering"><span class="dot-disc" style="--a:var(--rgb-courses)"></span><span class="dot-text">03 Quantitative Finan…</span></a>
         <a href="#courses-contact" class="snap-dot" data-title="04 Contact" aria-label="Academic Inquiries"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">04 Contact</span></a>
     </nav>
 
-    <section class="snap-section hero" id="courses-hero" data-domain="courses">
+    <section class="snap-section hero" id="courses-hero" data-domain="courses" style="--a:var(--rgb-courses)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Coursework</div>
@@ -50,22 +50,22 @@
             <div class="hero-eq glass" data-hero>$$A = U\Sigma V^\top = \sum_{i=1}^r \sigma_i\,\mathbf u_i\,\mathbf v_i^\top,\qquad i\hbar\,\frac{\partial\psi}{\partial t}=\Big[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\Big]\psi$$</div>
             <div class="snap-jump-pills" data-hero>
                 <span class="snap-jump-label">Academic tracks:</span>
-                <a href="#track-iitm-datascience" class="pill jump-pill" style="--a:var(--rgb-datascience)"><strong>Bachelor of…</strong></a><a href="#track-physics-curriculum" class="pill jump-pill" style="--a:var(--rgb-physics)"><strong>Bachelor of…</strong></a><a href="#track-advanced-quant-systems" class="pill jump-pill" style="--a:var(--rgb-quant)"><strong>Quantitative Finance…</strong></a>
+                <a href="#track-iitm-datascience" class="pill jump-pill" style="--a:var(--rgb-courses)"><strong>Bachelor of…</strong></a><a href="#track-physics-curriculum" class="pill jump-pill" style="--a:var(--rgb-courses)"><strong>Bachelor of…</strong></a><a href="#track-advanced-quant-systems" class="pill jump-pill" style="--a:var(--rgb-courses)"><strong>Quantitative Finance…</strong></a>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Quantum harmonic ladder &amp; syllabus energy eigenstates · E_n = ℏω(n + ½) · stationary wave harmonics</div>
+        <div class="sim-tag" aria-hidden="true">Curriculum Directed Acyclic Graph (DAG) · topological sort · prerequisite signal conduction</div>
         <a class="snap-cue" href="#track-iitm-datascience">Scroll to curricula</a>
     </section>
 
     
-    <section class="snap-section project-snap" id="track-iitm-datascience" data-domain="datascience" style="--a:var(--rgb-datascience)">
+    <section class="snap-section project-snap course-snap" id="track-iitm-datascience" data-domain="courses" style="--a:var(--rgb-courses)">
         <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner" style="max-width:1080px">
+        <div class="snap-inner course-inner">
             <div class="eyebrow" data-reveal>
                 <span class="domain-badge" style="background:var(--accent)"></span>
-                Track 01 / 03 · Indian Institute of Technology Madras · 2023 – 2027
+                Track 01 / 03 · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-datascience)">Data Science</span> · 2023 – 2027
             </div>
-            <h2 class="snap-title" data-reveal>Bachelor of Science in Data Science & Applications</h2>
+            <h2 class="snap-title" data-reveal style="font-size:clamp(24px, 3.2vw, 42px)">Bachelor of Science in Data Science & Applications</h2>
             <p class="lead snap-lead" data-reveal>Core mathematical and engineering curriculum at IIT Madras covering measure-theoretic probability, machine learning, deep neural networks, and scalable computation.</p>
             <div class="course-grid" data-reveal>
                 
@@ -135,17 +135,17 @@
                 </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Statistical learning, probabilistic graphical models, high-dimensional optimisation & distributed systems</div>
+        <div class="sim-tag" aria-hidden="true">Curriculum Directed Acyclic Graph (DAG) · topological sort · prerequisite signal conduction</div>
         <a class="snap-cue" href="#track-physics-curriculum">Next: Bachelor of Science in Physics…</a>
     </section>
-    <section class="snap-section project-snap" id="track-physics-curriculum" data-domain="physics" style="--a:var(--rgb-physics)">
+    <section class="snap-section project-snap course-snap" id="track-physics-curriculum" data-domain="courses" style="--a:var(--rgb-courses)">
         <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner" style="max-width:1080px">
+        <div class="snap-inner course-inner">
             <div class="eyebrow" data-reveal>
                 <span class="domain-badge" style="background:var(--accent)"></span>
-                Track 02 / 03 · Vidya Bharati Mahavidyalaya · 2025 – 2028
+                Track 02 / 03 · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-physics)">Physics</span> · 2025 – 2028
             </div>
-            <h2 class="snap-title" data-reveal>Bachelor of Science in Physics</h2>
+            <h2 class="snap-title" data-reveal style="font-size:clamp(24px, 3.2vw, 42px)">Bachelor of Science in Physics</h2>
             <p class="lead snap-lead" data-reveal>Foundational and advanced theoretical physics curriculum bridging continuous analytical mechanics with quantum mechanics and thermodynamics.</p>
             <div class="course-grid" data-reveal>
                 
@@ -199,17 +199,17 @@
                 </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Symplectic mechanics, field theory, quantum states, and non-equilibrium statistical thermodynamics</div>
+        <div class="sim-tag" aria-hidden="true">Curriculum Directed Acyclic Graph (DAG) · topological sort · prerequisite signal conduction</div>
         <a class="snap-cue" href="#track-advanced-quant-systems">Next: Quantitative Finance & Systems E…</a>
     </section>
-    <section class="snap-section project-snap" id="track-advanced-quant-systems" data-domain="quant" style="--a:var(--rgb-quant)">
+    <section class="snap-section project-snap course-snap" id="track-advanced-quant-systems" data-domain="courses" style="--a:var(--rgb-courses)">
         <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner" style="max-width:1080px">
+        <div class="snap-inner course-inner">
             <div class="eyebrow" data-reveal>
                 <span class="domain-badge" style="background:var(--accent)"></span>
-                Track 03 / 03 · Independent & Advanced Specialisations · 2024 – 2026
+                Track 03 / 03 · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-quant)">Quant Finance</span> · 2024 – 2026
             </div>
-            <h2 class="snap-title" data-reveal>Quantitative Finance & Systems Engineering</h2>
+            <h2 class="snap-title" data-reveal style="font-size:clamp(24px, 3.2vw, 42px)">Quantitative Finance & Systems Engineering</h2>
             <p class="lead snap-lead" data-reveal>Rigorous self-directed and advanced honours coursework spanning continuous-time financial engineering, market microstructure, and low-level compiler systems.</p>
             <div class="course-grid" data-reveal>
                 
@@ -279,7 +279,7 @@
                 </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Itô calculus, Black-Scholes PDE, pairs co-integration, LLVM compilers and TTL machine architecture</div>
+        <div class="sim-tag" aria-hidden="true">Curriculum Directed Acyclic Graph (DAG) · topological sort · prerequisite signal conduction</div>
         <a class="snap-cue" href="#courses-contact">Next: Academic Contact</a>
     </section>
 

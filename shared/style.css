@@ -746,6 +746,215 @@ html[data-page="project"] body {
 }
 .paper-meta .venue {
     color: var(--accent);
+    font-weight: 600;
+}
+
+/* ---------- Research Papers Page Layout ---------- */
+.paper-snap {
+    padding-top: clamp(80px, 11vh, 110px);
+    padding-bottom: clamp(45px, 6vh, 65px);
+    justify-content: center;
+}
+
+.paper-inner {
+    max-width: 1140px;
+    width: 100%;
+    max-height: calc(100svh - 130px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding-right: 8px;
+    box-sizing: border-box;
+}
+
+.paper-inner::-webkit-scrollbar,
+.course-inner::-webkit-scrollbar {
+    width: 5px;
+}
+.paper-inner::-webkit-scrollbar-thumb,
+.course-inner::-webkit-scrollbar-thumb {
+    background: rgba(var(--a), 0.35);
+    border-radius: 99px;
+}
+
+.paper-title {
+    font-size: clamp(22px, 2.5vw, 34px);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    color: var(--fg);
+    margin: 4px 0 6px 0;
+    max-width: 980px;
+}
+
+.paper-domain-tag {
+    font: 600 10px var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 99px;
+    border: 1px solid rgba(var(--tag-rgb, var(--a)), 0.4);
+    color: rgb(var(--tag-rgb, var(--a)));
+    background: rgba(var(--tag-rgb, var(--a)), 0.1);
+}
+
+.paper-grid {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 20px;
+    align-items: start;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.paper-col-main, .paper-col-side {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.paper-summary {
+    font-size: clamp(14px, 1.3vw, 15.5px);
+    color: var(--fg);
+    line-height: 1.6;
+    margin: 0;
+    opacity: 0.95;
+}
+
+.paper-abstract-card {
+    padding: 16px 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--glass-line);
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.paper-section-tag {
+    font: 600 10.5px var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.paper-section-tag::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+
+.paper-abstract-card p {
+    color: var(--muted);
+    font-size: 13.5px;
+    line-height: 1.65;
+    margin: 0;
+}
+
+.paper-eq-card {
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    border: 1px solid var(--glass-line);
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.paper-eq {
+    overflow-x: auto;
+    padding: 4px 0;
+    font-size: 0.92rem;
+}
+
+.paper-highlights-grid {
+    list-style: none;
+    counter-reset: s;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+}
+
+.paper-highlights-grid li {
+    counter-increment: s;
+    position: relative;
+    padding: 12px 14px 12px 42px;
+    border-radius: 10px;
+    border: 1px solid var(--glass-line);
+    background: var(--glass);
+}
+
+.paper-highlights-grid li::before {
+    content: counter(s, decimal-leading-zero);
+    position: absolute;
+    left: 14px;
+    top: 13px;
+    font: 700 11.5px var(--mono);
+    color: var(--accent);
+}
+
+.paper-highlights-grid strong {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 2px;
+    line-height: 1.3;
+}
+
+.paper-highlights-grid span {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+    display: block;
+}
+
+.paper-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+/* ---------- Coursework Page Layout ---------- */
+.course-snap {
+    padding-top: clamp(80px, 11vh, 110px);
+    padding-bottom: clamp(45px, 6vh, 65px);
+    justify-content: center;
+}
+
+.course-inner {
+    max-width: 1140px;
+    width: 100%;
+    max-height: calc(100svh - 130px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding-right: 8px;
+    box-sizing: border-box;
+}
+
+@media (max-width: 960px) {
+    .paper-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    .paper-highlights-grid {
+        grid-template-columns: 1fr;
+    }
+    .paper-inner, .course-inner {
+        max-height: calc(100svh - 110px);
+    }
 }
 
 /* ---------- Supersonic warp transition (hub) ---------- */
