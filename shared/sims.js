@@ -2132,89 +2132,256 @@ NAV.math = () => (ctx, w, h, t) => {
     }
 };
 
-// Physics: Keplerian multi-body orbital system + relativistic particle collider bursts
-// (elliptical planetary orbits, gravitational wells, and curved magnetic-field shower tracks).
+// Physics: Induced nuclear fission of Uranium-235 (²³⁵U + n → ²³⁶U* → ¹⁴¹Ba + ⁹²Kr + 3n + γ).
+// An incident thermal neutron collides with the ²³⁵U nucleus; the compound nucleus deforms
+// (liquid-drop necking) and undergoes scission into two recoiling fission fragments,
+// triggering prompt neutron emission and expanding gamma radiation shockwaves.
 NAV.physics = () => {
-    const bursts = [];
-    let cd = 0;
     return (ctx, w, h, t, dt) => {
-        const a = KW.col.a, b = KW.col.pal[0], mid = h / 2;
-        const wells = w > 320 ? [w * 0.22, w * 0.5, w * 0.78] : [w * 0.35, w * 0.68];
+        const a = KW.col.a;
+        const b = KW.col.pal[0] || [248, 113, 113];
+        const mid = h / 2;
+        const isLt = !!KW.col.light;
 
-        // 1. Counter-propagating collider beam line + travelling proton packets
-        ctx.strokeStyle = rgba(a, 0.16); ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
-        const mw = Math.max(w, 1);
-        for (let i = 0; i < 4; i++) {
-            const bx1 = ((t * 160 + i * (mw / 4)) % mw);
-            const bx2 = (mw - ((t * 160 + i * (mw / 4)) % mw));
-            ctx.fillStyle = rgba(a, 0.9);
-            ctx.fillRect(bx1 - 4, mid - 1, 8, 2);
-            ctx.fillStyle = rgba(b, 0.9);
-            ctx.fillRect(bx2 - 4, mid - 1, 8, 2);
-        }
+        // Fission reaction sites across the nav bar strip
+        const sites = w > 360 ? [w * 0.22, w * 0.54, w * 0.82] : (w > 220 ? [w * 0.32, w * 0.72] : [w * 0.5]);
 
-        // 2. Keplerian elliptical orbits & satellites around each gravity well
-        wells.forEach((wx, idx) => {
-            const rx = Math.min(34, w * 0.08), ry = h * 0.38;
-            const tilt = (idx % 2 === 0 ? 0.28 : -0.28);
-            ctx.save();
-            ctx.translate(wx, mid);
-            ctx.rotate(tilt);
-            ctx.strokeStyle = rgba(a, 0.32); ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.stroke();
+        // 1. Moderator neutron guide line
+        ctx.strokeStyle = rgba(a, 0.14);
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath();
+        ctx.moveTo(0, mid);
+        ctx.lineTo(w, mid);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-            // Orbiting body with true-anomaly speed boost near perihelion
-            const ang = t * (2.6 + idx * 0.5) + idx * 2.1;
-            const ox = rx * Math.cos(ang), oy = ry * Math.sin(ang);
-            ctx.strokeStyle = rgba(a, 0.75); ctx.lineWidth = 1.6;
-            ctx.beginPath();
-            for (let s = 0; s < 10; s++) {
-                const a0 = ang - s * 0.09;
-                s ? ctx.lineTo(rx * Math.cos(a0), ry * Math.sin(a0)) : ctx.moveTo(ox, oy);
+        // 2. Render each Uranium-235 fission site
+        sites.forEach((cx, idx) => {
+            // Stagger phase across sites for continuous cascading fission
+            const period = 3.6;
+            const p = ((t / period + idx * 0.37) % 1);
+
+            // Subtle base coordinates for nucleon clusters
+            // Protons (accent cyan) and neutrons (bright/white)
+            const NUCLEONS = [
+                { dx: 0, dy: 0, isP: true },
+                { dx: -2.8, dy: -2.0, isP: false },
+                { dx: 2.8, dy: -1.8, isP: true },
+                { dx: -2.5, dy: 2.2, isP: true },
+                { dx: 2.6, dy: 2.0, isP: false },
+                { dx: 0, dy: -3.4, isP: true },
+                { dx: 0, dy: 3.2, isP: false },
+                { dx: -4.6, dy: 0.2, isP: true },
+                { dx: 4.5, dy: -0.2, isP: false },
+                { dx: -1.4, dy: 1.2, isP: false },
+                { dx: 1.5, dy: -1.0, isP: true },
+            ];
+
+            // STAGE 1: Incident thermal neutron approaching (0.0 <= p < 0.28)
+            if (p < 0.28) {
+                const prog = p / 0.28;
+                const nDist = 48 * (1 - prog);
+                const nx = cx - nDist;
+                const ny = mid + Math.sin(prog * 12) * 0.8;
+
+                // Incoming neutron
+                ctx.fillStyle = isLt ? "rgba(2, 132, 199, 0.95)" : "#ffffff";
+                ctx.beginPath();
+                ctx.arc(nx, ny, 1.8, 0, TAU);
+                ctx.fill();
+
+                // Neutron speed trace
+                ctx.strokeStyle = rgba(a, 0.45 * prog);
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(nx - 8, ny);
+                ctx.lineTo(nx, ny);
+                ctx.stroke();
+
+                // Bound resting Uranium-235 nucleus (gentle liquid drop breathing)
+                const breathe = 1 + 0.08 * Math.sin(t * 8 + idx);
+                ctx.fillStyle = rgba(a, 0.16);
+                ctx.strokeStyle = rgba(a, 0.65);
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.arc(cx, mid, 6.8 * breathe, 0, TAU);
+                ctx.fill();
+                ctx.stroke();
+
+                // Nucleon cluster
+                NUCLEONS.forEach((nuc) => {
+                    ctx.fillStyle = nuc.isP ? rgba(a, 0.95) : (isLt ? "rgba(100,116,139,0.9)" : "rgba(255,255,255,0.85)");
+                    ctx.beginPath();
+                    ctx.arc(cx + nuc.dx * breathe, mid + nuc.dy * breathe, 1.3, 0, TAU);
+                    ctx.fill();
+                });
+
+                // Isotope label
+                if (w > 260) {
+                    ctx.font = '500 7.5px "JetBrains Mono", monospace';
+                    ctx.fillStyle = isLt ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.45)";
+                    ctx.fillText("²³⁵U", cx - 7, mid - 10);
+                }
             }
-            ctx.stroke();
-            ctx.fillStyle = KW.col.light ? rgba(a, 1) : "#fff"; ctx.beginPath(); ctx.arc(ox, oy, 2.2, 0, TAU); ctx.fill();
+            // STAGE 2: Compound nucleus excitation & liquid-drop necking (0.28 <= p < 0.44)
+            else if (p < 0.44) {
+                const prog = (p - 0.28) / 0.16;
+                // Necking deformation distance
+                const d = prog * 8.5;
+                const wobble = Math.sin(prog * 24) * 1.5;
 
-            // Central gravity well core
-            ctx.fillStyle = rgba(a, 0.95); ctx.beginPath(); ctx.arc(0, 0, 3.2, 0, TAU); ctx.fill();
-            ctx.strokeStyle = rgba(a, 0.35); ctx.beginPath(); ctx.arc(0, 0, 6 + 2 * Math.sin(t * 4 + idx), 0, TAU); ctx.stroke();
-            ctx.restore();
+                const lx = cx - d;
+                const rx = cx + d * 1.2;
+                const rLeft = 5.6;
+                const rRight = 4.4; // Asymmetric fission: heavier Barium left, lighter Krypton right
+                const neckW = Math.max(1.2, 5.0 * (1 - prog * 0.85));
+
+                // Liquid drop envelope with necking
+                ctx.fillStyle = rgba(a, 0.25 + prog * 0.2);
+                ctx.strokeStyle = rgba(a, 0.85);
+                ctx.lineWidth = 1.4;
+
+                ctx.beginPath();
+                ctx.arc(lx, mid, rLeft, Math.PI * 0.5, Math.PI * 1.5);
+                ctx.lineTo(cx, mid - neckW);
+                ctx.arc(rx, mid, rRight, -Math.PI * 0.5, Math.PI * 0.5);
+                ctx.lineTo(cx, mid + neckW);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // High-energy excitation core flicker
+                ctx.fillStyle = KW.col.light ? rgba(a, 0.9) : "rgba(255,255,255,0.9)";
+                ctx.beginPath();
+                ctx.arc(cx, mid + wobble, 1.8 + prog * 1.2, 0, TAU);
+                ctx.fill();
+
+                // Distributed nucleons in lobes
+                NUCLEONS.forEach((nuc, ni) => {
+                    const isLeft = ni < 6;
+                    const baseCx = isLeft ? lx : rx;
+                    const scale = isLeft ? 0.75 : 0.65;
+                    ctx.fillStyle = nuc.isP ? rgba(a, 0.95) : (isLt ? "rgba(100,116,139,0.9)" : "rgba(255,255,255,0.85)");
+                    ctx.beginPath();
+                    ctx.arc(baseCx + nuc.dx * scale, mid + nuc.dy * scale, 1.2, 0, TAU);
+                    ctx.fill();
+                });
+
+                if (w > 260) {
+                    ctx.font = 'bold 7.5px "JetBrains Mono", monospace';
+                    ctx.fillStyle = rgba(a, 0.9);
+                    ctx.fillText("²³⁶U*", cx - 9, mid - 11);
+                }
+            }
+            // STAGE 3: Scission, Coulomb explosion, gamma flash & 3 prompt neutrons (0.44 <= p < 0.76)
+            else if (p < 0.76) {
+                const tau = (p - 0.44) / 0.32;
+                const invTau = 1 - tau;
+
+                // 1. Gamma radiation expanding flash
+                const rGamma = tau * 28;
+                ctx.save();
+                ctx.strokeStyle = rgba(a, invTau * 0.75);
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.arc(cx, mid, rGamma, 0, TAU);
+                ctx.stroke();
+                ctx.restore();
+
+                // 2. Coulomb explosion fragments (momentum conservation: m1*v1 = m2*v2)
+                // Heavier fragment: 141-Ba
+                const dBa = 8.5 + tau * 26;
+                const baX = cx - dBa;
+                const baY = mid - tau * 2.2;
+                // Lighter fragment: 92-Kr (flies ~1.5x faster)
+                const dKr = 10.2 + tau * 38;
+                const krX = cx + dKr;
+                const krY = mid + tau * 1.8;
+
+                // Recoil ionisation tracks
+                ctx.strokeStyle = rgba(a, invTau * 0.45);
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(cx, mid);
+                ctx.lineTo(baX, baY);
+                ctx.moveTo(cx, mid);
+                ctx.lineTo(krX, krY);
+                ctx.stroke();
+
+                // Daughter nucleus: 141-Ba
+                ctx.fillStyle = rgba(a, invTau * 0.95);
+                ctx.beginPath();
+                ctx.arc(baX, baY, 4.2 * invTau + 0.8, 0, TAU);
+                ctx.fill();
+
+                // Daughter nucleus: 92-Kr
+                ctx.fillStyle = rgba(b, invTau * 0.95);
+                ctx.beginPath();
+                ctx.arc(krX, krY, 3.4 * invTau + 0.8, 0, TAU);
+                ctx.fill();
+
+                // Fragment labels
+                if (w > 260 && tau < 0.75) {
+                    ctx.font = '6.5px "JetBrains Mono", monospace';
+                    ctx.fillStyle = rgba(a, invTau * 0.85);
+                    ctx.fillText("¹⁴¹Ba", baX - 8, baY - 6);
+                    ctx.fillStyle = rgba(b, invTau * 0.85);
+                    ctx.fillText("⁹²Kr", krX - 2, krY - 6);
+                }
+
+                // 3. Three fast prompt neutrons ejected at high velocity
+                const NEUTRONS = [
+                    { ang: -0.85, spd: 46 }, // top-right
+                    { ang: 2.35,  spd: 42 }, // bottom-left
+                    { ang: 0.95,  spd: 48 }, // bottom-right
+                ];
+                NEUTRONS.forEach((n) => {
+                    const nx = cx + Math.cos(n.ang) * tau * n.spd;
+                    const ny = mid + Math.sin(n.ang) * tau * n.spd * 0.75;
+
+                    ctx.fillStyle = isLt ? "rgba(2, 132, 199, 0.95)" : "#ffffff";
+                    ctx.beginPath();
+                    ctx.arc(nx, ny, 1.5, 0, TAU);
+                    ctx.fill();
+
+                    // Neutron path streak
+                    ctx.strokeStyle = isLt ? "rgba(2, 132, 199, 0.4)" : "rgba(255, 255, 255, 0.4)";
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, mid);
+                    ctx.lineTo(nx, ny);
+                    ctx.stroke();
+                });
+            }
+            // STAGE 4: De-excitation & Target Reformation (0.76 <= p <= 1.0)
+            else {
+                const tau = (p - 0.76) / 0.24;
+                // Re-forming nucleus condensing back
+                const r = 6.8 * tau;
+                ctx.fillStyle = rgba(a, 0.16 * tau);
+                ctx.strokeStyle = rgba(a, 0.65 * tau);
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.arc(cx, mid, r, 0, TAU);
+                ctx.fill();
+                ctx.stroke();
+
+                NUCLEONS.forEach((nuc) => {
+                    ctx.fillStyle = nuc.isP ? rgba(a, 0.95 * tau) : (isLt ? `rgba(100,116,139,${0.9 * tau})` : `rgba(255,255,255,${0.85 * tau})`);
+                    ctx.beginPath();
+                    ctx.arc(cx + nuc.dx * tau, mid + nuc.dy * tau, 1.3 * tau, 0, TAU);
+                    ctx.fill();
+                });
+            }
         });
 
-        // 3. Relativistic magnetic-field collision shower tracks (r = mv / qB)
-        if ((cd -= dt) <= 0 && bursts.length < 4) {
-            cd = 0.55;
-            const cx = wells[(Math.random() * wells.length) | 0];
-            bursts.push({
-                x: cx, age: 0,
-                tracks: Array.from({ length: 7 }, () => ({
-                    a0: Math.random() * TAU,
-                    curv: (Math.random() < 0.5 ? 1 : -1) * (1.2 + Math.random() * 1.8),
-                    len: 14 + Math.random() * 18,
-                    alt: Math.random() < 0.4
-                }))
-            });
+        // 3. Top-left telemetry readout
+        if (w > 280) {
+            ctx.font = '500 8px "JetBrains Mono", ui-monospace, monospace';
+            ctx.fillStyle = isLt ? "rgba(15,23,42,0.65)" : "rgba(255,255,255,0.65)";
+            ctx.fillText("²³⁵U + n → ¹⁴¹Ba + ⁹²Kr + 3n · Q ≈ 200 MeV", 6, 9);
         }
-        for (const q of bursts) {
-            q.age += dt * 1.9;
-            const p = Math.min(1, q.age), alpha = (1 - p) * 0.85;
-            ctx.strokeStyle = rgba(a, alpha * 0.6); ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.arc(q.x, mid, p * 16, 0, TAU); ctx.stroke();
-            for (const tr of q.tracks) {
-                ctx.strokeStyle = rgba(tr.alt ? b : a, alpha); ctx.lineWidth = 1.2;
-                ctx.beginPath();
-                for (let s = 0; s <= 8; s++) {
-                    const f = (s / 8) * p;
-                    const ang = tr.a0 + tr.curv * f;
-                    const px = q.x + Math.cos(ang) * tr.len * f;
-                    const py = mid + Math.sin(ang) * tr.len * f * 0.65;
-                    s ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-                }
-                ctx.stroke();
-            }
-        }
-        while (bursts.length && bursts[0].age >= 1) bursts.shift();
     };
 };
 
