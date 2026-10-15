@@ -56,14 +56,17 @@ html[data-domain="hub"] { --a: var(--rgb-hub); }
 html, .snap-section, .snap-dot, .pill, .snap-cta-btn { --accent: rgb(var(--a)); }
 
 /* ---------- Scroll reveal ---------- */
-[data-reveal], [data-hero] {
+[data-reveal] {
     opacity: 0;
     transform: translateY(22px);
     transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
-[data-reveal].revealed, [data-hero].revealed {
+[data-reveal].revealed, [data-hero] {
     opacity: 1;
     transform: translateY(0);
+}
+[data-hero] {
+    transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 html.tt,

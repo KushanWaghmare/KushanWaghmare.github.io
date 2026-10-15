@@ -251,8 +251,8 @@
         };
     })();
 
-    /* ---------- project page template ---------- */
     const tags = (a) => a.map((t) => `<span class="tag">${t}</span>`).join("");
+    const pad = (n) => String(n + 1).padStart(2, "0");
 
     const projectPage = (p) => {
         const d = SITE.domains[p.domain], sib = list(p.domain), i = sib.indexOf(p);
@@ -495,8 +495,10 @@
     let revealIO = null;
     const observeReveals = () => {
         if (revealIO) revealIO.disconnect();
+        // Always immediately reveal hero elements in the active/hero section so they never stay blank
+        document.querySelectorAll(".snap-section:first-of-type [data-hero], .snap-section.hero [data-hero], [data-hero]").forEach((el) => el.classList.add("revealed"));
         if (REDUCED) {
-            document.querySelectorAll("[data-reveal], [data-hero]").forEach((el) => el.classList.add("revealed"));
+            document.querySelectorAll("[data-reveal]").forEach((el) => el.classList.add("revealed"));
             return;
         }
         revealIO = new IntersectionObserver((entries) => {
@@ -506,8 +508,8 @@
                     revealIO.unobserve(e.target);
                 }
             });
-        }, { threshold: 0.1 });
-        document.querySelectorAll("[data-reveal], [data-hero]").forEach((el) => revealIO.observe(el));
+        }, { threshold: 0.05 });
+        document.querySelectorAll("[data-reveal]").forEach((el) => revealIO.observe(el));
     };
 
     /* ---------- snap observer & supersonic warp engine ---------- */
