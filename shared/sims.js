@@ -474,55 +474,409 @@ SIMS.quant = (c) => {
 };
 
 /* ----------------------------------------------------------------------- CS
-   Elementary cellular automaton (Rule 110 is Turing-complete). Rows scroll upward; the
-   newest row is at the bottom. Hover perturbs the newest row; click cycles the rule. */
+   Compiler Control Flow Graph (SSA CFG) & Discrete TTL Micro-Pipeline.
+   Basic blocks in Static Single Assignment form with phi-placement, dominance
+   frontiers, and loop back-edges. Micro-instruction packets stream through
+   the pipeline; hover probes block IR; click triggers a clock interrupt (IRQ). */
 SIMS.cs = (c) => {
-    const ctx = c.getContext("2d"), off = document.createElement("canvas"), octx = off.getContext("2d");
-    const CELL = 5, RULES = [110, 30, 90, 54], ROWS_PER_S = 28;
-    let cols = 0, rows = 0, grid, head = 0, img, W = 0, H = 0, acc = 0, ri = 0;
+    const ctx = c.getContext("2d");
+    let W = 0, H = 0, clkCycle = 1024, probeIdx = -1, irqWave = -1;
 
-    const next = () => {
-        const prev = head * cols, nh = (head + 1) % rows, cur = nh * cols, rule = RULES[ri];
-        for (let i = 0; i < cols; i++) {
-            const idx = (grid[prev + ((i - 1 + cols) % cols)] << 2) | (grid[prev + i] << 1) | grid[prev + ((i + 1) % cols)];
-            grid[cur + i] = (rule >> idx) & 1;
-        }
-        head = nh;
+    // Basic Blocks in SSA form
+    const NODES = [
+        { id: "bb.entry", label: "ENTRY", sub: "%0 = alloca i32", rx: 0.10, ry: 0.50, ir: ["entry:", "  %0 = alloca i32", "  store i32 0, %0", "  br label %bb.phi"] },
+        { id: "bb.fetch", label: "FETCH", sub: "%pc = ld [%reg]", rx: 0.24, ry: 0.50, ir: ["fetch:", "  %pc = load i32, %reg", "  %op = fetch [pc]", "  br label %bb.phi"] },
+        { id: "bb.phi",   label: "φ-NODE", sub: "%x = phi [%0,%x1]", rx: 0.38, ry: 0.50, ir: ["bb.phi:", "  %x = phi i32 [%0, %entry],", "                [%x1, %bb.latch]", "  br label %bb.alu"] },
+        { id: "bb.alu",   label: "ALU/OP", sub: "%x1 = add %x, 1", rx: 0.53, ry: 0.34, ir: ["bb.alu:", "  %x1 = add nsw i32 %x, 1", "  %t0 = xor i32 %x1, 0x5A", "  br label %bb.cmp"] },
+        { id: "bb.cmp",   label: "BRANCH", sub: "br %c, loop, exit", rx: 0.69, ry: 0.34, ir: ["bb.cmp:", "  %c = icmp slt i32 %x1, 16", "  br i1 %c, label %bb.latch,", "            label %bb.emit"] },
+        { id: "bb.latch", label: "LATCH", sub: "loop back-edge", rx: 0.53, ry: 0.70, ir: ["bb.latch:", "  store i32 %x1, [0x20]", "  fence seq_cst", "  br label %bb.phi"] },
+        { id: "bb.emit",  label: "CODEGEN", sub: "mov rax, %x1", rx: 0.83, ry: 0.50, ir: ["bb.emit:", "  mov rax, [rbp-8]", "  shl rax, 2", "  ret rax"] },
+        { id: "bb.exit",  label: "EXIT", sub: "ret void", rx: 0.94, ry: 0.50, ir: ["exit:", "  leave", "  ret", "  ; HALT"] },
+    ];
+
+    // Directed control flow edges (from -> to, type, label)
+    const EDGES = [
+        { u: 0, v: 1, type: "flow", lbl: "" },
+        { u: 1, v: 2, type: "flow", lbl: "" },
+        { u: 2, v: 3, type: "flow", lbl: "" },
+        { u: 3, v: 4, type: "flow", lbl: "" },
+        { u: 4, v: 5, type: "branch-true", lbl: "true (loop)" },
+        { u: 5, v: 2, type: "back-edge", lbl: "back-edge" },
+        { u: 4, v: 6, type: "branch-false", lbl: "false" },
+        { u: 6, v: 7, type: "flow", lbl: "" },
+    ];
+
+    // Micro-instruction tokens
+    const OPCODES = ["MOV %r0, 0x1", "ADD %r1, %r2", "PHI [%0, %3]", "CMP %eax, 16", "JNZ .loop", "XOR %r3, 0xFF", "LDR [0x80]", "STR %r0", "RET"];
+    const PACKETS = [];
+    const spawnPacket = (edgeIdx) => {
+        PACKETS.push({
+            e: edgeIdx,
+            progress: 0,
+            speed: 0.35 + Math.random() * 0.25,
+            op: OPCODES[Math.floor(Math.random() * OPCODES.length)],
+        });
     };
-    const tag = () => KW.tag(`Elementary cellular automaton · Rule ${RULES[ri]} · click to cycle the rule`, c);
+
+    for (let i = 0; i < 6; i++) {
+        const eIdx = Math.floor(Math.random() * EDGES.length);
+        PACKETS.push({
+            e: eIdx,
+            progress: Math.random(),
+            speed: 0.35 + Math.random() * 0.25,
+            op: OPCODES[Math.floor(Math.random() * OPCODES.length)],
+        });
+    }
+
+    const flash = new Float32Array(NODES.length);
 
     KW.fit(c, (w, h, dpr) => {
-        W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        cols = Math.ceil(W / CELL); rows = Math.ceil(H / CELL);
-        off.width = cols; off.height = rows; img = octx.createImageData(cols, rows);
-        grid = new Uint8Array(cols * rows); head = 0;
-        for (let i = 0; i < cols; i++) grid[i] = Math.random() < 0.5 ? 1 : 0;
-        for (let r = 1; r < rows; r++) next();
+        W = w; H = h;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     });
-    KW.onClick(c, () => { ri = (ri + 1) % RULES.length; tag(); });
-    tag();
+
+    const triggerClock = () => {
+        clkCycle += 1;
+        irqWave = 0;
+        spawnPacket(0);
+        if (Math.random() < 0.5) spawnPacket(4);
+        for (let i = 0; i < NODES.length; i++) flash[i] = 1.0;
+        KW.tag(`Compiler SSA CFG · CLK IRQ fired (#${clkCycle}) · 8 basic blocks · click to trigger clock cycle`, c);
+    };
+
+    KW.onClick(c, triggerClock);
+    KW.tag(`Compiler SSA control flow graph & TTL pipeline · dominance frontiers · click to trigger clock cycle`, c);
+
+    let frame = 0;
     KW.loop(c, (t, dt) => {
-        acc += dt * ROWS_PER_S;
-        const p = KW.local(c);
-        while (acc >= 1) {
-            next(); acc -= 1;
-            if (p.x > 0 && p.x < W && p.y > 0 && p.y < H) {
-                const ci = Math.floor(p.x / CELL);
-                for (let d = -2; d <= 2; d++) if (Math.random() < 0.5) grid[head * cols + ((ci + d + cols) % cols)] ^= 1;
-            }
-        }
-        const a = KW.col.a, d = img.data;
-        for (let yy = 0; yy < rows; yy++) {
-            const src = ((head + 1 + yy) % rows) * cols, al = 40 + 170 * (yy / rows);
-            for (let xx = 0; xx < cols; xx++) {
-                const o = (yy * cols + xx) * 4, on = grid[src + xx];
-                d[o] = a[0]; d[o + 1] = a[1]; d[o + 2] = a[2]; d[o + 3] = on ? al : 0;
-            }
-        }
-        octx.putImageData(img, 0, 0);
         ctx.clearRect(0, 0, W, H);
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(off, 0, 0, cols, rows, 0, 0, cols * CELL, rows * CELL);
+        const a = KW.col.a;
+        const isLt = !!KW.col.light;
+        const p = KW.local(c);
+        const inside = p.x > 0 && p.x < W && p.y > 0 && p.y < H;
+
+        if (irqWave >= 0) {
+            irqWave += dt * 1.8;
+            if (irqWave > 2.2) irqWave = -1;
+        }
+
+        const isNarrow = W < 760;
+        const pts = NODES.map((n, i) => {
+            let x, y;
+            if (isNarrow) {
+                const col = i % 2;
+                const row = Math.floor(i / 2);
+                x = W * (0.22 + col * 0.56);
+                y = H * (0.16 + row * 0.22);
+            } else {
+                x = W * n.rx;
+                y = H * n.ry;
+            }
+            return { x, y };
+        });
+
+        probeIdx = -1;
+        if (inside) {
+            for (let i = 0; i < pts.length; i++) {
+                if (Math.hypot(p.x - pts[i].x, p.y - pts[i].y) < 32) {
+                    probeIdx = i;
+                    break;
+                }
+            }
+        }
+
+        for (let i = 0; i < NODES.length; i++) {
+            if (flash[i] > 0) flash[i] = Math.max(0, flash[i] - dt * 2.8);
+        }
+
+        // 1. Logic analyser grid
+        ctx.save();
+        ctx.strokeStyle = isLt ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.035)";
+        ctx.lineWidth = 1;
+        const gridStep = 40;
+        for (let gx = gridStep; gx < W; gx += gridStep) {
+            ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
+        }
+        for (let gy = gridStep; gy < H; gy += gridStep) {
+            ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+        }
+        ctx.restore();
+
+        // 2. IRQ ripple pulse
+        if (irqWave >= 0) {
+            const maxR = Math.max(W, H) * 0.85;
+            const r = irqWave * maxR;
+            const alpha = Math.max(0, (1 - irqWave / 2.2) * 0.45);
+            ctx.save();
+            ctx.strokeStyle = rgba(a, alpha);
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([8, 8]);
+            ctx.beginPath();
+            ctx.arc(W * 0.5, H * 0.5, r, 0, TAU);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        const getEdgePoints = (e) => {
+            const p1 = pts[e.u], p2 = pts[e.v];
+            if (e.type === "back-edge") {
+                const mx = (p1.x + p2.x) * 0.5;
+                const my = Math.max(p1.y, p2.y) + (isNarrow ? 50 : 65);
+                return { p1, p2, cx1: mx, cy1: my, cx2: mx, cy2: my, isCurved: true };
+            }
+            if (e.type === "branch-true") {
+                return { p1, p2, cx1: p1.x + 30, cy1: p2.y, cx2: p1.x + 30, cy2: p2.y, isCurved: true };
+            }
+            if (e.type === "branch-false") {
+                return { p1, p2, cx1: p2.x - 30, cy1: p1.y, cx2: p2.x - 30, cy2: p1.y, isCurved: true };
+            }
+            return { p1, p2, cx1: (p1.x + p2.x) * 0.5, cy1: (p1.y + p2.y) * 0.5, isCurved: false };
+        };
+
+        const pointOnEdge = (edInfo, s) => {
+            if (!edInfo.isCurved) {
+                return {
+                    x: edInfo.p1.x + (edInfo.p2.x - edInfo.p1.x) * s,
+                    y: edInfo.p1.y + (edInfo.p2.y - edInfo.p1.y) * s,
+                };
+            }
+            const t = s, u = 1 - t;
+            const x = u*u*u * edInfo.p1.x + 3*u*u*t * edInfo.cx1 + 3*u*t*t * edInfo.cx2 + t*t*t * edInfo.p2.x;
+            const y = u*u*u * edInfo.p1.y + 3*u*u*t * edInfo.cy1 + 3*u*t*t * edInfo.cy2 + t*t*t * edInfo.p2.y;
+            return { x, y };
+        };
+
+        // 3. Draw CFG Edges
+        EDGES.forEach((e) => {
+            const info = getEdgePoints(e);
+            const isHighlighted = (probeIdx === e.u || probeIdx === e.v);
+            const isBack = e.type === "back-edge";
+
+            ctx.save();
+            ctx.lineWidth = isHighlighted ? 2.5 : (isBack ? 1.6 : 1.4);
+            ctx.strokeStyle = isHighlighted
+                ? rgba(a, 0.95)
+                : (isBack ? rgba(a, 0.55) : (isLt ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.22)"));
+
+            if (isBack) ctx.setLineDash([5, 4]);
+
+            ctx.beginPath();
+            ctx.moveTo(info.p1.x, info.p1.y);
+            if (info.isCurved) {
+                ctx.bezierCurveTo(info.cx1, info.cy1, info.cx2, info.cy2, info.p2.x, info.p2.y);
+            } else {
+                ctx.lineTo(info.p2.x, info.p2.y);
+            }
+            ctx.stroke();
+
+            const mid = pointOnEdge(info, 0.58);
+            const midPre = pointOnEdge(info, 0.53);
+            const angle = Math.atan2(mid.y - midPre.y, mid.x - midPre.x);
+            const arrowLen = isHighlighted ? 8 : 6;
+            ctx.setLineDash([]);
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.beginPath();
+            ctx.moveTo(mid.x, mid.y);
+            ctx.lineTo(mid.x - arrowLen * Math.cos(angle - 0.45), mid.y - arrowLen * Math.sin(angle - 0.45));
+            ctx.lineTo(mid.x - arrowLen * Math.cos(angle + 0.45), mid.y - arrowLen * Math.sin(angle + 0.45));
+            ctx.closePath();
+            ctx.fill();
+
+            if (e.lbl && W > 640) {
+                ctx.font = "9px 'JetBrains Mono', monospace";
+                ctx.fillStyle = isLt ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.45)";
+                ctx.fillText(e.lbl, mid.x + 6, mid.y - 6);
+            }
+            ctx.restore();
+        });
+
+        // 4. Update & Render Streaming Instruction Packets
+        for (let i = PACKETS.length - 1; i >= 0; i--) {
+            const pk = PACKETS[i];
+            pk.progress += dt * pk.speed * (irqWave >= 0 ? 1.8 : 1.0);
+            if (pk.progress >= 1.0) {
+                const destNode = EDGES[pk.e].v;
+                flash[destNode] = 0.85;
+
+                if (destNode === 4) {
+                    const nextEdge = Math.random() < 0.65 ? 4 : 6;
+                    pk.e = nextEdge;
+                    pk.progress = 0;
+                    pk.speed = 0.35 + Math.random() * 0.25;
+                } else if (destNode === 7) {
+                    PACKETS.splice(i, 1);
+                    if (PACKETS.length < 5) spawnPacket(0);
+                    continue;
+                } else {
+                    const outEdges = [];
+                    for (let ei = 0; ei < EDGES.length; ei++) {
+                        if (EDGES[ei].u === destNode) outEdges.push(ei);
+                    }
+                    if (outEdges.length > 0) {
+                        pk.e = outEdges[Math.floor(Math.random() * outEdges.length)];
+                        pk.progress = 0;
+                    } else {
+                        PACKETS.splice(i, 1);
+                        continue;
+                    }
+                }
+            }
+
+            const info = getEdgePoints(EDGES[pk.e]);
+            const pos = pointOnEdge(info, pk.progress);
+
+            ctx.save();
+            ctx.fillStyle = rgba(a, 0.95);
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 3.2, 0, TAU);
+            ctx.fill();
+
+            ctx.fillStyle = rgba(a, 0.25);
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 6.5, 0, TAU);
+            ctx.fill();
+
+            if (W > 840) {
+                ctx.font = "8.5px 'JetBrains Mono', monospace";
+                ctx.fillStyle = isLt ? "rgba(0,0,0,0.65)" : "rgba(255,255,255,0.65)";
+                ctx.fillText(pk.op, pos.x + 8, pos.y - 4);
+            }
+            ctx.restore();
+        }
+
+        while (PACKETS.length < 5) spawnPacket(Math.floor(Math.random() * 4));
+
+        // 5. Render Basic Block (CFG Node) Boxes
+        pts.forEach((pt, i) => {
+            const n = NODES[i];
+            const isHovered = (probeIdx === i);
+            const fl = flash[i];
+            const bw = isNarrow ? 68 : 88;
+            const bh = 38;
+            const bx = pt.x - bw / 2;
+            const by = pt.y - bh / 2;
+
+            ctx.save();
+
+            if (isHovered || fl > 0.05) {
+                ctx.shadowColor = rgba(a, isHovered ? 0.6 : fl * 0.4);
+                ctx.shadowBlur = 12;
+            }
+
+            ctx.fillStyle = isLt
+                ? (isHovered ? "rgba(240, 245, 250, 0.96)" : "rgba(255, 255, 255, 0.88)")
+                : (isHovered ? "rgba(18, 24, 34, 0.96)" : "rgba(10, 14, 22, 0.86)");
+            ctx.strokeStyle = isHovered
+                ? rgba(a, 0.98)
+                : (fl > 0.1 ? rgba(a, 0.8) : (isLt ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.18)"));
+            ctx.lineWidth = isHovered ? 1.8 : 1.2;
+
+            const rad = 4;
+            ctx.beginPath();
+            ctx.moveTo(bx + rad, by);
+            ctx.lineTo(bx + bw - rad, by);
+            ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + rad);
+            ctx.lineTo(bx + bw, by + bh - rad);
+            ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - rad, by + bh);
+            ctx.lineTo(bx + rad, by + bh);
+            ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - rad);
+            ctx.lineTo(bx, by + rad);
+            ctx.quadraticCurveTo(bx, by, bx + rad, by);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = isHovered ? rgba(a, 0.22) : rgba(a, 0.08);
+            ctx.fillRect(bx + 1, by + 1, bw - 2, 13);
+
+            ctx.font = "bold 9px 'JetBrains Mono', monospace";
+            ctx.fillStyle = isHovered ? rgba(a, 1.0) : (isLt ? "#1e293b" : "#f1f5f9");
+            ctx.textAlign = "center";
+            ctx.fillText(n.label, pt.x, by + 10);
+
+            ctx.font = "8px 'JetBrains Mono', monospace";
+            ctx.fillStyle = isLt ? "rgba(30,41,59,0.7)" : "rgba(241,245,249,0.65)";
+            ctx.fillText(n.sub, pt.x, by + 26);
+            ctx.textAlign = "left";
+
+            ctx.fillStyle = fl > 0.1 ? rgba(a, 1.0) : (isLt ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.3)");
+            ctx.beginPath();
+            ctx.arc(bx + 7, by + 7, 2.0, 0, TAU);
+            ctx.fill();
+
+            ctx.restore();
+        });
+
+        // 6. Draw Probe HUD tooltip if a node is hovered
+        if (probeIdx >= 0 && inside) {
+            const n = NODES[probeIdx];
+            const pt = pts[probeIdx];
+            const hudW = 210;
+            const hudH = 82;
+            let hx = pt.x + 50;
+            let hy = pt.y - 30;
+            if (hx + hudW > W - 15) hx = pt.x - hudW - 50;
+            if (hy + hudH > H - 15) hy = H - hudH - 15;
+            if (hy < 15) hy = 15;
+
+            ctx.save();
+            ctx.fillStyle = isLt ? "rgba(255, 255, 255, 0.96)" : "rgba(8, 12, 18, 0.95)";
+            ctx.strokeStyle = rgba(a, 0.85);
+            ctx.lineWidth = 1.4;
+            ctx.shadowColor = "rgba(0,0,0,0.3)";
+            ctx.shadowBlur = 10;
+            ctx.fillRect(hx, hy, hudW, hudH);
+            ctx.strokeRect(hx, hy, hudW, hudH);
+
+            ctx.fillStyle = rgba(a, 0.18);
+            ctx.fillRect(hx, hy, hudW, 16);
+            ctx.font = "bold 9px 'JetBrains Mono', monospace";
+            ctx.fillStyle = rgba(a, 1.0);
+            ctx.fillText(`PROBE: ${n.id} · DOM(df): {${n.id}}`, hx + 8, hy + 12);
+
+            ctx.font = "8.5px 'JetBrains Mono', monospace";
+            ctx.fillStyle = isLt ? "#0f172a" : "#e2e8f0";
+            n.ir.forEach((line, li) => {
+                ctx.fillText(line, hx + 8, hy + 28 + li * 13);
+            });
+
+            ctx.strokeStyle = rgba(a, 0.6);
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(pt.x, pt.y);
+            ctx.lineTo(hx > pt.x ? hx : hx + hudW, hy + 20);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // 7. Micro-Telemetry HUD Bar
+        if (W > 540) {
+            ctx.save();
+            ctx.font = "9.5px 'JetBrains Mono', monospace";
+            const clkFreq = (3.98 + 0.04 * Math.sin(t * 3.5)).toFixed(2);
+            const hudText = `SYS_CLK: ${clkFreq} MHz · SSA DOMINANCE: PASS · PIPELINE: IF·ID·EX·MEM·WB · CYC: #${clkCycle}`;
+            const tw = ctx.measureText(hudText).width;
+            const hbx = W - tw - 24;
+            const hby = H - 22;
+
+            ctx.fillStyle = isLt ? "rgba(255,255,255,0.78)" : "rgba(10,14,22,0.75)";
+            ctx.fillRect(hbx - 6, hby - 12, tw + 12, 18);
+            ctx.strokeStyle = isLt ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)";
+            ctx.strokeRect(hbx - 6, hby - 12, tw + 12, 18);
+
+            ctx.fillStyle = rgba(a, 0.95);
+            ctx.beginPath();
+            ctx.arc(hbx, hby - 3, 2.5, 0, TAU);
+            ctx.fill();
+
+            ctx.fillStyle = isLt ? "rgba(15,23,42,0.8)" : "rgba(241,245,249,0.8)";
+            ctx.fillText(hudText, hbx + 8, hby);
+            ctx.restore();
+        }
+
+        if (++frame % 30 === 0 && !inside) {
+            KW.tag(`Compiler SSA control flow graph & TTL pipeline · dominance frontiers · click to trigger clock cycle`, c);
+        }
     });
 };
 

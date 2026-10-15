@@ -37,7 +37,7 @@ const SITE = {
             label: "Computer Science · Systems & compilers",
             blurb: "Compilers and machine architecture, from grammars and SSA form down to TTL gates on a breadboard.",
             eq: r`\frac{\Gamma\vdash e_1:\mathtt{int}\qquad\Gamma\vdash e_2:\mathtt{int}}{\Gamma\vdash e_1+e_2:\mathtt{int}}`,
-            tag: "Elementary cellular automaton · click to cycle the rule",
+            tag: "Compiler SSA control flow graph & TTL pipeline · dominance frontiers · click to trigger clock cycle",
         },
     },
 
