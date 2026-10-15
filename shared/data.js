@@ -21,9 +21,9 @@ const SITE = {
         datascience: {
             name: "Data Science", short: "Data", file: "datascience.html",
             label: "Data Science · Statistical learning & analytics",
-            blurb: "Statistical learning and non-convex optimisation: loss surfaces, Langevin SGD, regularisation and spectral methods.",
-            eq: r`\hat{\boldsymbol\beta}_\lambda=(X^\top X+\lambda I)^{-1}X^\top\mathbf y`,
-            tag: "Loss landscape · Langevin SGD: v ← 0.86v - η∇L + 0.05ξ · move cursor to alter curvature · click to reseed",
+            blurb: "Statistical learning, agent-based modelling and non-convex optimisation: emergent collective behaviour, opinion dynamics, and complex stochastic systems.",
+            eq: r`\dot{\mathbf x}_i=\mathbf v_i,\quad \dot{\mathbf v}_i=\mathbf f_{\text{sep}}+\mathbf f_{\text{align}}+\mathbf f_{\text{coh}}+\eta\,\boldsymbol\xi_i,\quad \Phi=\frac{1}{Nv_0}\Big\|\sum_{i=1}^N\mathbf v_i\Big\|`,
+            tag: "Agent-Based Model (ABM) · Reynolds flocking & Hegselmann-Krause consensus · order parameter Φ = |⟨v⟩|/v₀ · click to perturb",
         },
         quant: {
             name: "Quant Finance", short: "Quant", file: "quant.html",

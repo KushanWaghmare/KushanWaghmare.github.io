@@ -190,157 +190,238 @@ const three = (c, shift) => {
 };
 
 /* ------------------------------------------------------------- DATA SCIENCE
-   Non-convex loss landscape with Langevin SGD particle swarm optimisation:
-   θ_{t+1} = θ_t + v_t,   v_{t+1} = β v_t - η ∇L(θ_t) + σ ξ_t
-   Topological manifold with non-convex valleys, saddle points and dynamic regularisation.
-   The cursor perturbs local curvature; clicking reseeds the optimiser particle swarm. */
+   Agent-Based Model (ABM): Emergent Flocking & Hegselmann-Krause Opinion Dynamics.
+   N autonomous agents interact via microscopic behavioural rules:
+   Separation, Alignment, Cohesion (Reynolds) + Bounded-Confidence Consensus.
+   Dynamic interaction graph edges G(V, E_t) flash as agents meet.
+   Cursor acts as an external policy agent; clicking injects a scattering perturbation. */
 SIMS.datascience = (c) => {
-    const T = three(c, 11);
-    T.cam.position.set(0, 22, 34);
-    T.cam.lookAt(0, -2, 0);
+    const ctx = c.getContext("2d");
+    let W = 0, Hh = 0;
+    const N = 120;
+    const agents = Array.from({ length: N }, () => {
+        const ang = Math.random() * TAU;
+        const spd = 1.4 + Math.random() * 1.8;
+        return {
+            x: Math.random() * 800,
+            y: Math.random() * 600,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            opinion: Math.random(),
+            trail: []
+        };
+    });
 
-    const GW = 52, GH = 52, SPAN = 32;
-    const pos = new Float32Array((GW + 1) * (GH + 1) * 3);
-    const idx = [];
-    const vi = (i, j) => i * (GH + 1) + j;
-    for (let i = 0; i < GW; i++) {
-        for (let j = 0; j < GH; j++) {
-            idx.push(vi(i, j), vi(i + 1, j), vi(i, j), vi(i, j + 1));
-        }
-    }
-    for (let i = 0; i < GW; i++) idx.push(vi(i, GH), vi(i + 1, GH));
-    for (let j = 0; j < GH; j++) idx.push(vi(GW, j), vi(GW, j + 1));
+    const ripples = [];
+    KW.onClick(c, (p) => {
+        ripples.push({ x: p.x, y: p.y, r: 4, maxR: 240, alpha: 0.95 });
+        agents.forEach((ag) => {
+            const dx = ag.x - p.x, dy = ag.y - p.y, d = Math.hypot(dx, dy);
+            if (d < 180 && d > 1) {
+                const force = (1 - d / 180) * 8.5;
+                ag.vx += (dx / d) * force;
+                ag.vy += (dy / d) * force;
+                ag.opinion = (ag.opinion + Math.random() * 0.4 - 0.2 + 1) % 1;
+            }
+        });
+    });
 
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    geo.setIndex(idx);
-
-    const lm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.35 });
-    const mesh = new THREE.LineSegments(geo, lm);
-    mesh.frustumCulled = false;
-    T.group.add(mesh);
-
-    const loss = (x, z, t, mx, mz) => {
-        const r2 = x * x + z * z;
-        let y = 0.018 * r2 - 2.8 * (Math.cos(x * 0.42 + t * 0.32) * Math.cos(z * 0.42) + 0.55 * Math.sin(x * 0.24) * Math.sin(z * 0.24 + t * 0.22));
-        if (mx !== undefined && mz !== undefined) {
-            const dx = x - mx, dz = z - mz;
-            y -= 3.4 / (1 + 0.3 * (dx * dx + dz * dz));
-        }
-        return y;
-    };
-
-    const NP = 48, TL = 12;
-    const px = new Float32Array(NP), pz = new Float32Array(NP);
-    const vx = new Float32Array(NP), vz = new Float32Array(NP);
-    const trails = new Float32Array(NP * TL * 3);
-    const lr = new Float32Array(NP);
-
-    const reseed = (i) => {
-        const rad = 7 + Math.random() * 8, ang = Math.random() * TAU;
-        px[i] = Math.cos(ang) * rad;
-        pz[i] = Math.sin(ang) * rad;
-        vx[i] = (Math.random() - 0.5) * 0.15;
-        vz[i] = (Math.random() - 0.5) * 0.15;
-        lr[i] = 0.12 + Math.random() * 0.18;
-        const o = i * TL * 3, y = loss(px[i], pz[i], 0);
-        for (let k = 0; k < TL; k++) {
-            trails[o + k * 3] = px[i];
-            trails[o + k * 3 + 1] = y;
-            trails[o + k * 3 + 2] = pz[i];
-        }
-    };
-    for (let i = 0; i < NP; i++) reseed(i);
-
-    const trailGeo = new THREE.BufferGeometry();
-    trailGeo.setAttribute("position", new THREE.BufferAttribute(trails, 3));
-    const tIdx = [];
-    for (let i = 0; i < NP; i++) {
-        for (let k = 0; k < TL - 1; k++) tIdx.push(i * TL + k, i * TL + k + 1);
-    }
-    trailGeo.setIndex(tIdx);
-    const tm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.85 });
-    const trailMesh = new THREE.LineSegments(trailGeo, tm);
-    trailMesh.frustumCulled = false;
-    T.group.add(trailMesh);
-
-    const headPos = new Float32Array(NP * 3);
-    const headGeo = new THREE.BufferGeometry();
-    headGeo.setAttribute("position", new THREE.BufferAttribute(headPos, 3));
-    const pm = new THREE.PointsMaterial({ size: 0.22, transparent: true, opacity: 0.95 });
-    const headPoints = new THREE.Points(headGeo, pm);
-    headPoints.frustumCulled = false;
-    T.group.add(headPoints);
-
-    const paint = () => {
-        T.setColor(lm, KW.col.a);
-        T.setColor(tm, KW.col.a);
-        T.setColor(pm, KW.col.a);
-    };
-    T.onTheme(paint);
-    KW.onClick(c, () => {
-        for (let i = 0; i < NP; i++) reseed(i);
+    KW.fit(c, (w, h, dpr) => {
+        W = w; Hh = h;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        agents.forEach((ag) => {
+            if (ag.x > w) ag.x = Math.random() * w;
+            if (ag.y > h) ag.y = Math.random() * h;
+        });
     });
 
     KW.tag(SITE.domains.datascience.tag, c);
 
-    let rx = 0.58, ry = 0;
+    const R_VIS = 58;
+    const R_SEP = 18;
+    const CONF_EPS = 0.28;
+    const MAX_SPD = 3.6;
+    const MIN_SPD = 1.2;
+
     KW.loop(c, (t, dt) => {
-        const p = KW.local(c), inside = p.x > 0 && p.y > 0 && p.x < T.width();
-        const mx = inside ? (p.x / Math.max(T.width(), 1) - 0.5) * 22 : undefined;
-        const mz = inside ? (p.y / Math.max(c.clientHeight, 1) - 0.5) * 22 : undefined;
+        const p = KW.local(c), inside = p.x > 0 && p.y > 0 && p.x < W && p.y < Hh;
+        const col = KW.col.a;
+        ctx.clearRect(0, 0, W, Hh);
 
-        let o = 0;
-        for (let i = 0; i <= GW; i++) {
-            const x = (i / GW - 0.5) * SPAN;
-            for (let j = 0; j <= GH; j++) {
-                const z = (j / GH - 0.5) * SPAN;
-                pos[o] = x;
-                pos[o + 1] = loss(x, z, t, mx, mz);
-                pos[o + 2] = z;
-                o += 3;
-            }
+        // 1. Advance and render scattering ripples
+        for (let k = ripples.length - 1; k >= 0; k--) {
+            const rip = ripples[k];
+            rip.r += dt * 320;
+            rip.alpha *= Math.max(0, 1 - dt * 2.8);
+            ctx.strokeStyle = rgba(col, rip.alpha * 0.7);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(rip.x, rip.y, rip.r, 0, TAU);
+            ctx.stroke();
+            if (rip.r >= rip.maxR || rip.alpha < 0.02) ripples.splice(k, 1);
         }
-        geo.attributes.position.needsUpdate = true;
 
-        const eps = 0.1;
-        for (let i = 0; i < NP; i++) {
-            const x = px[i], z = pz[i];
-            const y = loss(x, z, t, mx, mz);
-            const gx = (loss(x + eps, z, t, mx, mz) - loss(x - eps, z, t, mx, mz)) / (2 * eps);
-            const gz = (loss(x, z + eps, t, mx, mz) - loss(x, z - eps, t, mx, mz)) / (2 * eps);
+        // 2. Microscopic behavioural rules & interaction network
+        let sumVx = 0, sumVy = 0, activeLinks = 0;
+        ctx.lineWidth = 0.8;
 
-            vx[i] = vx[i] * 0.86 - gx * lr[i] + randn() * 0.04;
-            vz[i] = vz[i] * 0.86 - gz * lr[i] + randn() * 0.04;
-            px[i] += vx[i];
-            pz[i] += vz[i];
+        for (let i = 0; i < N; i++) {
+            const ai = agents[i];
+            let sepX = 0, sepY = 0;
+            let alignX = 0, alignY = 0, nAlign = 0;
+            let cohereX = 0, cohereY = 0, nCohere = 0;
 
-            if (Math.abs(px[i]) > SPAN * 0.48 || Math.abs(pz[i]) > SPAN * 0.48 || Math.hypot(vx[i], vz[i]) < 0.004) {
-                reseed(i);
+            for (let j = i + 1; j < N; j++) {
+                const aj = agents[j];
+                const dx = aj.x - ai.x, dy = aj.y - ai.y;
+                const d2 = dx * dx + dy * dy;
+                if (d2 < R_VIS * R_VIS && d2 > 0.01) {
+                    const d = Math.sqrt(d2);
+                    activeLinks++;
+
+                    // Render dynamic network edge G(V, E)
+                    const edgeAlpha = (1 - d / R_VIS) * 0.22;
+                    ctx.strokeStyle = rgba(col, edgeAlpha);
+                    ctx.beginPath();
+                    ctx.moveTo(ai.x, ai.y);
+                    ctx.lineTo(aj.x, aj.y);
+                    ctx.stroke();
+
+                    // Hegselmann-Krause opinion exchange
+                    if (Math.abs(ai.opinion - aj.opinion) < CONF_EPS) {
+                        const shift = (aj.opinion - ai.opinion) * dt * 0.85;
+                        ai.opinion += shift;
+                        aj.opinion -= shift;
+                    }
+
+                    // Separation force
+                    if (d < R_SEP) {
+                        const rep = (1 - d / R_SEP) / d;
+                        sepX -= dx * rep;
+                        sepY -= dy * rep;
+                    }
+
+                    alignX += aj.vx; alignY += aj.vy; nAlign++;
+                    cohereX += aj.x; cohereY += aj.y; nCohere++;
+                }
             }
 
-            const to = i * TL * 3;
-            trails.copyWithin(to, to + 3, to + TL * 3);
-            const last = to + (TL - 1) * 3;
-            trails[last] = px[i];
-            trails[last + 1] = y + 0.16;
-            trails[last + 2] = pz[i];
+            // Apply Reynolds flocking steering forces
+            if (nAlign > 0) {
+                ai.vx += (alignX / nAlign - ai.vx) * dt * 2.2;
+                ai.vy += (alignY / nAlign - ai.vy) * dt * 2.2;
+            }
+            if (nCohere > 0) {
+                const avgX = cohereX / nCohere, avgY = cohereY / nCohere;
+                ai.vx += (avgX - ai.x) * dt * 0.95;
+                ai.vy += (avgY - ai.y) * dt * 0.95;
+            }
+            ai.vx += sepX * dt * 6.5;
+            ai.vy += sepY * dt * 6.5;
 
-            headPos[i * 3] = px[i];
-            headPos[i * 3 + 1] = y + 0.22;
-            headPos[i * 3 + 2] = pz[i];
+            // Cursor interaction: external policy agent / attractor vortex
+            if (inside) {
+                const mdx = p.x - ai.x, mdy = p.y - ai.y;
+                const md = Math.hypot(mdx, mdy);
+                if (md < 190 && md > 1) {
+                    if (md < 40) {
+                        ai.vx -= (mdx / md) * dt * 9;
+                        ai.vy -= (mdy / md) * dt * 9;
+                    } else {
+                        const swirlX = -mdy / md, swirlY = mdx / md;
+                        ai.vx += (mdx / md * 0.6 + swirlX * 1.4) * dt * 3.2;
+                        ai.vy += (mdy / md * 0.6 + swirlY * 1.4) * dt * 3.2;
+                    }
+                }
+            }
+
+            // Stochastic exploration noise
+            ai.vx += (Math.random() - 0.5) * dt * 2.5;
+            ai.vy += (Math.random() - 0.5) * dt * 2.5;
+
+            const spd = Math.hypot(ai.vx, ai.vy);
+            if (spd > MAX_SPD) {
+                ai.vx = (ai.vx / spd) * MAX_SPD;
+                ai.vy = (ai.vy / spd) * MAX_SPD;
+            } else if (spd < MIN_SPD) {
+                ai.vx = (ai.vx / (spd || 1)) * MIN_SPD;
+                ai.vy = (ai.vy / (spd || 1)) * MIN_SPD;
+            }
+
+            ai.x += ai.vx;
+            ai.y += ai.vy;
+
+            // Soft toroidal boundary wrapping
+            const bound = 14;
+            if (ai.x < -bound) ai.x = W + bound;
+            else if (ai.x > W + bound) ai.x = -bound;
+            if (ai.y < -bound) ai.y = Hh + bound;
+            else if (ai.y > Hh + bound) ai.y = -bound;
+
+            sumVx += ai.vx / (spd || 1);
+            sumVy += ai.vy / (spd || 1);
+
+            ai.trail.push({ x: ai.x, y: ai.y });
+            if (ai.trail.length > 5) ai.trail.shift();
+
+            // 3. Draw agent trajectory trail
+            if (ai.trail.length > 1) {
+                ctx.strokeStyle = rgba(col, 0.18 + ai.opinion * 0.15);
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(ai.trail[0].x, ai.trail[0].y);
+                for (let k = 1; k < ai.trail.length; k++) {
+                    ctx.lineTo(ai.trail[k].x, ai.trail[k].y);
+                }
+                ctx.stroke();
+            }
+
+            // 4. Draw oriented agent boid body (sleek wedge)
+            const heading = Math.atan2(ai.vy, ai.vx);
+            const size = 6.5;
+            ctx.save();
+            ctx.translate(ai.x, ai.y);
+            ctx.rotate(heading);
+
+            const alpha = 0.55 + ai.opinion * 0.42;
+            ctx.fillStyle = rgba(col, alpha);
+            ctx.beginPath();
+            ctx.moveTo(size, 0);
+            ctx.lineTo(-size * 0.7, -size * 0.55);
+            ctx.lineTo(-size * 0.4, 0);
+            ctx.lineTo(-size * 0.7, size * 0.55);
+            ctx.closePath();
+            ctx.fill();
+
+            // Tip accent highlight
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.arc(size * 0.75, 0, 1.2, 0, TAU);
+            ctx.fill();
+            ctx.restore();
         }
-        trailGeo.attributes.position.needsUpdate = true;
-        headGeo.attributes.position.needsUpdate = true;
 
-        const curX = inside ? (p.x / Math.max(T.width(), 1)) * 2 - 1 : 0;
-        const curY = inside ? (p.y / Math.max(c.clientHeight, 1)) * 2 - 1 : 0;
-        rx += (0.58 + curY * 0.22 - rx) * 0.05;
-        ry += dt * 0.12 + (curX * 0.015);
-        T.group.rotation.x = rx;
-        T.group.rotation.y = ry;
+        // 5. Interactive cursor horizon indicator
+        if (inside) {
+            ctx.strokeStyle = rgba(col, 0.25);
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 4]);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 42, 0, TAU);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = rgba(col, 0.85);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3, 0, TAU);
+            ctx.fill();
+        }
 
-        T.renderer.render(T.scene, T.cam);
+        // 6. Real-time ABM Telemetry HUD (Macroscopic Order Parameter Φ)
+        const orderParam = Math.hypot(sumVx, sumVy) / N;
+        ctx.font = '500 10.5px "JetBrains Mono", ui-monospace, monospace';
+        ctx.fillStyle = rgba(col, 0.65);
+        const hudX = W > 860 ? W - 320 : 20;
+        ctx.fillText(`ABM // N:${N} · LINKS:${activeLinks} · Φ:${orderParam.toFixed(3)}`, hudX, 32);
     });
 };
 
@@ -1783,45 +1864,37 @@ NAV.physics = () => {
     };
 };
 
-// Data science: a feed-forward net; activations travel layer to layer and light up nodes.
+// Data science: Agent-Based Model mini-swarm telemetry in the nav bar.
 NAV.datascience = () => {
-    let W = 0, layers = [], pulses = [], spawn = 0;
-    const pick = (l) => l[(Math.random() * l.length) | 0];
-    const build = (w, h) => {
-        W = w; pulses = [];
-        const L = Math.max(4, Math.floor(w / 70));
-        layers = Array.from({ length: L }, (_, l) => {
-            const n = 2 + (l % 3), x = 8 + (l * (w - 16)) / (L - 1);
-            return Array.from({ length: n }, (_, i) => ({ x, y: (h * (i + 1)) / (n + 1), act: 0 }));
-        });
-    };
+    let W = 0;
+    const N = 18;
+    const boids = Array.from({ length: N }, () => ({
+        x: Math.random() * 120,
+        y: 4 + Math.random() * 20,
+        vx: (Math.random() - 0.5) * 1.6,
+        vy: (Math.random() - 0.5) * 0.9
+    }));
     return (ctx, w, h, t, dt) => {
-        if (w !== W) build(w, h);
-        const a = KW.col.a, b = KW.col.pal[1];
-        ctx.lineWidth = 1; ctx.strokeStyle = rgba(a, 0.09); ctx.beginPath();
-        for (let l = 0; l < layers.length - 1; l++) for (const u of layers[l]) for (const v of layers[l + 1]) { ctx.moveTo(u.x, u.y); ctx.lineTo(v.x, v.y); }
-        ctx.stroke();
-        if ((spawn -= dt) <= 0 && pulses.length < 90) { spawn = 0.12; pulses.push({ l: 0, u: pick(layers[0]), v: pick(layers[1]), p: 0 }); }
-        for (const q of pulses) {
-            q.p += dt * 2.2;
-            if (q.p >= 1) {
-                q.v.act = 1;
-                if (q.l + 2 < layers.length && Math.random() < 0.85) { q.l++; q.u = q.v; q.v = pick(layers[q.l + 1]); q.p = 0; } else q.dead = true;
+        W = w;
+        const a = KW.col.a;
+        ctx.lineWidth = 1;
+        for (let i = 0; i < N; i++) {
+            const bi = boids[i];
+            for (let j = i + 1; j < N; j++) {
+                const bj = boids[j], dx = bj.x - bi.x, dy = bj.y - bi.y, d = Math.hypot(dx, dy);
+                if (d < 26) {
+                    ctx.strokeStyle = rgba(a, (1 - d / 26) * 0.35);
+                    ctx.beginPath(); ctx.moveTo(bi.x, bi.y); ctx.lineTo(bj.x, bj.y); ctx.stroke();
+                    if (d < 9) { bi.vx -= (dx / d) * dt * 4.5; bi.vy -= (dy / d) * dt * 4.5; }
+                    bi.vx += (bj.vx - bi.vx) * dt * 1.4;
+                    bi.vy += (bj.vy - bi.vy) * dt * 1.4;
+                }
             }
-        }
-        pulses = pulses.filter((q) => !q.dead);
-        ctx.strokeStyle = rgba(b, 0.9); ctx.lineWidth = 1.4; ctx.beginPath();
-        for (const q of pulses) {
-            const p0 = Math.max(0, q.p - 0.18);
-            ctx.moveTo(q.u.x + (q.v.x - q.u.x) * p0, q.u.y + (q.v.y - q.u.y) * p0);
-            ctx.lineTo(q.u.x + (q.v.x - q.u.x) * q.p, q.u.y + (q.v.y - q.u.y) * q.p);
-        }
-        ctx.stroke();
-        for (const l of layers) for (const n of l) {
-            n.act *= Math.exp(-dt * 3);
-            ctx.fillStyle = rgba(a, 0.3 + 0.7 * n.act);
-            ctx.beginPath(); ctx.arc(n.x, n.y, 2 + n.act * 2, 0, TAU); ctx.fill();
-            if (n.act > 0.2) { ctx.strokeStyle = rgba(a, n.act * 0.5); ctx.beginPath(); ctx.arc(n.x, n.y, 4 + (1 - n.act) * 6, 0, TAU); ctx.stroke(); }
+            bi.x += bi.vx; bi.y += bi.vy;
+            if (bi.x < 0) bi.x = w; else if (bi.x > w) bi.x = 0;
+            if (bi.y < 3) { bi.y = 3; bi.vy = Math.abs(bi.vy); } else if (bi.y > h - 3) { bi.y = h - 3; bi.vy = -Math.abs(bi.vy); }
+            ctx.fillStyle = rgba(a, 0.9);
+            ctx.beginPath(); ctx.arc(bi.x, bi.y, 1.8, 0, TAU); ctx.fill();
         }
     };
 };

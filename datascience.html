@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Data Science · Kushan Waghmare</title>
-    <meta name="description" content="Statistical learning and non-convex optimisation: loss surfaces, Langevin SGD, regularisation and spectral methods." />
+    <meta name="description" content="Statistical learning, agent-based modelling and non-convex optimisation: emergent collective behaviour, opinion dynamics, and complex stochastic systems." />
     <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
     <link rel="stylesheet" href="shared/style.css?v=23" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
@@ -45,14 +45,14 @@
         <div class="snap-inner">
             <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>03 / Data Science · Statistical learning & analytics</div>
             <h1 data-hero>Data Science</h1>
-            <p class="lead" data-hero>Statistical learning and non-convex optimisation: loss surfaces, Langevin SGD, regularisation and spectral methods.</p>
-            <div class="hero-eq glass snap-eq" data-hero>$$\hat{\boldsymbol\beta}_\lambda=(X^\top X+\lambda I)^{-1}X^\top\mathbf y$$</div>
+            <p class="lead" data-hero>Statistical learning, agent-based modelling and non-convex optimisation: emergent collective behaviour, opinion dynamics, and complex stochastic systems.</p>
+            <div class="hero-eq glass snap-eq" data-hero>$$\dot{\mathbf x}_i=\mathbf v_i,\quad \dot{\mathbf v}_i=\mathbf f_{\text{sep}}+\mathbf f_{\text{align}}+\mathbf f_{\text{coh}}+\eta\,\boldsymbol\xi_i,\quad \Phi=\frac{1}{Nv_0}\Big\|\sum_{i=1}^N\mathbf v_i\Big\|$$</div>
             <div class="snap-jump-pills" data-hero>
                 <span class="snap-jump-label">Selected work:</span>
                 <a href="#proj-regularised-regression" class="pill jump-pill"><strong>Regularised Regression from Scratch</strong></a><a href="#proj-spectral-clustering" class="pill jump-pill"><strong>Spectral Clustering on Graphs</strong></a>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Loss landscape · Langevin SGD: v ← 0.86v - η∇L + 0.05ξ · move cursor to alter curvature · click to reseed</div>
+        <div class="sim-tag" aria-hidden="true">Agent-Based Model (ABM) · Reynolds flocking & Hegselmann-Krause consensus · order parameter Φ = |⟨v⟩|/v₀ · click to perturb</div>
         <a class="snap-cue" href="#proj-regularised-regression">Scroll to projects</a>
     </section>
 
@@ -77,7 +77,7 @@
                 <span class="snap-count">4 core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Loss landscape · Langevin SGD: v ← 0.86v - η∇L + 0.05ξ · move cursor to alter curvature · click to reseed</div>
+        <div class="sim-tag" aria-hidden="true">Agent-Based Model (ABM) · Reynolds flocking & Hegselmann-Krause consensus · order parameter Φ = |⟨v⟩|/v₀ · click to perturb</div>
         <a class="snap-cue" href="#proj-spectral-clustering">Next: Spectral Clustering on Graphs</a>
     </section>
     <section class="snap-section project-snap" id="proj-spectral-clustering" data-domain="datascience">
@@ -100,7 +100,7 @@
                 <span class="snap-count">4 core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Loss landscape · Langevin SGD: v ← 0.86v - η∇L + 0.05ξ · move cursor to alter curvature · click to reseed</div>
+        <div class="sim-tag" aria-hidden="true">Agent-Based Model (ABM) · Reynolds flocking & Hegselmann-Krause consensus · order parameter Φ = |⟨v⟩|/v₀ · click to perturb</div>
         <a class="snap-cue" href="#domain-explore">Next: Explore other domains</a>
     </section>
 
