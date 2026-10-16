@@ -304,6 +304,7 @@ const SITE = {
         {
             id: "langevin-loss-landscapes",
             domain: "datascience",
+            short: "Non-Equilibrium Langevin Dynamics",
             title: "Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes",
             status: "Preprint",
             authors: "Kushan Waghmare",
@@ -329,6 +330,7 @@ const SITE = {
         {
             id: "hft-stat-arb-microstructure",
             domain: "quant",
+            short: "HFT Statistical Arbitrage",
             title: "Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction",
             status: "Working Paper",
             authors: "Kushan Waghmare",
@@ -354,6 +356,7 @@ const SITE = {
         {
             id: "symplectic-energy-bounds-nbody",
             domain: "physics",
+            short: "Symplectic N-Body Integrators",
             title: "Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations",
             status: "Preprint",
             authors: "Kushan Waghmare",
@@ -379,6 +382,7 @@ const SITE = {
         {
             id: "verified-ssa-compiler-passes",
             domain: "cs",
+            short: "Verified SSA Compiler Passes",
             title: "Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers",
             status: "Research Report",
             authors: "Kushan Waghmare",
@@ -404,6 +408,7 @@ const SITE = {
         {
             id: "riemannian-immersion-gauss-bonnet",
             domain: "math",
+            short: "Riemannian Immersion & Holonomy",
             title: "Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds",
             status: "Preprint",
             authors: "Kushan Waghmare",
@@ -434,6 +439,7 @@ const SITE = {
             track: "iitm-datascience",
             institution: "Indian Institute of Technology Madras",
             degree: "Bachelor of Science in Data Science & Applications",
+            short: "BSc Data Science",
             period: "2023 – 2027",
             domain: "datascience",
             tag: "Statistical learning, probabilistic graphical models, high-dimensional optimisation & distributed systems",
@@ -473,7 +479,7 @@ const SITE = {
                     desc: "Backpropagation, automatic differentiation, CNNs, Transformers, attention mechanisms, loss surfaces and Langevin SGD.",
                     eq: r`\operatorname{Attention}(Q,K,V)=\operatorname{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V`,
                     topics: ["Scaled dot-product attention", "Loss surface topography", "Langevin SGD & stochastic diffusion", "Batch normalisation dynamics", "Transformer architectures"],
-                    relatedProject: "datascience"
+                    relatedProject: "regularised-regression"
                 }
             ]
         },
@@ -481,6 +487,7 @@ const SITE = {
             track: "physics-curriculum",
             institution: "Vidya Bharati Mahavidyalaya",
             degree: "Bachelor of Science in Physics",
+            short: "BSc Physics",
             period: "2025 – 2028",
             domain: "physics",
             tag: "Symplectic mechanics, field theory, quantum states, and non-equilibrium statistical thermodynamics",
@@ -511,7 +518,16 @@ const SITE = {
                     desc: "Microcanonical, canonical and grand canonical ensembles, partition functions, Maxwell-Boltzmann, Bose-Einstein and Fermi-Dirac statistics.",
                     eq: r`Z=\sum_i e^{-\beta E_i},\qquad F=-k_B T\ln Z,\qquad S=-\left(\frac{\partial F}{\partial T}\right)_V`,
                     topics: ["Canonical partition function", "Helmholtz & Gibbs free energy", "Equipartition theorem", "Phase transitions & critical exponents", "Fluctuation-dissipation theorem"],
-                    relatedProject: "datascience"
+                    relatedProject: "nbody-leapfrog"
+                },
+                {
+                    code: "PH3010",
+                    title: "Electrodynamics & Fourier Wave Optics",
+                    status: "Active",
+                    desc: "Maxwell's equations in vacuum and continuous media, covariant tensor electrodynamics, Green's functions, multipole radiation, and Fraunhofer Fourier diffraction.",
+                    eq: r`\nabla\times\mathbf B=\mu_0\mathbf J+\mu_0\varepsilon_0\frac{\partial\mathbf E}{\partial t},\qquad \Box A^\mu=\mu_0 J^\mu`,
+                    topics: ["Maxwell stress tensor", "Retarded potentials & Liénard-Wiechert fields", "Waveguides & cavity resonance", "Fourier optics & spatial filtering", "Relativistic electrodynamics"],
+                    relatedProject: "fourier-spectral"
                 }
             ]
         },
@@ -519,6 +535,7 @@ const SITE = {
             track: "advanced-quant-systems",
             institution: "Independent & Advanced Specialisations",
             degree: "Quantitative Finance & Systems Engineering",
+            short: "Quant Finance & Systems",
             period: "2024 – 2026",
             domain: "quant",
             tag: "Itô calculus, Black-Scholes PDE, pairs co-integration, LLVM compilers and TTL machine architecture",

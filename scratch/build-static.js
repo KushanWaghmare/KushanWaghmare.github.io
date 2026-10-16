@@ -291,7 +291,7 @@ const papersPage = () => {
     <nav class="snap-pager" aria-label="Section navigation">
         <a href="#papers-hero" class="snap-dot active" data-title="00 Overview" aria-label="Papers Overview"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">00 Overview</span></a>
         ${papers.map((p, i) => `
-        <a href="#paper-${p.id}" class="snap-dot" data-title="${pad(i)} ${p.title}" aria-label="${p.title}"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">${pad(i)} ${p.title.slice(0, 22)}…</span></a>`).join("")}
+        <a href="#paper-${p.id}" class="snap-dot" data-title="${pad(i)} ${p.short || p.title}" aria-label="${p.title}"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">${pad(i)} ${p.short || p.title}</span></a>`).join("")}
         <a href="#papers-contact" class="snap-dot" data-title="${String(papers.length + 1).padStart(2, "0")} Contact" aria-label="Contact & Collaboration"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">${String(papers.length + 1).padStart(2, "0")} Contact</span></a>
     </nav>
 
@@ -304,16 +304,16 @@ const papersPage = () => {
             <div class="hero-eq glass" data-hero>$$\\frac{\\partial p(\\boldsymbol\\theta, t)}{\\partial t}=\\nabla_{\\boldsymbol\\theta}\\cdot\\Big(\\nabla_{\\boldsymbol\\theta} L(\\boldsymbol\\theta)\\,p(\\boldsymbol\\theta, t)+D\\,\\nabla_{\\boldsymbol\\theta} p(\\boldsymbol\\theta, t)\\Big)$$</div>
             <div class="snap-jump-pills" data-hero>
                 <span class="snap-jump-label">Selected papers:</span>
-                ${papers.map((p) => `<a href="#paper-${p.id}" class="pill jump-pill" style="--a:var(--rgb-papers)"><strong>${p.title.split(" ")[0]} ${p.title.split(" ")[1]}…</strong></a>`).join("")}
+                ${papers.map((p) => `<a href="#paper-${p.id}" class="pill jump-pill" style="--a:var(--rgb-papers)"><strong>${p.short || p.title}</strong></a>`).join("")}
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
         <a class="snap-cue" href="#paper-${papers[0].id}">Scroll to research papers</a>
     </section>
 
     ${papers.map((p, i) => {
         const nextTarget = papers[i + 1] ? `#paper-${papers[i + 1].id}` : "#papers-contact";
-        const nextLabel = papers[i + 1] ? `Next: ${papers[i + 1].title.slice(0, 32)}…` : "Next: Collaboration & Contact";
+        const nextLabel = papers[i + 1] ? `Next: ${papers[i + 1].short || papers[i + 1].title}` : "Next: Collaboration & Contact";
         const d = SITE.domains[p.domain];
         return `
     <section class="snap-section project-snap" id="paper-${p.id}" data-domain="papers" style="--a:var(--rgb-papers)">
@@ -345,7 +345,7 @@ const papersPage = () => {
                 <span class="snap-count">${p.venue} · ${p.year}</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
         <a class="snap-cue" href="${nextTarget}">${nextLabel}</a>
     </section>`;
     }).join("")}
@@ -353,7 +353,7 @@ const papersPage = () => {
     <section class="snap-section about-contact-section" id="papers-contact" data-domain="contact" style="--a:var(--rgb-contact)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="section-head" data-reveal><span class="idx">${String(papers.length + 1).padStart(2, "0")}</span><h2>Research Inquiries &amp; Collaboration</h2></div>
+            <div class="section-head" data-reveal><span class="idx">${String(papers.length + 1).padStart(2, "0")}</span><h2>Research Enquiries &amp; Collaboration</h2></div>
             <p class="lead" data-reveal style="margin-bottom:28px">Interested in co-authorship, paper review, or expanding theoretical derivations into production systems? Get in touch directly.</p>
             <div class="pills" data-reveal style="margin-bottom:36px">
                 <a class="pill" href="courses.html">View Academic Coursework →</a>
@@ -382,7 +382,7 @@ const paperDetailPage = (p) => {
     <section class="snap-section hero" id="paper-hero" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:980px">
-            <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>${p.title.length > 42 ? p.title.slice(0, 40) + "…" : p.title}</span></div>
+            <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>${p.short || p.title}</span></div>
             <div class="eyebrow" data-hero>
                 <span class="domain-badge" style="background:var(--accent)"></span>
                 Paper ${pad(i >= 0 ? i : 0)} / ${String(papers.length).padStart(2, "0")} · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-${p.domain})">${d.name}</span> · ${p.year}
@@ -409,7 +409,7 @@ const paperDetailPage = (p) => {
                 <a href="papers.html" class="pill">← All Papers</a>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
         <a class="snap-cue" href="#paper-theory">Next: Formulation &amp; Proofs</a>
     </section>
 
@@ -427,7 +427,7 @@ const paperDetailPage = (p) => {
                 ${p.highlights.map(([n, t]) => `<li class="glass"><strong>${n}</strong><span>${t}</span></li>`).join("")}
             </ol>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
         <a class="snap-cue" href="#paper-cite">Next: Citation &amp; Related Papers</a>
     </section>
 
@@ -467,7 +467,7 @@ const paperDetailPage = (p) => {
                 </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
         <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
     </section>`;
 };
@@ -478,8 +478,8 @@ const coursesPage = () => {
     <nav class="snap-pager" aria-label="Section navigation">
         <a href="#courses-hero" class="snap-dot active" data-title="00 Overview" aria-label="Courses Overview"><span class="dot-disc" style="--a:var(--rgb-courses)"></span><span class="dot-text">00 Overview</span></a>
         ${tracks.map((tr, i) => `
-        <a href="#track-${tr.track}" class="snap-dot" data-title="${pad(i)} ${tr.degree}" aria-label="${tr.degree}"><span class="dot-disc" style="--a:var(--rgb-courses)"></span><span class="dot-text">${pad(i)} ${tr.degree.slice(0, 18)}…</span></a>`).join("")}
-        <a href="#courses-contact" class="snap-dot" data-title="${String(tracks.length + 1).padStart(2, "0")} Contact" aria-label="Academic Inquiries"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">${String(tracks.length + 1).padStart(2, "0")} Contact</span></a>
+        <a href="#track-${tr.track}" class="snap-dot" data-title="${pad(i)} ${tr.short || tr.degree}" aria-label="${tr.degree}"><span class="dot-disc" style="--a:var(--rgb-courses)"></span><span class="dot-text">${pad(i)} ${tr.short || tr.degree}</span></a>`).join("")}
+        <a href="#courses-contact" class="snap-dot" data-title="${String(tracks.length + 1).padStart(2, "0")} Contact" aria-label="Academic Enquiries"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">${String(tracks.length + 1).padStart(2, "0")} Contact</span></a>
     </nav>
 
     <section class="snap-section hero" id="courses-hero" data-domain="courses" style="--a:var(--rgb-courses)">
@@ -491,7 +491,7 @@ const coursesPage = () => {
             <div class="hero-eq glass" data-hero>$$A = U\\Sigma V^\\top = \\sum_{i=1}^r \\sigma_i\\,\\mathbf u_i\\,\\mathbf v_i^\\top,\\qquad i\\hbar\\,\\frac{\\partial\\psi}{\\partial t}=\\Big[-\\frac{\\hbar^2}{2m}\\nabla^2+V(\\mathbf r)\\Big]\\psi$$</div>
             <div class="snap-jump-pills" data-hero>
                 <span class="snap-jump-label">Academic tracks:</span>
-                ${tracks.map((tr) => `<a href="#track-${tr.track}" class="pill jump-pill" style="--a:var(--rgb-courses)"><strong>${tr.degree.split(" ")[0]} ${tr.degree.split(" ")[1]}…</strong></a>`).join("")}
+                ${tracks.map((tr) => `<a href="#track-${tr.track}" class="pill jump-pill" style="--a:var(--rgb-courses)"><strong>${tr.short || tr.degree}</strong></a>`).join("")}
             </div>
         </div>
         <div class="sim-tag" aria-hidden="true">Curriculum Directed Acyclic Graph (DAG) · topological sort · prerequisite signal conduction</div>
@@ -500,7 +500,7 @@ const coursesPage = () => {
 
     ${tracks.map((tr, i) => {
         const nextTarget = tracks[i + 1] ? `#track-${tracks[i + 1].track}` : "#courses-contact";
-        const nextLabel = tracks[i + 1] ? `Next: ${tracks[i + 1].degree.slice(0, 32)}…` : "Next: Academic Contact";
+        const nextLabel = tracks[i + 1] ? `Next: ${tracks[i + 1].degree}` : "Next: Academic Contact";
         const d = SITE.domains[tr.domain];
         return `
     <section class="snap-section project-snap course-snap" id="track-${tr.track}" data-domain="courses" style="--a:var(--rgb-courses)">
@@ -592,13 +592,13 @@ const buildHTML = ({ domain, pageType, three, title, desc, mainContent }) => `<!
     <title>${title}</title>
     <meta name="description" content="${desc}" />
     <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=25" />
+    <link rel="stylesheet" href="shared/style.css?v=26" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=25"></script>
-    <script defer src="shared/sims.js?v=25"></script>
-    <script defer src="shared/app.js?v=25"></script>
+${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=26"></script>
+    <script defer src="shared/sims.js?v=26"></script>
+    <script defer src="shared/app.js?v=26"></script>
 </head>
 <body>
     ${renderNav(domain, pageType)}

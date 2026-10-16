@@ -688,37 +688,31 @@ body {
 .course-grid {
     display: flex;
     flex-direction: row;
+    flex-wrap: nowrap;
     align-items: stretch;
-    gap: 18px;
-    width: 100%;
+    gap: 20px;
+    width: 100vw;
+    margin-left: calc(-1 * clamp(20px, 6vw, 88px));
     margin-top: 16px;
     overflow-x: auto;
     overflow-y: hidden;
-    padding-bottom: 16px;
-    padding-top: 4px;
-    padding-left: 2px;
-    padding-right: 2px;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
+    padding: 6px clamp(20px, 6vw, 88px) 10px;
+    box-sizing: border-box;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     -webkit-overflow-scrolling: touch;
+    cursor: grab;
+}
+.course-grid:active {
+    cursor: grabbing;
 }
 .course-grid::-webkit-scrollbar {
-    height: 6px;
-}
-.course-grid::-webkit-scrollbar-track {
-    background: rgba(var(--a), 0.08);
-    border-radius: 99px;
-}
-.course-grid::-webkit-scrollbar-thumb {
-    background: rgba(var(--a), 0.35);
-    border-radius: 99px;
-}
-.course-grid::-webkit-scrollbar-thumb:hover {
-    background: rgba(var(--a), 0.65);
+    display: none;
+    width: 0;
+    height: 0;
 }
 .course-card {
-    flex: 0 0 clamp(290px, 30vw, 360px);
-    scroll-snap-align: start;
+    flex: 0 0 clamp(320px, 34vw, 440px);
     padding: 22px 24px;
     border-radius: 14px;
     display: flex;
@@ -962,13 +956,20 @@ body {
 }
 
 .course-inner {
-    max-width: min(1340px, 94vw);
+    max-width: 100%;
     width: 100%;
     max-height: calc(100svh - 110px);
     overflow-y: auto;
-    scrollbar-width: thin;
-    padding-right: 8px;
+    overflow-x: visible;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-right: 0;
     box-sizing: border-box;
+}
+.course-inner::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
 }
 
 @media (max-width: 960px) {
@@ -1011,6 +1012,11 @@ body {
 
 @media (max-width: 900px) {
     .snap-pager { display: none; }
+    .course-grid {
+        margin-left: -18px;
+        padding-left: 18px;
+        padding-right: 18px;
+    }
     .snap-section, .snap-section.hero {
         padding: 72px 18px 66px;
         min-height: 100svh;

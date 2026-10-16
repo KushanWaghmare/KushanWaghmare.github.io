@@ -368,7 +368,7 @@
         <section class="snap-section hero" id="paper-hero" data-domain="papers" style="--a:var(--rgb-papers)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:980px">
-                <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>${p.title.length > 42 ? p.title.slice(0, 40) + "…" : p.title}</span></div>
+                <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>${p.short || p.title}</span></div>
                 <div class="eyebrow" data-hero>
                     <span class="domain-badge" style="background:var(--accent)"></span>
                     Paper ${pad(i >= 0 ? i : 0)} / ${String(papers.length).padStart(2, "0")} · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-${p.domain})">${d.name}</span> · ${p.year}
@@ -395,7 +395,7 @@
                     <a href="papers.html" class="pill">← All Papers</a>
                 </div>
             </div>
-            <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+            <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
             <a class="snap-cue" href="#paper-theory">Next: Formulation &amp; Proofs</a>
         </section>
 
@@ -413,7 +413,7 @@
                     ${p.highlights.map(([n, t]) => `<li class="glass"><strong>${n}</strong><span>${t}</span></li>`).join("")}
                 </ol>
             </div>
-            <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+            <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
             <a class="snap-cue" href="#paper-cite">Next: Citation &amp; Related Papers</a>
         </section>
 
@@ -453,7 +453,7 @@
                     </div>
                 </div>
             </div>
-            <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+            <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
             <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
         </section>`;
     };
@@ -638,6 +638,17 @@
 
         window.addEventListener("wheel", (e) => {
             if (REDUCED || e.ctrlKey || e.metaKey) return;
+            const hScroll = e.target && e.target.closest && e.target.closest(".course-grid");
+            if (hScroll && hScroll.scrollWidth > hScroll.clientWidth + 4) {
+                if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+                const atLeft = hScroll.scrollLeft <= 2;
+                const atRight = hScroll.scrollLeft + hScroll.clientWidth >= hScroll.scrollWidth - 4;
+                if ((e.deltaY < 0 && !atLeft) || (e.deltaY > 0 && !atRight)) {
+                    e.preventDefault();
+                    hScroll.scrollLeft += e.deltaY;
+                    return;
+                }
+            }
             const scrollEl = e.target && e.target.closest && e.target.closest(".snap-inner, .scrollable");
             if (scrollEl && scrollEl.scrollHeight > scrollEl.clientHeight + 4) {
                 const atTop = scrollEl.scrollTop <= 2;
@@ -652,6 +663,24 @@
             if (Math.abs(e.deltaY) < 10) return;
             warpTo(curIdx + (e.deltaY > 0 ? 1 : -1));
         }, { passive: false, signal: sig });
+
+        $$(".course-grid").forEach((grid) => {
+            let isDown = false, startX = 0, scrollStart = 0;
+            grid.addEventListener("pointerdown", (e) => {
+                if (e.target.closest("a, button")) return;
+                isDown = true;
+                startX = e.clientX;
+                scrollStart = grid.scrollLeft;
+                grid.setPointerCapture(e.pointerId);
+            }, { signal: sig });
+            grid.addEventListener("pointermove", (e) => {
+                if (!isDown) return;
+                grid.scrollLeft = scrollStart - (e.clientX - startX);
+            }, { signal: sig });
+            const stop = () => { isDown = false; };
+            grid.addEventListener("pointerup", stop, { signal: sig });
+            grid.addEventListener("pointercancel", stop, { signal: sig });
+        });
 
         let touchStartX = 0, touchStartY = 0, touchConsumed = false;
         window.addEventListener("touchstart", (e) => {

@@ -1173,7 +1173,7 @@ SIMS.papers = (c) => {
     let W = 0, Hh = 0;
 
     KW.fit(c, (w, h, dpr) => { W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
-    KW.tag("Poincaré hyperbolic disk · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics", c);
+    KW.tag("Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics", c);
 
     KW.loop(c, (t) => {
         const p = KW.local(c), on = p.x > 0 && p.x < W && p.y > 0 && p.y < Hh;
