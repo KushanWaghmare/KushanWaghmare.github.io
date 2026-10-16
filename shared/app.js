@@ -4,6 +4,7 @@
     const keys = Object.keys(SITE.domains);
     const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
     const list = (key) => SITE.projects.filter((p) => p.domain === key);
 
     /* ---------- helpers used by sims.js ---------- */
@@ -861,15 +862,34 @@
         setupSnapObserver();
         observeReveals();
         const renderMath = () => {
-            if (window.renderMathInElement) {
-                renderMathInElement(main, {
-                    throwOnError: false,
-                    delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }]
-                });
+            const doRender = () => {
+                if (window.renderMathInElement) {
+                    try {
+                        renderMathInElement(document.body, {
+                            throwOnError: false,
+                            delimiters: [
+                                { left: "$$", right: "$$", display: true },
+                                { left: "$", right: "$", display: false }
+                            ]
+                        });
+                    } catch (e) {}
+                    return true;
+                }
+                return false;
+            };
+
+            if (!doRender()) {
+                let attempts = 0;
+                const timer = setInterval(() => {
+                    attempts++;
+                    if (doRender() || attempts > 40) clearInterval(timer);
+                }, 50);
+                if (!window.renderMathInElement) {
+                    window.addEventListener("load", () => doRender(), { once: true });
+                }
             }
         };
         renderMath();
-        if (!window.renderMathInElement) window.addEventListener("load", renderMath, { once: true });
     };
 
     initPage();

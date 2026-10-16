@@ -5,6 +5,25 @@
 :root {
     --sans: "Satoshi", "Inter", system-ui, -apple-system, sans-serif;
     --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    color-scheme: dark;
+    --bg: #07080c;
+    --bg-rgb: 7, 8, 12;
+    --fg: #e9ebf1;
+    --muted: #8a90a2;
+    --line: #ffffff17;
+    --glass: #10121a8c;
+    --glass-line: #ffffff1f;
+    --rgb-hub: 79, 140, 255;
+    --rgb-math: 224, 40, 64;
+    --rgb-physics: 34, 211, 238;
+    --rgb-datascience: 245, 158, 11;
+    --rgb-quant: 16, 185, 129;
+    --rgb-cs: 139, 92, 246;
+    --rgb-papers: 163, 230, 53;
+    --rgb-courses: 236, 72, 153;
+    --rgb-contact: 255, 149, 0;
+    --a: var(--rgb-hub);
+    --accent: rgb(var(--a));
 }
 html[data-theme="dark"] {
     color-scheme: dark;
@@ -287,6 +306,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
     display: inline-block;
     max-width: 100%;
     overflow-x: auto;
+    overflow-y: hidden;
     padding: 8px 22px;
     margin-top: 26px;
     font-size: 1.05rem;
@@ -294,7 +314,31 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
     border-color: rgba(var(--a), 0.36);
     box-shadow: 0 8px 30px -10px rgba(var(--a), 0.22);
 }
-.hero-eq .katex, .math-block .eq .katex { color: var(--fg); }
+.hero-eq, .snap-eq, .eq, .paper-eq, .math-block .eq {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    color: var(--fg);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+.hero-eq .katex, .snap-eq .katex, .eq .katex, .paper-eq .katex, .math-block .eq .katex, .katex {
+    color: var(--fg) !important;
+}
+.katex-display {
+    margin: 0.35em 0 !important;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+.course-card .eq {
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin: 4px 0;
+    font-size: 0.88rem;
+    overflow-x: auto;
+    max-width: 100%;
+}
 .sim-tag {
     position: absolute;
     right: clamp(20px, 4vw, 48px);
@@ -309,11 +353,6 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 /* ---------- Snap-scrolling layout across all pages ---------- */
 html {
     scroll-snap-type: y mandatory;
-    scroll-behavior: smooth;
-}
-body {
-    scroll-snap-type: y mandatory;
-    overflow-y: scroll;
     scroll-behavior: smooth;
 }
 
@@ -713,11 +752,11 @@ body {
 }
 .course-card {
     flex: 0 0 clamp(320px, 34vw, 440px);
-    padding: 22px 24px;
+    padding: 18px 20px;
     border-radius: 14px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     box-sizing: border-box;
 }
 .course-card-head {

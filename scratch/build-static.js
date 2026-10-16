@@ -585,20 +585,20 @@ const renderNav = (active, pageType) => {
 };
 
 const buildHTML = ({ domain, pageType, three, title, desc, mainContent }) => `<!doctype html>
-<html lang="en-GB" data-domain="${domain}" data-page="${pageType}">
+<html lang="en-GB" data-domain="${domain}" data-page="${pageType}" data-theme="dark">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${title}</title>
     <meta name="description" content="${desc}" />
     <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=26" />
+    <link rel="stylesheet" href="shared/style.css?v=27" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=26"></script>
-    <script defer src="shared/sims.js?v=26"></script>
-    <script defer src="shared/app.js?v=26"></script>
+${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=27"></script>
+    <script defer src="shared/sims.js?v=27"></script>
+    <script defer src="shared/app.js?v=27"></script>
 </head>
 <body>
     ${renderNav(domain, pageType)}
