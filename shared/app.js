@@ -523,7 +523,7 @@
 
         const sections = Array.from(document.querySelectorAll(".snap-section"));
         if (!sections.length) return;
-        const VECS = ["zoom", "right", "left", "bottom", "top", "right"];
+        const VECS = ["zoom", "right", "left", "bottom", "top", "left", "left", "left", "bottom"];
         sections.forEach((s, i) => {
             if (!s.dataset.enter) s.dataset.enter = VECS[i % VECS.length];
         });

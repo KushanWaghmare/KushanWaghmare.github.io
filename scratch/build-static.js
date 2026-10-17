@@ -10,7 +10,7 @@ const pad = (n) => String(n + 1).padStart(2, "0");
 const list = (key) => SITE.projects.filter((p) => p.domain === key);
 const tags = (a) => a.map((t) => `<span class="tag">${t}</span>`).join("");
 
-const VEC = ["right", "left", "bottom", "top", "right"];
+const VEC = ["right", "left", "bottom", "top", "left"];
 const hubPage = () => `
         <nav class="snap-pager" aria-label="Section navigation">
             <a href="#intro" class="snap-dot active" data-title="00 Intro" aria-label="Introduction"><span class="dot-disc" style="--a:var(--rgb-hub)"></span><span class="dot-text">00 Intro</span></a>
@@ -62,7 +62,7 @@ const hubPage = () => `
         </section>`;
         }).join("")}
 
-        <section class="snap-section domain-snap" id="section-papers" data-domain="papers" data-enter="right" style="--a:var(--rgb-papers)">
+        <section class="snap-section domain-snap" id="section-papers" data-domain="papers" data-enter="left" style="--a:var(--rgb-papers)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>06 / Research Papers</div>
