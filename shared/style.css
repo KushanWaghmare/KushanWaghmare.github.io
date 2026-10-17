@@ -21,7 +21,7 @@
     --rgb-cs: 139, 92, 246;
     --rgb-papers: 163, 230, 53;
     --rgb-courses: 236, 72, 153;
-    --rgb-contact: 255, 149, 0;
+    --rgb-contact: 20, 184, 166;
     --a: var(--rgb-hub);
     --accent: rgb(var(--a));
 }
@@ -42,7 +42,7 @@ html[data-theme="dark"] {
     --rgb-cs: 139, 92, 246;          /* violet */
     --rgb-papers: 163, 230, 53;      /* electric lime / chartreuse */
     --rgb-courses: 236, 72, 153;     /* neon fuchsia / rose */
-    --rgb-contact: 255, 149, 0;      /* neon orange / gold */
+    --rgb-contact: 20, 184, 166;     /* luminous teal / aquamarine */
 }
 html[data-theme="light"] {
     color-scheme: light;
@@ -61,7 +61,7 @@ html[data-theme="light"] {
     --rgb-cs: 109, 40, 217;
     --rgb-papers: 101, 163, 13;
     --rgb-courses: 190, 24, 93;
-    --rgb-contact: 217, 119, 6;
+    --rgb-contact: 13, 148, 136;
 }
 html[data-domain="math"] { --a: var(--rgb-math); }
 html[data-domain="physics"] { --a: var(--rgb-physics); }
