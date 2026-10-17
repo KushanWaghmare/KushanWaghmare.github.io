@@ -69,10 +69,6 @@ const hubPage = () => `
                 <h2 class="snap-title" data-reveal>Research Papers</h2>
                 <p class="lead snap-lead" data-reveal>Preprints and research papers spanning statistical learning theory, non-equilibrium Langevin dynamics, quantitative market microstructure, and symplectic numerical integrators.</p>
                 <div class="hero-eq glass snap-eq" data-reveal>$$\\frac{\\partial p(\\boldsymbol\\theta, t)}{\\partial t}=\\nabla_{\\boldsymbol\\theta}\\cdot\\Big(\\nabla_{\\boldsymbol\\theta} L(\\boldsymbol\\theta)\\,p(\\boldsymbol\\theta, t)+D\\,\\nabla_{\\boldsymbol\\theta} p(\\boldsymbol\\theta, t)\\Big)$$</div>
-                <div class="snap-projects" data-reveal>
-                    <span class="snap-proj-label">Featured preprints:</span>
-                    ${SITE.papers.map(p => `<a href="papers.html#paper-${p.id}" class="snap-proj-pill glass"><strong>${p.title}</strong><span class="tag-status">${p.status}</span></a>`).join("")}
-                </div>
                 <div class="snap-actions" data-reveal>
                     <a href="papers.html" class="snap-cta-btn glass" style="--a:var(--rgb-papers)">
                         <span>Explore Research Papers</span>
