@@ -6,14 +6,14 @@
     <title>Research Paper · Kushan Waghmare</title>
     <meta name="description" content="Research paper deep-dive: abstract, mathematical formulation and analytical highlights." />
     <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=27" />
+    <link rel="stylesheet" href="shared/style.css?v=28" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-    <script defer src="shared/data.js?v=27"></script>
-    <script defer src="shared/sims.js?v=27"></script>
-    <script defer src="shared/app.js?v=27"></script>
+    <script defer src="shared/data.js?v=28"></script>
+    <script defer src="shared/sims.js?v=28"></script>
+    <script defer src="shared/app.js?v=28"></script>
 </head>
 <body>
     
@@ -28,17 +28,19 @@
             <a href="papers.html" class="nav-back-link"><span class="full">← All Papers</span><span class="short">←</span></a>
             <a href="index.html#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>
             <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
-            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Mute audio">🔊</button>
         </nav>
     </header>
     <main id="main">
     <nav class="snap-pager" aria-label="Paper section navigation">
-        <a href="#paper-hero" class="snap-dot active" data-title="00 Overview" aria-label="Paper Overview"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">00 Overview</span></a>
-        <a href="#paper-theory" class="snap-dot" data-title="01 Theory &amp; Proofs" aria-label="Theory and Proofs"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">01 Theory &amp; Proofs</span></a>
-        <a href="#paper-cite" class="snap-dot" data-title="02 Citation &amp; Sibling Papers" aria-label="Citation and Sibling Papers"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">02 Citation &amp; Siblings</span></a>
+        
+        <a href="#paper-langevin-loss-landscapes" class="snap-dot active" data-title="01 Non-Equilibrium Langevin Dynamics" aria-label="Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">01 Non-Equilibrium Langevin Dynamics</span></a>
+        <a href="#paper-hft-stat-arb-microstructure" class="snap-dot " data-title="02 HFT Statistical Arbitrage" aria-label="Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">02 HFT Statistical Arbitrage</span></a>
+        <a href="#paper-symplectic-energy-bounds-nbody" class="snap-dot " data-title="03 Symplectic N-Body Integrators" aria-label="Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">03 Symplectic N-Body Integrators</span></a>
+        <a href="#paper-verified-ssa-compiler-passes" class="snap-dot " data-title="04 Verified SSA Compiler Passes" aria-label="Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">04 Verified SSA Compiler Passes</span></a>
+        <a href="#paper-riemannian-immersion-gauss-bonnet" class="snap-dot " data-title="05 Riemannian Immersion & Holonomy" aria-label="Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">05 Riemannian Immersion & Holonomy</span></a>
     </nav>
-
-    <section class="snap-section hero" id="paper-hero" data-domain="papers" style="--a:var(--rgb-papers)">
+    
+    <section class="snap-section hero" id="paper-langevin-loss-landscapes" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:980px">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>Non-Equilibrium Langevin Dynamics</span></div>
@@ -57,12 +59,12 @@
                 <div class="paper-section-tag" style="margin-bottom:8px">Executive Abstract</div>
                 <p style="font-size:15px;line-height:1.75;color:var(--fg);margin:0">We model parameter trajectories in over-parameterised neural architectures as non-equilibrium diffusions governed by anisotropic gradient covariance. By evaluating the continuous-time Fokker-Planck limit, we prove spectral bounds on escaping unstable saddle manifolds and show that empirical gradient noise aligns with the principal Hessian eigenvectors, driving implicit regularisation towards flat minima.</p>
             </div>
+            <div class="hero-eq glass snap-eq" data-hero style="align-self:stretch;padding:14px 20px;margin:12px 0;font-size:1.05rem">$\frac{\partial p(\boldsymbol\theta, t)}{\partial t}=\nabla_{\boldsymbol\theta}\cdot\Big(\nabla_{\boldsymbol\theta} L(\boldsymbol\theta)\,p(\boldsymbol\theta, t)+D\,\nabla_{\boldsymbol\theta} p(\boldsymbol\theta, t)\Big)$</div>
+            <ol class="snap-arch-grid" data-hero style="max-width:980px;margin-top:10px">
+                <li class="glass"><strong>Diffusion Tensor</strong><span>Empirical covariance $\Sigma(\boldsymbol\theta)\approx\frac{\eta}{2B}\mathbb E[\nabla L_i\nabla L_i^\top]$ drives anisotropic saddle escape drift.</span></li><li class="glass"><strong>Kramers Rate</strong><span>Saddle escape frequency $\kappa\propto\sqrt{\frac{|\det H_{\text{saddle}}|}{\det H_{\text{min}}}}\exp\left(-\frac{\Delta L}{T_{\text{eff}}}\right)$ scales with learning rate and batch temperature.</span></li><li class="glass"><strong>Implicit Regularisation</strong><span>Trajectories bias towards sub-manifolds minimising $\operatorname{Tr}(H(\boldsymbol\theta))$, selecting generalisable flat basins.</span></li><li class="glass"><strong>Empirical Verification</strong><span>Tested across deep convolutional and attention architectures under controlled isotropic perturbation.</span></li>
+            </ol>
             <div class="snap-actions" data-hero style="margin-top:16px">
-                <a href="#paper-theory" class="snap-cta-btn glass" style="--a:var(--rgb-papers)">
-                    <span>Inspect Mathematical Formulation &amp; Proofs</span>
-                    <span class="arr">↓</span>
-                </a>
-                <button type="button" class="copy-btn pill" data-copy="@article{waghmare2026langevin,
+                <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="@article{waghmare2026langevin,
   author = {Waghmare, Kushan},
   title = {Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes},
   journal = {arXiv preprint arXiv:2604.10842},
@@ -71,72 +73,168 @@
                     <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX</span>
                 </button>
                 <a href="papers.html" class="pill">← All Papers</a>
+                <a href="#paper-hft-stat-arb-microstructure" class="pill">Next Paper: HFT Statistical Arbitrage →</a>
             </div>
         </div>
         <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
-        <a class="snap-cue" href="#paper-theory">Next: Formulation &amp; Proofs</a>
+        <a class="snap-cue" href="#paper-hft-stat-arb-microstructure">Next: HFT Statistical Arbitrage</a>
     </section>
-
-    <section class="snap-section project-snap" id="paper-theory" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section hero" id="paper-hft-stat-arb-microstructure" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:980px">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>01 / Theoretical Foundations &amp; Proofs</div>
-            <h2 class="snap-title" data-reveal style="font-size:clamp(24px, 3.2vw, 42px)">Analytical Model &amp; Core Contributions</h2>
-            <div class="snap-overview-card glass" data-reveal style="padding:20px 26px;max-width:980px">
-                <div class="paper-section-tag" style="margin-bottom:6px">Governing Analytical Model · arXiv:2604.10842 [stat.ML]</div>
-                <div class="hero-eq glass snap-eq" style="align-self:stretch;padding:14px 20px;margin:8px 0;font-size:1.05rem">$$\frac{\partial p(\boldsymbol\theta, t)}{\partial t}=\nabla_{\boldsymbol\theta}\cdot\Big(\nabla_{\boldsymbol\theta} L(\boldsymbol\theta)\,p(\boldsymbol\theta, t)+D\,\nabla_{\boldsymbol\theta} p(\boldsymbol\theta, t)\Big)$$</div>
-                <p style="color:var(--muted);font-size:13.5px;margin:4px 0 0">Continuous-time formulation derived in <strong>arXiv:2604.10842 [stat.ML]</strong> (2026), proving asymptotic convergence and spectral bounds.</p>
+            <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>HFT Statistical Arbitrage</span></div>
+            <div class="eyebrow" data-hero>
+                <span class="domain-badge" style="background:var(--accent)"></span>
+                Paper 02 / 05 · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-quant)">Quant Finance</span> · 2026
             </div>
-            <ol class="snap-arch-grid" data-reveal style="max-width:980px;margin-top:16px">
-                <li class="glass"><strong>Diffusion Tensor</strong><span>Empirical covariance $\Sigma(\boldsymbol\theta)\approx\frac{\eta}{2B}\mathbb E[\nabla L_i\nabla L_i^\top]$ drives anisotropic saddle escape drift.</span></li><li class="glass"><strong>Kramers Rate</strong><span>Saddle escape frequency $\kappa\propto\sqrt{\frac{|\det H_{\text{saddle}}|}{\det H_{\text{min}}}}\exp\left(-\frac{\Delta L}{T_{\text{eff}}}\right)$ scales with learning rate and batch temperature.</span></li><li class="glass"><strong>Implicit Regularisation</strong><span>Trajectories bias towards sub-manifolds minimising $\operatorname{Tr}(H(\boldsymbol\theta))$, selecting generalisable flat basins.</span></li><li class="glass"><strong>Empirical Verification</strong><span>Tested across deep convolutional and attention architectures under controlled isotropic perturbation.</span></li>
+            <h1 data-hero style="font-size:clamp(24px, 3.2vw, 42px);line-height:1.2;max-width:980px">Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction</h1>
+            <div class="paper-meta" data-hero>
+                <span class="venue">Quantitative Finance Working Papers Series</span>
+                <span>·</span>
+                <span>Kushan Waghmare</span>
+                <span class="tag-status">Working Paper</span>
+            </div>
+            <div class="snap-overview-card glass" data-hero style="padding:20px 26px;margin-top:14px;max-width:980px">
+                <div class="paper-section-tag" style="margin-bottom:8px">Executive Abstract</div>
+                <p style="font-size:15px;line-height:1.75;color:var(--fg);margin:0">Empirical co-integration signals frequently degenerate when deployed into limit order books under discrete execution frictions. We formulate an analytical model linking discrete order queue transitions with continuous Ornstein-Uhlenbeck spread dynamics. Solving the dual-asset Hamilton-Jacobi-Bellman (HJB) viscosity equation with quadratic inventory penalties yields reservation spread thresholds that optimise post-cost Sharpe ratios.</p>
+            </div>
+            <div class="hero-eq glass snap-eq" data-hero style="align-self:stretch;padding:14px 20px;margin:12px 0;font-size:1.05rem">$\max_{q\in\mathcal A}\ \mathbb E\bigg[\int_0^T e^{-\rho t}\Big(q_t\,d\varepsilon_t - c\,|dq_t| - \gamma\,q_t^2\,dt\Big)\bigg]$</div>
+            <ol class="snap-arch-grid" data-hero style="max-width:980px;margin-top:10px">
+                <li class="glass"><strong>Johansen Likelihood</strong><span>Eigenvector decomposition of lagged covariance matrices yielding stationary co-integrating vector $\boldsymbol\beta$.</span></li><li class="glass"><strong>HJB Viscosity Solution</strong><span>Closed-form value function $V(\varepsilon, q)$ bounding inventory holding risk across volatile regimes.</span></li><li class="glass"><strong>Half-Life Speed</strong><span>Ornstein-Uhlenbeck mean-reversion parameter $\theta=-\frac{\ln b}{\Delta t}$ determines optimal unwinding horizons.</span></li><li class="glass"><strong>Backtest Evidence</strong><span>Evaluated over tick-level order book records with latency simulation, achieving an annualised Sharpe ratio of 2.1.</span></li>
             </ol>
-        </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
-        <a class="snap-cue" href="#paper-cite">Next: Citation &amp; Related Papers</a>
-    </section>
-
-    <section class="snap-section about-contact-section" id="paper-cite" data-domain="papers" style="--a:var(--rgb-papers)">
-        <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner" style="max-width:980px">
-            <div class="section-head" data-reveal><span class="idx">02</span><h2>Citation, Code &amp; Sibling Papers</h2></div>
-            <p class="lead" data-reveal style="margin-bottom:16px">Official academic reference citation for LaTeX publications, along with sibling deep-dives across research domains.</p>
-            <div class="contact-card glass" data-reveal style="padding:22px 28px;max-width:980px">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-                    <span class="contact-status"><span class="status-dot"></span> BibTeX Citation Record · LaTeX</span>
-                    <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="@article{waghmare2026langevin,
+            <div class="snap-actions" data-hero style="margin-top:16px">
+                <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="@article{waghmare2026statarb,
   author = {Waghmare, Kushan},
-  title = {Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes},
-  journal = {arXiv preprint arXiv:2604.10842},
+  title = {Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction},
+  journal = {Quantitative Finance Working Papers},
   year = {2026}
 }" aria-label="Copy BibTeX Citation">
-                        <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX</span>
-                    </button>
-                </div>
-                <pre class="eq glass" style="padding:14px 18px;border-radius:10px;font-family:var(--mono);font-size:12px;color:var(--fg);overflow-x:auto;white-space:pre;margin:10px 0"><code>@article{waghmare2026langevin,
-  author = {Waghmare, Kushan},
-  title = {Non-Equilibrium Thermodynamics and Langevin Dynamics in High-Dimensional Loss Landscapes},
-  journal = {arXiv preprint arXiv:2604.10842},
-  year = {2026}
-}</code></pre>
-                <div class="pn snap-nav-grid" style="margin-top:14px;margin-bottom:14px">
-                    
-                    
-                    <a class="card glass" href="paper.html?p=hft-stat-arb-microstructure">
-                        <span class="no">Next Paper →</span>
-                        <h3 style="font-size:15px;line-height:1.25">Continuous-Time Co-Integration & High-Frequency Statistical Arbitrage with Microstructure Friction</h3>
-                        <p style="font-size:12.5px">Formulating multi-asset statistical arbitrage under bid-ask spreads, execution latency and borrow costs as a Hamilton-Jacobi-Bellman variational inequality with terminal inventory penalty.</p>
-                        <span class="go">Read paper deep-dive</span>
-                    </a>
-                </div>
-                <div class="pills" style="margin-top:14px">
-                    <a class="pill" href="papers.html">← All Research Papers</a>
-                    <a class="pill" href="datascience.html">Explore Data Science Domain →</a>
-                    <a class="pill" href="index.html">← Back to Hub</a>
-                </div>
+                    <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX</span>
+                </button>
+                <a href="papers.html" class="pill">← All Papers</a>
+                <a href="#paper-symplectic-energy-bounds-nbody" class="pill">Next Paper: Symplectic N-Body Integrators →</a>
             </div>
         </div>
         <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
-        <footer class="foot snap-foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
-    </section></main>
+        <a class="snap-cue" href="#paper-symplectic-energy-bounds-nbody">Next: Symplectic N-Body Integrators</a>
+    </section>
+    <section class="snap-section hero" id="paper-symplectic-energy-bounds-nbody" data-domain="papers" style="--a:var(--rgb-papers)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner" style="max-width:980px">
+            <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>Symplectic N-Body Integrators</span></div>
+            <div class="eyebrow" data-hero>
+                <span class="domain-badge" style="background:var(--accent)"></span>
+                Paper 03 / 05 · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-physics)">Physics</span> · 2025
+            </div>
+            <h1 data-hero style="font-size:clamp(24px, 3.2vw, 42px);line-height:1.2;max-width:980px">Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations</h1>
+            <div class="paper-meta" data-hero>
+                <span class="venue">Computational Physics & Dynamical Systems</span>
+                <span>·</span>
+                <span>Kushan Waghmare</span>
+                <span class="tag-status">Preprint</span>
+            </div>
+            <div class="snap-overview-card glass" data-hero style="padding:20px 26px;margin-top:14px;max-width:980px">
+                <div class="paper-section-tag" style="margin-bottom:8px">Executive Abstract</div>
+                <p style="font-size:15px;line-height:1.75;color:var(--fg);margin:0">Standard explicit Runge-Kutta schemes inject artificial secular energy drift into gravitational systems, eroding orbital stability. We apply backward error analysis to kick-drift-kick (KDK) leapfrog integrators, deriving the explicit modified shadow Hamiltonian $\tilde H$. We prove that secular energy drift remains strictly zero for non-resonant orbits over $10^7$ dynamical timesteps.</p>
+            </div>
+            <div class="hero-eq glass snap-eq" data-hero style="align-self:stretch;padding:14px 20px;margin:12px 0;font-size:1.05rem">$\tilde H = H + \frac{\Delta t^2}{12}\Big(\{V,\{V,T\}\} + \tfrac12\{T,\{T,V\}\}\Big) + \mathcal O(\Delta t^4)$</div>
+            <ol class="snap-arch-grid" data-hero style="max-width:980px;margin-top:10px">
+                <li class="glass"><strong>Poincaré Invariant</strong><span>Exact preservation of the differential 2-form $\omega=\sum_i dq_i\wedge dp_i$ across every discrete step.</span></li><li class="glass"><strong>Baker-Campbell-Hausdorff</strong><span>Lie commutator expansions guaranteeing bounded Hamiltonian oscillation without long-term drift.</span></li><li class="glass"><strong>Softening Kernel</strong><span>Singularity-free Plummer potential $\Phi(r)=-\frac{GM}{\sqrt{r^2+\varepsilon^2}}$ paired with spatial quadtree acceleration.</span></li><li class="glass"><strong>Numerical Benchmark</strong><span>Simulated $10^6$ galactic disc revolutions confirming total energy preservation to machine precision.</span></li>
+            </ol>
+            <div class="snap-actions" data-hero style="margin-top:16px">
+                <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="@article{waghmare2025symplectic,
+  author = {Waghmare, Kushan},
+  title = {Symplectic Preservation and Exact Energy Error Boundedness in Long-Term N-Body Gravitational Integrations},
+  journal = {Computational Physics Preprint},
+  year = {2025}
+}" aria-label="Copy BibTeX Citation">
+                    <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX</span>
+                </button>
+                <a href="papers.html" class="pill">← All Papers</a>
+                <a href="#paper-verified-ssa-compiler-passes" class="pill">Next Paper: Verified SSA Compiler Passes →</a>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <a class="snap-cue" href="#paper-verified-ssa-compiler-passes">Next: Verified SSA Compiler Passes</a>
+    </section>
+    <section class="snap-section hero" id="paper-verified-ssa-compiler-passes" data-domain="papers" style="--a:var(--rgb-papers)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner" style="max-width:980px">
+            <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>Verified SSA Compiler Passes</span></div>
+            <div class="eyebrow" data-hero>
+                <span class="domain-badge" style="background:var(--accent)"></span>
+                Paper 04 / 05 · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-cs)">Computer Science</span> · 2025
+            </div>
+            <h1 data-hero style="font-size:clamp(24px, 3.2vw, 42px);line-height:1.2;max-width:980px">Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers</h1>
+            <div class="paper-meta" data-hero>
+                <span class="venue">Systems & Programming Languages Technical Reports</span>
+                <span>·</span>
+                <span>Kushan Waghmare</span>
+                <span class="tag-status">Research Report</span>
+            </div>
+            <div class="snap-overview-card glass" data-hero style="padding:20px 26px;margin-top:14px;max-width:980px">
+                <div class="paper-section-tag" style="margin-bottom:8px">Executive Abstract</div>
+                <p style="font-size:15px;line-height:1.75;color:var(--fg);margin:0">Numerical compilers lower mathematical expressions into LLVM IR through complex transformation passes that risk semantic alteration. We develop a formally verified IR lowering engine featuring type-preserving SSA $\phi$-node elimination, dominance-frontier verification, and dead-code elimination, validated against a mechanised operational semantics.</p>
+            </div>
+            <div class="hero-eq glass snap-eq" data-hero style="align-self:stretch;padding:14px 20px;margin:12px 0;font-size:1.05rem">$\frac{\Gamma\vdash e_1:\tau_1\qquad \Gamma,\,x:\tau_1\vdash e_2:\tau_2}{\Gamma\vdash \mathbf{let}\ x = e_1\ \mathbf{in}\ e_2:\tau_2}$</div>
+            <ol class="snap-arch-grid" data-hero style="max-width:980px;margin-top:10px">
+                <li class="glass"><strong>Dominance Invariant</strong><span>Every variable use is strictly dominated by its unique definition $\operatorname{idom}(u)\prec v$ in the control-flow tree.</span></li><li class="glass"><strong>Sparse Constant Propagation</strong><span>Monotone dataflow transfer functions updating constants over SSA def-use webs to a fixed point.</span></li><li class="glass"><strong>Zero-Cost Aliasing</strong><span>Escape analysis verifying safe stack allocation of intermediate vectors and matrix operands.</span></li><li class="glass"><strong>End-to-End Execution</strong><span>Benchmarked on custom Ku-Lang compiler emitting native machine instructions via the LLVM toolchain.</span></li>
+            </ol>
+            <div class="snap-actions" data-hero style="margin-top:16px">
+                <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="@techreport{waghmare2025ssa,
+  author = {Waghmare, Kushan},
+  title = {Formal Verification and Type Preservation for SSA Dominance Optimisation in Numerical Compilers},
+  institution = {IIT Madras Systems Group},
+  year = {2025}
+}" aria-label="Copy BibTeX Citation">
+                    <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX</span>
+                </button>
+                <a href="papers.html" class="pill">← All Papers</a>
+                <a href="#paper-riemannian-immersion-gauss-bonnet" class="pill">Next Paper: Riemannian Immersion & Holonomy →</a>
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <a class="snap-cue" href="#paper-riemannian-immersion-gauss-bonnet">Next: Riemannian Immersion & Holonomy</a>
+    </section>
+    <section class="snap-section hero" id="paper-riemannian-immersion-gauss-bonnet" data-domain="papers" style="--a:var(--rgb-papers)">
+        <canvas aria-hidden="true"></canvas>
+        <div class="snap-inner" style="max-width:980px">
+            <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>Riemannian Immersion & Holonomy</span></div>
+            <div class="eyebrow" data-hero>
+                <span class="domain-badge" style="background:var(--accent)"></span>
+                Paper 05 / 05 · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-math)">Mathematics</span> · 2025
+            </div>
+            <h1 data-hero style="font-size:clamp(24px, 3.2vw, 42px);line-height:1.2;max-width:980px">Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds</h1>
+            <div class="paper-meta" data-hero>
+                <span class="venue">Differential Geometry & Geometric Analysis</span>
+                <span>·</span>
+                <span>Kushan Waghmare</span>
+                <span class="tag-status">Preprint</span>
+            </div>
+            <div class="snap-overview-card glass" data-hero style="padding:20px 26px;margin-top:14px;max-width:980px">
+                <div class="paper-section-tag" style="margin-bottom:8px">Executive Abstract</div>
+                <p style="font-size:15px;line-height:1.75;color:var(--fg);margin:0">We examine the differential geometry of non-orientable immersed submanifolds in $\mathbb R^3$. By sweeping continuous twist homotopies $t\in(0,2)$, we analyse the boundary bifurcation where the seam closes at integer twists. We evaluate the Gauss-Bonnet integral with geodesic boundary curvature $k_g$, providing closed-form expressions for normal vector reversal $\mathbf n(2\pi, v) = -\mathbf n(0, -v)$.</p>
+            </div>
+            <div class="hero-eq glass snap-eq" data-hero style="align-self:stretch;padding:14px 20px;margin:12px 0;font-size:1.05rem">$\iint_M K\,dA + \oint_{\partial M} k_g\,ds = 2\pi\,\chi(M) = 0$</div>
+            <ol class="snap-arch-grid" data-hero style="max-width:980px;margin-top:10px">
+                <li class="glass"><strong>First Fundamental Form</strong><span>Metric tensor $ds^2 = E\,du^2 + 2F\,du\,dv + G\,dv^2$ with diagonal metric ($F=0$) parameterisation.</span></li><li class="glass"><strong>Normal Holonomy</strong><span>Parallel transport of unit normals across the topological seam exhibiting $\mathbb Z_2$ monodromy.</span></li><li class="glass"><strong>Figure-8 Immersion</strong><span>Parametric representation of Klein surface immersions in 3-space without self-intersection singularities.</span></li><li class="glass"><strong>Live GPU Evaluation</strong><span>Real-time vertex recomputation under continuously variable twist parameter $t$.</span></li>
+            </ol>
+            <div class="snap-actions" data-hero style="margin-top:16px">
+                <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="@article{waghmare2025riemannian,
+  author = {Waghmare, Kushan},
+  title = {Curvature Transport & Non-Orientable Boundary Holonomy on Immersed Klein and Möbius Manifolds},
+  journal = {Differential Geometry Preprint},
+  year = {2025}
+}" aria-label="Copy BibTeX Citation">
+                    <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX</span>
+                </button>
+                <a href="papers.html" class="pill">← All Papers</a>
+                
+            </div>
+        </div>
+        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <a class="snap-cue" href="#paper-langevin-loss-landscapes">Back to top</a>
+    </section>
+    </main>
 </body>
 </html>

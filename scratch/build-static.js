@@ -324,7 +324,7 @@ const papersPage = () => {
                 Paper ${pad(i)} / ${String(papers.length).padStart(2, "0")} · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-${p.domain})">${d.name}</span> · ${p.year}
             </div>
             <h2 class="snap-title" data-reveal style="font-size:clamp(26px, 3.6vw, 48px);line-height:1.16">
-                <a href="paper.html?p=${p.id}" style="color:inherit;text-decoration:none">${p.title}</a>
+                <a href="paper.html#paper-${p.id}" style="color:inherit;text-decoration:none">${p.title}</a>
             </h2>
             <div class="paper-meta" data-reveal>
                 <span class="venue">${p.venue}</span>
@@ -338,7 +338,7 @@ const papersPage = () => {
                 ${p.tags.map(t => `<span class="snap-proj-pill glass"><strong>${t}</strong></span>`).join("")}
             </div>
             <div class="snap-actions" data-reveal style="margin-top:22px">
-                <a href="paper.html?p=${p.id}" class="snap-cta-btn glass" style="--a:var(--rgb-papers)">
+                <a href="paper.html#paper-${p.id}" class="snap-cta-btn glass" style="--a:var(--rgb-papers)">
                     <span>Read Paper &amp; Detailed Abstract</span>
                     <span class="arr">→</span>
                 </a>
@@ -366,26 +366,24 @@ const papersPage = () => {
     </section>`;
 };
 
-const paperDetailPage = (p) => {
-    const d = SITE.domains[p.domain] || { name: "Data Science", file: "datascience.html" };
+const allPapersPage = () => {
     const papers = SITE.papers || [];
-    const i = papers.findIndex((x) => x.id === p.id);
-    const prev = i > 0 ? papers[i - 1] : null;
-    const next = i >= 0 && i < papers.length - 1 ? papers[i + 1] : null;
     return `
     <nav class="snap-pager" aria-label="Paper section navigation">
-        <a href="#paper-hero" class="snap-dot active" data-title="00 Overview" aria-label="Paper Overview"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">00 Overview</span></a>
-        <a href="#paper-theory" class="snap-dot" data-title="01 Theory &amp; Proofs" aria-label="Theory and Proofs"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">01 Theory &amp; Proofs</span></a>
-        <a href="#paper-cite" class="snap-dot" data-title="02 Citation &amp; Sibling Papers" aria-label="Citation and Sibling Papers"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">02 Citation &amp; Siblings</span></a>
+        ${papers.map((p, i) => `
+        <a href="#paper-${p.id}" class="snap-dot ${i === 0 ? 'active' : ''}" data-title="${pad(i)} ${p.short || p.title}" aria-label="${p.title}"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">${pad(i)} ${p.short || p.title}</span></a>`).join("")}
     </nav>
-
-    <section class="snap-section hero" id="paper-hero" data-domain="papers" style="--a:var(--rgb-papers)">
+    ${papers.map((p, i) => {
+        const d = SITE.domains[p.domain] || { name: "Data Science", file: "datascience.html" };
+        const next = i < papers.length - 1 ? papers[i + 1] : null;
+        return `
+    <section class="snap-section hero" id="paper-${p.id}" data-domain="papers" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:980px">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>${p.short || p.title}</span></div>
             <div class="eyebrow" data-hero>
                 <span class="domain-badge" style="background:var(--accent)"></span>
-                Paper ${pad(i >= 0 ? i : 0)} / ${String(papers.length).padStart(2, "0")} · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-${p.domain})">${d.name}</span> · ${p.year}
+                Paper ${pad(i)} / ${String(papers.length).padStart(2, "0")} · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-${p.domain})">${d.name}</span> · ${p.year}
             </div>
             <h1 data-hero style="font-size:clamp(24px, 3.2vw, 42px);line-height:1.2;max-width:980px">${p.title}</h1>
             <div class="paper-meta" data-hero>
@@ -398,78 +396,23 @@ const paperDetailPage = (p) => {
                 <div class="paper-section-tag" style="margin-bottom:8px">Executive Abstract</div>
                 <p style="font-size:15px;line-height:1.75;color:var(--fg);margin:0">${p.abstract}</p>
             </div>
+            <div class="hero-eq glass snap-eq" data-hero style="align-self:stretch;padding:14px 20px;margin:12px 0;font-size:1.05rem">$${p.eq}$</div>
+            <ol class="snap-arch-grid" data-hero style="max-width:980px;margin-top:10px">
+                ${p.highlights.map(([n, t]) => `<li class="glass"><strong>${n}</strong><span>${t}</span></li>`).join("")}
+            </ol>
             <div class="snap-actions" data-hero style="margin-top:16px">
-                <a href="#paper-theory" class="snap-cta-btn glass" style="--a:var(--rgb-papers)">
-                    <span>Inspect Mathematical Formulation &amp; Proofs</span>
-                    <span class="arr">↓</span>
-                </a>
-                <button type="button" class="copy-btn pill" data-copy="${p.bibtex.replace(/"/g, '&quot;')}" aria-label="Copy BibTeX Citation">
+                <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="${p.bibtex.replace(/"/g, '&quot;')}" aria-label="Copy BibTeX Citation">
                     <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX</span>
                 </button>
                 <a href="papers.html" class="pill">← All Papers</a>
+                ${next ? `<a href="#paper-${next.id}" class="pill">Next Paper: ${next.short || next.title} →</a>` : ""}
             </div>
         </div>
         <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
-        <a class="snap-cue" href="#paper-theory">Next: Formulation &amp; Proofs</a>
-    </section>
-
-    <section class="snap-section project-snap" id="paper-theory" data-domain="papers" style="--a:var(--rgb-papers)">
-        <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner" style="max-width:980px">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>01 / Theoretical Foundations &amp; Proofs</div>
-            <h2 class="snap-title" data-reveal style="font-size:clamp(24px, 3.2vw, 42px)">Analytical Model &amp; Core Contributions</h2>
-            <div class="snap-overview-card glass" data-reveal style="padding:20px 26px;max-width:980px">
-                <div class="paper-section-tag" style="margin-bottom:6px">Governing Analytical Model · ${p.venue}</div>
-                <div class="hero-eq glass snap-eq" style="align-self:stretch;padding:14px 20px;margin:8px 0;font-size:1.05rem">$$${p.eq}$$</div>
-                <p style="color:var(--muted);font-size:13.5px;margin:4px 0 0">Continuous-time formulation derived in <strong>${p.venue}</strong> (${p.year}), proving asymptotic convergence and spectral bounds.</p>
-            </div>
-            <ol class="snap-arch-grid" data-reveal style="max-width:980px;margin-top:16px">
-                ${p.highlights.map(([n, t]) => `<li class="glass"><strong>${n}</strong><span>${t}</span></li>`).join("")}
-            </ol>
-        </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
-        <a class="snap-cue" href="#paper-cite">Next: Citation &amp; Related Papers</a>
-    </section>
-
-    <section class="snap-section about-contact-section" id="paper-cite" data-domain="papers" style="--a:var(--rgb-papers)">
-        <canvas aria-hidden="true"></canvas>
-        <div class="snap-inner" style="max-width:980px">
-            <div class="section-head" data-reveal><span class="idx">02</span><h2>Citation, Code &amp; Sibling Papers</h2></div>
-            <p class="lead" data-reveal style="margin-bottom:16px">Official academic reference citation for LaTeX publications, along with sibling deep-dives across research domains.</p>
-            <div class="contact-card glass" data-reveal style="padding:22px 28px;max-width:980px">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-                    <span class="contact-status"><span class="status-dot"></span> BibTeX Citation Record · LaTeX</span>
-                    <button type="button" class="copy-btn snap-cta-btn glass" style="--a:var(--rgb-papers)" data-copy="${p.bibtex.replace(/"/g, '&quot;')}" aria-label="Copy BibTeX Citation">
-                        <span class="copy-icon">⎘</span> <span class="copy-text">Copy BibTeX</span>
-                    </button>
-                </div>
-                <pre class="eq glass" style="padding:14px 18px;border-radius:10px;font-family:var(--mono);font-size:12px;color:var(--fg);overflow-x:auto;white-space:pre;margin:10px 0"><code>${p.bibtex}</code></pre>
-                <div class="pn snap-nav-grid" style="margin-top:14px;margin-bottom:14px">
-                    ${prev ? `
-                    <a class="card glass" href="paper.html?p=${prev.id}">
-                        <span class="no">← Previous Paper</span>
-                        <h3 style="font-size:15px;line-height:1.25">${prev.title}</h3>
-                        <p style="font-size:12.5px">${prev.summary}</p>
-                        <span class="go">Read paper deep-dive</span>
-                    </a>` : ""}
-                    ${next ? `
-                    <a class="card glass" href="paper.html?p=${next.id}">
-                        <span class="no">Next Paper →</span>
-                        <h3 style="font-size:15px;line-height:1.25">${next.title}</h3>
-                        <p style="font-size:12.5px">${next.summary}</p>
-                        <span class="go">Read paper deep-dive</span>
-                    </a>` : ""}
-                </div>
-                <div class="pills" style="margin-top:14px">
-                    <a class="pill" href="papers.html">← All Research Papers</a>
-                    <a class="pill" href="${d.file}">Explore ${d.name} Domain →</a>
-                    <a class="pill" href="index.html">← Back to Hub</a>
-                </div>
-            </div>
-        </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
-        <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
+        <a class="snap-cue" href="${next ? `#paper-${next.id}` : '#paper-' + papers[0].id}">${next ? `Next: ${next.short || next.title}` : 'Back to top'}</a>
     </section>`;
+    }).join("")}
+    `;
 };
 
 const coursesPage = () => {
@@ -579,7 +522,6 @@ const renderNav = (active, pageType) => {
             ${backLink}
             <a href="${pageType === 'hub' ? '#about-contact' : 'index.html#about-contact'}" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>
             <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
-            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Mute audio">🔊</button>
         </nav>
     </header>`;
 };
@@ -592,13 +534,13 @@ const buildHTML = ({ domain, pageType, three, title, desc, mainContent }) => `<!
     <title>${title}</title>
     <meta name="description" content="${desc}" />
     <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=27" />
+    <link rel="stylesheet" href="shared/style.css?v=28" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=27"></script>
-    <script defer src="shared/sims.js?v=27"></script>
-    <script defer src="shared/app.js?v=27"></script>
+${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=28"></script>
+    <script defer src="shared/sims.js?v=28"></script>
+    <script defer src="shared/app.js?v=28"></script>
 </head>
 <body>
     ${renderNav(domain, pageType)}
@@ -662,7 +604,7 @@ fs.writeFileSync(path.join(root, "paper.html"), buildHTML({
     three: true,
     title: "Research Paper · Kushan Waghmare",
     desc: "Research paper deep-dive: abstract, mathematical formulation and analytical highlights.",
-    mainContent: paperDetailPage(SITE.papers[0])
+    mainContent: allPapersPage()
 }));
 console.log("Wrote paper.html");
 
