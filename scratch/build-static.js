@@ -10,7 +10,7 @@ const pad = (n) => String(n + 1).padStart(2, "0");
 const list = (key) => SITE.projects.filter((p) => p.domain === key);
 const tags = (a) => a.map((t) => `<span class="tag">${t}</span>`).join("");
 
-const VEC = ["right", "left", "bottom", "top", "left"];
+const VEC = ["right", "left", "bottom", "top", "right"];
 const hubPage = () => `
         <nav class="snap-pager" aria-label="Section navigation">
             <a href="#intro" class="snap-dot active" data-title="00 Intro" aria-label="Introduction"><span class="dot-disc" style="--a:var(--rgb-hub)"></span><span class="dot-text">00 Intro</span></a>
@@ -85,7 +85,7 @@ const hubPage = () => `
             <a class="snap-cue" href="#section-courses">Next: Academic Coursework</a>
         </section>
 
-        <section class="snap-section domain-snap" id="section-courses" data-domain="courses" data-enter="left" style="--a:var(--rgb-courses)">
+        <section class="snap-section domain-snap" id="section-courses" data-domain="courses" data-enter="bottom" style="--a:var(--rgb-courses)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>07 / Academic Curricula</div>
@@ -112,7 +112,7 @@ const hubPage = () => `
             <a class="snap-cue" href="#about-contact">Next: About &amp; Contact</a>
         </section>
 
-        <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-enter="bottom" style="--a:var(--rgb-contact)">
+        <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-enter="top" style="--a:var(--rgb-contact)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="section-head" data-reveal><span class="idx">08</span><h2>About &amp; Profile</h2></div>
