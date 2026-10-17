@@ -88,14 +88,6 @@ const hubPage = () => `
                 <h2 class="snap-title" data-reveal>Academic Coursework</h2>
                 <p class="lead snap-lead" data-reveal>Core and honours academic coursework across Indian Institute of Technology Madras and Vidya Bharati Mahavidyalaya in data science, physics, and computer systems.</p>
                 <div class="hero-eq glass snap-eq" data-reveal>$$A = U\\Sigma V^\\top = \\sum_{i=1}^r \\sigma_i\\,\\mathbf u_i\\,\\mathbf v_i^\\top,\\qquad i\\hbar\\,\\frac{\\partial\\psi}{\\partial t}=\\Big[-\\frac{\\hbar^2}{2m}\\nabla^2+V(\\mathbf r)\\Big]\\psi$$</div>
-                <div class="snap-projects" data-reveal>
-                    <span class="snap-proj-label">Core courses:</span>
-                    ${SITE.courses.flatMap(tr => tr.items).slice(0, 6).map(c => `<a href="courses.html#track-${c.code.startsWith('MA') || c.code.startsWith('DS') ? 'iitm-datascience' : c.code.startsWith('PH') ? 'physics-curriculum' : 'advanced-quant-systems'}" class="snap-proj-pill glass"><strong>${c.title}</strong><span class="tag-status">${c.code}</span></a>`).join("")}
-                </div>
-                <div class="snap-projects" data-reveal style="margin-top:10px">
-                    <span class="snap-proj-label">Curricula:</span>
-                    ${SITE.courses.map(tr => `<a href="courses.html#track-${tr.track}" class="snap-proj-pill glass"><strong>${tr.degree.replace("Bachelor of Science in ", "BSc ")}</strong><span class="tag-status">${tr.institution.replace("Indian Institute of Technology", "IIT").replace("Vidya Bharati Mahavidyalaya", "VBMV").replace("Independent & Advanced Specialisations", "Honours")}</span></a>`).join("")}
-                </div>
                 <div class="snap-actions" data-reveal>
                     <a href="courses.html" class="snap-cta-btn glass" style="--a:var(--rgb-courses)">
                         <span>Explore Coursework &amp; Syllabi</span>
