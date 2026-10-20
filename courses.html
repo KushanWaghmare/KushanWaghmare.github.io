@@ -1,19 +1,31 @@
 <!doctype html>
-<html lang="en-GB" data-domain="courses" data-page="courses" data-theme="dark">
+<html lang="en-GB" data-domain="courses" data-page="courses" data-theme="dark" data-font="space">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Academic Coursework & Curricula · Kushan Waghmare</title>
     <meta name="description" content="Academic coursework and curricula at IIT Madras, Vidya Bharati Mahavidyalaya, and advanced specialisations in quantitative finance and computer systems." />
-    <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=29" />
+    <script>try{const q=new URLSearchParams(location.search);const t=q.get("theme")||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q.get("theme"))localStorage.setItem("theme",t);const f=q.get("font")||localStorage.getItem("kw_font")||"space";document.documentElement.dataset.font=f;if(q.get("font"))localStorage.setItem("kw_font",f);}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.font="space";}</script>
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Space+Grotesk:wght@600;700&display=swap" />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" />
+    <link rel="stylesheet" href="shared/style.css?v=36" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-    <script defer src="shared/data.js?v=29"></script>
-    <script defer src="shared/sims.js?v=29"></script>
-    <script defer src="shared/app.js?v=29"></script>
+    <script defer src="shared/data.js?v=36"></script>
+    <script defer src="shared/gfx.js?v=36"></script>
+    <script defer src="shared/engines.js?v=36"></script>
+    <script defer src="shared/slides.js?v=36"></script>
+    <script defer src="shared/blackhole-physics.js?v=36"></script>
+    <script defer src="shared/blackhole-shaders.js?v=36"></script>
+    <script defer src="shared/blackhole-lite.js?v=36"></script>
+    <script defer src="shared/blackhole.js?v=36"></script>
+    <script defer src="shared/app.js?v=36"></script>
+
 </head>
 <body>
     
@@ -41,7 +53,7 @@
         <a href="#courses-contact" class="snap-dot" data-title="04 Contact" aria-label="Academic Enquiries"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">04 Contact</span></a>
     </nav>
 
-    <section class="snap-section hero" id="courses-hero" data-domain="courses" style="--a:var(--rgb-courses)">
+    <section class="snap-section hero" id="courses-hero" data-domain="courses" data-sim="courses-index:hero" style="--a:var(--rgb-courses)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Coursework</div>
@@ -58,7 +70,7 @@
     </section>
 
     
-    <section class="snap-section project-snap course-snap" id="track-iitm-datascience" data-domain="courses" style="--a:var(--rgb-courses)">
+    <section class="snap-section project-snap course-snap" id="track-iitm-datascience" data-domain="courses" data-sim="track:iitm-datascience" style="--a:var(--rgb-courses)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner course-inner">
             <div class="eyebrow" data-reveal>
@@ -135,10 +147,10 @@
                 </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Curriculum Directed Acyclic Graph (DAG) · topological sort · prerequisite signal conduction</div>
+        <div class="sim-tag" aria-hidden="true">IIT Madras Data Science curriculum · SVD matrix decomposition & regularised learning objectives</div>
         <a class="snap-cue" href="#track-physics-curriculum">Next: Bachelor of Science in Physics</a>
     </section>
-    <section class="snap-section project-snap course-snap" id="track-physics-curriculum" data-domain="courses" style="--a:var(--rgb-courses)">
+    <section class="snap-section project-snap course-snap" id="track-physics-curriculum" data-domain="courses" data-sim="track:physics-curriculum" style="--a:var(--rgb-courses)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner course-inner">
             <div class="eyebrow" data-reveal>
@@ -215,10 +227,10 @@
                 </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Curriculum Directed Acyclic Graph (DAG) · topological sort · prerequisite signal conduction</div>
+        <div class="sim-tag" aria-hidden="true">Vidya Bharati Mahavidyalaya Physics curriculum · quantum wave mechanics & Lagrangian dynamics</div>
         <a class="snap-cue" href="#track-advanced-quant-systems">Next: Quantitative Finance & Systems Engineering</a>
     </section>
-    <section class="snap-section project-snap course-snap" id="track-advanced-quant-systems" data-domain="courses" style="--a:var(--rgb-courses)">
+    <section class="snap-section project-snap course-snap" id="track-advanced-quant-systems" data-domain="courses" data-sim="track:advanced-quant-systems" style="--a:var(--rgb-courses)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner course-inner">
             <div class="eyebrow" data-reveal>
@@ -295,11 +307,11 @@
                 </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Curriculum Directed Acyclic Graph (DAG) · topological sort · prerequisite signal conduction</div>
+        <div class="sim-tag" aria-hidden="true">Advanced Quantitative Systems curriculum · Itô stochastic calculus & high-frequency microstructure</div>
         <a class="snap-cue" href="#courses-contact">Next: Academic Contact</a>
     </section>
 
-    <section class="snap-section about-contact-section" id="courses-contact" data-domain="contact" style="--a:var(--rgb-contact)">
+    <section class="snap-section about-contact-section" id="courses-contact" data-domain="contact" data-sim="courses-index:contact" style="--a:var(--rgb-contact)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="section-head" data-reveal><span class="idx">04</span><h2>Academic Transcripts &amp; Verification</h2></div>
@@ -331,7 +343,7 @@
             </div>
         </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Gravitational 3-body problem · r̈ᵢ = −∑ G mⱼ (rᵢ − rⱼ)/|rᵢ − rⱼ|³ · RK4 chaotic choreography</div>
+        <div class="sim-tag" aria-hidden="true">Academic credentials & transcript verification · institutional syllabi review pipeline</div>
         <footer class="foot snap-foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
     </section></main>
 </body>

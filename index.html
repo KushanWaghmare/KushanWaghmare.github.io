@@ -1,19 +1,31 @@
 <!doctype html>
-<html lang="en-GB" data-domain="hub" data-page="hub" data-theme="dark">
+<html lang="en-GB" data-domain="hub" data-page="hub" data-theme="dark" data-font="space">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Kushan Waghmare · Portfolio</title>
     <meta name="description" content="Kushan Waghmare: Data Science and Quantitative Finance student at IIT Madras. Mathematics, physics, data science, quant finance and computer science projects." />
-    <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=29" />
+    <script>try{const q=new URLSearchParams(location.search);const t=q.get("theme")||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q.get("theme"))localStorage.setItem("theme",t);const f=q.get("font")||localStorage.getItem("kw_font")||"space";document.documentElement.dataset.font=f;if(q.get("font"))localStorage.setItem("kw_font",f);}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.font="space";}</script>
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Space+Grotesk:wght@600;700&display=swap" />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" />
+    <link rel="stylesheet" href="shared/style.css?v=36" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-    <script defer src="shared/data.js?v=29"></script>
-    <script defer src="shared/sims.js?v=29"></script>
-    <script defer src="shared/app.js?v=29"></script>
+    <script defer src="shared/data.js?v=36"></script>
+    <script defer src="shared/gfx.js?v=36"></script>
+    <script defer src="shared/engines.js?v=36"></script>
+    <script defer src="shared/slides.js?v=36"></script>
+    <script defer src="shared/blackhole-physics.js?v=36"></script>
+    <script defer src="shared/blackhole-shaders.js?v=36"></script>
+    <script defer src="shared/blackhole-lite.js?v=36"></script>
+    <script defer src="shared/blackhole.js?v=36"></script>
+    <script defer src="shared/app.js?v=36"></script>
+
 </head>
 <body>
     
@@ -45,7 +57,7 @@
             <a href="#about-contact" class="snap-dot" data-title="08 Contact" aria-label="About & Contact"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">08 Contact</span></a>
         </nav>
 
-        <section class="snap-section hero" id="intro" data-domain="hub" data-enter="zoom" style="--a:var(--rgb-hub)">
+        <section class="snap-section hero" id="intro" data-domain="hub" data-sim="hub:intro" data-enter="zoom" style="--a:var(--rgb-hub)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>00 / Data Science · Quantitative Finance · IIT Madras</div>
@@ -58,17 +70,13 @@
         </section>
 
         
-        <section class="snap-section domain-snap" id="domain-math" data-domain="math" data-enter="right" style="--a:var(--rgb-math)">
+        <section class="snap-section domain-snap" id="domain-math" data-domain="math" data-sim="hub:domain-math" data-enter="right" style="--a:var(--rgb-math)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>01 / Mathematics · Topological & geometric models</div>
                 <h2 class="snap-title" data-reveal>Mathematics</h2>
                 <p class="lead snap-lead" data-reveal>Topology, differential geometry and analysis: the surfaces and spectra behind the models on the rest of this site.</p>
                 <div class="hero-eq glass snap-eq" data-reveal>$$\iint_M K\,dA+\oint_{\partial M}k_g\,ds=2\pi\,\chi(M)$$</div>
-                <div class="snap-projects" data-reveal>
-                    <span class="snap-proj-label">Featured work:</span>
-                    <a href="project.html?p=mobius-surfaces" class="snap-proj-pill glass"><strong>Möbius Strip & Surface Geometry</strong><span class="tag-status">Draft</span></a><a href="project.html?p=fourier-spectral" class="snap-proj-pill glass"><strong>Fourier Analysis from First Principles</strong><span class="tag-status">Draft</span></a>
-                </div>
                 <div class="snap-actions" data-reveal>
                     <a href="math.html" class="snap-cta-btn glass" style="--a:var(--rgb-math)">
                         <span>Explore Mathematics Section</span>
@@ -77,20 +85,16 @@
                     <span class="snap-count">2 technical deep-dives</span>
                 </div>
             </div>
-            <div class="sim-tag" aria-hidden="true">Möbius immersion · non-orientable topological manifold · cursor controls twist & angle</div>
+            <div class="sim-tag" aria-hidden="true">Riemannian figure-8 immersion · ∬_M K dA = 2π χ(M) · cursor controls orientation</div>
             <a class="snap-cue" href="#domain-physics">Next: Physics</a>
         </section>
-        <section class="snap-section domain-snap" id="domain-physics" data-domain="physics" data-enter="left" style="--a:var(--rgb-physics)">
+        <section class="snap-section domain-snap" id="domain-physics" data-domain="physics" data-sim="hub:domain-physics" data-enter="left" style="--a:var(--rgb-physics)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>02 / Physics · Mechanics & quantum dynamics</div>
                 <h2 class="snap-title" data-reveal>Physics</h2>
                 <p class="lead snap-lead" data-reveal>Classical and quantum mechanics as computation: symplectic integrators, gravitating systems and wave equations.</p>
                 <div class="hero-eq glass snap-eq" data-reveal>$$i\hbar\,\frac{\partial\psi}{\partial t}=\Big[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\Big]\psi$$</div>
-                <div class="snap-projects" data-reveal>
-                    <span class="snap-proj-label">Featured work:</span>
-                    <a href="project.html?p=nbody-leapfrog" class="snap-proj-pill glass"><strong>Gravitational N-Body Integrator</strong><span class="tag-status">Draft</span></a><a href="project.html?p=split-step-schrodinger" class="snap-proj-pill glass"><strong>Time-Dependent Schrödinger Equation</strong><span class="tag-status">Draft</span></a>
-                </div>
                 <div class="snap-actions" data-reveal>
                     <a href="physics.html" class="snap-cta-btn glass" style="--a:var(--rgb-physics)">
                         <span>Explore Physics Section</span>
@@ -99,20 +103,16 @@
                     <span class="snap-count">2 technical deep-dives</span>
                 </div>
             </div>
-            <div class="sim-tag" aria-hidden="true">N-body · leapfrog (KDK) · your cursor is a point mass</div>
+            <div class="sim-tag" aria-hidden="true">Kerr null geodesics (a = 0.95) · Boyer–Lindquist RK4 ray tracer · Novikov–Thorne thin disk · Doppler beaming g⁴ · photon ring · cursor tilts inclination</div>
             <a class="snap-cue" href="#domain-datascience">Next: Data Science</a>
         </section>
-        <section class="snap-section domain-snap" id="domain-datascience" data-domain="datascience" data-enter="bottom" style="--a:var(--rgb-datascience)">
+        <section class="snap-section domain-snap" id="domain-datascience" data-domain="datascience" data-sim="hub:domain-datascience" data-enter="bottom" style="--a:var(--rgb-datascience)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>03 / Data Science · Statistical learning & analytics</div>
                 <h2 class="snap-title" data-reveal>Data Science</h2>
                 <p class="lead snap-lead" data-reveal>Statistical learning, agent-based modelling and non-convex optimisation: emergent collective behaviour, opinion dynamics, and complex stochastic systems.</p>
                 <div class="hero-eq glass snap-eq" data-reveal>$$\dot{\mathbf x}_i=\mathbf v_i,\quad \dot{\mathbf v}_i=\mathbf f_{\text{sep}}+\mathbf f_{\text{align}}+\mathbf f_{\text{coh}}+\eta\,\boldsymbol\xi_i,\quad \Phi=\frac{1}{Nv_0}\Big\|\sum_{i=1}^N\mathbf v_i\Big\|$$</div>
-                <div class="snap-projects" data-reveal>
-                    <span class="snap-proj-label">Featured work:</span>
-                    <a href="project.html?p=regularised-regression" class="snap-proj-pill glass"><strong>Regularised Regression from Scratch</strong><span class="tag-status">Draft</span></a><a href="project.html?p=spectral-clustering" class="snap-proj-pill glass"><strong>Spectral Clustering on Graphs</strong><span class="tag-status">Draft</span></a>
-                </div>
                 <div class="snap-actions" data-reveal>
                     <a href="datascience.html" class="snap-cta-btn glass" style="--a:var(--rgb-datascience)">
                         <span>Explore Data Science Section</span>
@@ -121,20 +121,16 @@
                     <span class="snap-count">2 technical deep-dives</span>
                 </div>
             </div>
-            <div class="sim-tag" aria-hidden="true">Agent-Based Model (ABM) · Reynolds flocking & Hegselmann-Krause consensus · order parameter Φ = |⟨v⟩|/v₀ · click to perturb</div>
+            <div class="sim-tag" aria-hidden="true">Agent-Based Model (ABM) · Reynolds flocking & Hegselmann-Krause consensus · order parameter Φ</div>
             <a class="snap-cue" href="#domain-quant">Next: Quant Finance</a>
         </section>
-        <section class="snap-section domain-snap" id="domain-quant" data-domain="quant" data-enter="top" style="--a:var(--rgb-quant)">
+        <section class="snap-section domain-snap" id="domain-quant" data-domain="quant" data-sim="hub:domain-quant" data-enter="top" style="--a:var(--rgb-quant)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>04 / Quantitative Finance · Stochastic models</div>
                 <h2 class="snap-title" data-reveal>Quant Finance</h2>
                 <p class="lead snap-lead" data-reveal>Stochastic calculus applied to markets: derivative pricing, the Greeks and mean-reversion strategies.</p>
                 <div class="hero-eq glass snap-eq" data-reveal>$$dS_t=\mu S_t\,dt+\sigma S_t\,dW_t$$</div>
-                <div class="snap-projects" data-reveal>
-                    <span class="snap-proj-label">Featured work:</span>
-                    <a href="project.html?p=options-pricing" class="snap-proj-pill glass"><strong>Options Pricing & Greeks</strong><span class="tag-status">Completed</span></a><a href="project.html?p=stat-arb" class="snap-proj-pill glass"><strong>Statistical Arbitrage Strategy</strong><span class="tag-status">Completed</span></a>
-                </div>
                 <div class="snap-actions" data-reveal>
                     <a href="quant.html" class="snap-cta-btn glass" style="--a:var(--rgb-quant)">
                         <span>Explore Quant Finance Section</span>
@@ -143,20 +139,16 @@
                     <span class="snap-count">2 technical deep-dives</span>
                 </div>
             </div>
-            <div class="sim-tag" aria-hidden="true">Geometric Brownian motion · 70 paths · cursor height sets σ</div>
+            <div class="sim-tag" aria-hidden="true">Geometric Brownian motion fan · 65 stochastic paths · cursor height sets volatility σ</div>
             <a class="snap-cue" href="#domain-cs">Next: Computer Science</a>
         </section>
-        <section class="snap-section domain-snap" id="domain-cs" data-domain="cs" data-enter="right" style="--a:var(--rgb-cs)">
+        <section class="snap-section domain-snap" id="domain-cs" data-domain="cs" data-sim="hub:domain-cs" data-enter="right" style="--a:var(--rgb-cs)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>05 / Computer Science · Systems & compilers</div>
                 <h2 class="snap-title" data-reveal>Computer Science</h2>
                 <p class="lead snap-lead" data-reveal>Compilers and machine architecture, from grammars and SSA form down to TTL gates on a breadboard.</p>
                 <div class="hero-eq glass snap-eq" data-reveal>$$\frac{\Gamma\vdash e_1:\mathtt{int}\qquad\Gamma\vdash e_2:\mathtt{int}}{\Gamma\vdash e_1+e_2:\mathtt{int}}$$</div>
-                <div class="snap-projects" data-reveal>
-                    <span class="snap-proj-label">Featured work:</span>
-                    <a href="project.html?p=ku-lang" class="snap-proj-pill glass"><strong>Ku-Lang Compiler</strong><span class="tag-status">In progress</span></a><a href="project.html?p=8bit-computer" class="snap-proj-pill glass"><strong>8-Bit Breadboard Computer</strong><span class="tag-status">In progress</span></a>
-                </div>
                 <div class="snap-actions" data-reveal>
                     <a href="cs.html" class="snap-cta-btn glass" style="--a:var(--rgb-cs)">
                         <span>Explore Computer Science Section</span>
@@ -165,11 +157,11 @@
                     <span class="snap-count">2 technical deep-dives</span>
                 </div>
             </div>
-            <div class="sim-tag" aria-hidden="true">Elementary cellular automaton · click to cycle the rule</div>
+            <div class="sim-tag" aria-hidden="true">Wolfram Rule 110 Turing-complete cellular automaton · click to cycle rule</div>
             <a class="snap-cue" href="#section-papers">Next: Research Papers</a>
         </section>
 
-        <section class="snap-section domain-snap" id="section-papers" data-domain="papers" data-enter="left" style="--a:var(--rgb-papers)">
+        <section class="snap-section domain-snap" id="section-papers" data-domain="papers" data-sim="hub:papers" data-enter="left" style="--a:var(--rgb-papers)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>06 / Research Papers</div>
@@ -184,11 +176,11 @@
                     <span class="snap-count">5 research papers &amp; preprints</span>
                 </div>
             </div>
-            <div class="sim-tag" aria-hidden="true">Fokker–Planck Langevin probability density flux &amp; stochastic phase space</div>
+            <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
             <a class="snap-cue" href="#section-courses">Next: Academic Coursework</a>
         </section>
 
-        <section class="snap-section domain-snap" id="section-courses" data-domain="courses" data-enter="bottom" style="--a:var(--rgb-courses)">
+        <section class="snap-section domain-snap" id="section-courses" data-domain="courses" data-sim="hub:courses" data-enter="bottom" style="--a:var(--rgb-courses)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>07 / Academic Curricula</div>
@@ -203,11 +195,11 @@
                     <span class="snap-count">12 courses &amp; credentials</span>
                 </div>
             </div>
-            <div class="sim-tag" aria-hidden="true">Harmonic oscillator eigenstates &amp; unitary state evolution · iℏ ∂ψ/∂t = Hψ</div>
+            <div class="sim-tag" aria-hidden="true">Curriculum Directed Acyclic Graph (DAG) · topological sort · prerequisite signal conduction</div>
             <a class="snap-cue" href="#about-contact">Next: About &amp; Contact</a>
         </section>
 
-        <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-enter="top" style="--a:var(--rgb-contact)">
+        <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-sim="hub:contact" data-enter="top" style="--a:var(--rgb-contact)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="section-head" data-reveal><span class="idx">08</span><h2>About &amp; Profile</h2></div>

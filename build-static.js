@@ -1,10 +1,100 @@
 // Pre-renders full semantic HTML into each page for SEO and fast initial paint.
 const fs = require("fs");
 const path = require("path");
-const root = path.resolve(__dirname, "..");
+const root = __dirname;
 const dataCode = fs.readFileSync(path.join(root, "shared", "data.js"), "utf8");
 const SITE = new Function(dataCode + "\nreturn SITE;")();
+const { SLIDE_SIMS } = require(path.join(root, "shared", "slides.js"));
+
+const { isDeepStrictEqual: deepEqual } = require("util");
+
+// Check that every Phase 1, Phase 2, and Phase 3 slide is registered in SLIDE_SIMS and unique
 const keys = Object.keys(SITE.domains);
+const phase1Keys = [
+    "hub:intro",
+    "hub:domain-math",
+    "hub:domain-physics",
+    "hub:domain-datascience",
+    "hub:domain-quant",
+    "hub:domain-cs",
+    "hub:papers",
+    "hub:courses",
+    "hub:contact"
+];
+for (const k of keys) {
+    phase1Keys.push(`domain:${k}:0`);
+    phase1Keys.push(`domain:${k}:1`);
+    phase1Keys.push(`domain:${k}:2`);
+    phase1Keys.push(`domain:${k}:3`);
+}
+
+const phase2Keys = [
+    "project-index:hero"
+];
+for (const p of SITE.projects) {
+    phase2Keys.push(`project:${p.id}:hero`);
+    phase2Keys.push(`project:${p.id}:overview`);
+    phase2Keys.push(`project:${p.id}:arch`);
+    phase2Keys.push(`project:${p.id}:math`);
+    phase2Keys.push(`project:${p.id}:nav`);
+}
+
+const phase3Keys = [
+    "papers-index:hero",
+    "papers-index:contact",
+    "courses-index:hero",
+    "courses-index:contact",
+    "track:iitm-datascience",
+    "track:physics-curriculum",
+    "track:advanced-quant-systems"
+];
+for (const p of SITE.papers) {
+    phase3Keys.push(`paper:${p.id}:hero`);
+    phase3Keys.push(`paper:${p.id}:theory`);
+    phase3Keys.push(`paper:${p.id}:cite`);
+}
+
+const allSlideKeys = [...phase1Keys, ...phase2Keys, ...phase3Keys];
+
+for (const k of allSlideKeys) {
+    if (!SLIDE_SIMS[k]) {
+        throw new Error(`Missing SLIDE_SIMS entry for required slide: "${k}"`);
+    }
+    if (!SLIDE_SIMS[k].engine) {
+        throw new Error(`Slide "${k}" has no engine defined in SLIDE_SIMS`);
+    }
+}
+
+// Hub domain preview must equal the domain page's first slide
+for (const k of keys) {
+    const hubKey = `hub:domain-${k}`;
+    const domKey = `domain:${k}:0`;
+    const h = SLIDE_SIMS[hubKey], d = SLIDE_SIMS[domKey];
+    if (h.engine !== d.engine || !deepEqual(h.params, d.params)) {
+        throw new Error(`Hub domain preview "${hubKey}" does not match domain first slide "${domKey}"`);
+    }
+}
+
+// Pairwise uniqueness check across all registered slides
+for (let i = 0; i < allSlideKeys.length; i++) {
+    const keyA = allSlideKeys[i];
+    const itemA = SLIDE_SIMS[keyA];
+    for (let j = i + 1; j < allSlideKeys.length; j++) {
+        const keyB = allSlideKeys[j];
+        const itemB = SLIDE_SIMS[keyB];
+
+        const isHubPreviewMatch = (
+            (keyA === `hub:domain-${keyB.split(":")[1]}` && keyB === `domain:${keyB.split(":")[1]}:0`) ||
+            (keyB === `hub:domain-${keyA.split(":")[1]}` && keyA === `domain:${keyA.split(":")[1]}:0`)
+        );
+        if (isHubPreviewMatch) continue;
+
+        if (itemA.engine === itemB.engine && deepEqual(itemA.params, itemB.params)) {
+            throw new Error(`Duplicate simulation detected: slides "${keyA}" and "${keyB}" both share engine "${itemA.engine}" with identical parameters ${JSON.stringify(itemA.params)}`);
+        }
+    }
+}
+console.log(`Verified ${allSlideKeys.length} unique slide simulations across all pages in SLIDE_SIMS.`);
 
 const pad = (n) => String(n + 1).padStart(2, "0");
 const list = (key) => SITE.projects.filter((p) => p.domain === key);
@@ -21,7 +111,7 @@ const hubPage = () => `
             <a href="#about-contact" class="snap-dot" data-title="08 Contact" aria-label="About & Contact"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">08 Contact</span></a>
         </nav>
 
-        <section class="snap-section hero" id="intro" data-domain="hub" data-enter="zoom" style="--a:var(--rgb-hub)">
+        <section class="snap-section hero" id="intro" data-domain="hub" data-sim="hub:intro" data-enter="zoom" style="--a:var(--rgb-hub)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>00 / Data Science · Quantitative Finance · IIT Madras</div>
@@ -29,7 +119,7 @@ const hubPage = () => `
                 <p class="lead" data-hero>Data Science &amp; Quantitative Finance student at IIT Madras, building complex systems from compilers to statistical-arbitrage models, and studying the physics underneath them.</p>
                 <div class="hero-eq glass" data-hero>$$\\dot x=\\sigma(y-x),\\quad\\dot y=x(\\rho-z)-y,\\quad\\dot z=xy-\\beta z$$</div>
             </div>
-            <div class="sim-tag" aria-hidden="true">Lorenz system · σ=10, ρ=28, β=8/3 · RK4 · 5 domain trajectories</div>
+            <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["hub:intro"].caption}</div>
             <a class="snap-cue" href="#domain-math">Scroll to explore domains</a>
         </section>
 
@@ -38,17 +128,13 @@ const hubPage = () => `
             const nextKey = keys[i + 1] ? `domain-${keys[i + 1]}` : "section-papers";
             const nextLabel = keys[i + 1] ? `Next: ${SITE.domains[keys[i + 1]].name}` : "Next: Research Papers";
             return `
-        <section class="snap-section domain-snap" id="domain-${k}" data-domain="${k}" data-enter="${VEC[i]}" style="--a:var(--rgb-${k})">
+        <section class="snap-section domain-snap" id="domain-${k}" data-domain="${k}" data-sim="hub:domain-${k}" data-enter="${VEC[i]}" style="--a:var(--rgb-${k})">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>${pad(i)} / ${d.label}</div>
                 <h2 class="snap-title" data-reveal>${d.name}</h2>
                 <p class="lead snap-lead" data-reveal>${d.blurb}</p>
                 <div class="hero-eq glass snap-eq" data-reveal>$$${d.eq}$$</div>
-                <div class="snap-projects" data-reveal>
-                    <span class="snap-proj-label">Featured work:</span>
-                    ${ps.map(p => `<a href="project.html?p=${p.id}" class="snap-proj-pill glass"><strong>${p.title}</strong><span class="tag-status">${p.status}</span></a>`).join("")}
-                </div>
                 <div class="snap-actions" data-reveal>
                     <a href="${d.file}" class="snap-cta-btn glass" style="--a:var(--rgb-${k})">
                         <span>Explore ${d.name} Section</span>
@@ -57,12 +143,12 @@ const hubPage = () => `
                     <span class="snap-count">${ps.length} technical deep-dives</span>
                 </div>
             </div>
-            <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+            <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS[`hub:domain-${k}`].caption}</div>
             <a class="snap-cue" href="#${nextKey}">${nextLabel}</a>
         </section>`;
         }).join("")}
 
-        <section class="snap-section domain-snap" id="section-papers" data-domain="papers" data-enter="left" style="--a:var(--rgb-papers)">
+        <section class="snap-section domain-snap" id="section-papers" data-domain="papers" data-sim="hub:papers" data-enter="left" style="--a:var(--rgb-papers)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>06 / Research Papers</div>
@@ -77,11 +163,11 @@ const hubPage = () => `
                     <span class="snap-count">${SITE.papers.length} research papers &amp; preprints</span>
                 </div>
             </div>
-            <div class="sim-tag" aria-hidden="true">Fokker–Planck Langevin probability density flux &amp; stochastic phase space</div>
+            <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["hub:papers"].caption}</div>
             <a class="snap-cue" href="#section-courses">Next: Academic Coursework</a>
         </section>
 
-        <section class="snap-section domain-snap" id="section-courses" data-domain="courses" data-enter="bottom" style="--a:var(--rgb-courses)">
+        <section class="snap-section domain-snap" id="section-courses" data-domain="courses" data-sim="hub:courses" data-enter="bottom" style="--a:var(--rgb-courses)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>07 / Academic Curricula</div>
@@ -96,11 +182,11 @@ const hubPage = () => `
                     <span class="snap-count">${SITE.courses.reduce((sum, tr) => sum + tr.items.length, 0)} courses &amp; credentials</span>
                 </div>
             </div>
-            <div class="sim-tag" aria-hidden="true">Harmonic oscillator eigenstates &amp; unitary state evolution · iℏ ∂ψ/∂t = Hψ</div>
+            <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["hub:courses"].caption}</div>
             <a class="snap-cue" href="#about-contact">Next: About &amp; Contact</a>
         </section>
 
-        <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-enter="top" style="--a:var(--rgb-contact)">
+        <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-sim="hub:contact" data-enter="top" style="--a:var(--rgb-contact)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="section-head" data-reveal><span class="idx">08</span><h2>About &amp; Profile</h2></div>
@@ -116,7 +202,7 @@ const hubPage = () => `
                 </div>
                 ${contactSection()}
             </div>
-            <div class="sim-tag" aria-hidden="true">Gravitational 3-body problem · r̈ᵢ = −∑ G mⱼ (rᵢ − rⱼ)/|rᵢ − rⱼ|³ · RK4 chaotic choreography</div>
+            <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["hub:contact"].caption}</div>
             <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
         </section>`;
 
@@ -154,7 +240,7 @@ const domainPage = (key) => {
         <a href="#domain-explore" class="snap-dot" data-title="${String(ps.length + 1).padStart(2, "0")} Explore" aria-label="Explore other domains"><span class="dot-disc"></span><span class="dot-text">${String(ps.length + 1).padStart(2, "0")} Explore</span></a>
     </nav>
 
-    <section class="snap-section hero" id="domain-intro" data-domain="${key}">
+    <section class="snap-section hero" id="domain-intro" data-domain="${key}" data-sim="domain:${key}:0">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>${pad(domainIdx)} / ${d.label}</div>
@@ -166,7 +252,7 @@ const domainPage = (key) => {
                 ${ps.map((p) => `<a href="#proj-${p.id}" class="pill jump-pill"><strong>${p.title}</strong></a>`).join("")}
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS[`domain:${key}:0`].caption}</div>
         <a class="snap-cue" href="#proj-${ps[0].id}">Scroll to projects</a>
     </section>
 
@@ -174,8 +260,9 @@ const domainPage = (key) => {
         const nextTarget = ps[i + 1] ? `#proj-${ps[i + 1].id}` : "#domain-explore";
         const nextLabel = ps[i + 1] ? `Next: ${ps[i + 1].title}` : "Next: Explore other domains";
         const eq = (p.math && p.math[0] && p.math[0].eq) ? p.math[0].eq : d.eq;
+        const slideKey = `domain:${key}:${i + 1}`;
         return `
-    <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${key}">
+    <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${key}" data-sim="${slideKey}">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project ${pad(i)} / ${String(ps.length).padStart(2, "0")} · ${d.name}</div>
@@ -195,12 +282,12 @@ const domainPage = (key) => {
                 <span class="snap-count">${p.arch ? p.arch.length : 4} core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS[slideKey].caption}</div>
         <a class="snap-cue" href="${nextTarget}">${nextLabel}</a>
     </section>`;
     }).join("")}
 
-    <section class="snap-section about-contact-section" id="domain-explore" data-domain="contact" style="--a:var(--rgb-contact)">
+    <section class="snap-section about-contact-section" id="domain-explore" data-domain="contact" data-sim="domain:${key}:${ps.length + 1}" style="--a:var(--rgb-contact)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="section-head" data-reveal><span class="idx">${String(ps.length + 1).padStart(2, "0")}</span><h2>Explore Other Domains</h2></div>
@@ -212,7 +299,7 @@ const domainPage = (key) => {
             </div>
             ${contactSection()}
         </div>
-        <div class="sim-tag" aria-hidden="true">3D relational network &amp; cursor-reactive sonar wave · G(V,E) spatial graph</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS[`domain:${key}:${ps.length + 1}`].caption}</div>
         <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
     </section>`;
 };
@@ -225,7 +312,7 @@ const projectIndexPage = () => {
         <a href="#proj-${p.id}" class="snap-dot" data-title="${pad(i)} ${p.title}" aria-label="${p.title}"><span class="dot-disc" style="--a:var(--rgb-${p.domain})"></span><span class="dot-text">${pad(i)} ${p.title}</span></a>`).join("")}
     </nav>
 
-    <section class="snap-section hero" id="proj-index-hero" data-domain="hub">
+    <section class="snap-section hero" id="proj-index-hero" data-domain="hub" data-sim="project-index:hero">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Projects</div>
@@ -236,7 +323,7 @@ const projectIndexPage = () => {
                 ${keys.map((k) => `<a href="${SITE.domains[k].file}" class="pill jump-pill" style="--a:var(--rgb-${k})">${SITE.domains[k].name}</a>`).join("")}
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Index of 10 technical deep-dives</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["project-index:hero"].caption}</div>
         <a class="snap-cue" href="#proj-${SITE.projects[0].id}">Scroll to projects</a>
     </section>
 
@@ -245,8 +332,9 @@ const projectIndexPage = () => {
         const nextTarget = SITE.projects[i + 1] ? `#proj-${SITE.projects[i + 1].id}` : "#proj-index-hero";
         const nextLabel = SITE.projects[i + 1] ? `Next: ${SITE.projects[i + 1].title}` : "Back to top";
         const eq = (p.math && p.math[0] && p.math[0].eq) ? p.math[0].eq : d.eq;
+        const simKey = `project:${p.id}:hero`;
         return `
-    <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${p.domain}" style="--a:var(--rgb-${p.domain})">
+    <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${p.domain}" data-sim="${simKey}" style="--a:var(--rgb-${p.domain})">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project ${pad(i)} / ${String(SITE.projects.length).padStart(2, "0")} · ${d.name}</div>
@@ -266,7 +354,7 @@ const projectIndexPage = () => {
                 <span class="snap-count">${p.arch ? p.arch.length : 4} core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">${d.tag}</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS[simKey].caption}</div>
         <a class="snap-cue" href="${nextTarget}">${nextLabel}</a>
     </section>`;
     }).join("")}
@@ -283,7 +371,7 @@ const papersPage = () => {
         <a href="#papers-contact" class="snap-dot" data-title="${String(papers.length + 1).padStart(2, "0")} Contact" aria-label="Contact & Collaboration"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">${String(papers.length + 1).padStart(2, "0")} Contact</span></a>
     </nav>
 
-    <section class="snap-section hero" id="papers-hero" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section hero" id="papers-hero" data-domain="papers" data-sim="papers-index:hero" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Research Papers</div>
@@ -295,7 +383,7 @@ const papersPage = () => {
                 ${papers.map((p) => `<a href="#paper-${p.id}" class="pill jump-pill" style="--a:var(--rgb-papers)"><strong>${p.short || p.title}</strong></a>`).join("")}
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["papers-index:hero"].caption}</div>
         <a class="snap-cue" href="#paper-${papers[0].id}">Scroll to research papers</a>
     </section>
 
@@ -304,7 +392,7 @@ const papersPage = () => {
         const nextLabel = papers[i + 1] ? `Next: ${papers[i + 1].short || papers[i + 1].title}` : "Next: Collaboration & Contact";
         const d = SITE.domains[p.domain];
         return `
-    <section class="snap-section project-snap" id="paper-${p.id}" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section project-snap" id="paper-${p.id}" data-domain="papers" data-sim="paper:${p.id}:hero" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:880px">
             <div class="eyebrow" data-reveal>
@@ -333,12 +421,12 @@ const papersPage = () => {
                 <span class="snap-count">${p.venue} · ${p.year}</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["paper:" + p.id + ":hero"].caption}</div>
         <a class="snap-cue" href="${nextTarget}">${nextLabel}</a>
     </section>`;
     }).join("")}
 
-    <section class="snap-section about-contact-section" id="papers-contact" data-domain="contact" style="--a:var(--rgb-contact)">
+    <section class="snap-section about-contact-section" id="papers-contact" data-domain="contact" data-sim="papers-index:contact" style="--a:var(--rgb-contact)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="section-head" data-reveal><span class="idx">${String(papers.length + 1).padStart(2, "0")}</span><h2>Research Enquiries &amp; Collaboration</h2></div>
@@ -349,7 +437,7 @@ const papersPage = () => {
             </div>
             ${contactSection()}
         </div>
-        <div class="sim-tag" aria-hidden="true">Gravitational 3-body problem · r̈ᵢ = −∑ G mⱼ (rᵢ − rⱼ)/|rᵢ − rⱼ|³ · RK4 chaotic choreography</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["papers-index:contact"].caption}</div>
         <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
     </section>`;
 };
@@ -367,7 +455,7 @@ const paperDetailPage = (p) => {
         <a href="#paper-cite" class="snap-dot" data-title="02 Citation &amp; Sibling Papers" aria-label="Citation and Sibling Papers"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">02 Citation &amp; Siblings</span></a>
     </nav>
 
-    <section class="snap-section hero" id="paper-hero" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section hero" id="paper-hero" data-domain="papers" data-sim="paper:${p.id}:hero" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:980px">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>${p.short || p.title}</span></div>
@@ -397,11 +485,11 @@ const paperDetailPage = (p) => {
                 <a href="papers.html" class="pill">← All Papers</a>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["paper:" + p.id + ":hero"].caption}</div>
         <a class="snap-cue" href="#paper-theory">Next: Formulation &amp; Proofs</a>
     </section>
 
-    <section class="snap-section project-snap" id="paper-theory" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section project-snap" id="paper-theory" data-domain="papers" data-sim="paper:${p.id}:theory" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:980px">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>01 / Theoretical Foundations &amp; Proofs</div>
@@ -415,11 +503,11 @@ const paperDetailPage = (p) => {
                 ${p.highlights.map(([n, t]) => `<li class="glass"><strong>${n}</strong><span>${t}</span></li>`).join("")}
             </ol>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["paper:" + p.id + ":theory"].caption}</div>
         <a class="snap-cue" href="#paper-cite">Next: Citation &amp; Related Papers</a>
     </section>
 
-    <section class="snap-section about-contact-section" id="paper-cite" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section about-contact-section" id="paper-cite" data-domain="papers" data-sim="paper:${p.id}:cite" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:980px">
             <div class="section-head" data-reveal><span class="idx">02</span><h2>Citation, Code &amp; Sibling Papers</h2></div>
@@ -455,7 +543,7 @@ const paperDetailPage = (p) => {
                 </div>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["paper:" + p.id + ":cite"].caption}</div>
         <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
     </section>`;
 };
@@ -470,7 +558,7 @@ const coursesPage = () => {
         <a href="#courses-contact" class="snap-dot" data-title="${String(tracks.length + 1).padStart(2, "0")} Contact" aria-label="Academic Enquiries"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">${String(tracks.length + 1).padStart(2, "0")} Contact</span></a>
     </nav>
 
-    <section class="snap-section hero" id="courses-hero" data-domain="courses" style="--a:var(--rgb-courses)">
+    <section class="snap-section hero" id="courses-hero" data-domain="courses" data-sim="courses-index:hero" style="--a:var(--rgb-courses)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Coursework</div>
@@ -482,7 +570,7 @@ const coursesPage = () => {
                 ${tracks.map((tr) => `<a href="#track-${tr.track}" class="pill jump-pill" style="--a:var(--rgb-courses)"><strong>${tr.short || tr.degree}</strong></a>`).join("")}
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Curriculum Directed Acyclic Graph (DAG) · topological sort · prerequisite signal conduction</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["courses-index:hero"].caption}</div>
         <a class="snap-cue" href="#track-${tracks[0].track}">Scroll to curricula</a>
     </section>
 
@@ -491,7 +579,7 @@ const coursesPage = () => {
         const nextLabel = tracks[i + 1] ? `Next: ${tracks[i + 1].degree}` : "Next: Academic Contact";
         const d = SITE.domains[tr.domain];
         return `
-    <section class="snap-section project-snap course-snap" id="track-${tr.track}" data-domain="courses" style="--a:var(--rgb-courses)">
+    <section class="snap-section project-snap course-snap" id="track-${tr.track}" data-domain="courses" data-sim="track:${tr.track}" style="--a:var(--rgb-courses)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner course-inner">
             <div class="eyebrow" data-reveal>
@@ -520,12 +608,12 @@ const coursesPage = () => {
                 </div>`).join("")}
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Curriculum Directed Acyclic Graph (DAG) · topological sort · prerequisite signal conduction</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["track:" + tr.track].caption}</div>
         <a class="snap-cue" href="${nextTarget}">${nextLabel}</a>
     </section>`;
     }).join("")}
 
-    <section class="snap-section about-contact-section" id="courses-contact" data-domain="contact" style="--a:var(--rgb-contact)">
+    <section class="snap-section about-contact-section" id="courses-contact" data-domain="contact" data-sim="courses-index:contact" style="--a:var(--rgb-contact)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="section-head" data-reveal><span class="idx">${String(tracks.length + 1).padStart(2, "0")}</span><h2>Academic Transcripts &amp; Verification</h2></div>
@@ -536,7 +624,7 @@ const coursesPage = () => {
             </div>
             ${contactSection()}
         </div>
-        <div class="sim-tag" aria-hidden="true">Gravitational 3-body problem · r̈ᵢ = −∑ G mⱼ (rᵢ − rⱼ)/|rᵢ − rⱼ|³ · RK4 chaotic choreography</div>
+        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["courses-index:contact"].caption}</div>
         <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
     </section>`;
 };
@@ -573,20 +661,32 @@ const renderNav = (active, pageType) => {
 };
 
 const buildHTML = ({ domain, pageType, three, title, desc, mainContent }) => `<!doctype html>
-<html lang="en-GB" data-domain="${domain}" data-page="${pageType}" data-theme="dark">
+<html lang="en-GB" data-domain="${domain}" data-page="${pageType}" data-theme="dark" data-font="space">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${title}</title>
     <meta name="description" content="${desc}" />
-    <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=29" />
+    <script>try{const q=new URLSearchParams(location.search);const t=q.get("theme")||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q.get("theme"))localStorage.setItem("theme",t);const f=q.get("font")||localStorage.getItem("kw_font")||"space";document.documentElement.dataset.font=f;if(q.get("font"))localStorage.setItem("kw_font",f);}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.font="space";}</script>
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Space+Grotesk:wght@600;700&display=swap" />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" />
+    <link rel="stylesheet" href="shared/style.css?v=36" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=29"></script>
-    <script defer src="shared/sims.js?v=29"></script>
-    <script defer src="shared/app.js?v=29"></script>
+${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=36"></script>
+    <script defer src="shared/gfx.js?v=36"></script>
+    <script defer src="shared/engines.js?v=36"></script>
+    <script defer src="shared/slides.js?v=36"></script>
+    <script defer src="shared/blackhole-physics.js?v=36"></script>
+    <script defer src="shared/blackhole-shaders.js?v=36"></script>
+    <script defer src="shared/blackhole-lite.js?v=36"></script>
+    <script defer src="shared/blackhole.js?v=36"></script>
+    <script defer src="shared/app.js?v=36"></script>
+
 </head>
 <body>
     ${renderNav(domain, pageType)}

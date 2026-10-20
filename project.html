@@ -1,19 +1,31 @@
 <!doctype html>
-<html lang="en-GB" data-domain="hub" data-page="project" data-theme="dark">
+<html lang="en-GB" data-domain="hub" data-page="project" data-theme="dark" data-font="space">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Project · Kushan Waghmare</title>
     <meta name="description" content="Project deep-dive: architecture and mathematics." />
-    <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=29" />
+    <script>try{const q=new URLSearchParams(location.search);const t=q.get("theme")||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q.get("theme"))localStorage.setItem("theme",t);const f=q.get("font")||localStorage.getItem("kw_font")||"space";document.documentElement.dataset.font=f;if(q.get("font"))localStorage.setItem("kw_font",f);}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.font="space";}</script>
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Space+Grotesk:wght@600;700&display=swap" />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" />
+    <link rel="stylesheet" href="shared/style.css?v=36" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-    <script defer src="shared/data.js?v=29"></script>
-    <script defer src="shared/sims.js?v=29"></script>
-    <script defer src="shared/app.js?v=29"></script>
+    <script defer src="shared/data.js?v=36"></script>
+    <script defer src="shared/gfx.js?v=36"></script>
+    <script defer src="shared/engines.js?v=36"></script>
+    <script defer src="shared/slides.js?v=36"></script>
+    <script defer src="shared/blackhole-physics.js?v=36"></script>
+    <script defer src="shared/blackhole-shaders.js?v=36"></script>
+    <script defer src="shared/blackhole-lite.js?v=36"></script>
+    <script defer src="shared/blackhole.js?v=36"></script>
+    <script defer src="shared/app.js?v=36"></script>
+
 </head>
 <body>
     
@@ -47,7 +59,7 @@
         <a href="#proj-8bit-computer" class="snap-dot" data-title="10 8-Bit Breadboard Computer" aria-label="8-Bit Breadboard Computer"><span class="dot-disc" style="--a:var(--rgb-cs)"></span><span class="dot-text">10 8-Bit Breadboard Computer</span></a>
     </nav>
 
-    <section class="snap-section hero" id="proj-index-hero" data-domain="hub">
+    <section class="snap-section hero" id="proj-index-hero" data-domain="hub" data-sim="project-index:hero">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Projects</div>
@@ -58,12 +70,12 @@
                 <a href="math.html" class="pill jump-pill" style="--a:var(--rgb-math)">Mathematics</a><a href="physics.html" class="pill jump-pill" style="--a:var(--rgb-physics)">Physics</a><a href="datascience.html" class="pill jump-pill" style="--a:var(--rgb-datascience)">Data Science</a><a href="quant.html" class="pill jump-pill" style="--a:var(--rgb-quant)">Quant Finance</a><a href="cs.html" class="pill jump-pill" style="--a:var(--rgb-cs)">Computer Science</a>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Index of 10 technical deep-dives</div>
+        <div class="sim-tag" aria-hidden="true">Chaotic double pendulum · RK4 fixed-step · 3 trajectories with Δθ₀ = 10⁻³ Lyapunov divergence · click to perturb</div>
         <a class="snap-cue" href="#proj-mobius-surfaces">Scroll to projects</a>
     </section>
 
     
-    <section class="snap-section project-snap" id="proj-mobius-surfaces" data-domain="math" style="--a:var(--rgb-math)">
+    <section class="snap-section project-snap" id="proj-mobius-surfaces" data-domain="math" data-sim="project:mobius-surfaces:hero" style="--a:var(--rgb-math)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 01 / 10 · Mathematics</div>
@@ -83,10 +95,10 @@
                 <span class="snap-count">4 core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Möbius immersion · non-orientable topological manifold · cursor controls twist & angle</div>
+        <div class="sim-tag" aria-hidden="true">Möbius band non-orientable normal vector transport · n(2π,v) = −n(0,−v) · 44 normal frames</div>
         <a class="snap-cue" href="#proj-fourier-spectral">Next: Fourier Analysis from First Principles</a>
     </section>
-    <section class="snap-section project-snap" id="proj-fourier-spectral" data-domain="math" style="--a:var(--rgb-math)">
+    <section class="snap-section project-snap" id="proj-fourier-spectral" data-domain="math" data-sim="project:fourier-spectral:hero" style="--a:var(--rgb-math)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 02 / 10 · Mathematics</div>
@@ -106,10 +118,10 @@
                 <span class="snap-count">4 core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Möbius immersion · non-orientable topological manifold · cursor controls twist & angle</div>
+        <div class="sim-tag" aria-hidden="true">Fourier harmonic synthesis & Gibbs overshoot · 8.95% discontinuity overshoot · K=21 partial sums</div>
         <a class="snap-cue" href="#proj-nbody-leapfrog">Next: Gravitational N-Body Integrator</a>
     </section>
-    <section class="snap-section project-snap" id="proj-nbody-leapfrog" data-domain="physics" style="--a:var(--rgb-physics)">
+    <section class="snap-section project-snap" id="proj-nbody-leapfrog" data-domain="physics" data-sim="project:nbody-leapfrog:hero" style="--a:var(--rgb-physics)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 03 / 10 · Physics</div>
@@ -129,10 +141,10 @@
                 <span class="snap-count">4 core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">N-body · leapfrog (KDK) · your cursor is a point mass</div>
+        <div class="sim-tag" aria-hidden="true">Relativistic Kepler precession under symplectic leapfrog · Δφ = 6πGM/(c²a(1−e²)) · e = 0.74</div>
         <a class="snap-cue" href="#proj-split-step-schrodinger">Next: Time-Dependent Schrödinger Equation</a>
     </section>
-    <section class="snap-section project-snap" id="proj-split-step-schrodinger" data-domain="physics" style="--a:var(--rgb-physics)">
+    <section class="snap-section project-snap" id="proj-split-step-schrodinger" data-domain="physics" data-sim="project:split-step-schrodinger:hero" style="--a:var(--rgb-physics)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 04 / 10 · Physics</div>
@@ -152,10 +164,10 @@
                 <span class="snap-count">4 core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">N-body · leapfrog (KDK) · your cursor is a point mass</div>
+        <div class="sim-tag" aria-hidden="true">Quantum barrier tunnelling · split-step Fourier Strang splitting · transmission T ≈ exp(−2∫κ dx)</div>
         <a class="snap-cue" href="#proj-regularised-regression">Next: Regularised Regression from Scratch</a>
     </section>
-    <section class="snap-section project-snap" id="proj-regularised-regression" data-domain="datascience" style="--a:var(--rgb-datascience)">
+    <section class="snap-section project-snap" id="proj-regularised-regression" data-domain="datascience" data-sim="project:regularised-regression:hero" style="--a:var(--rgb-datascience)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 05 / 10 · Data Science</div>
@@ -175,10 +187,10 @@
                 <span class="snap-count">4 core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Agent-Based Model (ABM) · Reynolds flocking & Hegselmann-Krause consensus · order parameter Φ = |⟨v⟩|/v₀ · click to perturb</div>
+        <div class="sim-tag" aria-hidden="true">Lasso L1 regularisation coefficient path · soft-thresholding shrinkage S(z, λ) as λ sweeps</div>
         <a class="snap-cue" href="#proj-spectral-clustering">Next: Spectral Clustering on Graphs</a>
     </section>
-    <section class="snap-section project-snap" id="proj-spectral-clustering" data-domain="datascience" style="--a:var(--rgb-datascience)">
+    <section class="snap-section project-snap" id="proj-spectral-clustering" data-domain="datascience" data-sim="project:spectral-clustering:hero" style="--a:var(--rgb-datascience)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 06 / 10 · Data Science</div>
@@ -198,10 +210,10 @@
                 <span class="snap-count">4 core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Agent-Based Model (ABM) · Reynolds flocking & Hegselmann-Krause consensus · order parameter Φ = |⟨v⟩|/v₀ · click to perturb</div>
+        <div class="sim-tag" aria-hidden="true">Two-moons non-convex manifold · graph Laplacian spectral embedding separating entangled clusters</div>
         <a class="snap-cue" href="#proj-options-pricing">Next: Options Pricing & Greeks</a>
     </section>
-    <section class="snap-section project-snap" id="proj-options-pricing" data-domain="quant" style="--a:var(--rgb-quant)">
+    <section class="snap-section project-snap" id="proj-options-pricing" data-domain="quant" data-sim="project:options-pricing:hero" style="--a:var(--rgb-quant)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 07 / 10 · Quant Finance</div>
@@ -221,10 +233,10 @@
                 <span class="snap-count">4 core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Geometric Brownian motion · 70 paths · cursor height sets σ</div>
+        <div class="sim-tag" aria-hidden="true">Black–Scholes risk-neutral asset diffusion & terminal call payoff (S_T − K)⁺ · C = S Φ(d₁) − K e^{−rT} Φ(d₂)</div>
         <a class="snap-cue" href="#proj-stat-arb">Next: Statistical Arbitrage Strategy</a>
     </section>
-    <section class="snap-section project-snap" id="proj-stat-arb" data-domain="quant" style="--a:var(--rgb-quant)">
+    <section class="snap-section project-snap" id="proj-stat-arb" data-domain="quant" data-sim="project:stat-arb:hero" style="--a:var(--rgb-quant)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 08 / 10 · Quant Finance</div>
@@ -244,10 +256,10 @@
                 <span class="snap-count">4 core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Geometric Brownian motion · 70 paths · cursor height sets σ</div>
+        <div class="sim-tag" aria-hidden="true">Co-integrated asset pair yₜ = β xₜ + εₜ & mean-reverting spread · entry/exit z-score trading bands</div>
         <a class="snap-cue" href="#proj-ku-lang">Next: Ku-Lang Compiler</a>
     </section>
-    <section class="snap-section project-snap" id="proj-ku-lang" data-domain="cs" style="--a:var(--rgb-cs)">
+    <section class="snap-section project-snap" id="proj-ku-lang" data-domain="cs" data-sim="project:ku-lang:hero" style="--a:var(--rgb-cs)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 09 / 10 · Computer Science</div>
@@ -267,10 +279,10 @@
                 <span class="snap-count">5 core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Elementary cellular automaton · click to cycle the rule</div>
+        <div class="sim-tag" aria-hidden="true">Static Single Assignment (SSA) control-flow graph · basic blocks & φ-nodes x₃ = φ(x₁[bb₁], x₂[bb₂])</div>
         <a class="snap-cue" href="#proj-8bit-computer">Next: 8-Bit Breadboard Computer</a>
     </section>
-    <section class="snap-section project-snap" id="proj-8bit-computer" data-domain="cs" style="--a:var(--rgb-cs)">
+    <section class="snap-section project-snap" id="proj-8bit-computer" data-domain="cs" data-sim="project:8bit-computer:hero" style="--a:var(--rgb-cs)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 10 / 10 · Computer Science</div>
@@ -290,7 +302,7 @@
                 <span class="snap-count">5 core subsystems</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Elementary cellular automaton · click to cycle the rule</div>
+        <div class="sim-tag" aria-hidden="true">8-bit shared common data bus · 74LS TTL register transfer, ALU execution & microcode sequencing</div>
         <a class="snap-cue" href="#proj-index-hero">Back to top</a>
     </section>
     </main>

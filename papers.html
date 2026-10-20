@@ -1,19 +1,31 @@
 <!doctype html>
-<html lang="en-GB" data-domain="papers" data-page="papers" data-theme="dark">
+<html lang="en-GB" data-domain="papers" data-page="papers" data-theme="dark" data-font="space">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Research Papers · Kushan Waghmare</title>
     <meta name="description" content="Preprints and research papers on non-equilibrium Langevin dynamics, high-frequency statistical arbitrage, and symplectic numerical integrators." />
-    <script>try{const q=new URLSearchParams(location.search).get("theme");const t=q||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q)localStorage.setItem("theme",q);}catch(e){document.documentElement.dataset.theme="dark";}</script>
-    <link rel="stylesheet" href="shared/style.css?v=29" />
+    <script>try{const q=new URLSearchParams(location.search);const t=q.get("theme")||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q.get("theme"))localStorage.setItem("theme",t);const f=q.get("font")||localStorage.getItem("kw_font")||"space";document.documentElement.dataset.font=f;if(q.get("font"))localStorage.setItem("kw_font",f);}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.font="space";}</script>
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Space+Grotesk:wght@600;700&display=swap" />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" />
+    <link rel="stylesheet" href="shared/style.css?v=36" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-    <script defer src="shared/data.js?v=29"></script>
-    <script defer src="shared/sims.js?v=29"></script>
-    <script defer src="shared/app.js?v=29"></script>
+    <script defer src="shared/data.js?v=36"></script>
+    <script defer src="shared/gfx.js?v=36"></script>
+    <script defer src="shared/engines.js?v=36"></script>
+    <script defer src="shared/slides.js?v=36"></script>
+    <script defer src="shared/blackhole-physics.js?v=36"></script>
+    <script defer src="shared/blackhole-shaders.js?v=36"></script>
+    <script defer src="shared/blackhole-lite.js?v=36"></script>
+    <script defer src="shared/blackhole.js?v=36"></script>
+    <script defer src="shared/app.js?v=36"></script>
+
 </head>
 <body>
     
@@ -43,7 +55,7 @@
         <a href="#papers-contact" class="snap-dot" data-title="06 Contact" aria-label="Contact & Collaboration"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">06 Contact</span></a>
     </nav>
 
-    <section class="snap-section hero" id="papers-hero" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section hero" id="papers-hero" data-domain="papers" data-sim="papers-index:hero" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Research Papers</div>
@@ -60,7 +72,7 @@
     </section>
 
     
-    <section class="snap-section project-snap" id="paper-langevin-loss-landscapes" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section project-snap" id="paper-langevin-loss-landscapes" data-domain="papers" data-sim="paper:langevin-loss-landscapes:hero" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:880px">
             <div class="eyebrow" data-reveal>
@@ -89,10 +101,10 @@
                 <span class="snap-count">arXiv:2604.10842 [stat.ML] · 2026</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">Non-equilibrium Fokker–Planck Langevin diffusion · Kramers barrier escape across double-well loss landscape</div>
         <a class="snap-cue" href="#paper-hft-stat-arb-microstructure">Next: HFT Statistical Arbitrage</a>
     </section>
-    <section class="snap-section project-snap" id="paper-hft-stat-arb-microstructure" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section project-snap" id="paper-hft-stat-arb-microstructure" data-domain="papers" data-sim="paper:hft-stat-arb-microstructure:hero" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:880px">
             <div class="eyebrow" data-reveal>
@@ -121,10 +133,10 @@
                 <span class="snap-count">Quantitative Finance Working Papers Series · 2026</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">HFT optimal control inventory q_t & Ornstein–Uhlenbeck spread with quadratic execution penalty γ q²</div>
         <a class="snap-cue" href="#paper-symplectic-energy-bounds-nbody">Next: Symplectic N-Body Integrators</a>
     </section>
-    <section class="snap-section project-snap" id="paper-symplectic-energy-bounds-nbody" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section project-snap" id="paper-symplectic-energy-bounds-nbody" data-domain="papers" data-sim="paper:symplectic-energy-bounds-nbody:hero" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:880px">
             <div class="eyebrow" data-reveal>
@@ -153,10 +165,10 @@
                 <span class="snap-count">Computational Physics & Dynamical Systems · 2025</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">Symplectic KDK long-term gravitational integration · shadow Hamiltonian H̃ = H + O(Δt²) energy boundedness</div>
         <a class="snap-cue" href="#paper-verified-ssa-compiler-passes">Next: Verified SSA Compiler Passes</a>
     </section>
-    <section class="snap-section project-snap" id="paper-verified-ssa-compiler-passes" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section project-snap" id="paper-verified-ssa-compiler-passes" data-domain="papers" data-sim="paper:verified-ssa-compiler-passes:hero" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:880px">
             <div class="eyebrow" data-reveal>
@@ -185,10 +197,10 @@
                 <span class="snap-count">Systems & Programming Languages Technical Reports · 2025</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">Formally verified SSA dominance optimisation · subject reduction & type preservation Γ ⊢ e : τ</div>
         <a class="snap-cue" href="#paper-riemannian-immersion-gauss-bonnet">Next: Riemannian Immersion & Holonomy</a>
     </section>
-    <section class="snap-section project-snap" id="paper-riemannian-immersion-gauss-bonnet" data-domain="papers" style="--a:var(--rgb-papers)">
+    <section class="snap-section project-snap" id="paper-riemannian-immersion-gauss-bonnet" data-domain="papers" data-sim="paper:riemannian-immersion-gauss-bonnet:hero" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:880px">
             <div class="eyebrow" data-reveal>
@@ -217,11 +229,11 @@
                 <span class="snap-count">Differential Geometry & Geometric Analysis · 2025</span>
             </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics</div>
+        <div class="sim-tag" aria-hidden="true">Gauss–Bonnet theorem on non-orientable 2-manifolds · ∬_M K dA + ∮_∂M k_g ds = 2π χ(M) = 0</div>
         <a class="snap-cue" href="#papers-contact">Next: Collaboration & Contact</a>
     </section>
 
-    <section class="snap-section about-contact-section" id="papers-contact" data-domain="contact" style="--a:var(--rgb-contact)">
+    <section class="snap-section about-contact-section" id="papers-contact" data-domain="contact" data-sim="papers-index:contact" style="--a:var(--rgb-contact)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="section-head" data-reveal><span class="idx">06</span><h2>Research Enquiries &amp; Collaboration</h2></div>
@@ -253,7 +265,7 @@
             </div>
         </div>
         </div>
-        <div class="sim-tag" aria-hidden="true">Gravitational 3-body problem · r̈ᵢ = −∑ G mⱼ (rᵢ − rⱼ)/|rᵢ − rⱼ|³ · RK4 chaotic choreography</div>
+        <div class="sim-tag" aria-hidden="true">Non-equilibrium Langevin diffusion · Fokker–Planck collaboration flow · ∂p/∂t = ∇·(∇V p + D∇p)</div>
         <footer class="foot snap-foot"><span>© 2026 Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
     </section></main>
 </body>
