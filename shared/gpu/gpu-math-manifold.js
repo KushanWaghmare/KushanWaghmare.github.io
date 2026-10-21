@@ -352,7 +352,7 @@
 
                     // Camera Orbit
                     const aspect = sceneTarget.w / Math.max(1, sceneTarget.h);
-                    const camDist = 6.8;
+                    const camDist = 5.4;
                     const cosEl = Math.cos(curElevation);
                     const sinEl = Math.sin(curElevation);
                     const cosAz = Math.cos(curAzimuth + t * 0.04);
@@ -396,8 +396,8 @@
                         .f1("uAlpha", curAlpha)
                         .f1("uShockTime", shockTime)
                         .f2("uShockCenter", shockCenter[0], shockCenter[1])
-                        .f1("uR", 1.95)
-                        .f1("ur", 1.20)
+                        .f1("uR", 1.15)
+                        .f1("ur", 1.35)
                         .f3("uAccent", normAccent[0], normAccent[1], normAccent[2])
                         .f1("uLightMode", isLight);
 
@@ -416,8 +416,8 @@
                         .mat4("uViewProj", matViewProj)
                         .mat4("uModel", matModel)
                         .f1("uAlpha", curAlpha)
-                        .f1("uR", 1.95)
-                        .f1("ur", 1.20)
+                        .f1("uR", 1.15)
+                        .f1("ur", 1.35)
                         .f3("uAccent", normAccent[0], normAccent[1], normAccent[2]);
 
                     gl.bindVertexArray(vaoParticles);
