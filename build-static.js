@@ -681,6 +681,8 @@ ${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.j
     <script defer src="shared/lib/diffusion-math.js?v=37"></script>
     <script defer src="shared/lib/market-math.js?v=37"></script>
     <script defer src="shared/lib/lob-math.js?v=37"></script>
+    <script defer src="shared/lib/quant-singularity-math.js?v=37"></script>
+    <script defer src="shared/lib/math-manifold-math.js?v=37"></script>
     <script defer src="shared/gfx.js?v=37"></script>
     <script defer src="shared/engines.js?v=37"></script>
     <script defer src="shared/slides.js?v=37"></script>

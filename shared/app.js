@@ -1438,7 +1438,7 @@ const initNavSim = (c) => {
         const resolveGpuSim = (simKey) => {
             if (simKey === "hub:intro") return { mod: "hub", key: "hub" };
             if (simKey === "hub:domain-math" || simKey === "domain:math:0" || simKey === "domain:math:1" || simKey.startsWith("project:mobius-surfaces")) {
-                return { mod: "math", key: "mobius-surfaces" };
+                return { mod: "math-manifold", key: "gauss-bonnet-manifold" };
             }
             if (simKey === "domain:physics:2" || simKey.startsWith("project:split-step-schrodinger")) {
                 return { mod: "physics", key: "split-step-schrodinger" };
@@ -1447,7 +1447,7 @@ const initNavSim = (c) => {
                 return { mod: "physics", key: "nbody-leapfrog" };
             }
             if (simKey === "hub:domain-quant" || simKey === "domain:quant:0") {
-                return { mod: "market", key: "market-galaxy" };
+                return { mod: "quant-singularity", key: "market-singularity" };
             }
             if (simKey === "domain:quant:1" || simKey.startsWith("project:options-pricing")) {
                 return { mod: "quant", key: "options-pricing" };

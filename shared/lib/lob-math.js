@@ -7,7 +7,7 @@
     if (typeof module === "object" && module.exports) {
         module.exports = factory();
     } else {
-        root.LOB_MATH = factory();
+        root.LOB_MATH = root.LobMath = factory();
     }
 }(typeof self !== "undefined" ? self : this, function () {
     "use strict";

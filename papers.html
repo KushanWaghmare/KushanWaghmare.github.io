@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en-GB" data-domain="papers" data-page="papers" data-theme="dark" data-font="general">
+<html lang="en-GB" data-domain="papers" data-page="papers" data-theme="dark" data-font="space">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Research Papers · Kushan Waghmare</title>
     <meta name="description" content="Preprints and research papers on non-equilibrium Langevin dynamics, high-frequency statistical arbitrage, and symplectic numerical integrators." />
-    <script>try{const q=new URLSearchParams(location.search);const t=q.get("theme")||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q.get("theme"))localStorage.setItem("theme",t);const f=q.get("font")||localStorage.getItem("kw_font")||"general";document.documentElement.dataset.font=f;if(q.get("font"))localStorage.setItem("kw_font",f);}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.font="general";}</script>
+    <script>try{const q=new URLSearchParams(location.search);const t=q.get("theme")||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q.get("theme"))localStorage.setItem("theme",t);const f=q.get("font")||localStorage.getItem("kw_font")||"space";document.documentElement.dataset.font=f;if(q.get("font"))localStorage.setItem("kw_font",f);}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.font="space";}</script>
     <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,10 +15,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script defer src="shared/data.js?v=37"></script>
     <script defer src="shared/lib/diffusion-math.js?v=37"></script>
     <script defer src="shared/lib/market-math.js?v=37"></script>
     <script defer src="shared/lib/lob-math.js?v=37"></script>
+    <script defer src="shared/lib/quant-singularity-math.js?v=37"></script>
+    <script defer src="shared/lib/math-manifold-math.js?v=37"></script>
     <script defer src="shared/gfx.js?v=37"></script>
     <script defer src="shared/engines.js?v=37"></script>
     <script defer src="shared/slides.js?v=37"></script>
@@ -42,6 +45,7 @@
             <a href="index.html" class="nav-back-link"><span class="full">← Hub</span><span class="short">←</span></a>
             <a href="index.html#about-contact" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>
             <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
+            <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Mute audio">🔊</button>
         </nav>
     </header>
     <main id="main">

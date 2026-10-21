@@ -28,6 +28,48 @@
                 s0.onload = loadMain;
                 s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
                 document.head.appendChild(s0);
+            } else if (name === "quant-singularity" && !root.QuantSingularityShaders) {
+                const s0 = document.createElement("script");
+                s0.src = `shared/gpu/gpu-quant-singularity-shaders.js?v=${VERSION}`; s0.async = true;
+                s0.onload = loadMain;
+                s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                document.head.appendChild(s0);
+            } else if (name === "math-manifold") {
+                const loadShaders = () => {
+                    if (root.MathManifoldShaders) return loadMain();
+                    const s1 = document.createElement("script");
+                    s1.src = `shared/gpu/gpu-math-manifold-shaders.js?v=${VERSION}`; s1.async = true;
+                    s1.onload = loadMain;
+                    s1.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s1);
+                };
+                if (!root.MathManifoldMath) {
+                    const s0 = document.createElement("script");
+                    s0.src = `shared/lib/math-manifold-math.js?v=${VERSION}`; s0.async = true;
+                    s0.onload = loadShaders;
+                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s0);
+                } else {
+                    loadShaders();
+                }
+            } else if (name === "cs-computation") {
+                const loadShaders = () => {
+                    if (root.CsComputationShaders) return loadMain();
+                    const s1 = document.createElement("script");
+                    s1.src = `shared/gpu/gpu-cs-computation-shaders.js?v=${VERSION}`; s1.async = true;
+                    s1.onload = loadMain;
+                    s1.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s1);
+                };
+                if (!root.CsComputationMath) {
+                    const s0 = document.createElement("script");
+                    s0.src = `shared/lib/cs-computation-math.js?v=${VERSION}`; s0.async = true;
+                    s0.onload = loadShaders;
+                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s0);
+                } else {
+                    loadShaders();
+                }
             } else {
                 loadMain();
             }

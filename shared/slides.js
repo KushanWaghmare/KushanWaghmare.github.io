@@ -49,7 +49,7 @@
         "hub:domain-quant": {
             engine: "paths",
             params: { process: "gbm", paths: 65, steps: 220, mu: 0.05, sigma: 0.32, band: 1.0 },
-            caption: "Market galaxy · 60 assets, 6 sectors · Regime: Calm · ρ̄ = 0.17 · λ₁/N = 18% · L = 0.85 · 1 signal mode > λ₊ · click shocks regime",
+            caption: "Market Singularity · Kerr a = +0.82 · r₊ = 1.57 r_g · r_isco = 2.41 r_g · g_max = 2.68 · Γ_peak = 42.1 · Breeden–Litzenberger disk · click shocks regime",
             matches: "SITE.domains.quant (Quantitative Finance domain overview preview)"
         },
         "hub:domain-cs": {
@@ -167,7 +167,7 @@
         "domain:quant:0": {
             engine: "paths",
             params: { process: "gbm", paths: 65, steps: 220, mu: 0.05, sigma: 0.32, band: 1.0 },
-            caption: "Market galaxy · 60 assets, 6 sectors · Regime: Calm · ρ̄ = 0.17 · λ₁/N = 18% · L = 0.85 · 1 signal mode > λ₊ · click shocks regime",
+            caption: "Market Singularity · Kerr a = +0.82 · r₊ = 1.57 r_g · r_isco = 2.41 r_g · g_max = 2.68 · Γ_peak = 42.1 · Breeden–Litzenberger disk · click shocks regime",
             matches: "SITE.domains.quant (Quantitative Finance domain overview)"
         },
         "domain:quant:1": {
