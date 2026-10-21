@@ -71,6 +71,9 @@ const launch = async (port, extraArgs = []) => {
     await send("Runtime.enable");
     await send("Page.enable");
     const viewport = (width, height) => send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
+    const mouseMove = (x, y) => send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+    const mouseClick = (x, y) => send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 })
+        .then(() => send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 }));
     const navigate = async (url) => {
         const loaded = new Promise((r) => { const fn = (m) => { if (m.method === "Page.loadEventFired") { listeners.splice(listeners.indexOf(fn), 1); r(); } }; listeners.push(fn); });
         await send("Page.navigate", { url });
@@ -85,7 +88,7 @@ const launch = async (port, extraArgs = []) => {
         return Buffer.from((await send("Page.captureScreenshot", params)).data, "base64");
     };
     const close = () => { try { ws.close(); } catch (e) {} proc.kill("SIGKILL"); };
-    return { send, evaluate, navigate, screenshot, viewport, close, consoleLog };
+    return { send, evaluate, navigate, screenshot, viewport, mouseMove, mouseClick, close, consoleLog };
 };
 
 module.exports = { serve, launch, sleep, ROOT };

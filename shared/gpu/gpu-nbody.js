@@ -116,6 +116,7 @@ uniform sampler2D uVel;
 uniform int uTexW;
 uniform float uAspect;
 uniform vec2 uPan;
+uniform vec2 uOffset;
 uniform float uZoom;
 out float vSpeed;
 out float vGalaxy;
@@ -128,7 +129,7 @@ void main() {
     vGalaxy = pos.w;
 
     vec2 p = (pos.xy - uPan) * uZoom;
-    gl_Position = vec4(p.x / uAspect, p.y, 0.0, 1.0);
+    gl_Position = vec4(p.x / uAspect + uOffset.x, p.y + uOffset.y, 0.0, 1.0);
     gl_PointSize = 1.6;
 }`;
 
@@ -263,13 +264,16 @@ void main() { fragColor = texture(uTex, vUV); }`);
                 const a = KW.col.a;
                 const aspect = sceneTarget.w / Math.max(1, sceneTarget.h);
                 const cursor = KW.local(canvas);
+                const isMob = typeof window !== "undefined" && window.innerWidth <= 900;
                 const panX = cursor.x > -500 ? (cursor.x / (canvas.clientWidth || 800) - 0.5) * 0.4 : 0.0;
                 const panY = cursor.y > -500 ? (cursor.y / (canvas.clientHeight || 600) - 0.5) * -0.4 : 0.0;
+                const offsetX = isMob ? 0.0 : 0.48;
 
                 parts.draw(drawProg, (p) => {
                     p.tex("uVel", parts.aux.read(), 1)
                      .f1("uAspect", aspect)
                      .f2("uPan", panX, panY)
+                     .f2("uOffset", offsetX, 0.0)
                      .f1("uZoom", 0.36)
                      .f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
                 }, sceneTarget, count);

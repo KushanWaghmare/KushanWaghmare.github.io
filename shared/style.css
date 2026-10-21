@@ -1,21 +1,8 @@
-/* ---------- Typography System & Pairing Options ---------- */
-/* Primary Default (Option 2): Space Grotesk (Headings) + Satoshi (Prose) */
+/* ---------- Typography System ---------- */
+/* Cabinet Grotesk (Headings) + General Sans (Prose) */
 :root,
-html[data-font="space"] {
-    --heading-font: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --sans: "Satoshi", "Inter", -apple-system, system-ui, sans-serif;
-    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-/* Option 1: Plus Jakarta Sans (Headings) + Inter (Prose) */
-html[data-font="jakarta"] {
-    --heading-font: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-/* Option 3: Cabinet Grotesk (Headings) + General Sans (Prose) */
-html[data-font="general"] {
+html[data-font="general"],
+html[data-font="cabinet"] {
     --heading-font: "Cabinet Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --sans: "General Sans", "Inter", -apple-system, system-ui, sans-serif;
     --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -25,16 +12,16 @@ html[data-font="general"] {
 :root,
 html[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #07080c;
-    --bg-rgb: 7, 8, 12;
+    --bg: #000000;
+    --bg-rgb: 0, 0, 0;
     --fg: #eef0f6;
     --fg-muted: #9ca3b5;
     --fg-faint: #8b93a7;
     --muted: var(--fg-muted);
-    --line: rgba(255, 255, 255, 0.11);
-    --glass: rgba(16, 18, 26, 0.60);
+    --line: rgba(255, 255, 255, 0.10);
+    --glass: rgba(0, 0, 0, 0.65);
     --glass-line: rgba(255, 255, 255, 0.12);
-    --glass-solid: rgba(16, 18, 26, 0.90);
+    --glass-solid: rgba(0, 0, 0, 0.92);
     --radius: 16px;
     --success: #20c991;
 
@@ -62,7 +49,7 @@ html[data-theme="dark"] {
     --a: var(--rgb-hub);
     --accent: rgb(var(--a));
     --a-text: rgb(var(--a));
-    --on-accent: #07080c;
+    --on-accent: #000000;
 }
 
 html[data-theme="light"] {

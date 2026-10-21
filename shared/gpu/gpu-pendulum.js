@@ -68,6 +68,7 @@ void main() {
 precision highp float;
 uniform sampler2D uState;
 uniform int uCount;
+uniform float uCenterOffset;
 out float vIdx;
 
 void main() {
@@ -81,7 +82,7 @@ void main() {
     float y = -cos(th1) - cos(th2);
 
     // Map configuration space [-2.1, 2.1] to NDC [-0.85, 0.85]
-    vec2 ndc = vec2(x, y) * (0.85 / 2.1);
+    vec2 ndc = vec2(x, y) * (0.85 / 2.1) + vec2(uCenterOffset, 0.0);
     gl_Position = vec4(ndc, 0.0, 1.0);
     gl_PointSize = 2.2;
     vIdx = float(id) / float(uCount);
@@ -179,9 +180,11 @@ void main() { fragColor = texture(uTex, vUV); }`);
                 const gl = GFX.gl;
                 gl.enable(gl.BLEND);
                 gl.blendFunc(gl.ONE, gl.ONE);
+                const isMob = GFX.isMobile();
                 drawProg.use()
                     .tex("uState", statePP.read(), 0)
                     .i1("uCount", count)
+                    .f1("uCenterOffset", isMob ? 0.0 : 0.48)
                     .f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
                 gl.drawArrays(gl.POINTS, 0, count);
                 gl.disable(gl.BLEND);

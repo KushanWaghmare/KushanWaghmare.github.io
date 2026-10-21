@@ -58,7 +58,7 @@ void main() {
 precision highp float;
 uniform sampler2D uState;
 uniform int uTexW;
-uniform float uS0, uStrike;
+uniform float uS0, uStrike, uIsDesktop;
 out float vInTheMoney;
 
 void main() {
@@ -66,9 +66,9 @@ void main() {
     vec4 st = texelFetch(uState, uv, 0);
     float S = st.x, t = st.w;
 
-    // Map time t in [0, 1] to x in [-0.92, 0.55] (leaving right 30% for histogram)
-    float x = -0.92 + t * 1.45;
-    // Map price S around S0 (normalized) to y in [-0.85, 0.85]
+    float x0 = uIsDesktop > 0.5 ? -0.05 : -0.92;
+    float spanX = uIsDesktop > 0.5 ? 0.76 : 1.45;
+    float x = x0 + t * spanX;
     float y = clamp((S - uS0) / (uS0 * 0.95), -0.88, 0.88);
 
     vInTheMoney = S >= uStrike ? 1.0 : 0.0;
@@ -86,30 +86,34 @@ void main() {
     if (dot(circ, circ) > 0.25) discard;
     vec3 col = vInTheMoney > 0.5 ? mix(uAccent, vec3(1.0, 0.9, 0.4), 0.6) : uAccent * 0.65;
     fragColor = vec4(col * 0.032, 1.0);
-}`;
+} `;
 
     // Terminal Price Histogram on right margin [x in 0.58 .. 0.95]
     const FS_OVERLAY = `#version 300 es
 precision highp float;
 in vec2 vUV; out vec4 fragColor;
-uniform float uStrike, uS0;
+uniform float uStrike, uS0, uIsDesktop;
 uniform vec3 uAccent;
 
 void main() {
     vec2 p = vUV * 2.0 - 1.0;
     vec3 col = vec3(0.0);
 
+    float x0 = uIsDesktop > 0.5 ? -0.05 : -0.92;
+    float xEnd = uIsDesktop > 0.5 ? 0.94 : 0.88;
+    float barrierX = uIsDesktop > 0.5 ? 0.72 : 0.54;
+
     // Strike price line K
     float strikeY = clamp((uStrike - uS0) / (uS0 * 0.95), -0.88, 0.88);
-    if (abs(p.y - strikeY) < 0.003 && p.x > -0.92 && p.x < 0.88) {
+    if (abs(p.y - strikeY) < 0.003 && p.x > x0 && p.x < xEnd) {
         col += mix(vec3(1.0, 0.35, 0.25), vec3(1.0), 0.4) * 0.85;
     }
     // Baseline S0 level
-    if (abs(p.y) < 0.0018 && p.x > -0.92 && p.x < 0.88) {
+    if (abs(p.y) < 0.0018 && p.x > x0 && p.x < xEnd) {
         col += vec3(0.35, 0.45, 0.65) * 0.6;
     }
     // Time partition barrier before histogram
-    if (abs(p.x - 0.54) < 0.002) {
+    if (abs(p.x - barrierX) < 0.002) {
         col += uAccent * 0.4;
     }
 
@@ -189,14 +193,15 @@ void main() { fragColor = texture(uTex, vUV); }`);
 
                 // Additive path points
                 const a = KW.col.a;
+                const isDesk = isMob ? 0.0 : 1.0;
                 parts.draw(drawProg, (p) => {
-                    p.f1("uS0", S0).f1("uStrike", strike).f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
+                    p.f1("uS0", S0).f1("uStrike", strike).f1("uIsDesktop", isDesk).f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
                 }, sceneTarget, count);
 
                 // Overlay grid lines and strike barrier
                 gl.enable(gl.BLEND);
                 gl.blendFunc(gl.ONE, gl.ONE);
-                overlayProg.use().f1("uStrike", strike).f1("uS0", S0).f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
+                overlayProg.use().f1("uStrike", strike).f1("uS0", S0).f1("uIsDesktop", isDesk).f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
                 gfx.quad(overlayProg, sceneTarget);
                 gl.disable(gl.BLEND);
 

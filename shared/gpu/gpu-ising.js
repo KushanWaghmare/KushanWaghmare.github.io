@@ -74,9 +74,18 @@ in vec2 vUV; out vec4 fragColor;
 uniform sampler2D uSpins;
 uniform vec3 uAccent;
 uniform int uDim;
+uniform float uCenterOffset;
 
 void main() {
-    ivec2 p = ivec2(vUV * float(uDim));
+    vec2 uv = vUV;
+    if (uCenterOffset > 0.0) {
+        uv.x = (vUV.x - 0.28) / 0.72;
+        if (uv.x < 0.0 || uv.x > 1.0) {
+            fragColor = vec4(0.012, 0.014, 0.022, 1.0);
+            return;
+        }
+    }
+    ivec2 p = ivec2(uv * float(uDim));
     float s = texelFetch(uSpins, p, 0).r;
 
     ivec2 up = ivec2(p.x, min(p.y + 1, uDim - 1));
@@ -92,7 +101,7 @@ void main() {
     float wall = 0.25 * (abs(s - sUp) + abs(s - sDn) + abs(s - sLf) + abs(s - sRg));
 
     vec3 colUp = mix(uAccent, vec3(1.0, 0.96, 0.88), 0.35);
-    vec3 colDn = vec3(0.015, 0.018, 0.028);
+    vec3 colDn = vec3(0.005, 0.006, 0.010);
     vec3 baseCol = (s > 0.0) ? colUp : colDn;
 
     vec3 wallGlow = mix(uAccent, vec3(1.0, 0.8, 0.5), 0.7) * (wall * 2.8);
@@ -182,6 +191,7 @@ void main() {
                 renderProg.use()
                     .tex("uSpins", spinsPP.read(), 0)
                     .i1("uDim", gridDim)
+                    .f1("uCenterOffset", isMob ? 0.0 : 0.48)
                     .f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
                 gfx.quad(renderProg, sceneTarget);
 

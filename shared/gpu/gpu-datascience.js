@@ -68,13 +68,15 @@ void main() {
 precision highp float;
 in vec2 vUV; out vec4 fragColor;
 uniform vec3 uAccent;
+uniform float uCenterOffset;
 
 float potential(vec2 p) {
     return (p.x * p.x - 1.0) * (p.x * p.x - 1.0) + 1.25 * p.y * p.y + 0.22 * cos(3.6 * p.x) * cos(3.6 * p.y);
 }
 
 void main() {
-    vec2 p = (vUV * 2.0 - 1.0) * 2.4;
+    vec2 ndc = vUV * 2.0 - 1.0;
+    vec2 p = (ndc - vec2(uCenterOffset, 0.0)) * 2.4;
     float u = potential(p);
 
     float eps = 0.01;
@@ -88,9 +90,9 @@ void main() {
     float contour = abs(fract(u * 1.5 - 0.5) - 0.5);
     float line = smoothstep(0.04, 0.005, contour);
 
-    vec3 bgBase = vec3(0.008, 0.010, 0.018);
+    vec3 bgBase = vec3(0.0);
     vec3 basinCol = mix(bgBase, uAccent * 0.18, clamp(1.2 - u * 0.45, 0.0, 1.0));
-    vec3 ridgeCol = vec3(0.03, 0.035, 0.05) * diff;
+    vec3 ridgeCol = vec3(0.015, 0.018, 0.025) * diff;
 
     vec3 col = mix(basinCol, ridgeCol, clamp(u * 0.25, 0.0, 1.0));
     col += uAccent * (line * 0.16);
@@ -102,12 +104,13 @@ void main() {
 precision highp float;
 uniform sampler2D uState;
 uniform int uTexW;
+uniform float uCenterOffset;
 
 void main() {
     ivec2 coord = ivec2(gl_VertexID % uTexW, gl_VertexID / uTexW);
     vec2 pos = texelFetch(uState, coord, 0).xy;
 
-    vec2 ndc = (pos / 2.4) * 0.92;
+    vec2 ndc = (pos / 2.4) * 0.92 + vec2(uCenterOffset, 0.0);
     gl_Position = vec4(ndc, 0.0, 1.0);
     gl_PointSize = 1.8;
 }`;
@@ -205,14 +208,15 @@ void main() {
                 }
 
                 const a = (window.KW && window.KW.col && window.KW.col.a) || [89, 217, 166];
+                const offset = isMobile ? 0.0 : 0.48;
 
                 // 1. Shaded topography
-                landProg.use().f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
+                landProg.use().f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255).f1("uCenterOffset", offset);
                 gfx.quad(landProg, sceneTarget);
 
                 // 2. Additive particle splats
                 parts.draw(partProg, (p) => {
-                    p.i1("uTexW", texW).f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
+                    p.i1("uTexW", texW).f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255).f1("uCenterOffset", offset);
                 }, sceneTarget, numParticles);
 
                 gfx.compose(sceneTarget, ctx2d, outW, outH, {

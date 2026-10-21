@@ -673,19 +673,22 @@ const buildHTML = ({ domain, pageType, three, title, desc, mainContent }) => `<!
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Space+Grotesk:wght@600;700&display=swap" />
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" />
-    <link rel="stylesheet" href="shared/style.css?v=36" />
+    <link rel="stylesheet" href="shared/style.css?v=37" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=36"></script>
-    <script defer src="shared/gfx.js?v=36"></script>
-    <script defer src="shared/engines.js?v=36"></script>
-    <script defer src="shared/slides.js?v=36"></script>
-    <script defer src="shared/blackhole-physics.js?v=36"></script>
-    <script defer src="shared/blackhole-shaders.js?v=36"></script>
-    <script defer src="shared/blackhole-lite.js?v=36"></script>
-    <script defer src="shared/blackhole.js?v=36"></script>
-    <script defer src="shared/app.js?v=36"></script>
+${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>\n' : ''}    <script defer src="shared/data.js?v=37"></script>
+    <script defer src="shared/lib/diffusion-math.js?v=37"></script>
+    <script defer src="shared/lib/market-math.js?v=37"></script>
+    <script defer src="shared/lib/lob-math.js?v=37"></script>
+    <script defer src="shared/gfx.js?v=37"></script>
+    <script defer src="shared/engines.js?v=37"></script>
+    <script defer src="shared/slides.js?v=37"></script>
+    <script defer src="shared/blackhole-physics.js?v=37"></script>
+    <script defer src="shared/blackhole-shaders.js?v=37"></script>
+    <script defer src="shared/blackhole-lite.js?v=37"></script>
+    <script defer src="shared/blackhole.js?v=37"></script>
+    <script defer src="shared/app.js?v=37"></script>
 
 </head>
 <body>

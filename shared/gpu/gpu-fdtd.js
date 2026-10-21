@@ -101,23 +101,11 @@ uniform int uDim;
 uniform int uMode;
 
 void main() {
-    ivec2 p = ivec2(vUV * float(uDim));
+    vec2 uv = vUV;
+    ivec2 p = ivec2(uv * float(uDim));
     vec2 stateE = texelFetch(uTexE, p, 0).xy;
     float ez = stateE.x;
     float avgI = stateE.y;
-
-    int wallX = int(float(uDim) * 0.34);
-    int slit1Y = int(float(uDim) * 0.44);
-    int slit2Y = int(float(uDim) * 0.56);
-    int slitW = int(float(uDim) * 0.024);
-
-    bool isWall = (p.x == wallX || p.x == wallX + 1) &&
-                  (abs(p.y - slit1Y) > slitW && abs(p.y - slit2Y) > slitW);
-
-    if (isWall) {
-        fragColor = vec4(vec3(0.08, 0.10, 0.14), 1.0);
-        return;
-    }
 
     vec3 col = vec3(0.0);
     if (uMode == 0) {
@@ -125,10 +113,10 @@ void main() {
         vec3 colNeg = vec3(0.12, 0.35, 0.85);
         float pos = clamp(ez * 2.2, 0.0, 1.0);
         float neg = clamp(-ez * 2.2, 0.0, 1.0);
-        col = colPos * pos + colNeg * neg + vec3(0.006, 0.008, 0.014);
+        col = colPos * pos + colNeg * neg;
     } else {
         float iNorm = clamp(avgI * 6.5, 0.0, 1.0);
-        col = mix(vec3(0.01, 0.012, 0.02), uAccent * 1.6 + vec3(0.4, 0.35, 0.2), iNorm * iNorm);
+        col = mix(vec3(0.0), uAccent * 1.6 + vec3(0.4, 0.35, 0.2), iNorm * iNorm);
     }
 
     fragColor = vec4(col, 1.0);
@@ -168,13 +156,37 @@ void main() {
 
         return GFX.mount(canvas, (gfx, c, getSize) => ({
             resize: (rw, rh) => {
+                let fresh = false;
                 if (!ePP) {
                     ePP = gfx.pingPong(gridDim, gridDim, { fp32: true, nearest: true });
                     ePP.clear(0, 0, 0, 1);
+                    fresh = true;
                 }
                 if (!hTgt) {
                     hTgt = gfx.target(gridDim, gridDim, { fp32: true, nearest: true });
                     hTgt.clear(0, 0, 0, 1);
+                }
+                if (fresh) {
+                    for (let step = 0; step < 160; step++) {
+                        simTime += dt;
+                        hProg.use()
+                            .tex("uTexE", ePP.read(), 0)
+                            .tex("uTexH", hTgt, 1)
+                            .i1("uDim", gridDim)
+                            .f1("uDt", dt);
+                        gfx.quad(hProg, hTgt, gridDim, gridDim);
+
+                        eProg.use()
+                            .tex("uTexE", ePP.read(), 0)
+                            .tex("uTexH", hTgt, 1)
+                            .i1("uDim", gridDim)
+                            .f1("uDt", dt)
+                            .f1("uTime", simTime)
+                            .f2("uSourcePos", 0.16, 0.50)
+                            .f1("uOmega", omega);
+                        gfx.quad(eProg, ePP.write(), gridDim, gridDim);
+                        ePP.swap();
+                    }
                 }
                 if (!sceneTarget) sceneTarget = gfx.target(rw, rh, { fp32: false });
                 else sceneTarget.resize(rw, rh);

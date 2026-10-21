@@ -1446,10 +1446,19 @@ const initNavSim = (c) => {
             if (simKey === "domain:physics:1" || simKey.startsWith("project:nbody-leapfrog") || simKey.startsWith("paper:symplectic-energy-bounds-nbody:hero")) {
                 return { mod: "physics", key: "nbody-leapfrog" };
             }
-            if (simKey === "hub:domain-quant" || simKey === "domain:quant:0" || simKey === "domain:quant:1" || simKey.startsWith("project:options-pricing") || simKey === "track:advanced-quant-systems") {
+            if (simKey === "hub:domain-quant" || simKey === "domain:quant:0") {
+                return { mod: "market", key: "market-galaxy" };
+            }
+            if (simKey === "domain:quant:1" || simKey.startsWith("project:options-pricing")) {
                 return { mod: "quant", key: "options-pricing" };
             }
-            if (simKey === "hub:domain-datascience" || simKey === "domain:datascience:0" || simKey.startsWith("paper:langevin-loss-landscapes:hero")) {
+            if (simKey.startsWith("paper:hft-stat-arb-microstructure:hero") || simKey === "course:QF4020" || simKey === "track:advanced-quant-systems" || simKey === "domain:quant:2" || simKey.startsWith("project:stat-arb:hero")) {
+                return { mod: "lob", key: "order-book-terrain" };
+            }
+            if (simKey === "hub:domain-datascience" || simKey === "domain:datascience:0") {
+                return { mod: "diffusion", key: "diffusion" };
+            }
+            if (simKey.startsWith("paper:langevin-loss-landscapes:hero")) {
                 return { mod: "datascience", key: "langevin-loss-landscapes" };
             }
             if (simKey === "course:PH2040") {

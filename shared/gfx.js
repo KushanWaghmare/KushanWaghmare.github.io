@@ -9,17 +9,28 @@
 }(typeof self !== "undefined" ? self : this, function (root) {
     "use strict";
 
-    const VERSION = "31", moduleCache = new Map(), progCache = new Map(), instances = new Set();
+    const VERSION = "37", moduleCache = new Map(), progCache = new Map(), instances = new Set();
 
     const loadModule = (name) => {
         if (moduleCache.has(name)) return moduleCache.get(name);
         if (typeof document === "undefined") return Promise.resolve(null);
         const p = new Promise((resolve, reject) => {
-            const s = document.createElement("script");
-            s.src = `shared/gpu/gpu-${name}.js?v=${VERSION}`; s.async = true;
-            s.onload = () => resolve(root.SIMS);
-            s.onerror = (e) => { moduleCache.delete(name); reject(e); };
-            document.head.appendChild(s);
+            const loadMain = () => {
+                const s = document.createElement("script");
+                s.src = `shared/gpu/gpu-${name}.js?v=${VERSION}`; s.async = true;
+                s.onload = () => resolve(root.SIMS);
+                s.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                document.head.appendChild(s);
+            };
+            if (name === "lob" && !root.LOB_SHADERS) {
+                const s0 = document.createElement("script");
+                s0.src = `shared/gpu/gpu-lob-shaders.js?v=${VERSION}`; s0.async = true;
+                s0.onload = loadMain;
+                s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                document.head.appendChild(s0);
+            } else {
+                loadMain();
+            }
         });
         moduleCache.set(name, p);
         return p;
@@ -85,10 +96,11 @@ void main() {
     const FS_COMPOSE = `#version 300 es
 precision highp float; in vec2 vUV; out vec4 fragColor;
 uniform sampler2D uScene, uBloom; uniform float uBloomGain, uExposure, uTime; uniform vec2 uRes; uniform vec3 uAccent;
+uniform float uLight;
 vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
 float hashGrain(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 void main() {
-    vec3 bg = vec3(0.010, 0.012, 0.018) + uAccent * 0.006;
+    vec3 bg = uLight > 0.5 ? vec3(0.96) : vec3(0.0);
     vec3 hdr = (bg + texture(uScene, vUV).rgb + texture(uBloom, vUV).rgb * uBloomGain) * uExposure;
     vec2 d = vUV - 0.5; hdr *= clamp(1.0 - 0.35 * dot(d, d), 0.0, 1.0);
     vec3 col = pow(aces(hdr), vec3(1.0 / 2.2));
@@ -231,7 +243,10 @@ void main() {
                 quad(uProg, aux.write()); aux.swap();
             },
             draw: (dProg, bind, targetFBO, n = count) => {
-                gl.bindFramebuffer(gl.FRAMEBUFFER, targetFBO.fbo); gl.viewport(0, 0, targetFBO.w, targetFBO.h);
+                const fboHandle = targetFBO ? (targetFBO.fbo !== undefined ? targetFBO.fbo : targetFBO) : null;
+                const fw = targetFBO ? (targetFBO.w || glCanvas.width) : glCanvas.width;
+                const fh = targetFBO ? (targetFBO.h || glCanvas.height) : glCanvas.height;
+                gl.bindFramebuffer(gl.FRAMEBUFFER, fboHandle); gl.viewport(0, 0, fw, fh);
                 gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
                 dProg.use().tex("uState", state.read(), 0).i1("uTexW", texW);
                 if (aux) dProg.tex("uAux", aux.read(), 1);
@@ -270,10 +285,15 @@ void main() {
         }
         gl.disable(gl.BLEND);
         if (glCanvas.width !== outW || glCanvas.height !== outH) { glCanvas.width = outW; glCanvas.height = outH; }
-        const a = (root.KW && root.KW.col && root.KW.col.a) || [79, 140, 255];
+        const a = opts.accent || (root.KW && root.KW.col && root.KW.col.a) || [79, 140, 255];
+        const isLight = opts.isLight !== undefined
+            ? (opts.isLight ? 1.0 : 0.0)
+            : (((root.KW && root.KW.theme && root.KW.theme.get && root.KW.theme.get() === "light")
+                || (typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "light")) ? 1.0 : 0.0);
         compProg.use().tex("uScene", sceneTex, 0).tex("uBloom", bloomTargets[0], 1)
             .f1("uBloomGain", opts.bloomGain ?? 0.32).f1("uExposure", opts.exposure ?? 1.15)
-            .f1("uTime", opts.time || 0).f2("uRes", outW, outH).f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
+            .f1("uTime", opts.time || 0).f2("uRes", outW, outH).f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255)
+            .f1("uLight", isLight);
         quad(compProg, null, outW, outH);
         if (outCtx2d) outCtx2d.drawImage(glCanvas, 0, 0, outW, outH);
     };
@@ -346,10 +366,21 @@ void main() {
         quad(p, pp.write()); pp.swap(); return pp.read();
     };
 
+    const drawPoints = (prog, targetFBO, count) => {
+        if (!init()) return;
+        const fboHandle = targetFBO ? (targetFBO.fbo !== undefined ? targetFBO.fbo : targetFBO) : null;
+        const fw = targetFBO ? (targetFBO.w || glCanvas.width) : glCanvas.width;
+        const fh = targetFBO ? (targetFBO.h || glCanvas.height) : glCanvas.height;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fboHandle); gl.viewport(0, 0, fw, fh);
+        gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+        if (prog) prog.use();
+        gl.bindVertexArray(emptyVAO); gl.drawArrays(gl.POINTS, 0, count); gl.disable(gl.BLEND);
+    };
+
     const GFX = {
         get gl() { init(); return gl; }, get supported() { return init(); },
         VS_QUAD, GLSL_PRNG, isMobile, loadModule, init, program, quad,
-        target, pingPong, particles, fadeScene, compose, sampleBoxMullerGPU, mount
+        target, pingPong, particles, drawPoints, fadeScene, compose, sampleBoxMullerGPU, mount
     };
     root.loadModule = loadModule;
     if (root.KW) root.KW.loadModule = loadModule;

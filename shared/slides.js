@@ -43,13 +43,13 @@
         "hub:domain-datascience": {
             engine: "flock",
             params: { model: "reynolds-hk", n: 64, rVis: 68, rSep: 22, opinionEps: 0.30, vMax: 3.2 },
-            caption: "Agent-Based Model (ABM) · Reynolds flocking & Hegselmann-Krause consensus · order parameter Φ",
+            caption: "Reverse-time SDE · closed-form Gaussian-mixture score · 65k GPU particles · click re-noises · press 'M' to toggle ODE",
             matches: "SITE.domains.datascience (Data Science domain overview preview)"
         },
         "hub:domain-quant": {
             engine: "paths",
             params: { process: "gbm", paths: 65, steps: 220, mu: 0.05, sigma: 0.32, band: 1.0 },
-            caption: "Geometric Brownian motion fan · 65 stochastic paths · cursor height sets volatility σ",
+            caption: "Market galaxy · 60 assets, 6 sectors · Regime: Calm · ρ̄ = 0.17 · λ₁/N = 18% · L = 0.85 · 1 signal mode > λ₊ · click shocks regime",
             matches: "SITE.domains.quant (Quantitative Finance domain overview preview)"
         },
         "hub:domain-cs": {
@@ -139,7 +139,7 @@
         "domain:datascience:0": {
             engine: "flock",
             params: { model: "reynolds-hk", n: 64, rVis: 68, rSep: 22, opinionEps: 0.30, vMax: 3.2 },
-            caption: "Agent-Based Model (ABM) · Reynolds flocking & Hegselmann-Krause consensus · order parameter Φ",
+            caption: "Reverse-time SDE · closed-form Gaussian-mixture score · 65k GPU particles · click re-noises · press 'M' to toggle ODE",
             matches: "SITE.domains.datascience (Data Science domain overview)"
         },
         "domain:datascience:1": {
@@ -167,7 +167,7 @@
         "domain:quant:0": {
             engine: "paths",
             params: { process: "gbm", paths: 65, steps: 220, mu: 0.05, sigma: 0.32, band: 1.0 },
-            caption: "Geometric Brownian motion fan · 65 stochastic paths · cursor height sets volatility σ",
+            caption: "Market galaxy · 60 assets, 6 sectors · Regime: Calm · ρ̄ = 0.17 · λ₁/N = 18% · L = 0.85 · 1 signal mode > λ₊ · click shocks regime",
             matches: "SITE.domains.quant (Quantitative Finance domain overview)"
         },
         "domain:quant:1": {
@@ -427,7 +427,7 @@
         "project:spectral-clustering:nav": {
             engine: "descent",
             params: { landscape: "lasso-ridge-contours", points: 22, lambda: 0.28, showDescentLine: true },
-            caption: "Sibling deep-dive connector · coordinate descent optimization & regularised sparse regressions",
+            caption: "Sibling deep-dive connector · coordinate descent optimisation & regularised sparse regressions",
             matches: "SITE.projects[spectral-clustering] Navigation (Link to Regularised Regression & Data Science projects)"
         },
 

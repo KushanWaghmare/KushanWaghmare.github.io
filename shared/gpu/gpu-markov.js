@@ -93,6 +93,7 @@ void main() {
 precision highp float;
 uniform sampler2D uWalkers;
 uniform int uTexW;
+uniform float uCenterOffset;
 out float vProgress;
 
 vec2 getNodePos(int id) {
@@ -113,8 +114,8 @@ void main() {
     vec2 mid = (p1 + p2) * 0.5 + vec2(-(p2.y - p1.y), p2.x - p1.x) * 0.18;
     vec2 pos = (1.0 - prog) * (1.0 - prog) * p1 + 2.0 * (1.0 - prog) * prog * mid + prog * prog * p2;
 
-    // Shift left slightly to leave room for stationary histogram
-    pos.x = pos.x * 0.85 - 0.22;
+    float xShift = uCenterOffset > 0.0 ? 0.35 : -0.22;
+    pos.x = pos.x * 0.85 + xShift;
     pos.y = pos.y * 0.85;
 
     gl_Position = vec4(pos, 0.0, 1.0);
@@ -138,6 +139,7 @@ void main() {
 precision highp float;
 in vec2 vUV; out vec4 fragColor;
 uniform vec3 uAccent;
+uniform float uCenterOffset;
 
 vec2 getNodePos(int id) {
     float angle = float(id) * (6.28318530718 / 5.0) - 1.57079632679;
@@ -148,10 +150,12 @@ void main() {
     vec2 p = vUV * 2.0 - 1.0;
     vec3 col = vec3(0.0);
 
+    float xShift = uCenterOffset > 0.0 ? 0.35 : -0.22;
+
     // 5 State circles
     for (int i = 0; i < 5; i++) {
         vec2 nodeP = getNodePos(i);
-        nodeP.x = nodeP.x * 0.85 - 0.22;
+        nodeP.x = nodeP.x * 0.85 + xShift;
         nodeP.y = nodeP.y * 0.85;
         float d = length(p - nodeP);
         float ring = smoothstep(0.065, 0.055, d) - smoothstep(0.055, 0.045, d);
@@ -159,12 +163,14 @@ void main() {
     }
 
     // Right margin stationary bars (pi = [0.151, 0.201, 0.262, 0.220, 0.166])
-    if (p.x >= 0.55 && p.x <= 0.92 && p.y >= -0.75 && p.y <= 0.75) {
+    float xMin = uCenterOffset > 0.0 ? 0.74 : 0.55;
+    float xMax = 0.95;
+    if (p.x >= xMin && p.x <= xMax && p.y >= -0.75 && p.y <= 0.75) {
         float relY = (p.y + 0.75) / 1.5;
         int barIdx = int(relY * 5.0);
         float piVal = (barIdx == 0) ? 0.151 : (barIdx == 1) ? 0.201 : (barIdx == 2) ? 0.262 : (barIdx == 3) ? 0.220 : 0.166;
         float barWidth = piVal * 2.8;
-        float relX = (p.x - 0.55) / (0.92 - 0.55);
+        float relX = (p.x - xMin) / (xMax - xMin);
 
         float barSlot = fract(relY * 5.0);
         if (barSlot >= 0.20 && barSlot <= 0.80 && relX <= barWidth) {
@@ -245,6 +251,8 @@ void main() { fragColor = texture(uTex, vUV); }`);
                 gfx.quad(blitProg, sceneTarget);
 
                 const a = (window.KW && window.KW.col && window.KW.col.a) || [255, 171, 64];
+                const isMob = GFX.isMobile();
+                const offset = isMob ? 0.0 : 0.48;
                 const gl = GFX.gl;
 
                 // Additive walker splats
@@ -253,11 +261,14 @@ void main() { fragColor = texture(uTex, vUV); }`);
                 walkProg.use()
                     .tex("uWalkers", walkerPP.read(), 0)
                     .i1("uTexW", texW)
+                    .f1("uCenterOffset", offset)
                     .f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
                 gl.drawArrays(gl.POINTS, 0, numWalkers);
 
                 // Overlay state nodes and stationary histogram
-                overProg.use().f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
+                overProg.use()
+                    .f1("uCenterOffset", offset)
+                    .f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
                 gfx.quad(overProg, sceneTarget);
                 gl.disable(gl.BLEND);
 

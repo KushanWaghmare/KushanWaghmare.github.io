@@ -18,6 +18,7 @@ precision highp float;
 uniform sampler2D uPosTex;
 uniform int uNumNodes;
 uniform float uMorph;
+uniform float uCenterOffset;
 uniform int uIsEdge; // 0: node point, 1: edge line
 out vec3 vColor;
 out float vIsEdge;
@@ -31,7 +32,7 @@ void main() {
         vec2 pSpec = posData.zw;
         vec2 p = mix(pRand, pSpec, uMorph);
 
-        gl_Position = vec4(p * 0.85, 0.0, 1.0);
+        gl_Position = vec4(p * 0.85 + vec2(uCenterOffset, 0.0), 0.0, 1.0);
         gl_PointSize = 4.2;
         vColor = (id < uNumNodes / 2) ? vec3(0.35, 0.85, 0.65) : vec3(0.95, 0.72, 0.35);
         vIsEdge = 0.0;
@@ -46,7 +47,7 @@ void main() {
         vec4 p2 = texelFetch(uPosTex, ivec2(j, 0), 0);
 
         vec2 pos = (endPoint == 0) ? mix(p1.xy, p1.zw, uMorph) : mix(p2.xy, p2.zw, uMorph);
-        gl_Position = vec4(pos * 0.85, 0.0, 1.0);
+        gl_Position = vec4(pos * 0.85 + vec2(uCenterOffset, 0.0), 0.0, 1.0);
         gl_PointSize = 1.0;
         vColor = vec3(0.25, 0.35, 0.45);
         vIsEdge = 1.0;
@@ -163,10 +164,14 @@ void main() {
                 gl.enable(gl.BLEND);
                 gl.blendFunc(gl.ONE, gl.ONE);
 
+                const isMob = typeof window !== "undefined" && window.innerWidth <= 900;
+                const offset = isMob ? 0.0 : 0.48;
+
                 graphProg.use()
                     .tex("uPosTex", posTex, 0)
                     .i1("uNumNodes", numNodes)
                     .f1("uMorph", morph)
+                    .f1("uCenterOffset", offset)
                     .f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
 
                 // 1. Draw edges

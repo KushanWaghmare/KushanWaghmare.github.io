@@ -137,12 +137,20 @@ void main() {
     const FS_RENDER = `#version 300 es
 precision highp float;
 in vec2 vUV; out vec4 fragColor;
-uniform sampler2D uPsi; uniform vec3 uAccent;
+uniform sampler2D uPsi; uniform vec3 uAccent; uniform float uCenterOffset;
 vec3 phaseToRGB(float ph) {
     return mix(uAccent, 0.5 + 0.5 * cos(ph + vec3(0.0, 2.094, 4.188)), 0.7);
 }
 void main() {
-    vec4 state = texture(uPsi, vUV);
+    vec2 uv = vUV;
+    if (uCenterOffset > 0.0) {
+        uv.x = (vUV.x - 0.28) / 0.72;
+        if (uv.x < 0.0 || uv.x > 1.0) {
+            fragColor = vec4(0.0);
+            return;
+        }
+    }
+    vec4 state = texture(uPsi, uv);
     float amp = length(state.xy), phase = atan(state.y, state.x);
     vec3 col = phaseToRGB(phase) * pow(amp * 3.8, 1.15);
     if (state.z > 1.0) col += vec3(0.12, 0.14, 0.22);
@@ -267,8 +275,10 @@ void main() {
 
                 // Render into HDR target
                 const a = KW.col.a;
+                const isMob = GFX.isMobile();
                 renderProg.use()
                     .tex("uPsi", psiPP.read(), 0)
+                    .f1("uCenterOffset", isMob ? 0.0 : 0.48)
                     .f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
                 gfx.quad(renderProg, sceneTarget);
 

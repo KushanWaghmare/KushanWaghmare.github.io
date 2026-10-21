@@ -17,7 +17,7 @@
         if (typeof document === "undefined") return Promise.resolve(null);
         return new Promise((resolve, reject) => {
             const s = document.createElement("script");
-            s.src = `shared/gpu/gpu-${name}.js?v=31`;
+            s.src = `shared/gpu/gpu-${name}.js?v=36`;
             s.async = true;
             s.onload = () => resolve(root.SIMS);
             s.onerror = reject;

@@ -194,10 +194,12 @@ void main() {
                 const fov = 45.0 * (Math.PI / 180.0);
                 const f = 1.0 / Math.tan(fov * 0.5);
                 const near = 0.1, far = 30.0;
+                const isMob = typeof window !== "undefined" && window.innerWidth <= 900;
+                const sx = isMob ? 0.0 : -0.48;
                 const proj = new Float32Array([
                     f / aspect, 0, 0, 0,
                     0, f, 0, 0,
-                    0, 0, (far + near) / (near - far), -1,
+                    sx, 0, (far + near) / (near - far), -1,
                     0, 0, (2.0 * far * near) / (near - far), 0
                 ]);
 

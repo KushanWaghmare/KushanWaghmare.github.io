@@ -18,6 +18,7 @@
 precision highp float;
 in vec2 vUV; out vec4 fragColor;
 uniform float uTime;
+uniform float uCenterOffset;
 uniform int uMode; // 0: Lasso L1 diamond, 1: Ridge L2 disk, 2: Elastic Net
 uniform vec3 uAccent;
 
@@ -30,7 +31,8 @@ float loss(vec2 b) {
 
 void main() {
     // Domain [-1.6, 1.6]
-    vec2 b = (vUV * 2.0 - 1.0) * 1.55;
+    vec2 ndc = vUV * 2.0 - 1.0;
+    vec2 b = (ndc - vec2(uCenterOffset, 0.0)) * 1.55;
     float l = loss(b);
 
     // Analytical gradient of loss
@@ -72,8 +74,8 @@ void main() {
     float distTraj = length(b - trajPoint);
     float pointGlow = smoothstep(0.05, 0.005, distTraj);
 
-    vec3 bgBase = vec3(0.008, 0.010, 0.016);
-    vec3 surfaceCol = mix(bgBase, vec3(0.02, 0.03, 0.045) * diff, clamp(l * 0.8, 0.0, 1.0));
+    vec3 bgBase = vec3(0.0);
+    vec3 surfaceCol = mix(bgBase, vec3(0.015, 0.02, 0.035) * diff, clamp(l * 0.8, 0.0, 1.0));
 
     // Contour lines in subtle accent
     surfaceCol += uAccent * (line * 0.14);
@@ -125,9 +127,12 @@ void main() {
                 simTime += isReduced ? 0.01 : dt;
 
                 const a = (window.KW && window.KW.col && window.KW.col.a) || [89, 217, 166];
+                const isMob = typeof window !== "undefined" && window.innerWidth <= 900;
+                const offset = isMob ? 0.0 : 0.48;
                 surfProg.use()
                     .f1("uTime", simTime)
                     .i1("uMode", mode)
+                    .f1("uCenterOffset", offset)
                     .f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
                 gfx.quad(surfProg, sceneTarget);
 

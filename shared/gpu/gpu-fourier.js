@@ -18,6 +18,7 @@
     const VS_EPICYCLE = `#version 300 es
 precision highp float;
 uniform float uTime;
+uniform float uCenterOffset;
 uniform int uNumHarmonics;
 uniform int uMode; // 0: Cardioid, 1: Trefoil, 2: Square wave Gibbs
 out vec2 vPos;
@@ -52,7 +53,7 @@ vec2 getCoeff(int k) {
 void main() {
     int totalVerts = gl_VertexID;
     // Tip position by summing rotating epicycle vectors
-    vec2 pos = vec2(-0.25, 0.0); // Offset left to make room for waterfall
+    vec2 pos = vec2(uCenterOffset > 0.0 ? 0.35 : -0.25, 0.0);
     for (int k = -12; k <= 12; k++) {
         vec2 c = getCoeff(k);
         float r = length(c);
@@ -84,6 +85,7 @@ void main() {
 precision highp float;
 in vec2 vUV; out vec4 fragColor;
 uniform float uTime;
+uniform float uCenterOffset;
 uniform vec3 uAccent;
 uniform int uMode;
 
@@ -91,9 +93,11 @@ void main() {
     vec2 p = vUV * 2.0 - 1.0;
     vec3 col = vec3(0.0);
 
-    // Right margin spectral waterfall: x in [0.55, 0.92]
-    if (p.x >= 0.52 && p.x <= 0.95 && p.y >= -0.85 && p.y <= 0.85) {
-        float relX = (p.x - 0.52) / (0.95 - 0.52);
+    // Spectral waterfall: right side
+    float xMin = uCenterOffset > 0.0 ? 0.74 : 0.52;
+    float xMax = 0.95;
+    if (p.x >= xMin && p.x <= xMax && p.y >= -0.85 && p.y <= 0.85) {
+        float relX = (p.x - xMin) / (xMax - xMin);
         int barIdx = int(relX * 16.0);
         float k = float(barIdx - 8);
 
@@ -179,12 +183,16 @@ void main() { fragColor = texture(uTex, vUV); }`);
                 const a = (window.KW && window.KW.col && window.KW.col.a) || [199, 146, 234];
                 const gl = GFX.gl;
 
+                const isMob = GFX.isMobile();
+                const offset = isMob ? 0.0 : 0.48;
+
                 // Draw epicycle tip point into accumulation target
                 gl.enable(gl.BLEND);
                 gl.blendFunc(gl.ONE, gl.ONE);
                 epiProg.use()
                     .f1("uTime", simTime)
                     .i1("uMode", mode)
+                    .f1("uCenterOffset", offset)
                     .f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
                 gl.drawArrays(gl.POINTS, 0, 1);
 
@@ -192,6 +200,7 @@ void main() { fragColor = texture(uTex, vUV); }`);
                 waterProg.use()
                     .f1("uTime", simTime)
                     .i1("uMode", mode)
+                    .f1("uCenterOffset", offset)
                     .f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
                 gfx.quad(waterProg, sceneTarget);
                 gl.disable(gl.BLEND);
