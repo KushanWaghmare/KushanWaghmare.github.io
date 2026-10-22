@@ -28,11 +28,12 @@
         return r;
     };
 
-    const mat4Perspective = (out, fovy, aspect, near, far) => {
+    const mat4Perspective = (out, fovy, aspect, near, far, sx = 0.0) => {
         const f = 1.0 / Math.tan(fovy * 0.5), nf = 1.0 / (near - far);
         out.fill(0);
         out[0] = f / aspect;
         out[5] = f;
+        out[8] = sx;
         out[10] = (far + near) * nf;
         out[11] = -1.0;
         out[14] = 2.0 * far * near * nf;
@@ -190,13 +191,19 @@
                 return list;
             };
 
-            const resetGrover = (newW) => {
-                mode = "grover"; cycleTime = 0.0; doneIdx = -1; flash = 0.0; totalCircuitGates = 20;
+            const resetGrover = (newW, startAtUniform = true) => {
+                mode = "grover"; doneIdx = -1; flash = 0.0; totalCircuitGates = 20;
                 targetW = typeof newW === "number" ? (newW & 255) : Math.floor(prng() * 256);
                 measuredW = targetW; groverIter = 0;
                 QMod.resetBasis(st8Base, 0); QMod.resetBasis(st8Live, 0);
                 workProbs.fill(0.0);
                 steps = buildGroverSchedule();
+                if (startAtUniform) {
+                    cycleTime = 5.6;
+                    evaluateAt(5.6);
+                } else {
+                    cycleTime = 0.0;
+                }
             };
 
             const resetShor = (forcedY) => {
@@ -355,12 +362,13 @@
                     updateInstanceBuffer();
                     updateCaption(performance.now());
 
-                    mat4Perspective(matProj, sz.isMobile ? 0.92 : 0.72, sz.w / Math.max(1, sz.h), 0.1, 45.0);
+                    const sx = sz.isMobile ? 0.0 : -0.42;
+                    mat4Perspective(matProj, sz.isMobile ? 0.92 : 0.70, sz.w / Math.max(1, sz.h), 0.1, 45.0, sx);
                     const orbitAng = t * 0.11;
                     const px = hoverIdx >= 0 ? Math.cos((hoverIdx / 256) * TAU) * 0.18 : 0.0;
                     const py = hoverIdx >= 0 ? Math.sin((hoverIdx / 256) * TAU) * 0.12 : 0.0;
-                    const eye = [Math.sin(orbitAng) * 0.55 + px, sz.isMobile ? 3.25 : (2.55 + py * 0.5), (sz.isMobile ? 9.1 : 6.1) * Math.cos(orbitAng * 0.35)];
-                    mat4LookAt(matView, eye, [sz.isMobile ? 0.0 : -0.82, sz.isMobile ? 0.15 : 0.32, 0.0], [0, 1, 0]);
+                    const eye = [Math.sin(orbitAng) * 0.55 + px, sz.isMobile ? 3.25 : (2.55 + py * 0.5), (sz.isMobile ? 9.1 : 6.3) * Math.cos(orbitAng * 0.35)];
+                    mat4LookAt(matView, eye, [0.0, sz.isMobile ? 0.15 : 0.28, 0.0], [0, 1, 0]);
                     mat4Mul(matVP, matProj, matView);
 
                     const aCol = (root.KW && root.KW.col && root.KW.col.a) || [172, 132, 255];
