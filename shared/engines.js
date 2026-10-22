@@ -880,6 +880,7 @@
             ctx.fill();
         });
     };
+    ENGINES["cs-2d"] = ENGINES.automaton;
 
     /* =========================================================================
        7. FLOCK: Vicsek Flocking & Hegselmann-Krause Consensus Swarms

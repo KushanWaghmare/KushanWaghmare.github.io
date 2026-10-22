@@ -52,46 +52,6 @@ html[data-theme="dark"] {
     --on-accent: #000000;
 }
 
-html[data-theme="light"] {
-    color-scheme: light;
-    --bg: #f8fafc;
-    --bg-rgb: 248, 250, 252;
-    --fg: #0f172a;
-    --fg-muted: #334155;
-    --fg-faint: #64748b;
-    --muted: var(--fg-muted);
-    --line: rgba(15, 23, 42, 0.07);
-    --glass: rgba(255, 255, 255, 0.74);
-    --glass-line: rgba(15, 23, 42, 0.09);
-    --glass-solid: rgba(255, 255, 255, 0.92);
-    --success: #047857;
-
-    /* Refined modern jewel accents for crisp light mode */
-    --rgb-hub: 29, 78, 216;          /* sapphire: 7.0:1 */
-    --rgb-math: 190, 18, 60;         /* deep rose-crimson: 6.8:1 */
-    --rgb-physics: 3, 105, 161;      /* deep ocean: 6.3:1 */
-    --rgb-datascience: 180, 83, 9;   /* warm bronze-amber: 5.7:1 */
-    --rgb-quant: 4, 120, 87;         /* deep emerald: 5.8:1 */
-    --rgb-cs: 109, 40, 217;          /* royal violet: 7.1:1 */
-    --rgb-papers: 77, 124, 15;       /* forest olive: 5.9:1 */
-    --rgb-courses: 190, 24, 93;      /* vibrant raspberry: 6.8:1 */
-    --rgb-contact: 15, 118, 110;     /* deep marine teal: 6.2:1 */
-
-    --a-text-hub: rgb(var(--rgb-hub));
-    --a-text-math: rgb(var(--rgb-math));
-    --a-text-physics: rgb(var(--rgb-physics));
-    --a-text-datascience: rgb(var(--rgb-datascience));
-    --a-text-quant: rgb(var(--rgb-quant));
-    --a-text-cs: rgb(var(--rgb-cs));
-    --a-text-papers: rgb(var(--rgb-papers));
-    --a-text-courses: rgb(var(--rgb-courses));
-    --a-text-contact: rgb(var(--rgb-contact));
-
-    --accent: rgb(var(--a));
-    --a-text: rgb(var(--a));
-    --on-accent: #ffffff;
-}
-
 html[data-domain="math"] { --a: var(--rgb-math); }
 html[data-domain="physics"] { --a: var(--rgb-physics); }
 html[data-domain="datascience"] { --a: var(--rgb-datascience); }
@@ -234,15 +194,6 @@ button:disabled,
     border: 1px solid var(--glass-line);
     border-radius: var(--radius);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 18px 40px -24px rgba(0, 0, 0, 0.6);
-}
-html[data-theme="light"] .glass,
-html[data-theme="light"] .snap-overview-card,
-html[data-theme="light"] .paper-abstract-card,
-html[data-theme="light"] .paper-eq-card,
-html[data-theme="light"] .contact-card,
-html[data-theme="light"] .course-card,
-html[data-theme="light"] .math-block {
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 12px 30px -14px rgba(15, 23, 42, 0.10);
 }
 
 /* Tables & Code Blocks */
@@ -403,7 +354,6 @@ pre.glass {
 }
 
 .short { display: none; }
-.theme-btn,
 .sound-btn {
     margin-left: 8px;
     width: 36px;
@@ -419,7 +369,6 @@ pre.glass {
     cursor: pointer;
     transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s, color 0.25s, background-color 0.25s, opacity 0.25s;
 }
-.theme-btn:hover { transform: rotate(180deg); border-color: var(--a-text); color: var(--a-text); }
 .sound-btn:hover { border-color: var(--a-text); color: var(--a-text); transform: translateY(-1px); }
 .sound-btn.muted { opacity: 0.72; }
 
@@ -460,12 +409,6 @@ pre.glass {
     z-index: 1;
     pointer-events: none;
     background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.62) 0%, rgba(var(--bg-rgb), 0.30) 45%, rgba(var(--bg-rgb), 0.0) 78%);
-}
-
-html[data-theme="light"] .hero::after,
-html[data-theme="light"] .snap-section::after,
-html[data-theme="light"] .about-contact-section::after {
-    background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.94) 0%, rgba(var(--bg-rgb), 0.88) 44%, rgba(var(--bg-rgb), 0.35) 72%, rgba(var(--bg-rgb), 0.0) 88%);
 }
 
 .snap-inner {
@@ -1533,7 +1476,7 @@ a.contact-value:hover {
     .links a { padding: 7px 8px; font-size: 12px; }
     .nav { inset: 10px 10px auto 10px; padding: 6px 8px 6px 12px; }
     .nav-live { height: 28px; margin: 0 8px; }
-    .theme-btn, .sound-btn { width: 32px; height: 32px; margin-left: 5px; font-size: 14px; }
+    .sound-btn { width: 32px; height: 32px; margin-left: 5px; font-size: 14px; }
     .contact-card { padding: 22px 18px; gap: 20px; }
     .contact-grid { grid-template-columns: 1fr; gap: 18px; padding-top: 18px; }
     .snap-arch-grid li { padding: 14px 16px 14px 48px; }

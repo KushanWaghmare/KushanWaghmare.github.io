@@ -53,9 +53,9 @@
             matches: "SITE.domains.quant (Quantitative Finance domain overview preview)"
         },
         "hub:domain-cs": {
-            engine: "automaton",
+            engine: "cs-2d",
             params: { type: "elementary", rule: 110, cols: 150, rows: 90, speed: 32 },
-            caption: "Wolfram Rule 110 Turing-complete cellular automaton · click to cycle rule",
+            caption: "Grover search · 8 simulated qubits (exact classical simulation, not a quantum device) · N = 256 · optimal k = 12 · Shor period finding (N = 15, a = 7)",
             matches: "SITE.domains.cs (Computer Science domain overview preview)"
         },
         "hub:papers": {
@@ -193,9 +193,9 @@
            COMPUTER SCIENCE DOMAIN (cs.html)
            ===================================================================== */
         "domain:cs:0": {
-            engine: "automaton",
+            engine: "cs-2d",
             params: { type: "elementary", rule: 110, cols: 150, rows: 90, speed: 32 },
-            caption: "Wolfram Rule 110 Turing-complete cellular automaton · click to cycle rule",
+            caption: "Grover search · 8 simulated qubits (exact classical simulation, not a quantum device) · N = 256 · optimal k = 12 · Shor period finding (N = 15, a = 7)",
             matches: "SITE.domains.cs (Computer Science domain overview)"
         },
         "domain:cs:1": {

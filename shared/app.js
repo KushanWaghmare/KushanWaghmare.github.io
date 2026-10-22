@@ -14,7 +14,7 @@
     const KW = (window.KW = { REDUCED, mouse: { cx: -1e4, cy: -1e4 }, col: {} });
     KW.refresh = () => {
         const rgb = (n) => getComputedStyle(D).getPropertyValue(n).trim().split(",").map(Number);
-        KW.col = { a: rgb("--a"), pal: keys.map((k) => rgb("--rgb-" + k)), light: D.dataset.theme === "light" };
+        KW.col = { a: rgb("--a"), pal: keys.map((k) => rgb("--rgb-" + k)), light: false };
     };
     KW.local = (c) => { const r = c.getBoundingClientRect(); return { x: KW.mouse.cx - r.left, y: KW.mouse.cy - r.top }; };
     KW.tag = (t, c) => {
@@ -493,19 +493,8 @@
         </section>`;
     };
 
-    /* ---------- chrome: theme and sound controls ---------- */
+    /* ---------- chrome: sound controls ---------- */
     const chrome = () => {
-        const btn = $(".theme-btn"), sync = () => { const l = D.dataset.theme === "light"; btn.textContent = l ? "☾" : "☀"; btn.setAttribute("aria-label", l ? "Switch to dark mode" : "Switch to light mode"); };
-        if (btn) {
-            sync();
-            btn.addEventListener("click", () => {
-                SOUND.theme();
-                D.classList.add("tt"); setTimeout(() => D.classList.remove("tt"), 260);
-                D.dataset.theme = D.dataset.theme === "light" ? "dark" : "light";
-                try { localStorage.setItem("theme", D.dataset.theme); } catch (e) {}
-                KW.refresh(); sync(); dispatchEvent(new Event("themechange"));
-            });
-        }
         const soundBtn = $(".sound-btn");
         if (soundBtn) {
             const syncSound = () => {
@@ -1437,6 +1426,9 @@ const initNavSim = (c) => {
 
         const resolveGpuSim = (simKey) => {
             if (simKey === "hub:intro") return { mod: "hub", key: "hub" };
+            if (simKey === "hub:domain-cs" || simKey === "domain:cs:0") {
+                return { mod: "qsim", key: "cs" };
+            }
             if (simKey === "hub:domain-math" || simKey === "domain:math:0" || simKey === "domain:math:1" || simKey.startsWith("project:mobius-surfaces")) {
                 return { mod: "math-manifold", key: "gauss-bonnet-manifold" };
             }
@@ -1652,7 +1644,7 @@ const initNavSim = (c) => {
 
     let lastHoverTime = 0;
     document.addEventListener("pointerover", (e) => {
-        const target = e.target.closest && e.target.closest(".snap-dot, .pill, .snap-cta-btn, .card, .copy-btn, .theme-btn, .sound-btn, .nav a, .snap-cue");
+        const target = e.target.closest && e.target.closest(".snap-dot, .pill, .snap-cta-btn, .card, .copy-btn, .sound-btn, .nav a, .snap-cue");
         if (target) {
             const now = performance.now();
             if (now - lastHoverTime > 65) {

@@ -9,7 +9,7 @@
 }(typeof self !== "undefined" ? self : this, function (root) {
     "use strict";
 
-    const VERSION = "38", moduleCache = new Map(), progCache = new Map(), instances = new Set();
+    const VERSION = "39", moduleCache = new Map(), progCache = new Map(), instances = new Set();
 
     const loadModule = (name) => {
         if (moduleCache.has(name)) return moduleCache.get(name);
@@ -95,6 +95,24 @@
                     document.head.appendChild(s0);
                 } else {
                     loadMath();
+                }
+            } else if (name === "qsim") {
+                const loadShaders = () => {
+                    if (root.QSimShaders) return loadMain();
+                    const s1 = document.createElement("script");
+                    s1.src = `shared/gpu/gpu-qsim-shaders.js?v=${VERSION}`; s1.async = true;
+                    s1.onload = loadMain;
+                    s1.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s1);
+                };
+                if (!root.QSimMath) {
+                    const s0 = document.createElement("script");
+                    s0.src = `shared/lib/qsim-math.js?v=${VERSION}`; s0.async = true;
+                    s0.onload = loadShaders;
+                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s0);
+                } else {
+                    loadShaders();
                 }
             } else {
                 loadMain();
@@ -354,10 +372,7 @@ void main() {
         gl.disable(gl.BLEND);
         if (glCanvas.width !== outW || glCanvas.height !== outH) { glCanvas.width = outW; glCanvas.height = outH; }
         const a = opts.accent || (root.KW && root.KW.col && root.KW.col.a) || [79, 140, 255];
-        const isLight = opts.isLight !== undefined
-            ? (opts.isLight ? 1.0 : 0.0)
-            : (((root.KW && root.KW.theme && root.KW.theme.get && root.KW.theme.get() === "light")
-                || (typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "light")) ? 1.0 : 0.0);
+        const isLight = 0.0;
         compProg.use().tex("uScene", sceneTex, 0).tex("uBloom", bloomTargets[0], 1)
             .f1("uBloomGain", opts.bloomGain ?? 0.32).f1("uExposure", opts.exposure ?? 1.15)
             .f1("uTime", opts.time || 0).f2("uRes", outW, outH).f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255)

@@ -654,7 +654,6 @@ const renderNav = (active, pageType) => {
         <nav class="links" aria-label="Navigation">
             ${backLink}
             <a href="${pageType === 'hub' ? '#about-contact' : 'index.html#about-contact'}" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>
-            <button class="theme-btn" type="button" aria-label="Switch to light mode">☀</button>
             <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Mute audio">🔊</button>
         </nav>
     </header>`;
@@ -667,7 +666,7 @@ const buildHTML = ({ domain, pageType, three, title, desc, mainContent }) => `<!
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${title}</title>
     <meta name="description" content="${desc}" />
-    <script>try{const q=new URLSearchParams(location.search);const t=q.get("theme")||localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t;if(q.get("theme"))localStorage.setItem("theme",t);const f=q.get("font")||localStorage.getItem("kw_font")||"space";document.documentElement.dataset.font=f;if(q.get("font"))localStorage.setItem("kw_font",f);}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.font="space";}</script>
+    <script>try{document.documentElement.dataset.theme="dark";localStorage.setItem("theme","dark");const q=new URLSearchParams(location.search);const f=q.get("font")||localStorage.getItem("kw_font")||"space";document.documentElement.dataset.font=f;if(q.get("font"))localStorage.setItem("kw_font",f);}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.font="space";}</script>
     <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -683,14 +682,15 @@ ${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.j
     <script defer src="shared/lib/lob-math.js?v=37"></script>
     <script defer src="shared/lib/quant-singularity-math.js?v=37"></script>
     <script defer src="shared/lib/math-manifold-math.js?v=37"></script>
-    <script defer src="shared/gfx.js?v=37"></script>
-    <script defer src="shared/engines.js?v=37"></script>
-    <script defer src="shared/slides.js?v=37"></script>
+    <script defer src="shared/lib/qsim-math.js?v=39"></script>
+    <script defer src="shared/gfx.js?v=39"></script>
+    <script defer src="shared/engines.js?v=39"></script>
+    <script defer src="shared/slides.js?v=39"></script>
     <script defer src="shared/blackhole-physics.js?v=37"></script>
     <script defer src="shared/blackhole-shaders.js?v=37"></script>
     <script defer src="shared/blackhole-lite.js?v=37"></script>
     <script defer src="shared/blackhole.js?v=37"></script>
-    <script defer src="shared/app.js?v=37"></script>
+    <script defer src="shared/app.js?v=39"></script>
 
 </head>
 <body>
