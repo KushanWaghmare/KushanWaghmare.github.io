@@ -1436,7 +1436,10 @@ const initNavSim = (c) => {
             if (simKey === "hub:domain-quant" || simKey === "domain:quant:0") {
                 return { mod: "quant-singularity", key: "market-singularity" };
             }
-            if (simKey === "domain:quant:1" || simKey.startsWith("project:options-pricing")) {
+            if (simKey === "domain:quant:1") {
+                return { mod: "copula", key: "copula" };
+            }
+            if (simKey.startsWith("project:options-pricing")) {
                 return { mod: "quant", key: "options-pricing" };
             }
             if (simKey.startsWith("paper:hft-stat-arb-microstructure:hero") || simKey === "course:QF4020" || simKey === "track:advanced-quant-systems" || simKey === "domain:quant:2" || simKey.startsWith("project:stat-arb:hero")) {

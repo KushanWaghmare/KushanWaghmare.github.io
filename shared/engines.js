@@ -1952,5 +1952,21 @@
         }
     };
 
+    /* =========================================================================
+       17. COPULA: Same correlation, different crashes (2-D fallback & alias)
+       ========================================================================= */
+    ENGINES["copula-2d"] = (canvas, params = {}) => {
+        return ENGINES.orbit(canvas, { system: "duffing", alpha: 1.0, beta: 1.0, delta: 0.2, dt: 0.015, scale: 65, numTraj: 2, pert: 0.01, ...params });
+    };
+
+    ENGINES.copula = (canvas, params = {}) => {
+        const root = typeof window !== "undefined" ? window : (typeof global !== "undefined" ? global : this);
+        const sims = typeof SIMS !== "undefined" ? SIMS : (root.SIMS || {});
+        if (sims && sims.copula) {
+            return sims.copula(canvas, params);
+        }
+        return ENGINES["copula-2d"](canvas, params);
+    };
+
     return ENGINES;
 }));

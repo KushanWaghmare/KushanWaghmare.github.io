@@ -171,10 +171,10 @@
             matches: "SITE.domains.quant (Quantitative Finance domain overview)"
         },
         "domain:quant:1": {
-            engine: "orbit",
-            params: { system: "duffing", alpha: 1.0, beta: 1.0, delta: 0.2, dt: 0.015, scale: 65, numTraj: 2, pert: 0.01 },
-            caption: "Duffing non-linear oscillator · phase-plane portrait of market volatility limit cycles",
-            matches: "SITE.projects[options-pricing] (Black–Scholes & Greeks Engine)"
+            engine: "copula",
+            params: { threshold: 0.05 },
+            caption: "Same correlation, different crashes · Gaussian, Student-t & Clayton copulas · Kendall’s τ = 0.50 · lower tail dependence λ_L ∈ {0.00, 0.45, 0.71} · 100,000 assets in (0,1)³",
+            matches: "SITE.projects[options-pricing] (Quantitative Finance joint tail risk)"
         },
         "domain:quant:2": {
             engine: "paths",

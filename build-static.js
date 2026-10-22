@@ -625,6 +625,9 @@ ${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.j
     <script defer src="shared/lib/qsim-math.js?v=41"></script>
     <script defer src="shared/gpu/gpu-qsim-shaders.js?v=41"></script>
     <script defer src="shared/gpu/gpu-qsim.js?v=41"></script>
+    <script defer src="shared/lib/copula-math.js?v=41"></script>
+    <script defer src="shared/gpu/gpu-copula-shaders.js?v=41"></script>
+    <script defer src="shared/gpu/gpu-copula.js?v=41"></script>
     <script defer src="shared/gfx.js?v=41"></script>
     <script defer src="shared/engines.js?v=41"></script>
     <script defer src="shared/slides.js?v=41"></script>

@@ -114,6 +114,24 @@
                 } else {
                     loadShaders();
                 }
+            } else if (name === "copula") {
+                const loadShaders = () => {
+                    if (root.CopulaShaders) return loadMain();
+                    const s1 = document.createElement("script");
+                    s1.src = `shared/gpu/gpu-copula-shaders.js?v=${VERSION}`; s1.async = true;
+                    s1.onload = loadMain;
+                    s1.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s1);
+                };
+                if (!root.CopulaMath) {
+                    const s0 = document.createElement("script");
+                    s0.src = `shared/lib/copula-math.js?v=${VERSION}`; s0.async = true;
+                    s0.onload = loadShaders;
+                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s0);
+                } else {
+                    loadShaders();
+                }
             } else if (name === "cy") {
                 const loadOit = () => {
                     if (root.CYOit) return loadMain();
