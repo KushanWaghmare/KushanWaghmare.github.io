@@ -806,4 +806,5 @@
     // Register engine and bind simulation key
     ENGINES["crystal"] = createCrystalSim;
     SIMS["options-pricing"] = createCrystalSim;
+    SIMS["crystal"] = createCrystalSim;
 }));

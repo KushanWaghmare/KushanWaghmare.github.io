@@ -1434,7 +1434,7 @@ const initNavSim = (c) => {
                 return { mod: "physics", key: "nbody-leapfrog" };
             }
             if (simKey === "hub:domain-quant" || simKey === "domain:quant:0") {
-                return { mod: "quant-singularity", key: "market-singularity" };
+                return { mod: "crystal", key: "options-pricing" };
             }
             if (simKey === "domain:quant:1") {
                 return { mod: "copula", key: "copula" };

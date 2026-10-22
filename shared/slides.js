@@ -49,7 +49,7 @@
         "hub:domain-quant": {
             engine: "paths",
             params: { process: "gbm", paths: 65, steps: 220, mu: 0.05, sigma: 0.32, band: 1.0 },
-            caption: "Market Singularity · Kerr a = +0.82 · r₊ = 1.57 r_g · r_isco = 2.41 r_g · g_max = 2.68 · Γ_peak = 42.1 · Breeden–Litzenberger disk · click shocks regime",
+            caption: "Exchange option on two assets · bivariate binomial lattice · n = 32 · 12,529 nodes · lattice 12.18 · Margrabe exact 12.18 · error 0.00 (0.00%) · ρ = 0.30 (move the pointer) · click: double the steps · Illustrative: S₁ = S₂ = 100, σ₁ = 30%, σ₂ = 20%, r = 3%, T = 1 year",
             matches: "SITE.domains.quant (Quantitative Finance domain overview preview)"
         },
         "hub:domain-cs": {
@@ -167,7 +167,7 @@
         "domain:quant:0": {
             engine: "paths",
             params: { process: "gbm", paths: 65, steps: 220, mu: 0.05, sigma: 0.32, band: 1.0 },
-            caption: "Market Singularity · Kerr a = +0.82 · r₊ = 1.57 r_g · r_isco = 2.41 r_g · g_max = 2.68 · Γ_peak = 42.1 · Breeden–Litzenberger disk · click shocks regime",
+            caption: "Exchange option on two assets · bivariate binomial lattice · n = 32 · 12,529 nodes · lattice 12.18 · Margrabe exact 12.18 · error 0.00 (0.00%) · ρ = 0.30 (move the pointer) · click: double the steps · Illustrative: S₁ = S₂ = 100, σ₁ = 30%, σ₂ = 20%, r = 3%, T = 1 year",
             matches: "SITE.domains.quant (Quantitative Finance domain overview)"
         },
         "domain:quant:1": {

@@ -29,8 +29,8 @@ const SITE = {
             name: "Quant Finance", short: "Quant", file: "quant.html",
             label: "Quantitative Finance · Stochastic models",
             blurb: "Stochastic calculus applied to markets: derivative pricing, the Greeks and mean-reversion strategies.",
-            eq: r`dS_t=\mu S_t\,dt+\sigma S_t\,dW_t`,
-            tag: "Geometric Brownian motion · 70 paths · cursor height sets σ",
+            eq: r`C = S_1 N(d_1) - S_2 N(d_2),\qquad \sigma^2 = \sigma_1^2 + \sigma_2^2 - 2\rho\sigma_1\sigma_2`,
+            tag: "Exchange option on two assets · bivariate binomial lattice 3-D crystal · Margrabe exact closed form · click doubles steps · move pointer sets ρ",
         },
         cs: {
             name: "Computer Science", short: "CS", file: "cs.html",
