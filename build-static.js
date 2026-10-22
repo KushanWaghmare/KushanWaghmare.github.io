@@ -622,20 +622,23 @@ ${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.j
     <script defer src="shared/lib/lob-math.js?v=37"></script>
     <script defer src="shared/lib/quant-singularity-math.js?v=37"></script>
     <script defer src="shared/lib/math-manifold-math.js?v=37"></script>
-    <script defer src="shared/lib/qsim-math.js?v=41"></script>
-    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=41"></script>
-    <script defer src="shared/gpu/gpu-qsim.js?v=41"></script>
-    <script defer src="shared/lib/copula-math.js?v=41"></script>
-    <script defer src="shared/gpu/gpu-copula-shaders.js?v=41"></script>
-    <script defer src="shared/gpu/gpu-copula.js?v=41"></script>
-    <script defer src="shared/gfx.js?v=41"></script>
-    <script defer src="shared/engines.js?v=41"></script>
-    <script defer src="shared/slides.js?v=41"></script>
+    <script defer src="shared/lib/qsim-math.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-qsim.js?v=42"></script>
+    <script defer src="shared/lib/copula-math.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-copula-shaders.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-copula.js?v=42"></script>
+    <script defer src="shared/lib/lattice-math.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-crystal-shaders.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-crystal.js?v=42"></script>
+    <script defer src="shared/gfx.js?v=42"></script>
+    <script defer src="shared/engines.js?v=42"></script>
+    <script defer src="shared/slides.js?v=42"></script>
     <script defer src="shared/blackhole-physics.js?v=37"></script>
     <script defer src="shared/blackhole-shaders.js?v=37"></script>
     <script defer src="shared/blackhole-lite.js?v=37"></script>
     <script defer src="shared/blackhole.js?v=37"></script>
-    <script defer src="shared/app.js?v=41"></script>
+    <script defer src="shared/app.js?v=42"></script>
 
 </head>
 <body>

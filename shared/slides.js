@@ -437,8 +437,8 @@
         "project:options-pricing:hero": {
             engine: "paths",
             params: { process: "gbm", paths: 80, steps: 240, mu: 0.04, sigma: 0.26, strikeLine: 1.05 },
-            caption: "Black–Scholes risk-neutral asset diffusion & terminal call payoff (S_T − K)⁺ · C = S Φ(d₁) − K e^{−rT} Φ(d₂)",
-            matches: "SITE.projects[options-pricing] Hero (Black–Scholes PDE analytics & European option pricing)"
+            caption: "Exchange option on two assets · bivariate binomial lattice · n = 32 · 12,529 nodes · lattice 12.18 · Margrabe exact 12.18 · error 0.00 (0.00%) · ρ = 0.30 (move the pointer) · click: double the steps · Illustrative: S₁ = S₂ = 100, σ₁ = 30%, σ₂ = 20%, r = 3%, T = 1 year",
+            matches: "SITE.projects[options-pricing] Hero (Bivariate binomial lattice option-pricing crystal & Margrabe exchange option)"
         },
         "project:options-pricing:overview": {
             engine: "paths",

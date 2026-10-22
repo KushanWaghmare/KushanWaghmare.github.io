@@ -9,7 +9,7 @@
 }(typeof self !== "undefined" ? self : this, function (root) {
     "use strict";
 
-    const VERSION = "41", moduleCache = new Map(), progCache = new Map(), instances = new Set();
+    const VERSION = "42", moduleCache = new Map(), progCache = new Map(), instances = new Set();
 
     const loadModule = (name) => {
         if (moduleCache.has(name)) return moduleCache.get(name);
@@ -126,6 +126,31 @@
                 if (!root.CopulaMath) {
                     const s0 = document.createElement("script");
                     s0.src = `shared/lib/copula-math.js?v=${VERSION}`; s0.async = true;
+                    s0.onload = loadShaders;
+                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s0);
+                } else {
+                    loadShaders();
+                }
+            } else if (name === "crystal" || name === "quant") {
+                const loadCrystalMain = () => {
+                    const s = document.createElement("script");
+                    s.src = `shared/gpu/gpu-crystal.js?v=${VERSION}`; s.async = true;
+                    s.onload = () => resolve(root.SIMS);
+                    s.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s);
+                };
+                const loadShaders = () => {
+                    if (root.CrystalShaders) return loadCrystalMain();
+                    const s1 = document.createElement("script");
+                    s1.src = `shared/gpu/gpu-crystal-shaders.js?v=${VERSION}`; s1.async = true;
+                    s1.onload = loadCrystalMain;
+                    s1.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s1);
+                };
+                if (!root.LatticeMath) {
+                    const s0 = document.createElement("script");
+                    s0.src = `shared/lib/lattice-math.js?v=${VERSION}`; s0.async = true;
                     s0.onload = loadShaders;
                     s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
                     document.head.appendChild(s0);

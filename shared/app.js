@@ -1440,7 +1440,7 @@ const initNavSim = (c) => {
                 return { mod: "copula", key: "copula" };
             }
             if (simKey.startsWith("project:options-pricing")) {
-                return { mod: "quant", key: "options-pricing" };
+                return { mod: "crystal", key: "options-pricing" };
             }
             if (simKey.startsWith("paper:hft-stat-arb-microstructure:hero") || simKey === "course:QF4020" || simKey === "track:advanced-quant-systems" || simKey === "domain:quant:2" || simKey.startsWith("project:stat-arb:hero")) {
                 return { mod: "lob", key: "order-book-terrain" };
