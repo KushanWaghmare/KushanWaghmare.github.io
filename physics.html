@@ -22,15 +22,17 @@
     <script defer src="shared/lib/lob-math.js?v=37"></script>
     <script defer src="shared/lib/quant-singularity-math.js?v=37"></script>
     <script defer src="shared/lib/math-manifold-math.js?v=37"></script>
-    <script defer src="shared/lib/qsim-math.js?v=39"></script>
-    <script defer src="shared/gfx.js?v=39"></script>
-    <script defer src="shared/engines.js?v=39"></script>
-    <script defer src="shared/slides.js?v=39"></script>
+    <script defer src="shared/lib/qsim-math.js?v=41"></script>
+    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=41"></script>
+    <script defer src="shared/gpu/gpu-qsim.js?v=41"></script>
+    <script defer src="shared/gfx.js?v=41"></script>
+    <script defer src="shared/engines.js?v=41"></script>
+    <script defer src="shared/slides.js?v=41"></script>
     <script defer src="shared/blackhole-physics.js?v=37"></script>
     <script defer src="shared/blackhole-shaders.js?v=37"></script>
     <script defer src="shared/blackhole-lite.js?v=37"></script>
     <script defer src="shared/blackhole.js?v=37"></script>
-    <script defer src="shared/app.js?v=39"></script>
+    <script defer src="shared/app.js?v=41"></script>
 
 </head>
 <body>
@@ -60,7 +62,6 @@
     <section class="snap-section hero" id="domain-intro" data-domain="physics" data-sim="domain:physics:0">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>02 / Physics · Mechanics & quantum dynamics</div>
             <h1 data-hero>Physics</h1>
             <p class="lead" data-hero>Classical and quantum mechanics as computation: symplectic integrators, gravitating systems and wave equations.</p>
             <div class="hero-eq glass snap-eq" data-hero>$$i\hbar\,\frac{\partial\psi}{\partial t}=\Big[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\Big]\psi$$</div>
@@ -77,7 +78,6 @@
     <section class="snap-section project-snap" id="proj-nbody-leapfrog" data-domain="physics" data-sim="domain:physics:1">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 01 / 02 · Physics</div>
             <h2 class="snap-title" data-reveal>Gravitational N-Body Integrator</h2>
             <p class="lead snap-lead" data-reveal>A self-gravitating disc integrated with a symplectic kick–drift–kick leapfrog. The hero is the live simulation.</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$\mathbf a_i=-\sum_{j\ne i}\frac{G\,m_j\,(\mathbf r_i-\mathbf r_j)}{\left(\lVert\mathbf r_i-\mathbf r_j\rVert^2+\varepsilon^2\right)^{3/2}}$$</div>
@@ -100,7 +100,6 @@
     <section class="snap-section project-snap" id="proj-split-step-schrodinger" data-domain="physics" data-sim="domain:physics:2">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 02 / 02 · Physics</div>
             <h2 class="snap-title" data-reveal>Time-Dependent Schrödinger Equation</h2>
             <p class="lead snap-lead" data-reveal>Split-step Fourier evolution of a wave packet: unitary by construction and spectrally accurate in space.</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$i\hbar\,\frac{\partial\psi}{\partial t}=\hat H\psi=\Big[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\Big]\psi$$</div>

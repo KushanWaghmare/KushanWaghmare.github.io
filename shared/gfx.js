@@ -9,7 +9,7 @@
 }(typeof self !== "undefined" ? self : this, function (root) {
     "use strict";
 
-    const VERSION = "39", moduleCache = new Map(), progCache = new Map(), instances = new Set();
+    const VERSION = "41", moduleCache = new Map(), progCache = new Map(), instances = new Set();
 
     const loadModule = (name) => {
         if (moduleCache.has(name)) return moduleCache.get(name);
@@ -108,6 +108,32 @@
                 if (!root.QSimMath) {
                     const s0 = document.createElement("script");
                     s0.src = `shared/lib/qsim-math.js?v=${VERSION}`; s0.async = true;
+                    s0.onload = loadShaders;
+                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s0);
+                } else {
+                    loadShaders();
+                }
+            } else if (name === "cy") {
+                const loadOit = () => {
+                    if (root.CYOit) return loadMain();
+                    const s2 = document.createElement("script");
+                    s2.src = `shared/gpu/gpu-cy-oit.js?v=${VERSION}`; s2.async = true;
+                    s2.onload = loadMain;
+                    s2.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s2);
+                };
+                const loadShaders = () => {
+                    if (root.CYShaders) return loadOit();
+                    const s1 = document.createElement("script");
+                    s1.src = `shared/gpu/gpu-cy-shaders.js?v=${VERSION}`; s1.async = true;
+                    s1.onload = loadOit;
+                    s1.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s1);
+                };
+                if (!root.CYMath) {
+                    const s0 = document.createElement("script");
+                    s0.src = `shared/lib/cy-math.js?v=${VERSION}`; s0.async = true;
                     s0.onload = loadShaders;
                     s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
                     document.head.appendChild(s0);

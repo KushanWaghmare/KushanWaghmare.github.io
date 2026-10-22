@@ -17,8 +17,6 @@ const phase1Keys = [
     "hub:domain-datascience",
     "hub:domain-quant",
     "hub:domain-cs",
-    "hub:papers",
-    "hub:courses",
     "hub:contact"
 ];
 for (const k of keys) {
@@ -106,15 +104,12 @@ const hubPage = () => `
             <a href="#intro" class="snap-dot active" data-title="00 Intro" aria-label="Introduction"><span class="dot-disc" style="--a:var(--rgb-hub)"></span><span class="dot-text">00 Intro</span></a>
             ${keys.map((k, i) => `
             <a href="#domain-${k}" class="snap-dot" data-d="${k}" data-title="${pad(i)} ${SITE.domains[k].short}" aria-label="${SITE.domains[k].name}"><span class="dot-disc" style="--a:var(--rgb-${k})"></span><span class="dot-text">${pad(i)} ${SITE.domains[k].short}</span></a>`).join("")}
-            <a href="#section-papers" class="snap-dot" data-d="papers" data-title="06 Papers" aria-label="Research Papers"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">06 Papers</span></a>
-            <a href="#section-courses" class="snap-dot" data-d="courses" data-title="07 Courses" aria-label="Academic Coursework"><span class="dot-disc" style="--a:var(--rgb-courses)"></span><span class="dot-text">07 Courses</span></a>
-            <a href="#about-contact" class="snap-dot" data-title="08 Contact" aria-label="About & Contact"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">08 Contact</span></a>
+            <a href="#about-contact" class="snap-dot" data-title="06 Contact" aria-label="About & Contact"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">06 Contact</span></a>
         </nav>
 
         <section class="snap-section hero" id="intro" data-domain="hub" data-sim="hub:intro" data-enter="zoom" style="--a:var(--rgb-hub)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
-                <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>00 / Data Science · Quantitative Finance · IIT Madras</div>
                 <h1 data-hero>Kushan<br>Waghmare</h1>
                 <p class="lead" data-hero>Data Science &amp; Quantitative Finance student at IIT Madras, building complex systems from compilers to statistical-arbitrage models, and studying the physics underneath them.</p>
                 <div class="hero-eq glass" data-hero>$$\\dot x=\\sigma(y-x),\\quad\\dot y=x(\\rho-z)-y,\\quad\\dot z=xy-\\beta z$$</div>
@@ -125,13 +120,12 @@ const hubPage = () => `
 
         ${keys.map((k, i) => {
             const d = SITE.domains[k], ps = list(k);
-            const nextKey = keys[i + 1] ? `domain-${keys[i + 1]}` : "section-papers";
-            const nextLabel = keys[i + 1] ? `Next: ${SITE.domains[keys[i + 1]].name}` : "Next: Research Papers";
+            const nextKey = keys[i + 1] ? `domain-${keys[i + 1]}` : "about-contact";
+            const nextLabel = keys[i + 1] ? `Next: ${SITE.domains[keys[i + 1]].name}` : "Next: About &amp; Contact";
             return `
         <section class="snap-section domain-snap" id="domain-${k}" data-domain="${k}" data-sim="hub:domain-${k}" data-enter="${VEC[i]}" style="--a:var(--rgb-${k})">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
-                <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>${pad(i)} / ${d.label}</div>
                 <h2 class="snap-title" data-reveal>${d.name}</h2>
                 <p class="lead snap-lead" data-reveal>${d.blurb}</p>
                 <div class="hero-eq glass snap-eq" data-reveal>$$${d.eq}$$</div>
@@ -148,48 +142,10 @@ const hubPage = () => `
         </section>`;
         }).join("")}
 
-        <section class="snap-section domain-snap" id="section-papers" data-domain="papers" data-sim="hub:papers" data-enter="left" style="--a:var(--rgb-papers)">
-            <canvas aria-hidden="true"></canvas>
-            <div class="snap-inner">
-                <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>06 / Research Papers</div>
-                <h2 class="snap-title" data-reveal>Research Papers</h2>
-                <p class="lead snap-lead" data-reveal>Preprints and research papers spanning statistical learning theory, non-equilibrium Langevin dynamics, quantitative market microstructure, and symplectic numerical integrators.</p>
-                <div class="hero-eq glass snap-eq" data-reveal>$$\\frac{\\partial p(\\boldsymbol\\theta, t)}{\\partial t}=\\nabla_{\\boldsymbol\\theta}\\cdot\\Big(\\nabla_{\\boldsymbol\\theta} L(\\boldsymbol\\theta)\\,p(\\boldsymbol\\theta, t)+D\\,\\nabla_{\\boldsymbol\\theta} p(\\boldsymbol\\theta, t)\\Big)$$</div>
-                <div class="snap-actions" data-reveal>
-                    <a href="papers.html" class="snap-cta-btn glass" style="--a:var(--rgb-papers)">
-                        <span>Explore Research Papers</span>
-                        <span class="arr">→</span>
-                    </a>
-                    <span class="snap-count">${SITE.papers.length} research papers &amp; preprints</span>
-                </div>
-            </div>
-            <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["hub:papers"].caption}</div>
-            <a class="snap-cue" href="#section-courses">Next: Academic Coursework</a>
-        </section>
-
-        <section class="snap-section domain-snap" id="section-courses" data-domain="courses" data-sim="hub:courses" data-enter="bottom" style="--a:var(--rgb-courses)">
-            <canvas aria-hidden="true"></canvas>
-            <div class="snap-inner">
-                <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>07 / Academic Curricula</div>
-                <h2 class="snap-title" data-reveal>Academic Coursework</h2>
-                <p class="lead snap-lead" data-reveal>Core and honours academic coursework across Indian Institute of Technology Madras and Vidya Bharati Mahavidyalaya in data science, physics, and computer systems.</p>
-                <div class="hero-eq glass snap-eq" data-reveal>$$A = U\\Sigma V^\\top = \\sum_{i=1}^r \\sigma_i\\,\\mathbf u_i\\,\\mathbf v_i^\\top,\\qquad i\\hbar\\,\\frac{\\partial\\psi}{\\partial t}=\\Big[-\\frac{\\hbar^2}{2m}\\nabla^2+V(\\mathbf r)\\Big]\\psi$$</div>
-                <div class="snap-actions" data-reveal>
-                    <a href="courses.html" class="snap-cta-btn glass" style="--a:var(--rgb-courses)">
-                        <span>Explore Coursework &amp; Syllabi</span>
-                        <span class="arr">→</span>
-                    </a>
-                    <span class="snap-count">${SITE.courses.reduce((sum, tr) => sum + tr.items.length, 0)} courses &amp; credentials</span>
-                </div>
-            </div>
-            <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["hub:courses"].caption}</div>
-            <a class="snap-cue" href="#about-contact">Next: About &amp; Contact</a>
-        </section>
-
         <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-sim="hub:contact" data-enter="top" style="--a:var(--rgb-contact)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
-                <div class="section-head" data-reveal><span class="idx">08</span><h2>About &amp; Profile</h2></div>
+                <div class="section-head" data-reveal><span class="idx">06</span><h2>About &amp; Profile</h2></div>
                 <div class="two-col" style="margin-bottom:36px">
                     <div data-reveal>
                         <p class="lead">I work where data science, quantitative finance and physics overlap: stochastic models for markets, symplectic integrators for mechanics, compilers and hardware for the machines that run them.</p>
@@ -243,7 +199,6 @@ const domainPage = (key) => {
     <section class="snap-section hero" id="domain-intro" data-domain="${key}" data-sim="domain:${key}:0">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>${pad(domainIdx)} / ${d.label}</div>
             <h1 data-hero>${d.name}</h1>
             <p class="lead" data-hero>${d.blurb}</p>
             <div class="hero-eq glass snap-eq" data-hero>$$${d.eq}$$</div>
@@ -265,7 +220,6 @@ const domainPage = (key) => {
     <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${key}" data-sim="${slideKey}">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project ${pad(i)} / ${String(ps.length).padStart(2, "0")} · ${d.name}</div>
             <h2 class="snap-title" data-reveal>${p.title}</h2>
             <p class="lead snap-lead" data-reveal>${p.summary}</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$${eq}$$</div>
@@ -337,7 +291,6 @@ const projectIndexPage = () => {
     <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${p.domain}" data-sim="${simKey}" style="--a:var(--rgb-${p.domain})">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project ${pad(i)} / ${String(SITE.projects.length).padStart(2, "0")} · ${d.name}</div>
             <h2 class="snap-title" data-reveal>${p.title}</h2>
             <p class="lead snap-lead" data-reveal>${p.summary}</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$${eq}$$</div>
@@ -395,10 +348,6 @@ const papersPage = () => {
     <section class="snap-section project-snap" id="paper-${p.id}" data-domain="papers" data-sim="paper:${p.id}:hero" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:880px">
-            <div class="eyebrow" data-reveal>
-                <span class="domain-badge" style="background:var(--accent)"></span>
-                Paper ${pad(i)} / ${String(papers.length).padStart(2, "0")} · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-${p.domain})">${d.name}</span> · ${p.year}
-            </div>
             <h2 class="snap-title" data-reveal style="font-size:clamp(26px, 3.6vw, 48px);line-height:1.16">
                 <a href="paper.html?p=${p.id}" style="color:inherit;text-decoration:none">${p.title}</a>
             </h2>
@@ -459,10 +408,6 @@ const paperDetailPage = (p) => {
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:980px">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>${p.short || p.title}</span></div>
-            <div class="eyebrow" data-hero>
-                <span class="domain-badge" style="background:var(--accent)"></span>
-                Paper ${pad(i >= 0 ? i : 0)} / ${String(papers.length).padStart(2, "0")} · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-${p.domain})">${d.name}</span> · ${p.year}
-            </div>
             <h1 data-hero style="font-size:clamp(24px, 3.2vw, 42px);line-height:1.2;max-width:980px">${p.title}</h1>
             <div class="paper-meta" data-hero>
                 <span class="venue">${p.venue}</span>
@@ -492,7 +437,6 @@ const paperDetailPage = (p) => {
     <section class="snap-section project-snap" id="paper-theory" data-domain="papers" data-sim="paper:${p.id}:theory" style="--a:var(--rgb-papers)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:980px">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>01 / Theoretical Foundations &amp; Proofs</div>
             <h2 class="snap-title" data-reveal style="font-size:clamp(24px, 3.2vw, 42px)">Analytical Model &amp; Core Contributions</h2>
             <div class="snap-overview-card glass" data-reveal style="padding:20px 26px;max-width:980px">
                 <div class="paper-section-tag" style="margin-bottom:6px">Governing Analytical Model · ${p.venue}</div>
@@ -582,10 +526,6 @@ const coursesPage = () => {
     <section class="snap-section project-snap course-snap" id="track-${tr.track}" data-domain="courses" data-sim="track:${tr.track}" style="--a:var(--rgb-courses)">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner course-inner">
-            <div class="eyebrow" data-reveal>
-                <span class="domain-badge" style="background:var(--accent)"></span>
-                Track ${pad(i)} / ${String(tracks.length).padStart(2, "0")} · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-${tr.domain})">${d.name}</span> · ${tr.period}
-            </div>
             <h2 class="snap-title" data-reveal style="font-size:clamp(24px, 3.2vw, 42px)">${tr.degree}</h2>
             <p class="lead snap-lead" data-reveal>${tr.blurb}</p>
             <div class="course-grid" data-reveal>
@@ -682,15 +622,17 @@ ${three ? '    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.j
     <script defer src="shared/lib/lob-math.js?v=37"></script>
     <script defer src="shared/lib/quant-singularity-math.js?v=37"></script>
     <script defer src="shared/lib/math-manifold-math.js?v=37"></script>
-    <script defer src="shared/lib/qsim-math.js?v=39"></script>
-    <script defer src="shared/gfx.js?v=39"></script>
-    <script defer src="shared/engines.js?v=39"></script>
-    <script defer src="shared/slides.js?v=39"></script>
+    <script defer src="shared/lib/qsim-math.js?v=41"></script>
+    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=41"></script>
+    <script defer src="shared/gpu/gpu-qsim.js?v=41"></script>
+    <script defer src="shared/gfx.js?v=41"></script>
+    <script defer src="shared/engines.js?v=41"></script>
+    <script defer src="shared/slides.js?v=41"></script>
     <script defer src="shared/blackhole-physics.js?v=37"></script>
     <script defer src="shared/blackhole-shaders.js?v=37"></script>
     <script defer src="shared/blackhole-lite.js?v=37"></script>
     <script defer src="shared/blackhole.js?v=37"></script>
-    <script defer src="shared/app.js?v=39"></script>
+    <script defer src="shared/app.js?v=41"></script>
 
 </head>
 <body>

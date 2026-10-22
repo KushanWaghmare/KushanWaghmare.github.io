@@ -22,15 +22,17 @@
     <script defer src="shared/lib/lob-math.js?v=37"></script>
     <script defer src="shared/lib/quant-singularity-math.js?v=37"></script>
     <script defer src="shared/lib/math-manifold-math.js?v=37"></script>
-    <script defer src="shared/lib/qsim-math.js?v=39"></script>
-    <script defer src="shared/gfx.js?v=39"></script>
-    <script defer src="shared/engines.js?v=39"></script>
-    <script defer src="shared/slides.js?v=39"></script>
+    <script defer src="shared/lib/qsim-math.js?v=41"></script>
+    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=41"></script>
+    <script defer src="shared/gpu/gpu-qsim.js?v=41"></script>
+    <script defer src="shared/gfx.js?v=41"></script>
+    <script defer src="shared/engines.js?v=41"></script>
+    <script defer src="shared/slides.js?v=41"></script>
     <script defer src="shared/blackhole-physics.js?v=37"></script>
     <script defer src="shared/blackhole-shaders.js?v=37"></script>
     <script defer src="shared/blackhole-lite.js?v=37"></script>
     <script defer src="shared/blackhole.js?v=37"></script>
-    <script defer src="shared/app.js?v=39"></script>
+    <script defer src="shared/app.js?v=41"></script>
 
 </head>
 <body>
@@ -60,7 +62,6 @@
     <section class="snap-section hero" id="domain-intro" data-domain="quant" data-sim="domain:quant:0">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>04 / Quantitative Finance · Stochastic models</div>
             <h1 data-hero>Quant Finance</h1>
             <p class="lead" data-hero>Stochastic calculus applied to markets: derivative pricing, the Greeks and mean-reversion strategies.</p>
             <div class="hero-eq glass snap-eq" data-hero>$$dS_t=\mu S_t\,dt+\sigma S_t\,dW_t$$</div>
@@ -77,7 +78,6 @@
     <section class="snap-section project-snap" id="proj-options-pricing" data-domain="quant" data-sim="domain:quant:1">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 01 / 02 · Quant Finance</div>
             <h2 class="snap-title" data-reveal>Options Pricing & Greeks</h2>
             <p class="lead snap-lead" data-reveal>Black–Scholes pricing and Greeks for European options in Python, validated by Monte Carlo simulation with an interactive visualisation dashboard.</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$\frac{\partial V}{\partial t}+\tfrac12\sigma^2S^2\frac{\partial^2V}{\partial S^2}+rS\frac{\partial V}{\partial S}-rV=0$$</div>
@@ -100,7 +100,6 @@
     <section class="snap-section project-snap" id="proj-stat-arb" data-domain="quant" data-sim="domain:quant:2">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 02 / 02 · Quant Finance</div>
             <h2 class="snap-title" data-reveal>Statistical Arbitrage Strategy</h2>
             <p class="lead snap-lead" data-reveal>Python pairs-trading strategy using co-integration and z-score signals, backtested over two years with a Sharpe ratio of 1.8.</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$y_t=\alpha+\beta x_t+\varepsilon_t,\qquad\varepsilon_t\sim I(0)$$</div>

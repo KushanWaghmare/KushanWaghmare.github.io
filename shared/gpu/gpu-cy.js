@@ -53,7 +53,7 @@
         return `Fermat curve z₁${sup} + z₂${sup} = 1 · ${mid} · ${n * n} patches · genus ${g} (χ = ${chi < 0 ? "−" + (-chi) : chi} for the completed curve; the ${n} ends at infinity are clipped) · projection angle α = ${(((alpha % TAU) + TAU) % TAU).toFixed(2)} rad · click: next n`;
     };
 
-    SIMS["cy-cross-section"] = SIMS["calabi-yau"] = (canvas, params = {}) => {
+    SIMS["cy-cross-section"] = SIMS["calabi-yau"] = SIMS.math = (canvas, params = {}) => {
         const GFX = root.GFX, CY = root.CYMath, S = root.CYShaders, O = root.CYOit;
         const fallback = (c) => (root.ENGINES && root.ENGINES["cy-cross-section-2d"] ? root.ENGINES["cy-cross-section-2d"](c, params) : null);
         if (!GFX || !GFX.supported || !CY || !S || !O) return fallback(canvas);
@@ -166,11 +166,12 @@
                 let rx = -fz, rz = fx; const rl = Math.hypot(rx, rz); rx /= rl; rz /= rl;
                 const ux = -rz * fy, uy = rz * fx - rx * fz, uz = rx * fy;  // up = right x forward
                 const f = 1 / Math.tan(0.35), A = -(50.1 / 49.9), B = -(2 * 50 * 0.1 / 49.9);
+                const shiftX = (mob || aspect < 1.0) ? 0.0 : 0.30;
                 v0[0] = rx; v0[2] = rz; v0[3] = -(rx * ex + rz * ez);
                 v1[0] = ux; v1[1] = uy; v1[2] = uz; v1[3] = -(ux * ex + uy * ey + uz * ez);
                 v2[0] = -fx; v2[1] = -fy; v2[2] = -fz; v2[3] = fx * ex + fy * ey + fz * ez;
                 for (let c = 0; c < 4; c++) {
-                    vp[c * 4] = f / aspect * v0[c]; vp[c * 4 + 1] = f * v1[c];
+                    vp[c * 4] = f / aspect * v0[c] - shiftX * v2[c]; vp[c * 4 + 1] = f * v1[c];
                     vp[c * 4 + 2] = A * v2[c] + (c === 3 ? B : 0); vp[c * 4 + 3] = -v2[c];
                 }
                 const dp = now - pulseT0, amp = dp < 5 ? Math.exp(-dp * 0.8) : 0, a = KW.col.a;

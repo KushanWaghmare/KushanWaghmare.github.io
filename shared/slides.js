@@ -29,9 +29,9 @@
             matches: "Portfolio hero introduction (Kushan Waghmare, IIT Madras)"
         },
         "hub:domain-math": {
-            engine: "surface",
+            engine: "cy-cross-section-2d",
             params: { type: "gauss-bonnet-figure8", uSteps: 140, vSteps: 28, scale: 1.1 },
-            caption: "Riemannian figure-8 immersion · ∬_M K dA = 2π χ(M) · cursor controls orientation",
+            caption: "Fermat curve z₁⁵ + z₂⁵ = 1 · cross-section of the quintic Calabi–Yau threefold · 25 patches · genus 6 (χ = −10 for the completed curve; the 5 ends at infinity are clipped) · projection angle α = 0.70 rad · click: next n",
             matches: "SITE.domains.math (Mathematics domain overview preview)"
         },
         "hub:domain-physics": {
@@ -81,9 +81,9 @@
            MATHEMATICS DOMAIN (math.html)
            ===================================================================== */
         "domain:math:0": {
-            engine: "surface",
+            engine: "cy-cross-section-2d",
             params: { type: "gauss-bonnet-figure8", uSteps: 140, vSteps: 28, scale: 1.1 },
-            caption: "Riemannian figure-8 immersion · ∬_M K dA = 2π χ(M) · cursor controls orientation",
+            caption: "Fermat curve z₁⁵ + z₂⁵ = 1 · cross-section of the quintic Calabi–Yau threefold · 25 patches · genus 6 (χ = −10 for the completed curve; the 5 ends at infinity are clipped) · projection angle α = 0.70 rad · click: next n",
             matches: "SITE.domains.math (Mathematics domain overview)"
         },
         "domain:math:1": {

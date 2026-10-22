@@ -1523,6 +1523,7 @@
     ENGINES["fourier-2d"] = fourier2DFallback;
     ENGINES["primes-waves-2d"] = fourier2DFallback;
     ENGINES.fourier = fourier2DFallback;
+    ENGINES["cy-cross-section-2d"] = ENGINES.surface;
 
     /* =========================================================================
        12. PATHS: Geometric Brownian Motion Fans & Ornstein-Uhlenbeck Spreads

@@ -22,15 +22,17 @@
     <script defer src="shared/lib/lob-math.js?v=37"></script>
     <script defer src="shared/lib/quant-singularity-math.js?v=37"></script>
     <script defer src="shared/lib/math-manifold-math.js?v=37"></script>
-    <script defer src="shared/lib/qsim-math.js?v=39"></script>
-    <script defer src="shared/gfx.js?v=39"></script>
-    <script defer src="shared/engines.js?v=39"></script>
-    <script defer src="shared/slides.js?v=39"></script>
+    <script defer src="shared/lib/qsim-math.js?v=41"></script>
+    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=41"></script>
+    <script defer src="shared/gpu/gpu-qsim.js?v=41"></script>
+    <script defer src="shared/gfx.js?v=41"></script>
+    <script defer src="shared/engines.js?v=41"></script>
+    <script defer src="shared/slides.js?v=41"></script>
     <script defer src="shared/blackhole-physics.js?v=37"></script>
     <script defer src="shared/blackhole-shaders.js?v=37"></script>
     <script defer src="shared/blackhole-lite.js?v=37"></script>
     <script defer src="shared/blackhole.js?v=37"></script>
-    <script defer src="shared/app.js?v=39"></script>
+    <script defer src="shared/app.js?v=41"></script>
 
 </head>
 <body>
@@ -60,7 +62,6 @@
     <section class="snap-section hero" id="domain-intro" data-domain="cs" data-sim="domain:cs:0">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>05 / Computer Science · Systems & compilers</div>
             <h1 data-hero>Computer Science</h1>
             <p class="lead" data-hero>Compilers and machine architecture, from grammars and SSA form down to TTL gates on a breadboard.</p>
             <div class="hero-eq glass snap-eq" data-hero>$$\frac{\Gamma\vdash e_1:\mathtt{int}\qquad\Gamma\vdash e_2:\mathtt{int}}{\Gamma\vdash e_1+e_2:\mathtt{int}}$$</div>
@@ -77,7 +78,6 @@
     <section class="snap-section project-snap" id="proj-ku-lang" data-domain="cs" data-sim="domain:cs:1">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 01 / 02 · Computer Science</div>
             <h2 class="snap-title" data-reveal>Ku-Lang Compiler</h2>
             <p class="lead snap-lead" data-reveal>A custom language and compiler: lexical analysis, parsing, semantic checks and LLVM IR generation, with control flow, functions and typed expressions.</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$L(r_1\mid r_2)=L(r_1)\cup L(r_2),\quad L(r_1r_2)=L(r_1)L(r_2),\quad L(r^*)=\bigcup_{k\ge0}L(r)^k,\qquad|Q_{\mathrm{DFA}}|\le2^{|Q_{\mathrm{NFA}}|}$$</div>
@@ -100,7 +100,6 @@
     <section class="snap-section project-snap" id="proj-8bit-computer" data-domain="cs" data-sim="domain:cs:2">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 02 / 02 · Computer Science</div>
             <h2 class="snap-title" data-reveal>8-Bit Breadboard Computer</h2>
             <p class="lead snap-lead" data-reveal>An 8-bit computer built from discrete TTL logic: ALU, control unit and memory with a custom instruction set, validated with a logic analyser.</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$S=A\oplus B\oplus C_{\mathrm{in}},\qquad C_{\mathrm{out}}=AB+C_{\mathrm{in}}(A\oplus B)$$</div>

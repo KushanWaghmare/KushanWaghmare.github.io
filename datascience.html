@@ -22,15 +22,17 @@
     <script defer src="shared/lib/lob-math.js?v=37"></script>
     <script defer src="shared/lib/quant-singularity-math.js?v=37"></script>
     <script defer src="shared/lib/math-manifold-math.js?v=37"></script>
-    <script defer src="shared/lib/qsim-math.js?v=39"></script>
-    <script defer src="shared/gfx.js?v=39"></script>
-    <script defer src="shared/engines.js?v=39"></script>
-    <script defer src="shared/slides.js?v=39"></script>
+    <script defer src="shared/lib/qsim-math.js?v=41"></script>
+    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=41"></script>
+    <script defer src="shared/gpu/gpu-qsim.js?v=41"></script>
+    <script defer src="shared/gfx.js?v=41"></script>
+    <script defer src="shared/engines.js?v=41"></script>
+    <script defer src="shared/slides.js?v=41"></script>
     <script defer src="shared/blackhole-physics.js?v=37"></script>
     <script defer src="shared/blackhole-shaders.js?v=37"></script>
     <script defer src="shared/blackhole-lite.js?v=37"></script>
     <script defer src="shared/blackhole.js?v=37"></script>
-    <script defer src="shared/app.js?v=39"></script>
+    <script defer src="shared/app.js?v=41"></script>
 
 </head>
 <body>
@@ -60,7 +62,6 @@
     <section class="snap-section hero" id="domain-intro" data-domain="datascience" data-sim="domain:datascience:0">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-hero><span class="domain-badge" style="background:var(--accent)"></span>03 / Data Science · Statistical learning & analytics</div>
             <h1 data-hero>Data Science</h1>
             <p class="lead" data-hero>Statistical learning, agent-based modelling and non-convex optimisation: emergent collective behaviour, opinion dynamics, and complex stochastic systems.</p>
             <div class="hero-eq glass snap-eq" data-hero>$$\dot{\mathbf x}_i=\mathbf v_i,\quad \dot{\mathbf v}_i=\mathbf f_{\text{sep}}+\mathbf f_{\text{align}}+\mathbf f_{\text{coh}}+\eta\,\boldsymbol\xi_i,\quad \Phi=\frac{1}{Nv_0}\Big\|\sum_{i=1}^N\mathbf v_i\Big\|$$</div>
@@ -77,7 +78,6 @@
     <section class="snap-section project-snap" id="proj-regularised-regression" data-domain="datascience" data-sim="domain:datascience:1">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 01 / 02 · Data Science</div>
             <h2 class="snap-title" data-reveal>Regularised Regression from Scratch</h2>
             <p class="lead snap-lead" data-reveal>OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$\hat{\boldsymbol\beta}=\arg\min_{\boldsymbol\beta}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2=(X^\top X)^{-1}X^\top\mathbf y$$</div>
@@ -100,7 +100,6 @@
     <section class="snap-section project-snap" id="proj-spectral-clustering" data-domain="datascience" data-sim="domain:datascience:2">
         <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
-            <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>Project 02 / 02 · Data Science</div>
             <h2 class="snap-title" data-reveal>Spectral Clustering on Graphs</h2>
             <p class="lead snap-lead" data-reveal>Recovering communities in a stochastic block model from the eigenvectors of the graph Laplacian.</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$\Pr(A_{ij}=1)=\begin{cases}p_{\text{in}}&c_i=c_j\\p_{\text{out}}&c_i\ne c_j\end{cases}$$</div>

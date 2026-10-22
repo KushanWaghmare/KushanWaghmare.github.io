@@ -320,7 +320,6 @@
         <section class="snap-section project-snap" id="proj-overview" data-domain="${p.domain}" data-sim="project:${p.id}:overview">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:880px">
-                <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>01 / Technical Overview</div>
                 <h2 class="snap-title" data-reveal style="font-size:clamp(30px, 4.2vw, 52px)">Context &amp; Formulation</h2>
                 <div class="snap-overview-card glass" data-reveal>
                     ${p.intro.map((t) => `<p>${t}</p>`).join("")}
@@ -333,7 +332,6 @@
         <section class="snap-section project-snap" id="proj-arch" data-domain="${p.domain}" data-sim="project:${p.id}:arch">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:960px">
-                <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>02 / Architecture &amp; Subsystems</div>
                 <h2 class="snap-title" data-reveal style="font-size:clamp(30px, 4.2vw, 52px)">System Pipeline</h2>
                 <ol class="snap-arch-grid" data-reveal>
                     ${p.arch.map(([n, t]) => `<li class="glass"><strong>${n}</strong><span>${t}</span></li>`).join("")}
@@ -346,7 +344,6 @@
         <section class="snap-section project-snap" id="proj-math" data-domain="${p.domain}" data-sim="project:${p.id}:math">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:960px">
-                <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>03 / Mathematical Foundations</div>
                 <h2 class="snap-title" data-reveal style="font-size:clamp(30px, 4.2vw, 52px)">Analytical &amp; Numerical Formulations</h2>
                 <div class="snap-math-grid" data-reveal>
                     ${p.math.map((m) => `
@@ -404,10 +401,6 @@
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:980px">
                 <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>${p.short || p.title}</span></div>
-                <div class="eyebrow" data-hero>
-                    <span class="domain-badge" style="background:var(--accent)"></span>
-                    Paper ${pad(i >= 0 ? i : 0)} / ${String(papers.length).padStart(2, "0")} · <span class="paper-domain-tag" style="--tag-rgb:var(--rgb-${p.domain})">${d.name}</span> · ${p.year}
-                </div>
                 <h1 data-hero style="font-size:clamp(24px, 3.2vw, 42px);line-height:1.2;max-width:980px">${p.title}</h1>
                 <div class="paper-meta" data-hero>
                     <span class="venue">${p.venue}</span>
@@ -437,7 +430,6 @@
         <section class="snap-section project-snap" id="paper-theory" data-domain="papers" data-sim="paper:${p.id}:theory" style="--a:var(--rgb-papers)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:980px">
-                <div class="eyebrow" data-reveal><span class="domain-badge" style="background:var(--accent)"></span>01 / Theoretical Foundations &amp; Proofs</div>
                 <h2 class="snap-title" data-reveal style="font-size:clamp(24px, 3.2vw, 42px)">Analytical Model &amp; Core Contributions</h2>
                 <div class="snap-overview-card glass" data-reveal style="padding:20px 26px;max-width:980px">
                     <div class="paper-section-tag" style="margin-bottom:6px">Governing Analytical Model · ${p.venue}</div>
@@ -1429,7 +1421,10 @@ const initNavSim = (c) => {
             if (simKey === "hub:domain-cs" || simKey === "domain:cs:0") {
                 return { mod: "qsim", key: "cs" };
             }
-            if (simKey === "hub:domain-math" || simKey === "domain:math:0" || simKey === "domain:math:1" || simKey.startsWith("project:mobius-surfaces")) {
+            if (simKey === "hub:domain-math" || simKey === "domain:math:0") {
+                return { mod: "cy", key: "cy-cross-section" };
+            }
+            if (simKey === "domain:math:1" || simKey.startsWith("project:mobius-surfaces")) {
                 return { mod: "math-manifold", key: "gauss-bonnet-manifold" };
             }
             if (simKey === "domain:physics:2" || simKey.startsWith("project:split-step-schrodinger")) {
