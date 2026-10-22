@@ -122,12 +122,7 @@ body::before {
     inset: 0;
     z-index: -2;
     pointer-events: none;
-    background:
-        radial-gradient(60% 50% at 82% 0%, rgba(var(--a), 0.12), transparent 62%),
-        linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 64px 64px,
-        linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 64px 64px;
-    -webkit-mask-image: radial-gradient(90% 80% at 50% 20%, #000 20%, transparent 85%);
-    mask-image: radial-gradient(90% 80% at 50% 20%, #000 20%, transparent 85%);
+    background: radial-gradient(60% 50% at 82% 0%, rgba(var(--a), 0.12), transparent 62%);
 }
 
 h1, h2, h3, h4,
