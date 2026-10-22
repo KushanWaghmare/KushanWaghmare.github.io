@@ -40,15 +40,17 @@
         SIMS["options-pricing-2d"] = SIMS["options-pricing"];
     }
 
-    const PYRAMID_W = 1.35; // Half-width of pyramid base at top
-    const PYRAMID_H = 1.80; // Total height of pyramid
+    const PYRAMID_W = 0.95; // Half-width of pyramid base at top
+    const PYRAMID_H = 1.45; // Total height of pyramid
 
     /* ---------- Matrix Helpers (Allocated Once, Zero Per-Frame GC) ---------- */
-    const mat4Perspective = (out, fovy, aspect, near, far) => {
+    const mat4Perspective = (out, fovy, aspect, near, far, sx = 0.0, sy = 0.0) => {
         const f = 1.0 / Math.tan(fovy * 0.5), nf = 1.0 / (near - far);
         out.fill(0);
         out[0] = f / aspect;
         out[5] = f;
+        out[8] = sx;
+        out[9] = sy;
         out[10] = (far + near) * nf;
         out[11] = -1.0;
         out[14] = 2.0 * far * near * nf;
@@ -624,25 +626,31 @@
                     }
 
                     // Camera Matrix Setup
-                    const camRadius = isMob ? 6.2 : 4.8;
+                    const camRadius = isMob ? 5.8 : 4.7;
                     const autoYaw = isReduced ? 0.42 : (simTime * 0.11);
                     const camYaw = autoYaw + userCamYaw;
                     const camPitch = userCamPitch;
 
-                    const eyeX = camRadius * Math.sin(camYaw) * Math.cos(camPitch);
-                    const eyeY = camRadius * Math.sin(camPitch);
+                    const midX = 0.20;
+                    const midY = -0.10;
+
+                    const eyeX = midX + camRadius * Math.sin(camYaw) * Math.cos(camPitch);
+                    const eyeY = midY + camRadius * Math.sin(camPitch);
                     const eyeZ = camRadius * Math.cos(camYaw) * Math.cos(camPitch);
 
-                    mat4Perspective(matProj, 42.0 * Math.PI / 180.0, outW / outH, 0.1, 50.0);
-                    mat4LookAt(matView, [eyeX, eyeY, eyeZ], [0.25, 0.0, 0.0], [0.0, 1.0, 0.0]);
+                    // Shift entire simulation right and down so text on left is completely clear
+                    const sx = isMob ? 0.0 : -0.48;
+                    const sy = isMob ? 0.0 : 0.16;
+                    mat4Perspective(matProj, 42.0 * Math.PI / 180.0, outW / outH, 0.1, 50.0, sx, sy);
+                    mat4LookAt(matView, [eyeX, eyeY, eyeZ], [midX, midY, 0.0], [0.0, 1.0, 0.0]);
                     mat4Mul(matVP, matProj, matView);
 
                     // Dynamic Lines: Active Layer Bounding Box + Connecting Beam + Wave Crease
                     const activeY = -PYRAMID_H * 0.5 + waveY * PYRAMID_H;
                     const layerFrac = activeLayerIdx / Math.max(1, curN);
                     const curLayerW = PYRAMID_W * layerFrac;
-                    const lensOrigin = [PYRAMID_W + 1.05, -0.15 + (waveY - 0.5) * 0.70, 0.0];
-                    const lensScale = 0.65 * Math.max(0.08, (waveY + 0.12) / 1.12);
+                    const lensOrigin = [PYRAMID_W * 0.70 + 0.25, -0.25 + (waveY - 0.5) * 0.40, -0.20];
+                    const lensScale = 0.32 * Math.max(0.08, (waveY + 0.12) / 1.12);
 
                     let lPtr = 0;
                     const pushDynLine = (x0, y0, z0, x1, y1, z1, r, g, b, a) => {
@@ -733,7 +741,7 @@
                             .mat4("uViewProj", matVP)
                             .f3("uLensOrigin", lensOrigin[0], lensOrigin[1], lensOrigin[2])
                             .f1("uScale", lensScale)
-                            .f1("uHeightScale", 0.009)
+                            .f1("uHeightScale", 0.0035)
                             .f3("uAccent", accent[0], accent[1], accent[2])
                             .f1("uTime", simTime)
                             .f1("uSharpness", lensSharpness)
