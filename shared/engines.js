@@ -1455,8 +1455,9 @@
 
     /* =========================================================================
        11. FOURIER: Harmonic Synthesis, Epicycles & Discrete FFT Spectrum
+       (2D Fallback for Fourier / Spectral / Primes from Waves)
        ========================================================================= */
-    ENGINES.fourier = (canvas, params = {}) => {
+    const fourier2DFallback = (canvas, params = {}) => {
         const ctx = canvas.getContext("2d");
         let W = 0, H = 0, K = params.harmonics || 11, signal = params.signal || "square";
         const wave = new Float32Array(320);
@@ -1518,6 +1519,9 @@
             }
         });
     };
+    ENGINES["fourier-2d"] = fourier2DFallback;
+    ENGINES["primes-waves-2d"] = fourier2DFallback;
+    ENGINES.fourier = fourier2DFallback;
 
     /* =========================================================================
        12. PATHS: Geometric Brownian Motion Fans & Ornstein-Uhlenbeck Spreads

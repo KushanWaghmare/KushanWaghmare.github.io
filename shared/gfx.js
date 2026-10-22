@@ -9,7 +9,7 @@
 }(typeof self !== "undefined" ? self : this, function (root) {
     "use strict";
 
-    const VERSION = "37", moduleCache = new Map(), progCache = new Map(), instances = new Set();
+    const VERSION = "38", moduleCache = new Map(), progCache = new Map(), instances = new Set();
 
     const loadModule = (name) => {
         if (moduleCache.has(name)) return moduleCache.get(name);
@@ -69,6 +69,32 @@
                     document.head.appendChild(s0);
                 } else {
                     loadShaders();
+                }
+            } else if (name === "primes-waves") {
+                const loadShaders = () => {
+                    if (root.PrimesWavesShaders) return loadMain();
+                    const s2 = document.createElement("script");
+                    s2.src = `shared/gpu/gpu-primes-waves-shaders.js?v=${VERSION}`; s2.async = true;
+                    s2.onload = loadMain;
+                    s2.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s2);
+                };
+                const loadMath = () => {
+                    if (root.ZetaMath) return loadShaders();
+                    const s1 = document.createElement("script");
+                    s1.src = `shared/lib/zeta-math.js?v=${VERSION}`; s1.async = true;
+                    s1.onload = loadShaders;
+                    s1.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s1);
+                };
+                if (!root.ZetaZeros) {
+                    const s0 = document.createElement("script");
+                    s0.src = `shared/lib/zeta-zeros.js?v=${VERSION}`; s0.async = true;
+                    s0.onload = loadMath;
+                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s0);
+                } else {
+                    loadMath();
                 }
             } else {
                 loadMain();

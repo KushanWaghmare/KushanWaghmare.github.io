@@ -1470,7 +1470,10 @@ const initNavSim = (c) => {
             if (simKey === "domain:physics:3" || simKey === "course:PH2010") {
                 return { mod: "physics", key: "pendulum" };
             }
-            if (simKey === "domain:math:2" || simKey.startsWith("project:fourier-spectral")) {
+            if (simKey === "domain:math:2" || simKey === "project:fourier-spectral:hero") {
+                return { mod: "primes-waves", key: "primes-waves" };
+            }
+            if (simKey.startsWith("project:fourier-spectral")) {
                 return { mod: "fourier", key: "fourier-spectral" };
             }
             if (simKey === "domain:datascience:1" || simKey.startsWith("project:regularised-regression") || simKey === "course:DS3001") {

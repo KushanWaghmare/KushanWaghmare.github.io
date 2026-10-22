@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Primes from Waves - Test Harness</title>
+    <link rel="stylesheet" href="../shared/style.css">
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background: #000; overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        #canvas-container {
+            position: relative; width: 100vw; height: 100vh;
+        }
+        canvas {
+            display: block; width: 100%; height: 100%;
+        }
+        .sim-tag {
+            position: absolute; bottom: 24px; left: 24px; z-index: 10;
+            color: rgba(255, 255, 255, 0.88); font-size: 13px; font-family: monospace;
+            background: rgba(0, 0, 0, 0.72); padding: 8px 14px; border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.15); pointer-events: none;
+            backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="sim-canvas"></canvas>
+        <div class="sim-tag">Initialising Primes from Waves...</div>
+    </div>
+
+    <!-- Core Scripts -->
+    <script src="../shared/data.js"></script>
+    <script src="../shared/lib/zeta-zeros.js"></script>
+    <script src="../shared/lib/zeta-math.js"></script>
+    <script src="../shared/gfx.js"></script>
+    <script src="../shared/gpu/gpu-primes-waves-shaders.js"></script>
+    <script src="../shared/gpu/gpu-primes-waves.js"></script>
+    <script>
+        window.KW = window.KW || {};
+        KW.col = { a: [0, 220, 255], isLight: false };
+        KW.tag = (txt, c) => {
+            const el = document.querySelector(".sim-tag");
+            if (el) el.textContent = txt;
+        };
+        KW.fit = (c, fn) => {
+            const resize = () => {
+                const dpr = Math.min(2.0, window.devicePixelRatio || 1);
+                const w = c.clientWidth, h = c.clientHeight;
+                c.width = Math.round(w * dpr);
+                c.height = Math.round(h * dpr);
+                fn(w, h, dpr);
+            };
+            window.addEventListener("resize", resize);
+            resize();
+        };
+        KW.loop = (c, fn) => {
+            let running = true;
+            let start = performance.now();
+            const tick = () => {
+                if (!running) return;
+                const t = (performance.now() - start) * 0.001;
+                fn(t);
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+            return { stop: () => { running = false; } };
+        };
+        KW.onClick = (c, fn) => {
+            c.addEventListener("click", fn);
+        };
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const c = document.getElementById("sim-canvas");
+            if (window.GFX && window.GFX.init) window.GFX.init();
+            if (window.SIMS && window.SIMS["primes-waves"]) {
+                window.currentSimDispose = window.SIMS["primes-waves"](c);
+            }
+        });
+    </script>
+</body>
+</html>

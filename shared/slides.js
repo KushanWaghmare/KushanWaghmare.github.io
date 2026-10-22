@@ -93,9 +93,9 @@
             matches: "SITE.projects[mobius-surfaces] (Möbius Strip & Surface Geometry)"
         },
         "domain:math:2": {
-            engine: "fourier",
-            params: { signal: "square", harmonics: 11, showSpectrum: true, baseR: 0.14 },
-            caption: "Fourier series synthesis & FFT spectrum · square wave Gibbs overshoot · K=11 harmonics",
+            engine: "primes-waves-2d",
+            params: { mode: "waves", maxN: 500, signal: "square", harmonics: 11, showSpectrum: true, baseR: 0.14 },
+            caption: "Explicit formula ψ(x) = x − Σ x^ρ/ρ − ln 2π − ½ ln(1 − x⁻²) · Riemann zeta zeros · sharp sum (click to toggle Cesàro)",
             matches: "SITE.projects[fourier-spectral] (Fourier Analysis & Spectral Methods)"
         },
         "domain:math:3": {
@@ -265,9 +265,9 @@
            PROJECT 2: fourier-spectral (Mathematics)
            ===================================================================== */
         "project:fourier-spectral:hero": {
-            engine: "fourier",
-            params: { signal: "square", harmonics: 21, showSpectrum: true, baseR: 0.12, gibbsHighlight: true },
-            caption: "Fourier harmonic synthesis & Gibbs overshoot · 8.95% discontinuity overshoot · K=21 partial sums",
+            engine: "primes-waves-2d",
+            params: { mode: "hero-waves", maxN: 500, signal: "square", harmonics: 21, showSpectrum: true, baseR: 0.12, gibbsHighlight: true },
+            caption: "Explicit formula ψ(x) = x − Σ x^ρ/ρ − ln 2π − ½ ln(1 − x⁻²) · Riemann zeta zeros · sharp sum (click to toggle Cesàro)",
             matches: "SITE.projects[fourier-spectral] Hero (Fourier epicycles, Gibbs phenomenon & orthogonal projection)"
         },
         "project:fourier-spectral:overview": {
