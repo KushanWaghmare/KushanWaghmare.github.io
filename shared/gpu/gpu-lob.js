@@ -99,6 +99,7 @@
             const gridH = mob ? 128 : 256;
 
             const book = new LOB_MATH.LimitOrderBook({ centerPrice: 5000, seed: 1337 });
+            book.hawkes.mu = 0.55;
 
             // Compile shaders
             const progTerrain = gfx.program(LOB_SHADERS.VS_TERRAIN, LOB_SHADERS.FS_TERRAIN);
@@ -116,19 +117,29 @@
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
 
-            // Populate initial history rows
+            const rowInterval = 0.10; // push row 10 times/second
+
+            // Pre-warm history texture so the terrain is immediately sculpted and rugged
             const rowPackBuf = new Float32Array(gridW);
             const rowUploadBuf = new Float32Array(gridW * 4);
-            LOB_MATH.packRow(book, rowPackBuf, gridW);
-            for (let c = 0; c < gridW; c++) {
-                const h = rowPackBuf[c];
-                rowUploadBuf[c * 4] = h;
-                rowUploadBuf[c * 4 + 1] = Math.abs(h);
-                rowUploadBuf[c * 4 + 2] = 0;
-                rowUploadBuf[c * 4 + 3] = Math.sign(h);
-            }
             for (let r = 0; r < gridH; r++) {
+                book.stepUntil(r * rowInterval);
+                LOB_MATH.packRow(book, rowPackBuf, gridW);
+                for (let c = 0; c < gridW; c++) {
+                    const h = rowPackBuf[c];
+                    rowUploadBuf[c * 4] = h;
+                    rowUploadBuf[c * 4 + 1] = Math.abs(h);
+                    rowUploadBuf[c * 4 + 2] = 0;
+                    rowUploadBuf[c * 4 + 3] = Math.sign(h);
+                }
                 gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, r, gridW, 1, gl.RGBA, gl.FLOAT, rowUploadBuf);
+            }
+            // Reset book timeline to 0 while keeping evolved terrain state and ripples
+            const prewarmT = book.t;
+            book.t = 0.0;
+            book.hawkes.t = 0.0;
+            if (book.recentEvents) {
+                book.recentEvents.forEach((e) => { e.t = Math.max(0, e.t - prewarmT); });
             }
 
             // Heightfield grid mesh VBO & IBO
@@ -221,9 +232,8 @@
             let sceneTarget = gfx.target(initSz.w, initSz.h, { fp32: false, depth: true });
 
             // State variables
-            let headRow = 0;
+            let headRow = gridH - 1;
             let lastRowTime = 0;
-            const rowInterval = 0.10; // push row 10 times/second
             let midSmooth = book.midPrice;
             let lastCaptionUpdate = 0;
             let lastClickTime = 0;
@@ -266,10 +276,13 @@
                     simTime = t;
                     const sz = getSize();
 
-                    // Advance LOB simulation with cap
+                    // Advance LOB simulation with cap and mean-reversion anchor
                     const maxSimEvents = isReduced ? 1 : 120;
                     let evCount = 0;
                     const targetSimTime = simTime;
+                    if (book.midPrice > 5003) book.injectMarketOrder(1);
+                    else if (book.midPrice < 4999) book.injectMarketOrder(0);
+
                     while (book.t < targetSimTime && evCount < maxSimEvents) {
                         const ev = book.step();
                         if (ev && ev.eventType === "market" && meteorsList.length < maxMeteors) {
@@ -280,7 +293,7 @@
                                 worldX: strikeWorldX + (Math.random() - 0.5) * 1.2,
                                 strikeWorldX,
                                 spawnTime: simTime,
-                                flightDuration: 0.35,
+                                flightDuration: 0.45,
                                 type: ev.type,
                                 size: ev.size,
                                 flashIntensity: 0.0
@@ -309,9 +322,17 @@
                         gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, headRow, gridW, 1, gl.RGBA, gl.FLOAT, rowUploadBuf);
                     }
 
-                    // Update live meteors
-                    let mCount = 0;
+                    // Update live meteors with permanent celestial sun beacon at top right
+                    meteorData[0] = 3.2;   // worldX
+                    meteorData[1] = 3.2;   // strikeWorldX
+                    meteorData[2] = 0.04;  // prog: high in sky near directional light source
+                    meteorData[3] = 0.0;   // type 0: warm golden amber/white
+                    meteorExtra[0] = 6.2;  // size: 6.2 (large radiant disc)
+                    meteorExtra[1] = 0.25; // soft core bloom
+                    let mCount = 1;
+
                     for (let i = meteorsList.length - 1; i >= 0; i--) {
+                        if (mCount >= maxMeteors) break;
                         const m = meteorsList[i];
                         const age = simTime - m.spawnTime;
                         if (age <= m.flightDuration) {
