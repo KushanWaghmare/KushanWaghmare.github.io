@@ -28,6 +28,16 @@
                 s0.onload = loadMain;
                 s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
                 document.head.appendChild(s0);
+            } else if (name === "math") {
+                if (!root.MobiusMath) {
+                    const s0 = document.createElement("script");
+                    s0.src = `shared/lib/mobius-math.js?v=${VERSION}`; s0.async = true;
+                    s0.onload = loadMain;
+                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
+                    document.head.appendChild(s0);
+                } else {
+                    loadMain();
+                }
             } else if (name === "quant-singularity" && !root.QuantSingularityShaders) {
                 const s0 = document.createElement("script");
                 s0.src = `shared/gpu/gpu-quant-singularity-shaders.js?v=${VERSION}`; s0.async = true;
@@ -229,6 +239,9 @@ void main() {
     vec2 d = uTexel;
     vec3 c = (texture(uTex, vUV).rgb * 4.0 + texture(uTex, vUV + vec2(-d.x, -d.y)).rgb + texture(uTex, vUV + vec2(d.x, -d.y)).rgb
             + texture(uTex, vUV + vec2(-d.x, d.y)).rgb + texture(uTex, vUV + vec2(d.x, d.y)).rgb) * 0.125;
+    if (isnan(c.r) || isnan(c.g) || isnan(c.b) || isinf(c.r) || isinf(c.g) || isinf(c.b)) {
+        c = vec3(0.0);
+    }
     if (uFirst == 1) {
         float br = max(max(c.r, c.g), c.b), knee = uThreshold * 0.5, soft = clamp(br - uThreshold + knee, 0.0, 2.0 * knee);
         c *= clamp(max((soft * soft) / (4.0 * knee + 1e-4), br - uThreshold) / max(br, 1e-4), 0.0, 1.0);
@@ -256,7 +269,12 @@ vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59
 float hashGrain(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 void main() {
     vec3 bg = uLight > 0.5 ? vec3(0.96) : vec3(0.0);
-    vec3 hdr = (bg + texture(uScene, vUV).rgb + texture(uBloom, vUV).rgb * uBloomGain) * uExposure;
+    vec4 scn = texture(uScene, vUV);
+    vec3 baseCol = uLight > 0.5 ? mix(bg, scn.rgb, scn.a) : (bg + scn.rgb);
+    vec3 hdr = (baseCol + texture(uBloom, vUV).rgb * uBloomGain) * uExposure;
+    if (isnan(hdr.r) || isnan(hdr.g) || isnan(hdr.b) || isinf(hdr.r) || isinf(hdr.g) || isinf(hdr.b)) {
+        hdr = bg;
+    }
     vec2 d = vUV - 0.5; hdr *= clamp(1.0 - 0.35 * dot(d, d), 0.0, 1.0);
     vec3 col = pow(aces(hdr), vec3(1.0 / 2.2));
     float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
@@ -350,7 +368,7 @@ void main() {
             gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
             if (rbo) {
                 gl.bindRenderbuffer(gl.RENDERBUFFER, rbo);
-                gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, nw, nh);
+                gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, nw, nh);
                 gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbo);
             }
             obj.w = nw; obj.h = nh;
@@ -441,7 +459,7 @@ void main() {
         gl.disable(gl.BLEND);
         if (glCanvas.width !== outW || glCanvas.height !== outH) { glCanvas.width = outW; glCanvas.height = outH; }
         const a = opts.accent || (root.KW && root.KW.col && root.KW.col.a) || [79, 140, 255];
-        const isLight = 0.0;
+        const isLight = (opts.isLight !== undefined) ? (opts.isLight ? 1.0 : 0.0) : ((root.KW && root.KW.col && root.KW.col.light) ? 1.0 : 0.0);
         compProg.use().tex("uScene", sceneTex, 0).tex("uBloom", bloomTargets[0], 1)
             .f1("uBloomGain", opts.bloomGain ?? 0.32).f1("uExposure", opts.exposure ?? 1.15)
             .f1("uTime", opts.time || 0).f2("uRes", outW, outH).f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255)

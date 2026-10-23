@@ -1425,7 +1425,7 @@ const initNavSim = (c) => {
                 return { mod: "cy", key: "cy-cross-section" };
             }
             if (simKey === "domain:math:1" || simKey.startsWith("project:mobius-surfaces")) {
-                return { mod: "math-manifold", key: "gauss-bonnet-manifold" };
+                return { mod: "math", key: "mobius-surfaces" };
             }
             if (simKey === "domain:physics:2" || simKey.startsWith("project:split-step-schrodinger")) {
                 return { mod: "physics", key: "split-step-schrodinger" };
