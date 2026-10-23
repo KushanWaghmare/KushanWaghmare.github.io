@@ -47,7 +47,6 @@ uniform float uFovScale;       // Screen impact parameter scale
 uniform float uRout;           // Outer disk radius (default 26.0)
 uniform int uMaxSteps;         // Maximum geodesic integration steps (adaptive: 90 to 200)
 uniform vec3 uAccent;          // Quant domain emerald accent rgb(32, 201, 145)
-uniform float uLightMode;      // 0.0 for dark mode, 1.0 for light mode
 uniform float uShockTime;      // Time elapsed since last click volatility shock
 
 // Procedural hash and noise for order-flow filament turbulence
@@ -288,11 +287,6 @@ void main() {
         vec3 skyDir = normalize(fwd + 1.2 * (beta * up + alpha * right) / rObs);
         vec3 skyCol = sampleLensedFinancialSky(skyDir);
         finalCol += (1.0 - accumAlpha) * skyCol;
-    }
-
-    // Light mode compatibility: invert background if light mode requested
-    if (uLightMode > 0.5) {
-        finalCol = mix(vec3(0.96, 0.96, 0.95), 1.0 - finalCol, clamp(length(finalCol) * 0.8, 0.0, 1.0));
     }
 
     fragColor = vec4(finalCol, 1.0);

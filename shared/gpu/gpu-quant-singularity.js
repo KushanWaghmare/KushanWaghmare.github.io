@@ -130,7 +130,6 @@
                     ensureTarget(outW, outH);
                     if (!sceneTarget) return;
 
-                    const isLight = (root.KW && root.KW.col && root.KW.col.light) ? 1.0 : 0.0;
                     const aCol = (root.KW && root.KW.col && root.KW.col.a) || [32, 201, 145];
                     const normAccent = [aCol[0] / 255.0, aCol[1] / 255.0, aCol[2] / 255.0];
 
@@ -150,7 +149,6 @@
                         .f1("uRout", 26.0)
                         .i1("uMaxSteps", maxSteps)
                         .f3("uAccent", normAccent[0], normAccent[1], normAccent[2])
-                        .f1("uLightMode", isLight)
                         .f1("uShockTime", shockTime);
 
                     gfx.quad(prog, sceneTarget);
@@ -160,8 +158,7 @@
                         bloomGain: isMobile() ? 0.38 : 0.50,
                         exposure: 1.16,
                         time: t,
-                        accent: aCol,
-                        isLight: isLight > 0.5
+                        accent: aCol
                     });
                 },
 

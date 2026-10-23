@@ -424,8 +424,7 @@
                         .f1("uFocalDist", focalDist)
                         .f1("uPointScale", sz.isMobile ? 12.0 : 15.5)
                         .f3("uAccent", acc[0], acc[1], acc[2])
-                        .f1("uMorphStage", activeStage)
-                        .f1("uThemeLight", 0.0);
+                        .f1("uMorphStage", activeStage);
                     gl.drawArrays(gl.POINTS, 0, N);
                     gl.bindVertexArray(null);
 

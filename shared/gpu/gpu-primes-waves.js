@@ -909,8 +909,7 @@
                 threshold: 0.30,
                 exposure: 1.15,
                 time: t,
-                accent: aCol,
-                isLight: false
+                accent: aCol
             });
 
             // Numerical Readout via KW.tag (<= 4 Hz Throttle)

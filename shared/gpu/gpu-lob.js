@@ -394,11 +394,7 @@
                     gl.enable(gl.DEPTH_TEST);
                     gl.depthFunc(gl.LESS);
 
-                    const isLight = root.KW.col.light ? 1.0 : 0.0;
-                    const bgR = isLight ? 0.94 : 0.0;
-                    const bgG = isLight ? 0.94 : 0.0;
-                    const bgB = isLight ? 0.92 : 0.0;
-                    gl.clearColor(bgR, bgG, bgB, 1.0);
+                    gl.clearColor(0.0, 0.0, 0.0, 1.0);
                     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
                     const a = root.KW.col.a || [16, 185, 129];
@@ -415,7 +411,6 @@
                     progTerrain.f1("uZSpan", 18.0);
                     progTerrain.f1("uHeightScale", 0.38);
                     progTerrain.f1("uTime", t);
-                    progTerrain.f1("uLightMode", isLight);
                     progTerrain.f3("uAccent", accentNorm[0], accentNorm[1], accentNorm[2]);
                     progTerrain.i1("uNumRipples", nRipples);
 
@@ -508,7 +503,7 @@
                             const txt = `${isBid ? "BID" : "ASK"} ${hoverPrice} : ${depth} lots`;
                             const tw = ctx2d.measureText(txt).width;
 
-                            ctx2d.fillStyle = isLight ? "rgba(255, 255, 255, 0.88)" : "rgba(16, 18, 26, 0.88)";
+                            ctx2d.fillStyle = "rgba(16, 18, 26, 0.88)";
                             ctx2d.strokeStyle = isBid ? "rgba(16, 185, 129, 0.7)" : "rgba(245, 158, 11, 0.7)";
                             ctx2d.lineWidth = 1;
                             ctx2d.beginPath();

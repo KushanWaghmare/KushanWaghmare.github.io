@@ -32,7 +32,6 @@ uniform float uThresholdQ;   // Joint crash orthant threshold (e.g. 0.05)
 uniform float uScale;        // Physical half-width of the unit cube in world space (e.g. 1.65)
 uniform float uFocalDist;    // Camera focal plane distance for depth of field
 uniform float uPointScale;   // Base point size scaled by viewport & device pixel ratio
-uniform float uThemeLight;   // 1.0 if light theme, 0.0 if dark theme
 
 out vec3  vWorldPos;
 out float vCrash;            // 1.0 if inside joint crash orthant [0, q]^3
@@ -86,7 +85,6 @@ in float vEnergy;
 uniform vec3  uAccent;        // Domain accent (Quant gold/amber [245, 185, 55])
 uniform float uThresholdQ;
 uniform float uMorphStage;    // 0: Gaussian, 1: Student-t, 2: Clayton
-uniform float uThemeLight;
 
 out vec4 fragColor;
 

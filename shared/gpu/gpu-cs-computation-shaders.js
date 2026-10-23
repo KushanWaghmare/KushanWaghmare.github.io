@@ -185,7 +185,6 @@ uniform sampler2D uStateTex;    // GPGPU cellular state texture
 uniform vec2  uRes;            // Screen resolution
 uniform float uTime;           // Elapsed time
 uniform vec3  uAccent;         // CS domain accent rgb(0, 212, 255)
-uniform float uLightMode;      // 0.0 = dark, 1.0 = light
 uniform float uShockTime;      // Time since last click
 uniform vec2  uShockCenter;    // Click origin
 
@@ -242,12 +241,6 @@ void main() {
         float bShift = texture(uStateTex, vUV - vec2(texel.x * 1.5, 0.0)).g;
         baseRGB.r += rShift * 0.12;
         baseRGB.b += bShift * 0.18;
-    }
-
-    // 5. Light-Mode Adaptation
-    if (uLightMode > 0.5) {
-        // High-contrast blueprint ink in light mode
-        baseRGB = mix(baseRGB, vec3(0.96) - baseRGB * 0.65, 0.42);
     }
 
     // Pitch-black background: vec3(0.0)

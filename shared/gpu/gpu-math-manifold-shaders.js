@@ -131,7 +131,6 @@ in float vShockWave;
 uniform vec3  uCamPos;
 uniform float uTime;
 uniform vec3  uAccent;         // Math accent rgb(230, 57, 70)
-uniform float uLightMode;      // 0.0 = dark, 1.0 = light
 uniform float uShockTime;
 
 out vec4 fragColor;
@@ -204,11 +203,6 @@ void main() {
 
     // Combine illumination
     vec3 finalRGB = baseCol * (diff1 + diff2) + specCol * 0.65 + rimCol + pulseCol;
-
-    // Light-mode adaptation
-    if (uLightMode > 0.5) {
-        finalRGB = mix(finalRGB, vec3(0.96) - finalRGB * 0.45, 0.35);
-    }
 
     fragColor = vec4(finalRGB, 1.0);
 }

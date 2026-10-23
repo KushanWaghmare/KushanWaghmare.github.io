@@ -264,13 +264,12 @@ void main() {
     const FS_COMPOSE = `#version 300 es
 precision highp float; in vec2 vUV; out vec4 fragColor;
 uniform sampler2D uScene, uBloom; uniform float uBloomGain, uExposure, uTime; uniform vec2 uRes; uniform vec3 uAccent;
-uniform float uLight;
 vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
 float hashGrain(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 void main() {
-    vec3 bg = uLight > 0.5 ? vec3(0.96) : vec3(0.0);
+    vec3 bg = vec3(0.0);
     vec4 scn = texture(uScene, vUV);
-    vec3 baseCol = uLight > 0.5 ? mix(bg, scn.rgb, scn.a) : (bg + scn.rgb);
+    vec3 baseCol = bg + scn.rgb;
     vec3 hdr = (baseCol + texture(uBloom, vUV).rgb * uBloomGain) * uExposure;
     if (isnan(hdr.r) || isnan(hdr.g) || isnan(hdr.b) || isinf(hdr.r) || isinf(hdr.g) || isinf(hdr.b)) {
         hdr = bg;
@@ -459,11 +458,9 @@ void main() {
         gl.disable(gl.BLEND);
         if (glCanvas.width !== outW || glCanvas.height !== outH) { glCanvas.width = outW; glCanvas.height = outH; }
         const a = opts.accent || (root.KW && root.KW.col && root.KW.col.a) || [79, 140, 255];
-        const isLight = (opts.isLight !== undefined) ? (opts.isLight ? 1.0 : 0.0) : ((root.KW && root.KW.col && root.KW.col.light) ? 1.0 : 0.0);
         compProg.use().tex("uScene", sceneTex, 0).tex("uBloom", bloomTargets[0], 1)
             .f1("uBloomGain", opts.bloomGain ?? 0.32).f1("uExposure", opts.exposure ?? 1.15)
-            .f1("uTime", opts.time || 0).f2("uRes", outW, outH).f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255)
-            .f1("uLight", isLight);
+            .f1("uTime", opts.time || 0).f2("uRes", outW, outH).f3("uAccent", a[0] / 255, a[1] / 255, a[2] / 255);
         quad(compProg, null, outW, outH);
         if (outCtx2d) outCtx2d.drawImage(glCanvas, 0, 0, outW, outH);
     };

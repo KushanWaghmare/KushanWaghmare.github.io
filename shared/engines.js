@@ -439,7 +439,7 @@
                 for (let i = 0; i < N; i++) {
                     tx[i * trailLen + head] = x[i]; ty[i * trailLen + head] = y[i];
                 }
-                const cols = KW.col.light ? [[217, 119, 6], [6, 140, 172], [225, 29, 72]] : [[255, 149, 0], [34, 211, 238], [244, 63, 94]];
+                const cols = [[255, 149, 0], [34, 211, 238], [244, 63, 94]];
                 // Draw trails
                 for (let i = 0; i < N; i++) {
                     ctx.strokeStyle = rgba(cols[i % cols.length], 0.7);
@@ -586,7 +586,7 @@
 
             ctx.clearRect(0, 0, W, H);
             const a = KW.col.a;
-            const pal = [a, KW.col.light ? [2, 132, 199] : [34, 211, 238], KW.col.light ? [225, 29, 72] : [244, 63, 94]];
+            const pal = [a, [34, 211, 238], [244, 63, 94]];
 
             // Batched trails
             for (let i = 0; i < NT; i++) {
@@ -808,7 +808,7 @@
             ctx.lineTo(x1, yBase); ctx.closePath(); ctx.fill(); ctx.stroke();
 
             // Discrete Langevin particles
-            const cyan = KW.col.light ? "rgba(2,132,199,0.85)" : "rgba(34,211,238,0.85)";
+            const cyan = "rgba(34,211,238,0.85)";
             ctx.fillStyle = cyan;
             for (let k = 0; k < NP; k++) {
                 const x = px[k], frac = (x - XMIN) / SPAN;
@@ -1168,7 +1168,7 @@
                 }
 
                 for (const q of coords) {
-                    ctx.fillStyle = q.cl === 0 ? (KW.col.light ? "#0284c7" : "#22d3ee") : "#f43f5e";
+                    ctx.fillStyle = q.cl === 0 ? "#22d3ee" : "#f43f5e";
                     ctx.beginPath(); ctx.arc(q.x, q.y, 3.4, 0, TAU); ctx.fill();
                 }
             });
@@ -1331,7 +1331,7 @@
             const nLines = new THREE.LineSegments(nGeo, nm); nLines.frustumCulled = false;
             T.group.add(ls, nLines);
 
-            const paint = () => { T.setColor(lm, KW.col.a); T.setColor(nm, KW.col.light ? [190, 24, 93] : [255, 210, 220]); };
+            const paint = () => { T.setColor(lm, KW.col.a); T.setColor(nm, [255, 210, 220]); };
             T.onTheme(paint);
 
             let rx = 0.85, ry = 0;
@@ -1384,7 +1384,7 @@
             const pPoints = new THREE.Points(pGeo, pm); pPoints.frustumCulled = false;
             T.group.add(ls, pPoints);
 
-            const paint = () => { T.setColor(lm, KW.col.a); T.setColor(pm, KW.col.light ? [190, 24, 93] : [255, 210, 220]); };
+            const paint = () => { T.setColor(lm, KW.col.a); T.setColor(pm, [255, 210, 220]); };
             T.onTheme(paint);
 
             for (let i = 0; i <= U; i++) {
@@ -1562,7 +1562,7 @@
                 }
                 ctx.stroke();
 
-                ctx.strokeStyle = KW.col.light ? "rgba(2,132,199,0.85)" : "rgba(34,211,238,0.82)"; ctx.lineWidth = 1.6;
+                ctx.strokeStyle = "rgba(34,211,238,0.82)"; ctx.lineWidth = 1.6;
                 ctx.beginPath();
                 for (let i = 0; i < N; i++) {
                     const x = x0 + (i / (N - 1)) * span, y = yTop - legB[i] * scTop;
@@ -1688,7 +1688,7 @@
             ctx.restore();
 
             // Highlight sparse vertex
-            ctx.fillStyle = KW.col.light ? "#0f172a" : "#ffffff";
+            ctx.fillStyle = "#ffffff";
             ctx.beginPath(); ctx.arc(cx, cy - R, 4.5, 0, TAU); ctx.fill();
         });
     };
@@ -1716,7 +1716,7 @@
 
             KW.loop(canvas, (t) => {
                 const a = KW.col.a, x0 = W * (W > 900 ? 0.48 : 0.08), spanW = W * (W > 900 ? 0.48 : 0.84);
-                const cyan = KW.col.light ? "#0284c7" : "#22d3ee";
+                const cyan = "#22d3ee";
                 ctx.clearRect(0, 0, W, H);
 
                 const pts = NODES.map((n, idx) => ({
@@ -1738,7 +1738,7 @@
                 ctx.font = (mob ? '500 8.5px' : '500 11px') + ' "JetBrains Mono", monospace';
                 ctx.textAlign = "center"; ctx.textBaseline = "middle";
                 pts.forEach((p, idx) => {
-                    ctx.fillStyle = KW.col.light ? "rgba(255,255,255,0.9)" : "rgba(12,14,22,0.88)";
+                    ctx.fillStyle = "rgba(12,14,22,0.88)";
                     ctx.strokeStyle = rgba(a, 0.75); ctx.lineWidth = 1.5;
                     ctx.fillRect(p.x - bw / 2, p.y - bh / 2, bw, bh);
                     ctx.strokeRect(p.x - bw / 2, p.y - bh / 2, bw, bh);
@@ -1760,7 +1760,7 @@
             const perm = Array.from({ length: N }, (_, i) => bitRev(i, 4));
 
             KW.loop(canvas, (t) => {
-                const a = KW.col.a, cyan = KW.col.light ? "#0284c7" : "#22d3ee";
+                const a = KW.col.a, cyan = "#22d3ee";
                 const x0 = W * (W > 900 ? 0.46 : 0.08), x1 = W * 0.96, spanW = x1 - x0;
                 const colGap = spanW / stages;
                 const y0 = H * 0.16, y1 = H * 0.88, rowGap = (y1 - y0) / (N - 1);
@@ -1822,7 +1822,7 @@
             const sum = regA + regB, carry = sum > 0xFF ? 1 : 0;
 
             const a = KW.col.a, x0 = W * (W > 900 ? 0.48 : 0.06), x1 = W * 0.96, span = Math.max(x1 - x0, 1);
-            const cyan = KW.col.light ? "#0284c7" : "#22d3ee";
+            const cyan = "#22d3ee";
             ctx.clearRect(0, 0, W, H);
 
             // 8 W-Bus bit lines
@@ -1849,7 +1849,7 @@
             ctx.font = (W > 900 ? '500 10px' : '500 8.5px') + ' "JetBrains Mono", monospace';
             mods.forEach((m, i) => {
                 const mx = x0 + i * (mw + gap);
-                ctx.fillStyle = KW.col.light ? "rgba(255,255,255,0.9)" : "rgba(12,14,22,0.86)";
+                ctx.fillStyle = "rgba(12,14,22,0.86)";
                 ctx.strokeStyle = rgba(a, 0.7); ctx.lineWidth = 1.4;
                 ctx.strokeRect(mx, my, mw, 52); ctx.fillRect(mx, my, mw, 52);
                 ctx.fillStyle = rgba(a, 0.98); ctx.textAlign = "center";
@@ -1929,7 +1929,7 @@
 
             // Draw state rings
             for (let i = 0; i < S; i++) {
-                ctx.fillStyle = KW.col.light ? "rgba(255,255,255,0.9)" : "rgba(12,14,22,0.9)";
+                ctx.fillStyle = "rgba(12,14,22,0.9)";
                 ctx.strokeStyle = rgba(a, 0.85); ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.arc(coords[i].x, coords[i].y, 16, 0, TAU); ctx.fill(); ctx.stroke();
                 ctx.font = '600 11px "JetBrains Mono", monospace'; ctx.fillStyle = rgba(a, 1);

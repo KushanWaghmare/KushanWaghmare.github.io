@@ -881,7 +881,6 @@ NAV.physics = () => {
         const a = KW.col.a;
         const b = KW.col.pal[0] || [248, 113, 113];
         const mid = h / 2;
-        const isLt = !!KW.col.light;
 
         // Fission reaction sites across the nav bar strip
         const sites = w > 360 ? [w * 0.22, w * 0.54, w * 0.82] : (w > 220 ? [w * 0.32, w * 0.72] : [w * 0.5]);
@@ -926,7 +925,7 @@ NAV.physics = () => {
                 const ny = mid + Math.sin(prog * 12) * 0.8;
 
                 // Incoming neutron
-                ctx.fillStyle = isLt ? "rgba(2, 132, 199, 0.95)" : "#ffffff";
+                ctx.fillStyle = "#ffffff";
                 ctx.beginPath();
                 ctx.arc(nx, ny, 1.8, 0, TAU);
                 ctx.fill();
@@ -951,7 +950,7 @@ NAV.physics = () => {
 
                 // Nucleon cluster
                 NUCLEONS.forEach((nuc) => {
-                    ctx.fillStyle = nuc.isP ? rgba(a, 0.95) : (isLt ? "rgba(100,116,139,0.9)" : "rgba(255,255,255,0.85)");
+                    ctx.fillStyle = nuc.isP ? rgba(a, 0.95) : "rgba(255,255,255,0.85)";
                     ctx.beginPath();
                     ctx.arc(cx + nuc.dx * breathe, mid + nuc.dy * breathe, 1.3, 0, TAU);
                     ctx.fill();
@@ -960,7 +959,7 @@ NAV.physics = () => {
                 // Isotope label
                 if (w > 260) {
                     ctx.font = '500 7.5px "JetBrains Mono", monospace';
-                    ctx.fillStyle = isLt ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.45)";
+                    ctx.fillStyle = "rgba(255,255,255,0.45)";
                     ctx.fillText("²³⁵U", cx - 7, mid - 10);
                 }
             }
@@ -992,7 +991,7 @@ NAV.physics = () => {
                 ctx.stroke();
 
                 // High-energy excitation core flicker
-                ctx.fillStyle = KW.col.light ? rgba(a, 0.9) : "rgba(255,255,255,0.9)";
+                ctx.fillStyle = "rgba(255,255,255,0.9)";
                 ctx.beginPath();
                 ctx.arc(cx, mid + wobble, 1.8 + prog * 1.2, 0, TAU);
                 ctx.fill();
@@ -1002,7 +1001,7 @@ NAV.physics = () => {
                     const isLeft = ni < 6;
                     const baseCx = isLeft ? lx : rx;
                     const scale = isLeft ? 0.75 : 0.65;
-                    ctx.fillStyle = nuc.isP ? rgba(a, 0.95) : (isLt ? "rgba(100,116,139,0.9)" : "rgba(255,255,255,0.85)");
+                    ctx.fillStyle = nuc.isP ? rgba(a, 0.95) : "rgba(255,255,255,0.85)";
                     ctx.beginPath();
                     ctx.arc(baseCx + nuc.dx * scale, mid + nuc.dy * scale, 1.2, 0, TAU);
                     ctx.fill();
@@ -1080,13 +1079,13 @@ NAV.physics = () => {
                     const nx = cx + Math.cos(n.ang) * tau * n.spd;
                     const ny = mid + Math.sin(n.ang) * tau * n.spd * 0.75;
 
-                    ctx.fillStyle = isLt ? "rgba(2, 132, 199, 0.95)" : "#ffffff";
+                    ctx.fillStyle = "#ffffff";
                     ctx.beginPath();
                     ctx.arc(nx, ny, 1.5, 0, TAU);
                     ctx.fill();
 
                     // Neutron path streak
-                    ctx.strokeStyle = isLt ? "rgba(2, 132, 199, 0.4)" : "rgba(255, 255, 255, 0.4)";
+                    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
                     ctx.lineWidth = 1;
                     ctx.beginPath();
                     ctx.moveTo(cx, mid);
@@ -1108,7 +1107,7 @@ NAV.physics = () => {
                 ctx.stroke();
 
                 NUCLEONS.forEach((nuc) => {
-                    ctx.fillStyle = nuc.isP ? rgba(a, 0.95 * tau) : (isLt ? `rgba(100,116,139,${0.9 * tau})` : `rgba(255,255,255,${0.85 * tau})`);
+                    ctx.fillStyle = nuc.isP ? rgba(a, 0.95 * tau) : `rgba(255,255,255,${0.85 * tau})`;
                     ctx.beginPath();
                     ctx.arc(cx + nuc.dx * tau, mid + nuc.dy * tau, 1.3 * tau, 0, TAU);
                     ctx.fill();
@@ -1119,7 +1118,7 @@ NAV.physics = () => {
         // 3. Top-left telemetry readout
         if (w > 280) {
             ctx.font = '500 8px "JetBrains Mono", ui-monospace, monospace';
-            ctx.fillStyle = isLt ? "rgba(15,23,42,0.65)" : "rgba(255,255,255,0.65)";
+            ctx.fillStyle = "rgba(255,255,255,0.65)";
             ctx.fillText("²³⁵U + n → ¹⁴¹Ba + ⁹²Kr + 3n · Q ≈ 200 MeV", 6, 9);
         }
     };
@@ -1260,7 +1259,7 @@ NAV.cs = () => {
                 cmp = r.value; steps++;
             }
         } else if ((hold -= dt) <= 0) shuffle();
-        const a = KW.col.a, muted = KW.col.light ? [80, 82, 95] : [150, 156, 172];
+        const a = KW.col.a, muted = [150, 156, 172];
         ctx.font = '500 10px "JetBrains Mono", ui-monospace, monospace'; ctx.textBaseline = "middle";
         ctx.fillStyle = rgba(muted, 1); ctx.fillText(`$ isort${t % 1 < 0.5 ? "▊" : ""}`, 0, h / 2 - 6);
         ctx.fillStyle = rgba(a, 0.9); ctx.fillText(done ? "sorted ✓" : `#${String(steps).padStart(5, "0")}`, 0, h / 2 + 7);

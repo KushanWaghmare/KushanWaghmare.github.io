@@ -176,7 +176,6 @@
                     ensureTarget(outW, outH);
                     if (!sceneTarget) return;
 
-                    const isLight = (root.KW && root.KW.col && root.KW.col.light) ? 1.0 : 0.0;
                     const aCol = (root.KW && root.KW.col && root.KW.col.a) || [0, 212, 255];
                     const normAccent = [aCol[0] / 255.0, aCol[1] / 255.0, aCol[2] / 255.0];
                     const shockTime = shockStartTime > 0.0 ? Math.max(0.0, t - shockStartTime) : -1.0;
@@ -192,7 +191,6 @@
                         .f2("uRes", sceneTarget.w, sceneTarget.h)
                         .f1("uTime", t)
                         .f3("uAccent", normAccent[0], normAccent[1], normAccent[2])
-                        .f1("uLightMode", isLight)
                         .f1("uShockTime", shockTime)
                         .f2("uShockCenter", shockCenter[0], shockCenter[1]);
 
@@ -203,8 +201,7 @@
                         bloomGain: mob ? 0.38 : 0.52,
                         exposure: 1.15,
                         time: t,
-                        accent: aCol,
-                        isLight: isLight > 0.5
+                        accent: aCol
                     });
                 },
 

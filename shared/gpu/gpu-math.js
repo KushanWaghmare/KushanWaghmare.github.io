@@ -107,7 +107,6 @@ uniform float uShowMarker;
 uniform float uShowPulse;
 uniform float uShowIsoLines;
 uniform float uShowCurvature;
-uniform float uIsLight;
 
 // Thin-film iridescent interference colors
 vec3 thinFilm(float cosTheta) {
@@ -131,8 +130,8 @@ void main() {
     vec3 irid = thinFilm(NdotV);
 
     // Deep contrast stage lighting
-    vec3 upCol = uIsLight > 0.5 ? vec3(0.18, 0.20, 0.25) : (vec3(0.035, 0.045, 0.08) + uAccent * 0.06);
-    vec3 downCol = uIsLight > 0.5 ? vec3(0.10, 0.11, 0.14) : vec3(0.012, 0.015, 0.022);
+    vec3 upCol = vec3(0.035, 0.045, 0.08) + uAccent * 0.06;
+    vec3 downCol = vec3(0.012, 0.015, 0.022);
     vec3 env = mix(downCol, upCol, clamp(N.y * 0.5 + 0.5, 0.0, 1.0));
 
     // Specular highlight from directional key light
@@ -150,14 +149,14 @@ void main() {
     float spec2 = pow(clamp(abs(dot(N, H2)), 0.0, 1.0), 16.0);
 
     // Base body color: glossy dark metal with subtle iridescence
-    vec3 darkMetal = uIsLight > 0.5 ? vec3(0.12, 0.14, 0.18) : vec3(0.040, 0.042, 0.048);
+    vec3 darkMetal = vec3(0.040, 0.042, 0.048);
     vec3 base = mix(darkMetal, irid * 0.45, fresnel * 0.7);
     vec3 col = env * base * 2.2 + vec3(1.0, 0.96, 0.92) * spec * 0.65 + uAccent * spec2 * 0.25;
 
     // Curvature color ramp (restrained, readable: K <= 0 everywhere for k=1)
     if (uShowCurvature > 0.5) {
         float kappa = clamp((-vCurvature - 0.015) / 0.35, 0.0, 1.0);
-        vec3 cLow = uIsLight > 0.5 ? vec3(0.14, 0.17, 0.24) : vec3(0.04, 0.07, 0.14);
+        vec3 cLow = vec3(0.04, 0.07, 0.14);
         vec3 cMid = mix(uAccent * 0.55, vec3(0.20, 0.55, 0.85), 0.5);
         vec3 cHigh = mix(uAccent * 1.2, vec3(0.35, 0.85, 1.0), 0.6);
         vec3 curvCol = mix(cLow, mix(cMid, cHigh, kappa), kappa);
@@ -553,7 +552,6 @@ void main() {
 
                 updateCaption(performance.now());
 
-                const isLight = root.KW && root.KW.col && root.KW.col.light ? 1.0 : 0.0;
                 const a = (root.KW && root.KW.col && root.KW.col.a && root.KW.col.a.length >= 3) ? root.KW.col.a : [79, 140, 255];
                 const accent = [a[0] / 255, a[1] / 255, a[2] / 255];
 
@@ -580,8 +578,7 @@ void main() {
                     .f1("uShowMarker", overlays.normal ? 1.0 : 0.0)
                     .f1("uShowPulse", overlays.pulse ? 1.0 : 0.0)
                     .f1("uShowIsoLines", overlays.iso ? 1.0 : 0.0)
-                    .f1("uShowCurvature", overlays.curvature ? 1.0 : 0.0)
-                    .f1("uIsLight", isLight);
+                    .f1("uShowCurvature", overlays.curvature ? 1.0 : 0.0);
 
                 gl.bindVertexArray(surfVao);
                 gl.drawElements(gl.TRIANGLES, numIndices, gl.UNSIGNED_SHORT, 0);
@@ -710,14 +707,14 @@ void main() {
                         // Button pill background
                         ctx2d.beginPath();
                         ctx2d.roundRect(bx, curY, btnW, btnH, 6);
-                        ctx2d.fillStyle = isLight ? "rgba(240, 244, 250, 0.85)" : "rgba(18, 22, 32, 0.78)";
+                        ctx2d.fillStyle = "rgba(18, 22, 32, 0.78)";
                         ctx2d.fill();
                         ctx2d.lineWidth = 1;
-                        ctx2d.strokeStyle = isLight ? "rgba(0, 0, 0, 0.12)" : "rgba(255, 255, 255, 0.14)";
+                        ctx2d.strokeStyle = "rgba(255, 255, 255, 0.14)";
                         ctx2d.stroke();
 
                         // Button label
-                        ctx2d.fillStyle = isLight ? "rgba(20, 25, 35, 0.88)" : "rgba(235, 240, 255, 0.90)";
+                        ctx2d.fillStyle = "rgba(235, 240, 255, 0.90)";
                         ctx2d.fillText(text, bx + btnPad, curY + btnH * 0.5);
 
                         curX -= (btnW + 8);

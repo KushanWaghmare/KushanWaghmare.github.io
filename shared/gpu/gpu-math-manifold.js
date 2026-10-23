@@ -344,7 +344,6 @@
                     ensureTarget(outW, outH);
                     if (!sceneTarget) return;
 
-                    const isLight = (root.KW && root.KW.col && root.KW.col.light) ? 1.0 : 0.0;
                     const aCol = (root.KW && root.KW.col && root.KW.col.a) || [230, 57, 70];
                     const normAccent = [aCol[0] / 255.0, aCol[1] / 255.0, aCol[2] / 255.0];
 
@@ -398,8 +397,7 @@
                         .f2("uShockCenter", shockCenter[0], shockCenter[1])
                         .f1("uR", 1.15)
                         .f1("ur", 1.35)
-                        .f3("uAccent", normAccent[0], normAccent[1], normAccent[2])
-                        .f1("uLightMode", isLight);
+                        .f3("uAccent", normAccent[0], normAccent[1], normAccent[2]);
 
                     gl.bindVertexArray(vaoManifold);
                     gl.drawElements(gl.TRIANGLES, numIndices, gl.UNSIGNED_SHORT, 0);
@@ -433,8 +431,7 @@
                         bloomGain: mob ? 0.36 : 0.48,
                         exposure: 1.14,
                         time: t,
-                        accent: aCol,
-                        isLight: isLight > 0.5
+                        accent: aCol
                     });
                 },
 

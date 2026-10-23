@@ -128,7 +128,6 @@ in float vNormZ;
 uniform vec3 uAccent;
 uniform vec3 uCameraPos;
 uniform float uTime;
-uniform float uLightMode; // 1.0 if light theme, 0.0 if dark theme
 
 out vec4 fragColor;
 
@@ -147,10 +146,6 @@ void main() {
     // Cool emerald/cyan for bids (vSide < 0.0), warm gold/amber for asks (vSide > 0.0)
     vec3 bidCol = mix(uAccent, vec3(0.12, 0.82, 0.72), 0.45);
     vec3 askCol = mix(vec3(0.98, 0.58, 0.22), vec3(1.0, 0.38, 0.32), 0.40);
-    if (uLightMode > 0.5) {
-        bidCol *= 0.85;
-        askCol *= 0.85;
-    }
 
     vec3 baseCol = vSide < -0.1 ? bidCol : (vSide > 0.1 ? askCol : vec3(0.15, 0.16, 0.20));
 
@@ -169,7 +164,7 @@ void main() {
     col += mix(vec3(0.4, 0.8, 1.0), vec3(1.0, 0.7, 0.3), max(vSide, 0.0)) * vRippleGlow;
 
     // Distance fog: fade into deep stage background
-    vec3 bg = uLightMode > 0.5 ? vec3(0.94, 0.94, 0.92) : vec3(0.0);
+    vec3 bg = vec3(0.0);
     float fog = smoothstep(6.0, 19.0, vDist) * 0.92;
     col = mix(col, bg, fog);
 
