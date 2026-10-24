@@ -160,10 +160,33 @@ void main() {
 
         const tagLorenz = "Lorenz attractor · 262k GPU particles · RK4 · click to toggle Aizawa · cursor orbits";
         const tagAizawa = "Aizawa attractor · 262k GPU particles · RK4 · click to toggle Lorenz · cursor orbits";
+        const eqLorenz = String.raw`$$\dot x=\sigma(y-x),\quad\dot y=x(\rho-z)-y,\quad\dot z=xy-\beta z$$`;
+        const eqAizawa = String.raw`$$\dot x=(z-0.7)x-3.5y,\quad\dot y=3.5x+(z-0.7)y,\quad\dot z=0.6+0.95z-\tfrac{z^3}{3}-(x^2+y^2)(1+0.25z)+0.1zx^3$$`;
+
+        const updateHeroEq = (m) => {
+            const sec = canvas.closest("section") || (typeof document !== "undefined" ? document.getElementById("intro") : null);
+            const eqEl = sec ? sec.querySelector(".hero-eq") : null;
+            if (eqEl) {
+                eqEl.textContent = (m === 0 ? eqLorenz : eqAizawa);
+                if (typeof window !== "undefined" && window.renderMathInElement) {
+                    try {
+                        window.renderMathInElement(eqEl, {
+                            delimiters: [
+                                { left: "$$", right: "$$", display: true },
+                                { left: "$", right: "$", display: false }
+                            ],
+                            throwOnError: false
+                        });
+                    } catch (e) {}
+                }
+            }
+        };
+
         KW.tag(tagLorenz, canvas);
         KW.onClick(canvas, () => {
             mode = 1 - mode;
             KW.tag(mode === 0 ? tagLorenz : tagAizawa, canvas);
+            updateHeroEq(mode);
             if (trailPP) trailPP.clear(0, 0, 0, 1);
         });
 

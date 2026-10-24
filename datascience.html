@@ -69,7 +69,7 @@
         <div class="snap-inner">
             <h1 data-hero>Data Science</h1>
             <p class="lead" data-hero>Statistical learning, agent-based modelling and non-convex optimisation: emergent collective behaviour, opinion dynamics, and complex stochastic systems.</p>
-            <div class="hero-eq glass snap-eq" data-hero>$$\dot{\mathbf x}_i=\mathbf v_i,\quad \dot{\mathbf v}_i=\mathbf f_{\text{sep}}+\mathbf f_{\text{align}}+\mathbf f_{\text{coh}}+\eta\,\boldsymbol\xi_i,\quad \Phi=\frac{1}{Nv_0}\Big\|\sum_{i=1}^N\mathbf v_i\Big\|$$</div>
+            <div class="hero-eq glass snap-eq" data-hero>$$d\mathbf x = \Big[\mathbf f(\mathbf x, t) - g(t)^2\,\nabla_{\mathbf x}\log p_t(\mathbf x)\Big]dt + g(t)\,d\bar{\mathbf w}$$</div>
             <div class="snap-jump-pills" data-hero>
                 <span class="snap-jump-label">Selected work:</span>
                 <a href="#proj-regularised-regression" class="pill jump-pill"><strong>Regularised Regression from Scratch</strong></a><a href="#proj-spectral-clustering" class="pill jump-pill"><strong>Spectral Clustering on Graphs</strong></a>
@@ -85,7 +85,7 @@
         <div class="snap-inner">
             <h2 class="snap-title" data-reveal>Regularised Regression from Scratch</h2>
             <p class="lead snap-lead" data-reveal>OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.</p>
-            <div class="hero-eq glass snap-eq" data-reveal>$$\hat{\boldsymbol\beta}=\arg\min_{\boldsymbol\beta}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2=(X^\top X)^{-1}X^\top\mathbf y$$</div>
+            <div class="hero-eq glass snap-eq" data-reveal>$$\min_{\boldsymbol\beta}\ \tfrac1{2n}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2+\lambda\,\lVert\boldsymbol\beta\rVert_1$$</div>
             <div class="snap-projects" data-reveal>
                 <span class="snap-proj-label">Architecture:</span>
                 <span class="snap-proj-pill glass"><strong>Python</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span><span class="snap-proj-pill glass"><strong>Linear algebra</strong></span>
@@ -107,7 +107,7 @@
         <div class="snap-inner">
             <h2 class="snap-title" data-reveal>Spectral Clustering on Graphs</h2>
             <p class="lead snap-lead" data-reveal>Recovering communities in a stochastic block model from the eigenvectors of the graph Laplacian.</p>
-            <div class="hero-eq glass snap-eq" data-reveal>$$\Pr(A_{ij}=1)=\begin{cases}p_{\text{in}}&c_i=c_j\\p_{\text{out}}&c_i\ne c_j\end{cases}$$</div>
+            <div class="hero-eq glass snap-eq" data-reveal>$$L=D-A,\qquad L_{\mathrm{sym}}=I-D^{-1/2}AD^{-1/2}$$</div>
             <div class="snap-projects" data-reveal>
                 <span class="snap-proj-label">Architecture:</span>
                 <span class="snap-proj-pill glass"><strong>Graph theory</strong></span><span class="snap-proj-pill glass"><strong>Spectral methods</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span>

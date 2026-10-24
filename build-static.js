@@ -214,7 +214,7 @@ const domainPage = (key) => {
     ${ps.map((p, i) => {
         const nextTarget = ps[i + 1] ? `#proj-${ps[i + 1].id}` : "#domain-explore";
         const nextLabel = ps[i + 1] ? `Next: ${ps[i + 1].title}` : "Next: Explore other domains";
-        const eq = (p.math && p.math[0] && p.math[0].eq) ? p.math[0].eq : d.eq;
+        const eq = p.slideEq || ((p.math && p.math[0] && p.math[0].eq) ? p.math[0].eq : d.eq);
         const slideKey = `domain:${key}:${i + 1}`;
         return `
     <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${key}" data-sim="${slideKey}">
@@ -285,7 +285,7 @@ const projectIndexPage = () => {
         const d = SITE.domains[p.domain];
         const nextTarget = SITE.projects[i + 1] ? `#proj-${SITE.projects[i + 1].id}` : "#proj-index-hero";
         const nextLabel = SITE.projects[i + 1] ? `Next: ${SITE.projects[i + 1].title}` : "Back to top";
-        const eq = (p.math && p.math[0] && p.math[0].eq) ? p.math[0].eq : d.eq;
+        const eq = p.slideEq || ((p.math && p.math[0] && p.math[0].eq) ? p.math[0].eq : d.eq);
         const simKey = `project:${p.id}:hero`;
         return `
     <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${p.domain}" data-sim="${simKey}" style="--a:var(--rgb-${p.domain})">

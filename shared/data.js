@@ -8,22 +8,22 @@ const SITE = {
             name: "Mathematics", short: "Math", file: "math.html",
             label: "Mathematics · Topological & geometric models",
             blurb: "Topology, differential geometry and analysis: the surfaces and spectra behind the models on the rest of this site.",
-            eq: r`\iint_M K\,dA+\oint_{\partial M}k_g\,ds=2\pi\,\chi(M)`,
-            tag: "Möbius immersion · non-orientable topological manifold · cursor controls twist & angle",
+            eq: r`z_1^5 + z_2^5 = 1,\qquad z_1, z_2 \in \mathbb C`,
+            tag: "Fermat curve z₁⁵ + z₂⁵ = 1 · cross-section of the quintic Calabi–Yau threefold · click: next n",
         },
         physics: {
             name: "Physics", short: "Physics", file: "physics.html",
             label: "Physics · Mechanics & quantum dynamics",
             blurb: "Classical and quantum mechanics as computation: symplectic integrators, gravitating systems and wave equations.",
-            eq: r`i\hbar\,\frac{\partial\psi}{\partial t}=\Big[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\Big]\psi`,
-            tag: "N-body · leapfrog (KDK) · your cursor is a point mass",
+            eq: r`ds^2 = -\left(1 - \frac{2Mr}{\rho^2}\right)dt^2 - \frac{4Mar\sin^2\theta}{\rho^2}dt\,d\phi + \frac{\rho^2}{\Delta}dr^2 + \rho^2 d\theta^2 + \frac{\Sigma\sin^2\theta}{\rho^2}d\phi^2`,
+            tag: "Kerr null geodesics (a = 0.95) · Boyer–Lindquist RK4 ray tracer · Novikov–Thorne thin disk · cursor tilts inclination",
         },
         datascience: {
             name: "Data Science", short: "Data", file: "datascience.html",
             label: "Data Science · Statistical learning & analytics",
             blurb: "Statistical learning, agent-based modelling and non-convex optimisation: emergent collective behaviour, opinion dynamics, and complex stochastic systems.",
-            eq: r`\dot{\mathbf x}_i=\mathbf v_i,\quad \dot{\mathbf v}_i=\mathbf f_{\text{sep}}+\mathbf f_{\text{align}}+\mathbf f_{\text{coh}}+\eta\,\boldsymbol\xi_i,\quad \Phi=\frac{1}{Nv_0}\Big\|\sum_{i=1}^N\mathbf v_i\Big\|`,
-            tag: "Agent-Based Model (ABM) · Reynolds flocking & Hegselmann-Krause consensus · order parameter Φ = |⟨v⟩|/v₀ · click to perturb",
+            eq: r`d\mathbf x = \Big[\mathbf f(\mathbf x, t) - g(t)^2\,\nabla_{\mathbf x}\log p_t(\mathbf x)\Big]dt + g(t)\,d\bar{\mathbf w}`,
+            tag: "Reverse-time SDE · closed-form Gaussian-mixture score · 65k GPU particles · click re-noises · press 'M' to toggle ODE",
         },
         quant: {
             name: "Quant Finance", short: "Quant", file: "quant.html",
@@ -36,8 +36,8 @@ const SITE = {
             name: "Computer Science", short: "CS", file: "cs.html",
             label: "Computer Science · Systems & compilers",
             blurb: "Compilers and machine architecture, from grammars and SSA form down to TTL gates on a breadboard.",
-            eq: r`\frac{\Gamma\vdash e_1:\mathtt{int}\qquad\Gamma\vdash e_2:\mathtt{int}}{\Gamma\vdash e_1+e_2:\mathtt{int}}`,
-            tag: "Elementary cellular automaton · click to cycle the rule",
+            eq: r`|\psi_{k+1}\rangle = (2|\psi\rangle\langle\psi| - \hat I)\,\hat O\,|\psi_k\rangle,\qquad \hat O = \hat I - 2|\omega\rangle\langle\omega|`,
+            tag: "Grover search · 8 simulated qubits · oracle reflection & unitary diffusion operator · optimal k = 12",
         },
     },
 
@@ -153,6 +153,7 @@ const SITE = {
             title: "Regularised Regression from Scratch",
             summary: "OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.",
             tags: ["Python", "NumPy", "Linear algebra"],
+            slideEq: r`\min_{\boldsymbol\beta}\ \tfrac1{2n}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2+\lambda\,\lVert\boldsymbol\beta\rVert_1`,
             intro: [
                 r`Ordinary least squares is unbiased but can have enormous variance when columns of $X$ are nearly collinear. Ridge shrinks every singular direction by a known factor; lasso sets some coefficients exactly to zero.`,
                 r`Each estimator is implemented directly from its closed form or coordinate-descent update and compared with a reference library as a check.`,
@@ -177,6 +178,7 @@ const SITE = {
             title: "Spectral Clustering on Graphs",
             summary: "Recovering communities in a stochastic block model from the eigenvectors of the graph Laplacian.",
             tags: ["Graph theory", "Spectral methods", "NumPy"],
+            slideEq: r`L=D-A,\qquad L_{\mathrm{sym}}=I-D^{-1/2}AD^{-1/2}`,
             intro: [
                 r`The graph on this page's hero is drawn from a stochastic block model with five communities. The force-directed layout finds the clusters visually; spectral clustering finds them algebraically, from the smallest eigenvectors of the Laplacian.`,
                 r`The quadratic form $\mathbf f^\top L\mathbf f$ measures how much a vertex labelling $\mathbf f$ varies across edges, so eigenvectors with small eigenvalues are labellings that barely cut any edge.`,
@@ -201,6 +203,7 @@ const SITE = {
             title: "Options Pricing & Greeks",
             summary: "Black–Scholes pricing and Greeks for European options in Python, validated by Monte Carlo simulation with an interactive visualisation dashboard.",
             tags: ["Python", "NumPy", "Pandas", "Matplotlib", "Jupyter"],
+            slideEq: r`C(u_1, u_2) = \mathbb P(U_1 \le u_1,\, U_2 \le u_2),\qquad \lambda_L = \lim_{q\to 0^+} \frac{C(q,q)}{q}`,
             intro: [
                 r`The Black–Scholes model prices a European option under geometric Brownian motion with constant volatility. This project implements the closed-form price and all five first- and second-order Greeks, then validates them against a Monte Carlo estimator.`,
                 r`An interactive dashboard shows how price and Greeks move with spot, volatility and time to expiry.`,
@@ -227,6 +230,7 @@ const SITE = {
             title: "Statistical Arbitrage Strategy",
             summary: "Python pairs-trading strategy using co-integration and z-score signals, backtested over two years with a Sharpe ratio of 1.8.",
             tags: ["Python", "Pandas", "NumPy", "Statsmodels", "Matplotlib"],
+            slideEq: r`d\varepsilon_t=\theta(\mu-\varepsilon_t)\,dt+\eta\,dW_t,\qquad z_t=\frac{\varepsilon_t-\bar\varepsilon}{s_\varepsilon}`,
             intro: [
                 r`Two non-stationary price series can be linked by a stationary combination, their spread. If the spread mean-reverts, deviations are tradable: short the rich leg and buy the cheap one when the spread is stretched, and unwind when it normalises.`,
                 r`The strategy was backtested over two years and achieved an annualised Sharpe ratio of 1.8.`,
@@ -254,6 +258,7 @@ const SITE = {
             title: "Ku-Lang Compiler",
             summary: "A custom language and compiler: lexical analysis, parsing, semantic checks and LLVM IR generation, with control flow, functions and typed expressions.",
             tags: ["C", "LLVM", "Flex", "Bison", "CMake"],
+            slideEq: r`x_3=\phi\big(x_1\ [\mathrm{bb}_1],\ x_2\ [\mathrm{bb}_2]\big),\qquad\mathrm{IN}[B]=\bigcup_{P\in\mathrm{pred}(B)}\mathrm{OUT}[P]`,
             intro: [
                 r`Ku-Lang is a small statically typed language with a complete compilation pipeline: Flex tokenises, Bison parses to an abstract syntax tree, semantic analysis checks types and scopes, and the back end emits LLVM IR.`,
                 r`The language supports control flow, functions and typed expressions. Targeting LLVM IR means optimisation and machine-code generation come from the LLVM toolchain.`,

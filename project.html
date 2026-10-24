@@ -180,7 +180,7 @@
         <div class="snap-inner">
             <h2 class="snap-title" data-reveal>Regularised Regression from Scratch</h2>
             <p class="lead snap-lead" data-reveal>OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.</p>
-            <div class="hero-eq glass snap-eq" data-reveal>$$\hat{\boldsymbol\beta}=\arg\min_{\boldsymbol\beta}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2=(X^\top X)^{-1}X^\top\mathbf y$$</div>
+            <div class="hero-eq glass snap-eq" data-reveal>$$\min_{\boldsymbol\beta}\ \tfrac1{2n}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2+\lambda\,\lVert\boldsymbol\beta\rVert_1$$</div>
             <div class="snap-projects" data-reveal>
                 <span class="snap-proj-label">Architecture:</span>
                 <span class="snap-proj-pill glass"><strong>Python</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span><span class="snap-proj-pill glass"><strong>Linear algebra</strong></span>
@@ -202,7 +202,7 @@
         <div class="snap-inner">
             <h2 class="snap-title" data-reveal>Spectral Clustering on Graphs</h2>
             <p class="lead snap-lead" data-reveal>Recovering communities in a stochastic block model from the eigenvectors of the graph Laplacian.</p>
-            <div class="hero-eq glass snap-eq" data-reveal>$$\Pr(A_{ij}=1)=\begin{cases}p_{\text{in}}&c_i=c_j\\p_{\text{out}}&c_i\ne c_j\end{cases}$$</div>
+            <div class="hero-eq glass snap-eq" data-reveal>$$L=D-A,\qquad L_{\mathrm{sym}}=I-D^{-1/2}AD^{-1/2}$$</div>
             <div class="snap-projects" data-reveal>
                 <span class="snap-proj-label">Architecture:</span>
                 <span class="snap-proj-pill glass"><strong>Graph theory</strong></span><span class="snap-proj-pill glass"><strong>Spectral methods</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span>
@@ -224,7 +224,7 @@
         <div class="snap-inner">
             <h2 class="snap-title" data-reveal>Options Pricing & Greeks</h2>
             <p class="lead snap-lead" data-reveal>Black–Scholes pricing and Greeks for European options in Python, validated by Monte Carlo simulation with an interactive visualisation dashboard.</p>
-            <div class="hero-eq glass snap-eq" data-reveal>$$\frac{\partial V}{\partial t}+\tfrac12\sigma^2S^2\frac{\partial^2V}{\partial S^2}+rS\frac{\partial V}{\partial S}-rV=0$$</div>
+            <div class="hero-eq glass snap-eq" data-reveal>$$C(u_1, u_2) = \mathbb P(U_1 \le u_1,\, U_2 \le u_2),\qquad \lambda_L = \lim_{q\to 0^+} \frac{C(q,q)}{q}$$</div>
             <div class="snap-projects" data-reveal>
                 <span class="snap-proj-label">Architecture:</span>
                 <span class="snap-proj-pill glass"><strong>Python</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span><span class="snap-proj-pill glass"><strong>Pandas</strong></span><span class="snap-proj-pill glass"><strong>Matplotlib</strong></span><span class="snap-proj-pill glass"><strong>Jupyter</strong></span>
@@ -246,7 +246,7 @@
         <div class="snap-inner">
             <h2 class="snap-title" data-reveal>Statistical Arbitrage Strategy</h2>
             <p class="lead snap-lead" data-reveal>Python pairs-trading strategy using co-integration and z-score signals, backtested over two years with a Sharpe ratio of 1.8.</p>
-            <div class="hero-eq glass snap-eq" data-reveal>$$y_t=\alpha+\beta x_t+\varepsilon_t,\qquad\varepsilon_t\sim I(0)$$</div>
+            <div class="hero-eq glass snap-eq" data-reveal>$$d\varepsilon_t=\theta(\mu-\varepsilon_t)\,dt+\eta\,dW_t,\qquad z_t=\frac{\varepsilon_t-\bar\varepsilon}{s_\varepsilon}$$</div>
             <div class="snap-projects" data-reveal>
                 <span class="snap-proj-label">Architecture:</span>
                 <span class="snap-proj-pill glass"><strong>Python</strong></span><span class="snap-proj-pill glass"><strong>Pandas</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span><span class="snap-proj-pill glass"><strong>Statsmodels</strong></span><span class="snap-proj-pill glass"><strong>Matplotlib</strong></span>
@@ -268,7 +268,7 @@
         <div class="snap-inner">
             <h2 class="snap-title" data-reveal>Ku-Lang Compiler</h2>
             <p class="lead snap-lead" data-reveal>A custom language and compiler: lexical analysis, parsing, semantic checks and LLVM IR generation, with control flow, functions and typed expressions.</p>
-            <div class="hero-eq glass snap-eq" data-reveal>$$L(r_1\mid r_2)=L(r_1)\cup L(r_2),\quad L(r_1r_2)=L(r_1)L(r_2),\quad L(r^*)=\bigcup_{k\ge0}L(r)^k,\qquad|Q_{\mathrm{DFA}}|\le2^{|Q_{\mathrm{NFA}}|}$$</div>
+            <div class="hero-eq glass snap-eq" data-reveal>$$x_3=\phi\big(x_1\ [\mathrm{bb}_1],\ x_2\ [\mathrm{bb}_2]\big),\qquad\mathrm{IN}[B]=\bigcup_{P\in\mathrm{pred}(B)}\mathrm{OUT}[P]$$</div>
             <div class="snap-projects" data-reveal>
                 <span class="snap-proj-label">Architecture:</span>
                 <span class="snap-proj-pill glass"><strong>C</strong></span><span class="snap-proj-pill glass"><strong>LLVM</strong></span><span class="snap-proj-pill glass"><strong>Flex</strong></span><span class="snap-proj-pill glass"><strong>Bison</strong></span><span class="snap-proj-pill glass"><strong>CMake</strong></span>
