@@ -20,44 +20,7 @@
         return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`;
     };
 
-    const randn = () => {
-        let u = 0, v = 0;
-        while (u === 0) u = Math.random();
-        while (v === 0) v = Math.random();
-        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(TAU * v);
-    };
-
-    const three = (c, shift) => {
-        if (typeof THREE === "undefined") return null;
-        const renderer = new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: true });
-        renderer.setPixelRatio(Math.min(typeof devicePixelRatio !== "undefined" ? devicePixelRatio : 1, 2));
-        const disposers = [() => {
-            try { renderer.dispose(); } catch (e) {}
-        }];
-        const oldDispose = c.__dispose;
-        c.__dispose = () => {
-            disposers.forEach((fn) => { try { fn(); } catch (e) {} });
-            if (oldDispose) oldDispose();
-        };
-        const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
-        const group = new THREE.Group();
-        scene.add(group);
-        let W = 0;
-        KW.fit(c, (w, h) => {
-            W = w;
-            renderer.setSize(w, h, false);
-            cam.aspect = w / Math.max(h, 1);
-            cam.updateProjectionMatrix();
-            group.position.x = w > 900 ? (shift * 1.5) : 0;
-        });
-        const setColor = (mat, rgb) => { if (rgb && rgb.length >= 3) mat.color.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255); };
-        const onTheme = (fn) => {
-            fn();
-            window.addEventListener("themechange", fn);
-            disposers.push(() => window.removeEventListener("themechange", fn));
-        };
-        return { renderer, scene, cam, group, setColor, onTheme, width: () => W };
-    };
+    const randn = () => Math.sqrt(-2.0 * Math.log(1.0 - Math.random())) * Math.cos(TAU * Math.random());
 
     const ENGINES = {};
 
@@ -1297,159 +1260,13 @@
             return;
         }
 
-        // 2. Three.js Surface Renders (Möbius transport or Gauss-Bonnet figure-8)
-        if (typeof THREE === "undefined") {
-            // Graceful fallback to 2D if Three.js not yet loaded
-            const ctx = canvas.getContext("2d");
-            KW.fit(canvas, (w, h, dpr) => { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
-            KW.loop(canvas, (t) => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.strokeStyle = rgba(KW.col.a, 0.6);
-                ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height / 2, 50, 0, TAU); ctx.stroke();
-            });
-            return;
-        }
-
-        const T = three(canvas, 3.4);
-        T.cam.position.set(0, 0, 9.2); T.group.rotation.x = 0.85;
-
-        if (type === "mobius-transport") {
-            const R = params.r || 2.05, WD = params.width || 0.85, U = 160, V = 14;
-            const vi = (i, j) => i * (V + 1) + j;
-            const pos = new Float32Array((U + 1) * (V + 1) * 3), idx = [];
-            for (let j = 0; j <= V; j++) for (let i = 0; i < U; i++) idx.push(vi(i, j), vi(i + 1, j));
-            for (let i = 0; i <= U; i += 4) for (let j = 0; j < V; j++) idx.push(vi(i, j), vi(i, j + 1));
-            const geo = new THREE.BufferGeometry();
-            geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setIndex(idx);
-            const lm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.62 });
-            const ls = new THREE.LineSegments(geo, lm); ls.frustumCulled = false;
-
-            const NN = params.needles || 32, nPos = new Float32Array(NN * 6);
-            const nGeo = new THREE.BufferGeometry();
-            nGeo.setAttribute("position", new THREE.BufferAttribute(nPos, 3));
-            const nm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.95 });
-            const nLines = new THREE.LineSegments(nGeo, nm); nLines.frustumCulled = false;
-            T.group.add(ls, nLines);
-
-            const paint = () => { T.setColor(lm, KW.col.a); T.setColor(nm, [255, 210, 220]); };
-            T.onTheme(paint);
-
-            let rx = 0.85, ry = 0;
-            KW.loop(canvas, (t, dt) => {
-                const tw = 1 + 0.95 * Math.sin(t * 0.32);
-                for (let i = 0; i <= U; i++) {
-                    const u = (i / U) * TAU, al = (tw * u) / 2, ca = Math.cos(al), sa = Math.sin(al);
-                    for (let j = 0; j <= V; j++) {
-                        const v = ((j / V) * 2 - 1) * WD, rc = R + v * ca, o = vi(i, j) * 3;
-                        pos[o] = rc * Math.cos(u); pos[o + 1] = rc * Math.sin(u); pos[o + 2] = v * sa;
-                    }
-                }
-                for (let k = 0; k < NN; k++) {
-                    const u = ((k / NN) * TAU + t * 0.6) % TAU, al = (tw * u) / 2;
-                    const bx = R * Math.cos(u), by = R * Math.sin(u);
-                    const nx = -Math.sin(al) * Math.cos(u), ny = -Math.sin(al) * Math.sin(u), nz = Math.cos(al);
-                    const o = k * 6;
-                    nPos[o] = bx; nPos[o + 1] = by; nPos[o + 2] = 0;
-                    nPos[o + 3] = bx + nx * 0.68; nPos[o + 4] = by + ny * 0.68; nPos[o + 5] = nz * 0.68;
-                }
-                geo.attributes.position.needsUpdate = true;
-                nGeo.attributes.position.needsUpdate = true;
-                const p = KW.local(canvas), inside = p.x > 0 && p.y > 0 && p.x < T.width();
-                const mx = inside ? (p.x / Math.max(T.width(), 1)) * 2 - 1 : 0, my = inside ? (p.y / Math.max(canvas.clientHeight, 1)) * 2 - 1 : 0;
-                rx += (0.85 + my * 0.5 - rx) * 0.05; ry += dt * 0.16 + mx * 0.02;
-                T.group.rotation.x = rx; T.group.rotation.y = ry;
-                T.renderer.render(T.scene, T.cam);
-            });
-            if (params.caption) KW.tag(params.caption, canvas);
-            return;
-        }
-
-        if (type === "geodesic-hyperboloid") {
-            const a = params.a || 1.15, c = params.c || 1.55;
-            const U = 64, V = 24;
-            const vi = (i, j) => i * (V + 1) + j;
-            const pos = new Float32Array((U + 1) * (V + 1) * 3), idx = [];
-            for (let j = 0; j <= V; j++) for (let i = 0; i < U; i++) idx.push(vi(i, j), vi(i + 1, j));
-            for (let i = 0; i <= U; i += 2) for (let j = 0; j < V; j++) idx.push(vi(i, j), vi(i, j + 1));
-            const geo = new THREE.BufferGeometry();
-            geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setIndex(idx);
-            const lm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.55 });
-            const ls = new THREE.LineSegments(geo, lm); ls.frustumCulled = false;
-
-            const nPart = params.particles || 20;
-            const pPos = new Float32Array(nPart * 3);
-            const pGeo = new THREE.BufferGeometry();
-            pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3));
-            const pm = new THREE.PointsMaterial({ size: 0.12, transparent: true, opacity: 0.95 });
-            const pPoints = new THREE.Points(pGeo, pm); pPoints.frustumCulled = false;
-            T.group.add(ls, pPoints);
-
-            const paint = () => { T.setColor(lm, KW.col.a); T.setColor(pm, [255, 210, 220]); };
-            T.onTheme(paint);
-
-            for (let i = 0; i <= U; i++) {
-                const u = (i / U) * TAU;
-                for (let j = 0; j <= V; j++) {
-                    const v = ((j / V) * 2 - 1) * 1.6;
-                    const r = a * Math.cosh(v), o = vi(i, j) * 3;
-                    pos[o] = r * Math.cos(u); pos[o + 1] = r * Math.sin(u); pos[o + 2] = c * Math.sinh(v);
-                }
-            }
-            geo.attributes.position.needsUpdate = true;
-
-            let rx = 0.75, ry = 0;
-            KW.loop(canvas, (t, dt) => {
-                for (let k = 0; k < nPart; k++) {
-                    const phase = t * 0.45 + (k / nPart) * TAU;
-                    const v = 1.35 * Math.sin(phase * 1.2);
-                    const u = phase * 2.1 + Math.sin(phase * 0.8) * 0.5;
-                    const r = a * Math.cosh(v), o = k * 3;
-                    pPos[o] = r * Math.cos(u); pPos[o + 1] = r * Math.sin(u); pPos[o + 2] = c * Math.sinh(v);
-                }
-                pGeo.attributes.position.needsUpdate = true;
-
-                const p = KW.local(canvas), inside = p.x > 0 && p.y > 0 && p.x < T.width();
-                const mx = inside ? (p.x / Math.max(T.width(), 1)) * 2 - 1 : 0, my = inside ? (p.y / Math.max(canvas.clientHeight, 1)) * 2 - 1 : 0;
-                rx += (0.75 + my * 0.45 - rx) * 0.05; ry += dt * 0.22 + mx * 0.02;
-                T.group.rotation.x = rx; T.group.rotation.y = ry;
-                T.renderer.render(T.scene, T.cam);
-            });
-            if (params.caption) KW.tag(params.caption, canvas);
-            return;
-        }
-
-        // Gauss-Bonnet figure-8 immersion
-        const U = params.uSteps || 140, V = params.vSteps || 28;
-        const R = 2.1, WD = 0.95;
-        const vi = (i, j) => i * (V + 1) + j;
-        const pos = new Float32Array((U + 1) * (V + 1) * 3), idx = [];
-        for (let j = 0; j <= V; j++) for (let i = 0; i < U; i++) idx.push(vi(i, j), vi(i + 1, j));
-        for (let i = 0; i <= U; i += 4) for (let j = 0; j < V; j++) idx.push(vi(i, j), vi(i, j + 1));
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setIndex(idx);
-        const lm = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.65 });
-        const pm = new THREE.PointsMaterial({ size: 0.06, transparent: true, opacity: 0.85 });
-        T.group.add(new THREE.LineSegments(geo, lm), new THREE.Points(geo, pm));
-
-        const paint = () => { T.setColor(lm, KW.col.a); T.setColor(pm, KW.col.a); };
-        T.onTheme(paint);
-
-        let rx = 0.65, ry = 0;
-        KW.loop(canvas, (t, dt) => {
-            const tw = 1.0;
-            for (let i = 0; i <= U; i++) {
-                const u = (i / U) * TAU, al = (tw * u) / 2, ca = Math.cos(al), sa = Math.sin(al);
-                for (let j = 0; j <= V; j++) {
-                    const v = ((j / V) * 2 - 1) * WD, rc = R + v * ca, o = vi(i, j) * 3;
-                    pos[o] = rc * Math.cos(u); pos[o + 1] = rc * Math.sin(u); pos[o + 2] = v * sa;
-                }
-            }
-            geo.attributes.position.needsUpdate = true;
-            const p = KW.local(canvas), inside = p.x > 0 && p.y > 0 && p.x < T.width();
-            const mx = inside ? (p.x / Math.max(T.width(), 1)) * 2 - 1 : 0, my = inside ? (p.y / Math.max(canvas.clientHeight, 1)) * 2 - 1 : 0;
-            rx += (0.65 + my * 0.45 - rx) * 0.05; ry += dt * 0.18 + mx * 0.02;
-            T.group.rotation.x = rx; T.group.rotation.y = ry;
-            T.renderer.render(T.scene, T.cam);
+        // 2. 2D fallback for wireframe surfaces (Three.js dependency removed in favour of GFX WebGL2)
+        const ctx = canvas.getContext("2d");
+        KW.fit(canvas, (w, h, dpr) => { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
+        KW.loop(canvas, () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = rgba(KW.col.a, 0.6);
+            ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height / 2, 50, 0, TAU); ctx.stroke();
         });
         if (params.caption) KW.tag(params.caption, canvas);
     };
@@ -1939,34 +1756,9 @@
         });
     };
 
-    /* =========================================================================
-       16. BLACKHOLE: Ray-Traced Schwarzschild Geodesics (WebGL Fragment Shader)
-       ========================================================================= */
-    ENGINES.blackhole = (canvas, params = {}) => {
-        const root = typeof window !== "undefined" ? window : (typeof global !== "undefined" ? global : this);
-        const sims = typeof SIMS !== "undefined" ? SIMS : (root.SIMS || {});
-        if (sims && sims.blackhole) {
-            sims.blackhole(canvas, params);
-        } else if (ENGINES.nbody) {
-            ENGINES.nbody(canvas, { mode: "central-heavy", n: 140, dt: 0.016, soft: 14, mCenter: 12000 });
-        }
-    };
-
-    /* =========================================================================
-       17. COPULA: Same correlation, different crashes (2-D fallback & alias)
-       ========================================================================= */
-    ENGINES["copula-2d"] = (canvas, params = {}) => {
-        return ENGINES.orbit(canvas, { system: "duffing", alpha: 1.0, beta: 1.0, delta: 0.2, dt: 0.015, scale: 65, numTraj: 2, pert: 0.01, ...params });
-    };
-
-    ENGINES.copula = (canvas, params = {}) => {
-        const root = typeof window !== "undefined" ? window : (typeof global !== "undefined" ? global : this);
-        const sims = typeof SIMS !== "undefined" ? SIMS : (root.SIMS || {});
-        if (sims && sims.copula) {
-            return sims.copula(canvas, params);
-        }
-        return ENGINES["copula-2d"](canvas, params);
-    };
+    ENGINES.blackhole = (c, p = {}) => (window.SIMS?.blackhole ? window.SIMS.blackhole(c, p) : ENGINES.nbody(c, { mode: "central-heavy", n: 140, dt: 0.016, soft: 14, mCenter: 12000 }));
+    ENGINES["copula-2d"] = (c, p = {}) => ENGINES.orbit(c, { system: "duffing", alpha: 1.0, beta: 1.0, delta: 0.2, dt: 0.015, scale: 65, numTraj: 2, pert: 0.01, ...p });
+    ENGINES.copula = (c, p = {}) => (window.SIMS?.copula ? window.SIMS.copula(c, p) : ENGINES["copula-2d"](c, p));
 
     return ENGINES;
 }));

@@ -427,10 +427,6 @@ pre.glass {
     pointer-events: none;
 }
 
-.eyebrow {
-    display: none !important;
-}
-
 .hero h1 {
     font-family: var(--heading-font, var(--sans));
     font-size: clamp(2.5rem, 6.5vw, 5.75rem);

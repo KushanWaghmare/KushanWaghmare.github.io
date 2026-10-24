@@ -134,7 +134,6 @@ const hubPage = () => `
                         <span>Explore ${d.name} Section</span>
                         <span class="arr">→</span>
                     </a>
-                    <span class="snap-count">${ps.length} technical deep-dives</span>
                 </div>
             </div>
             <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS[`hub:domain-${k}`].caption}</div>
@@ -616,7 +615,6 @@ const buildHTML = ({ domain, pageType, title, desc, mainContent }) => `<!doctype
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script defer src="shared/data.js?v=37"></script>
     <script defer src="shared/lib/diffusion-math.js?v=37"></script>
     <script defer src="shared/lib/market-math.js?v=37"></script>
@@ -652,7 +650,6 @@ const buildHTML = ({ domain, pageType, title, desc, mainContent }) => `<!doctype
 fs.writeFileSync(path.join(root, "index.html"), buildHTML({
     domain: "hub",
     pageType: "hub",
-    three: true,
     title: "Kushan Waghmare · Portfolio",
     desc: "Kushan Waghmare: Data Science and Quantitative Finance student at IIT Madras. Mathematics, physics, data science, quant finance and computer science projects.",
     mainContent: hubPage()
@@ -666,7 +663,6 @@ for (const k of keys) {
     fs.writeFileSync(file, buildHTML({
         domain: k,
         pageType: "domain",
-        three: true,
         title: `${d.name} · Kushan Waghmare`,
         desc: d.blurb,
         mainContent: domainPage(k)
@@ -678,7 +674,6 @@ for (const k of keys) {
 fs.writeFileSync(path.join(root, "project.html"), buildHTML({
     domain: "hub",
     pageType: "project",
-    three: true,
     title: "Project · Kushan Waghmare",
     desc: "Project deep-dive: architecture and mathematics.",
     mainContent: projectIndexPage()
@@ -689,7 +684,6 @@ console.log("Wrote project.html");
 fs.writeFileSync(path.join(root, "papers.html"), buildHTML({
     domain: "papers",
     pageType: "papers",
-    three: true,
     title: "Research Papers · Kushan Waghmare",
     desc: "Preprints and research papers on non-equilibrium Langevin dynamics, high-frequency statistical arbitrage, and symplectic numerical integrators.",
     mainContent: papersPage()
@@ -700,7 +694,6 @@ console.log("Wrote papers.html");
 fs.writeFileSync(path.join(root, "paper.html"), buildHTML({
     domain: "papers",
     pageType: "paper",
-    three: true,
     title: "Research Paper · Kushan Waghmare",
     desc: "Research paper deep-dive: abstract, mathematical formulation and analytical highlights.",
     mainContent: paperDetailPage(SITE.papers[0])
@@ -711,7 +704,6 @@ console.log("Wrote paper.html");
 fs.writeFileSync(path.join(root, "courses.html"), buildHTML({
     domain: "courses",
     pageType: "courses",
-    three: true,
     title: "Academic Coursework & Curricula · Kushan Waghmare",
     desc: "Academic coursework and curricula at IIT Madras, Vidya Bharati Mahavidyalaya, and advanced specialisations in quantitative finance and computer systems.",
     mainContent: coursesPage()

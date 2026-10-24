@@ -11,150 +11,34 @@
 
     const VERSION = "42", moduleCache = new Map(), progCache = new Map(), instances = new Set();
 
+    const MOD_DEPS = {
+        lob: ["shared/gpu/gpu-lob-shaders.js"],
+        math: ["shared/lib/mobius-math.js"],
+        "primes-waves": ["shared/lib/zeta-zeros.js", "shared/lib/zeta-math.js", "shared/gpu/gpu-primes-waves-shaders.js"],
+        qsim: ["shared/lib/qsim-math.js", "shared/gpu/gpu-qsim-shaders.js"],
+        copula: ["shared/lib/copula-math.js", "shared/gpu/gpu-copula-shaders.js"],
+        crystal: ["shared/lib/lattice-math.js", "shared/gpu/gpu-crystal-shaders.js"],
+        quant: ["shared/lib/lattice-math.js", "shared/gpu/gpu-crystal-shaders.js"],
+        cy: ["shared/lib/cy-math.js", "shared/gpu/gpu-cy-shaders.js", "shared/gpu/gpu-cy-oit.js"]
+    };
+
+    const loadScript = (src) => new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = `${src}?v=${VERSION}`;
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = (e) => reject(e);
+        document.head.appendChild(s);
+    });
+
     const loadModule = (name) => {
         if (moduleCache.has(name)) return moduleCache.get(name);
         if (typeof document === "undefined") return Promise.resolve(null);
-        const p = new Promise((resolve, reject) => {
-            const loadMain = () => {
-                const s = document.createElement("script");
-                s.src = `shared/gpu/gpu-${name}.js?v=${VERSION}`; s.async = true;
-                s.onload = () => resolve(root.SIMS);
-                s.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                document.head.appendChild(s);
-            };
-            if (name === "lob" && !root.LOB_SHADERS) {
-                const s0 = document.createElement("script");
-                s0.src = `shared/gpu/gpu-lob-shaders.js?v=${VERSION}`; s0.async = true;
-                s0.onload = loadMain;
-                s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                document.head.appendChild(s0);
-            } else if (name === "math") {
-                if (!root.MobiusMath) {
-                    const s0 = document.createElement("script");
-                    s0.src = `shared/lib/mobius-math.js?v=${VERSION}`; s0.async = true;
-                    s0.onload = loadMain;
-                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s0);
-                } else {
-                    loadMain();
-                }
-            } else if (name === "primes-waves") {
-                const loadShaders = () => {
-                    if (root.PrimesWavesShaders) return loadMain();
-                    const s2 = document.createElement("script");
-                    s2.src = `shared/gpu/gpu-primes-waves-shaders.js?v=${VERSION}`; s2.async = true;
-                    s2.onload = loadMain;
-                    s2.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s2);
-                };
-                const loadMath = () => {
-                    if (root.ZetaMath) return loadShaders();
-                    const s1 = document.createElement("script");
-                    s1.src = `shared/lib/zeta-math.js?v=${VERSION}`; s1.async = true;
-                    s1.onload = loadShaders;
-                    s1.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s1);
-                };
-                if (!root.ZetaZeros) {
-                    const s0 = document.createElement("script");
-                    s0.src = `shared/lib/zeta-zeros.js?v=${VERSION}`; s0.async = true;
-                    s0.onload = loadMath;
-                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s0);
-                } else {
-                    loadMath();
-                }
-            } else if (name === "qsim") {
-                const loadShaders = () => {
-                    if (root.QSimShaders) return loadMain();
-                    const s1 = document.createElement("script");
-                    s1.src = `shared/gpu/gpu-qsim-shaders.js?v=${VERSION}`; s1.async = true;
-                    s1.onload = loadMain;
-                    s1.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s1);
-                };
-                if (!root.QSimMath) {
-                    const s0 = document.createElement("script");
-                    s0.src = `shared/lib/qsim-math.js?v=${VERSION}`; s0.async = true;
-                    s0.onload = loadShaders;
-                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s0);
-                } else {
-                    loadShaders();
-                }
-            } else if (name === "copula") {
-                const loadShaders = () => {
-                    if (root.CopulaShaders) return loadMain();
-                    const s1 = document.createElement("script");
-                    s1.src = `shared/gpu/gpu-copula-shaders.js?v=${VERSION}`; s1.async = true;
-                    s1.onload = loadMain;
-                    s1.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s1);
-                };
-                if (!root.CopulaMath) {
-                    const s0 = document.createElement("script");
-                    s0.src = `shared/lib/copula-math.js?v=${VERSION}`; s0.async = true;
-                    s0.onload = loadShaders;
-                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s0);
-                } else {
-                    loadShaders();
-                }
-            } else if (name === "crystal" || name === "quant") {
-                const loadCrystalMain = () => {
-                    const s = document.createElement("script");
-                    s.src = `shared/gpu/gpu-crystal.js?v=${VERSION}`; s.async = true;
-                    s.onload = () => resolve(root.SIMS);
-                    s.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s);
-                };
-                const loadShaders = () => {
-                    if (root.CrystalShaders) return loadCrystalMain();
-                    const s1 = document.createElement("script");
-                    s1.src = `shared/gpu/gpu-crystal-shaders.js?v=${VERSION}`; s1.async = true;
-                    s1.onload = loadCrystalMain;
-                    s1.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s1);
-                };
-                if (!root.LatticeMath) {
-                    const s0 = document.createElement("script");
-                    s0.src = `shared/lib/lattice-math.js?v=${VERSION}`; s0.async = true;
-                    s0.onload = loadShaders;
-                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s0);
-                } else {
-                    loadShaders();
-                }
-            } else if (name === "cy") {
-                const loadOit = () => {
-                    if (root.CYOit) return loadMain();
-                    const s2 = document.createElement("script");
-                    s2.src = `shared/gpu/gpu-cy-oit.js?v=${VERSION}`; s2.async = true;
-                    s2.onload = loadMain;
-                    s2.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s2);
-                };
-                const loadShaders = () => {
-                    if (root.CYShaders) return loadOit();
-                    const s1 = document.createElement("script");
-                    s1.src = `shared/gpu/gpu-cy-shaders.js?v=${VERSION}`; s1.async = true;
-                    s1.onload = loadOit;
-                    s1.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s1);
-                };
-                if (!root.CYMath) {
-                    const s0 = document.createElement("script");
-                    s0.src = `shared/lib/cy-math.js?v=${VERSION}`; s0.async = true;
-                    s0.onload = loadShaders;
-                    s0.onerror = (e) => { moduleCache.delete(name); reject(e); };
-                    document.head.appendChild(s0);
-                } else {
-                    loadShaders();
-                }
-            } else {
-                loadMain();
-            }
-        });
+        const mainSrc = name === "quant" ? "shared/gpu/gpu-crystal.js" : `shared/gpu/gpu-${name}.js`;
+        const deps = [...(MOD_DEPS[name] || []), mainSrc];
+        const p = deps.reduce((chain, src) => chain.then(() => loadScript(src)), Promise.resolve())
+            .then(() => root.SIMS)
+            .catch((e) => { moduleCache.delete(name); throw e; });
         moduleCache.set(name, p);
         return p;
     };

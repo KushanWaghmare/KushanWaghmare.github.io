@@ -15,32 +15,9 @@
 'use strict';
 
 ((root) => {
-    const sigma = (r, theta, a) => {
-        const cosT = Math.cos(theta);
-        return r * r + a * a * cosT * cosT;
-    };
-
-    const delta = (r, a) => {
-        return r * r - 2 * r + a * a;
-    };
-
     const horizon = (a) => {
         const absA = Math.min(1.0, Math.abs(a));
         return 1.0 + Math.sqrt(Math.max(0.0, 1.0 - absA * absA));
-    };
-
-    const innerHorizon = (a) => {
-        const absA = Math.min(1.0, Math.abs(a));
-        return 1.0 - Math.sqrt(Math.max(0.0, 1.0 - absA * absA));
-    };
-
-    /**
-     * Circular photon orbit radius r_ph.
-     */
-    const photonOrbit = (a, prograde = true) => {
-        const s = prograde ? -a : a;
-        const clamped = Math.max(-1.0, Math.min(1.0, s));
-        return 2.0 * (1.0 + Math.cos((2.0 / 3.0) * Math.acos(clamped)));
     };
 
     /**
@@ -75,19 +52,6 @@
         const denom = -(g_tt + 2.0 * g_tphi * omega + g_phiphi * omega * omega);
         if (denom <= 0.0) return 0.0;
         return 1.0 / Math.sqrt(denom);
-    };
-
-    /**
-     * Gravitational redshift and Doppler factor:
-     * g = 1 / (u^t * (1 - Ω * L))
-     */
-    const redshiftFactor = (r, a, L) => {
-        const ut = fourVelocityUt(r, a);
-        if (ut <= 0.0) return 0.0;
-        const omega = keplerianOmega(r, a);
-        const factor = ut * (1.0 - omega * L);
-        if (factor <= 0.0) return 0.0;
-        return 1.0 / factor;
     };
 
     /**
@@ -331,15 +295,10 @@
     };
 
     const api = {
-        sigma,
-        delta,
         horizon,
-        innerHorizon,
-        photonOrbit,
         isco,
         keplerianOmega,
         fourVelocityUt,
-        redshiftFactor,
         pageThorneFlux,
         generateDiskLUT,
         getDiskLUT,
