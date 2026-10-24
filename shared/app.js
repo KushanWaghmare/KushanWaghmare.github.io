@@ -783,539 +783,766 @@
     chrome();
     const main = $("#main");
     /* ---------- live navbar canvas animation ---------- */
+    const NAV_INPUT = {
+        x: 0.5, y: 0.5,
+        canvasX: -1000, canvasY: -1000,
+        inNav: false,
+        brandHover: false,
+        clickImpulse: 0
+    };
+
+    if (typeof window !== "undefined") {
+        window.addEventListener("pointermove", (e) => {
+            NAV_INPUT.x = e.clientX / Math.max(window.innerWidth, 1);
+            NAV_INPUT.y = e.clientY / Math.max(window.innerHeight, 1);
+            const navEl = $(".nav-live");
+            if (navEl) {
+                const r = navEl.getBoundingClientRect();
+                NAV_INPUT.canvasX = e.clientX - r.left;
+                NAV_INPUT.canvasY = e.clientY - r.top;
+                NAV_INPUT.inNav = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+            }
+        }, { passive: true });
+
+        window.addEventListener("pointerdown", (e) => {
+            const navEl = $(".nav-live");
+            if (navEl) {
+                const r = navEl.getBoundingClientRect();
+                if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+                    NAV_INPUT.clickImpulse = 1.0;
+                }
+            }
+        }, { passive: true });
+
+        document.addEventListener("pointerenter", (e) => {
+            if (e.target && e.target.closest && e.target.closest(".brand")) {
+                NAV_INPUT.brandHover = true;
+            }
+        }, true);
+
+        document.addEventListener("pointerleave", (e) => {
+            if (e.target && e.target.closest && e.target.closest(".brand")) {
+                NAV_INPUT.brandHover = false;
+            }
+        }, true);
+    }
+
+    const drawNavBadge = (ctx, text, mid, w, a, opt = {}) => {
+        if (w < 210) return 0;
+        ctx.save();
+        ctx.font = '500 8.5px "JetBrains Mono", ui-monospace, monospace';
+        let label = text;
+        if (w < 340 && opt.short) label = opt.short;
+        const tw = ctx.measureText(label).width;
+        const bH = 18;
+        const bW = Math.round(tw + 18);
+        const bX = opt.right ? Math.round(w - bW - 6) : 6;
+        const bY = Math.round(mid - bH / 2);
+
+        ctx.fillStyle = "rgba(7, 10, 18, 0.90)";
+        ctx.strokeStyle = rgba(opt.borderCol || a, 0.38);
+        ctx.lineWidth = 1;
+        if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(bX, bY, bW, bH, 4);
+            ctx.fill();
+            ctx.stroke();
+        } else {
+            ctx.fillRect(bX, bY, bW, bH);
+            ctx.strokeRect(bX, bY, bW, bH);
+        }
+
+        // Status indicator pip
+        ctx.fillStyle = rgba(opt.pipCol || a, 0.95);
+        ctx.beginPath();
+        ctx.arc(bX + 7, mid, 2, 0, TAU);
+        ctx.fill();
+
+        // Monospace text label
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = opt.txtCol || "rgba(255, 255, 255, 0.92)";
+        ctx.fillText(label, bX + 13, mid);
+        ctx.restore();
+
+        return bW + 12;
+    };
+
 const NAV = {};
 const navFade = (ctx, w, h, left) => { // feather the strip's edges into the glass navbar
     ctx.save();
     ctx.globalCompositeOperation = "destination-in";
     const g = ctx.createLinearGradient(0, 0, w, 0);
-    g.addColorStop(0, left ? "rgba(0,0,0,0)" : "#000"); g.addColorStop(0.07, "#000");
-    g.addColorStop(0.93, "#000"); g.addColorStop(1, "rgba(0,0,0,0)");
+    g.addColorStop(0, left ? "rgba(0,0,0,0)" : "#000"); g.addColorStop(0.04, "#000");
+    g.addColorStop(0.96, "#000"); g.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
     ctx.restore();
 };
 
-// Intro / Contact: subtle drifting phase-space particles with faint connecting filaments.
+// Hero: Dynamic Phase Space / Strange Attractor Tracer with sensitive dependence & brand bifurcation
 NAV.hub = () => {
-    const P = Array.from({ length: 28 }, () => ({
-        u: Math.random(), v: 0.18 + Math.random() * 0.64,
-        vx: (0.015 + Math.random() * 0.035) * (Math.random() < 0.5 ? 1 : -1),
-        ph: Math.random() * TAU, r: 1.2 + Math.random() * 1.3
-    }));
+    let x = 0.1, y = 0.0, z = 0.0;
+    const sigma = 10, beta = 8 / 3;
+    const TRAIL_MAX = 130;
+    const trail = [];
+    let collapse = 0;
+    let bifurcateTimer = 0;
+    let wasBrandHover = false;
+
+    const rk4Step = (dtStep, rhoVal) => {
+        const dx = (cx, cy, cz) => sigma * (cy - cx);
+        const dy = (cx, cy, cz) => cx * (rhoVal - cz) - cy;
+        const dz = (cx, cy, cz) => cx * cy - beta * cz;
+
+        const k1x = dx(x, y, z), k1y = dy(x, y, z), k1z = dz(x, y, z);
+        const k2x = dx(x + 0.5 * dtStep * k1x, y + 0.5 * dtStep * k1y, z + 0.5 * dtStep * k1z);
+        const k2y = dy(x + 0.5 * dtStep * k1x, y + 0.5 * dtStep * k1y, z + 0.5 * dtStep * k1z);
+        const k2z = dz(x + 0.5 * dtStep * k1x, y + 0.5 * dtStep * k1y, z + 0.5 * dtStep * k1z);
+        const k3x = dx(x + 0.5 * dtStep * k2x, y + 0.5 * dtStep * k2y, z + 0.5 * dtStep * k2z);
+        const k3y = dy(x + 0.5 * dtStep * k2x, y + 0.5 * dtStep * k2y, z + 0.5 * dtStep * k2z);
+        const k3z = dz(x + 0.5 * dtStep * k2x, y + 0.5 * dtStep * k2y, z + 0.5 * dtStep * k2z);
+        const k4x = dx(x + dtStep * k3x, y + dtStep * k3y, z + dtStep * k3z);
+        const k4y = dy(x + dtStep * k3x, y + dtStep * k3y, z + dtStep * k3z);
+        const k4z = dz(x + dtStep * k3x, y + dtStep * k3y, z + dtStep * k3z);
+
+        x += (dtStep / 6) * (k1x + 2 * k2x + 2 * k3x + k4x);
+        y += (dtStep / 6) * (k1y + 2 * k2y + 2 * k3y + k4y);
+        z += (dtStep / 6) * (k1z + 2 * k2z + 2 * k3z + k4z);
+    };
+
     return (ctx, w, h, t, dt) => {
         const a = KW.col.a;
-        for (const p of P) { p.u = (p.u + p.vx * dt + 1) % 1; }
-        ctx.lineWidth = 0.9; ctx.strokeStyle = rgba(a, 0.18); ctx.beginPath();
-        for (let i = 0; i < P.length; i++) {
-            const x1 = P[i].u * w, y1 = (P[i].v + 0.12 * Math.sin(t * 1.4 + P[i].ph)) * h;
-            for (let j = i + 1; j < P.length; j++) {
-                const x2 = P[j].u * w, y2 = (P[j].v + 0.12 * Math.sin(t * 1.4 + P[j].ph)) * h;
-                if (Math.abs(x1 - x2) < 54 && Math.abs(y1 - y2) < 22) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); }
+        const mid = h / 2;
+
+        const badgeW = drawNavBadge(ctx, "RK4 · dt=0.01 · Lyapunov λ > 0", mid, w, a, {
+            short: "RK4 · dt=0.01 · λ > 0"
+        });
+
+        const x0 = badgeW ? badgeW + 8 : 12;
+        const x1 = w - 12;
+        const trackW = x1 - x0;
+        if (trackW < 30) return;
+
+        // Detect brand hover state transitions
+        if (NAV_INPUT.brandHover && !wasBrandHover) {
+            wasBrandHover = true;
+        } else if (!NAV_INPUT.brandHover && wasBrandHover) {
+            wasBrandHover = false;
+            bifurcateTimer = 1.0; // Trigger bifurcation burst outward
+        }
+
+        if (NAV_INPUT.brandHover) {
+            collapse = Math.min(1, collapse + dt * 4.5);
+        } else {
+            collapse = Math.max(0, collapse - dt * 3.0);
+        }
+
+        if (bifurcateTimer > 0) {
+            bifurcateTimer = Math.max(0, bifurcateTimer - dt * 1.8);
+        }
+
+        // Sensitive dependence: cursor modulates Rayleigh number rho
+        const cursorPerturb = (NAV_INPUT.x - 0.5) * 12;
+        const rho = 28 + cursorPerturb;
+
+        // Run RK4 micro-steps
+        for (let s = 0; s < 3; s++) {
+            rk4Step(0.012, rho);
+            trail.push({ x, y, z });
+            if (trail.length > TRAIL_MAX) trail.shift();
+        }
+
+        // Mapping Lorenz coordinates into canvas track
+        const centreX = x0 + trackW * 0.5;
+        const scaleX = (trackW * 0.44) / 22;
+        const scaleY = (h * 0.38) / 24;
+
+        ctx.save();
+        ctx.lineWidth = 1.2;
+
+        if (trail.length > 2) {
+            for (let i = 1; i < trail.length; i++) {
+                const frac = i / trail.length;
+                const p0 = trail[i - 1], p1 = trail[i];
+
+                const c0x = p0.x * (1 - collapse);
+                const c0z = 27 + (p0.z - 27) * (1 - collapse);
+                const c1x = p1.x * (1 - collapse);
+                const c1z = 27 + (p1.z - 27) * (1 - collapse);
+
+                const sx0 = centreX + c0x * scaleX;
+                const sy0 = mid - (c0z - 27) * scaleY;
+                const sx1 = centreX + c1x * scaleX;
+                const sy1 = mid - (c1z - 27) * scaleY;
+
+                ctx.strokeStyle = rgba(a, frac * 0.85 * (1 - collapse * 0.5));
+                ctx.beginPath();
+                ctx.moveTo(sx0, sy0);
+                ctx.lineTo(sx1, sy1);
+                ctx.stroke();
+
+                if (bifurcateTimer > 0) {
+                    const bFrac = bifurcateTimer;
+                    const bx0 = centreX - c0x * scaleX * (1 + bFrac * 0.6);
+                    const by0 = mid - (c0z - 27) * scaleY * (1 + bFrac * 0.4);
+                    const bx1 = centreX - c1x * scaleX * (1 + bFrac * 0.6);
+                    const by1 = mid - (c1z - 27) * scaleY * (1 + bFrac * 0.4);
+
+                    ctx.strokeStyle = rgba(KW.col.pal[1] || a, frac * bFrac * 0.9);
+                    ctx.beginPath();
+                    ctx.moveTo(bx0, by0);
+                    ctx.lineTo(bx1, by1);
+                    ctx.stroke();
+                }
+            }
+
+            const head = trail[trail.length - 1];
+            const hx = centreX + head.x * (1 - collapse) * scaleX;
+            const hy = mid - (head.z - 27) * (1 - collapse) * scaleY;
+
+            ctx.fillStyle = rgba(a, 0.95);
+            ctx.beginPath();
+            ctx.arc(hx, hy, collapse > 0.5 ? 3.2 : 2.2, 0, TAU);
+            ctx.fill();
+
+            if (collapse > 0.1) {
+                ctx.strokeStyle = rgba(a, collapse * 0.7);
+                ctx.beginPath();
+                ctx.arc(centreX, mid, 4 + (1 - collapse) * 6, 0, TAU);
+                ctx.stroke();
             }
         }
-        ctx.stroke();
-        for (const p of P) {
-            const x = p.u * w, y = (p.v + 0.12 * Math.sin(t * 1.4 + p.ph)) * h;
-            ctx.fillStyle = rgba(a, 0.45 + 0.45 * Math.sin(t * 2 + p.ph));
-            ctx.beginPath(); ctx.arc(x, y, p.r, 0, TAU); ctx.fill();
-        }
+        ctx.restore();
     };
 };
 NAV.contact = NAV.hub;
 
-// Mathematics: rotating Fourier epicycle rotor on the left projecting onto overlapping
-// sin/cos waves with Riemann sum bars, plus a morphing Lissajous figure on the right.
-NAV.math = () => (ctx, w, h, t) => {
-    const a = KW.col.a, b = KW.col.pal[1], mid = h / 2, R = h * 0.36, ph = t * 2.4;
-    const cx = 22, rx = w - 24, x0 = 48, x1 = Math.max(x0 + 40, w - 52);
-    const span = x1 - x0, k = TAU / Math.max(span / 2.2, 110);
-
-    // 1. Unit-circle Fourier phasor rotor on the left
-    ctx.strokeStyle = rgba(a, 0.32); ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(cx, mid, R, 0, TAU); ctx.stroke();
-    const px = cx + R * Math.cos(ph), py = mid - R * Math.sin(ph);
-    ctx.strokeStyle = rgba(b, 0.75); ctx.beginPath(); ctx.moveTo(cx, mid); ctx.lineTo(px, py); ctx.stroke();
-    ctx.strokeStyle = rgba(a, 0.35); ctx.setLineDash([2, 3]);
-    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x0, py); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = rgba(a, 1); ctx.beginPath(); ctx.arc(px, py, 2.3, 0, TAU); ctx.fill();
-
-    // 2. Riemann quadrature bars between sin(x) and cos(x)
-    ctx.fillStyle = rgba(a, 0.14);
-    for (let x = x0; x < x1; x += 8) {
-        const ys = mid - R * Math.sin(k * (x - x0) + ph);
-        const yc = mid - R * Math.cos(k * (x - x0) + ph);
-        ctx.fillRect(x, Math.min(ys, yc), 4, Math.abs(yc - ys));
-    }
-
-    // 3. Overlapping sin & cos curves
-    const wave = (f, col) => {
-        ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.beginPath();
-        for (let x = x0; x <= x1; x += 2) {
-            const y = mid - R * f(k * (x - x0) + ph);
-            x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-    };
-    wave(Math.cos, rgba(b, 0.88));
-    wave(Math.sin, rgba(a, 0.96));
-
-    // 4. Parametric Lissajous harmonic knot on the right
-    if (w > 180) {
-        ctx.strokeStyle = rgba(a, 0.85); ctx.lineWidth = 1.2; ctx.beginPath();
-        for (let i = 0; i <= 64; i++) {
-            const u = (i / 64) * TAU;
-            const lx = rx + R * 0.95 * Math.sin(3 * u + ph * 0.7);
-            const ly = mid + R * 0.95 * Math.sin(2 * u);
-            i ? ctx.lineTo(lx, ly) : ctx.moveTo(lx, ly);
-        }
-        ctx.stroke();
-    }
-};
-
-// Physics: Induced nuclear fission of Uranium-235 (²³⁵U + n → ²³⁶U* → ¹⁴¹Ba + ⁹²Kr + 3n + γ).
-// An incident thermal neutron collides with the ²³⁵U nucleus; the compound nucleus deforms
-// (liquid-drop necking) and undergoes scission into two recoiling fission fragments,
-// triggering prompt neutron emission and expanding gamma radiation shockwaves.
-NAV.physics = () => {
-    return (ctx, w, h, t, dt) => {
+// Mathematics: Calabi-Yau Cross-Section Morph & Riemann Curvature with metric contraction
+NAV.math = () => {
+    return (ctx, w, h, t) => {
         const a = KW.col.a;
-        const b = KW.col.pal[0] || [248, 113, 113];
+        const b = KW.col.pal[1] || [129, 140, 248];
         const mid = h / 2;
+        const R = h * 0.36;
 
-        // 1. Top-left reaction/formula telemetry badge with clean, fixed bounding box
-        const showTelem = w > 260;
-        let trackStart = 8;
-        if (showTelem) {
-            const telemText = w > 380 ? "²³⁵U + n → ¹⁴¹Ba + ⁹²Kr + 3n · Q ≈ 200 MeV" : "²³⁵U + n → ¹⁴¹Ba + ⁹²Kr";
-            ctx.font = '500 8.5px "JetBrains Mono", ui-monospace, monospace';
-            const tw = ctx.measureText(telemText).width;
-            const bX = 6;
-            const bH = 18;
-            const bY = Math.round(mid - bH / 2);
-            const bW = Math.round(tw + 22);
+        const badgeW = drawNavBadge(ctx, "R_{μν} = 0 · genus g=3 · χ = -200", mid, w, a, {
+            short: "R_{μν} = 0 · g=3 · χ = -200"
+        });
 
-            ctx.save();
-            ctx.fillStyle = "rgba(7, 10, 18, 0.90)";
-            ctx.strokeStyle = rgba(a, 0.38);
-            ctx.lineWidth = 1;
-            if (ctx.roundRect) {
-                ctx.beginPath();
-                ctx.roundRect(bX, bY, bW, bH, 4);
-                ctx.fill();
-                ctx.stroke();
-            } else {
-                ctx.fillRect(bX, bY, bW, bH);
-                ctx.strokeRect(bX, bY, bW, bH);
-            }
+        const x0 = badgeW ? badgeW + 10 : 12;
+        const x1 = w - 12;
+        const trackW = x1 - x0;
+        if (trackW < 40) return;
 
-            // Status pip
-            ctx.fillStyle = rgba(a, 0.95);
+        const k = TAU / Math.max(trackW / 2.5, 90);
+        const omega = 2.2;
+        const phi = t * 1.6;
+        const mouseX = NAV_INPUT.inNav ? NAV_INPUT.canvasX : (w * NAV_INPUT.x);
+
+        ctx.save();
+        const step = 6;
+        for (let x = x0; x <= x1; x += step) {
+            const dx = x - mouseX;
+            const contraction = Math.exp(-(dx * dx) / (2 * 45 * 45));
+            const warpedX = x - dx * 0.48 * contraction;
+
+            const y1 = mid - R * Math.sin(k * (x - x0) - omega * t);
+            const y2 = mid - R * Math.cos(k * (x - x0) + phi);
+
+            const ribIntensity = 0.18 + 0.55 * contraction;
+            ctx.strokeStyle = rgba(a, ribIntensity);
+            ctx.lineWidth = 1 + contraction * 0.8;
             ctx.beginPath();
-            ctx.arc(bX + 8, mid, 2, 0, TAU);
-            ctx.fill();
+            ctx.moveTo(warpedX, y1);
+            ctx.lineTo(warpedX, y2);
+            ctx.stroke();
 
-            // Formula label inside bounding box
-            ctx.textBaseline = "middle";
-            ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
-            ctx.fillText(telemText, bX + 15, mid);
-            ctx.restore();
-
-            trackStart = bX + bW + 12;
+            if (contraction > 0.4) {
+                ctx.fillStyle = rgba(b, contraction * 0.9);
+                ctx.beginPath();
+                ctx.arc(warpedX, y1, 1.3, 0, TAU);
+                ctx.arc(warpedX, y2, 1.3, 0, TAU);
+                ctx.fill();
+            }
         }
 
-        const trackEnd = w - 8;
-        const trackWidth = trackEnd - trackStart;
-
-        // 2. Moderator neutron guide line across the graphic track
-        if (trackWidth > 30) {
-            ctx.strokeStyle = rgba(a, 0.16);
-            ctx.lineWidth = 1;
-            ctx.setLineDash([3, 4]);
+        const drawWave = (fn, isPsi1, col) => {
+            ctx.strokeStyle = col;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.moveTo(trackStart, mid);
-            ctx.lineTo(trackEnd, mid);
+            for (let x = x0; x <= x1; x += 2) {
+                const dx = x - mouseX;
+                const contraction = Math.exp(-(dx * dx) / (2 * 45 * 45));
+                const warpedX = x - dx * 0.48 * contraction;
+                const arg = isPsi1 ? (k * (x - x0) - omega * t) : (k * (x - x0) + phi);
+                const y = mid - R * fn(arg);
+                x === x0 ? ctx.moveTo(warpedX, y) : ctx.lineTo(warpedX, y);
+            }
+            ctx.stroke();
+        };
+
+        drawWave(Math.cos, false, rgba(b, 0.85));
+        drawWave(Math.sin, true, rgba(a, 0.95));
+
+        if (mouseX >= x0 && mouseX <= x1) {
+            ctx.strokeStyle = rgba(a, 0.45);
+            ctx.setLineDash([2, 3]);
+            ctx.beginPath();
+            ctx.moveTo(mouseX, mid - R - 2);
+            ctx.lineTo(mouseX, mid + R + 2);
             ctx.stroke();
             ctx.setLineDash([]);
         }
-
-        // 3. Fission reaction sites distributed along the graphic track
-        let sites = [];
-        if (trackWidth > 260) {
-            sites = [trackStart + trackWidth * 0.20, trackStart + trackWidth * 0.58, trackStart + trackWidth * 0.88];
-        } else if (trackWidth > 140) {
-            sites = [trackStart + trackWidth * 0.32, trackStart + trackWidth * 0.78];
-        } else if (trackWidth > 50) {
-            sites = [trackStart + trackWidth * 0.5];
-        }
-
-        // 4. Render each Uranium-235 fission site
-        sites.forEach((cx, idx) => {
-            // Stagger phase across sites for continuous cascading fission
-            const period = 3.6;
-            const p = ((t / period + idx * 0.37) % 1);
-
-            // Subtle base coordinates for nucleon clusters
-            // Protons (accent cyan) and neutrons (bright/white)
-            const NUCLEONS = [
-                { dx: 0, dy: 0, isP: true },
-                { dx: -2.8, dy: -2.0, isP: false },
-                { dx: 2.8, dy: -1.8, isP: true },
-                { dx: -2.5, dy: 2.2, isP: true },
-                { dx: 2.6, dy: 2.0, isP: false },
-                { dx: 0, dy: -3.4, isP: true },
-                { dx: 0, dy: 3.2, isP: false },
-                { dx: -4.6, dy: 0.2, isP: true },
-                { dx: 4.5, dy: -0.2, isP: false },
-                { dx: -1.4, dy: 1.2, isP: false },
-                { dx: 1.5, dy: -1.0, isP: true },
-            ];
-
-            // STAGE 1: Incident thermal neutron approaching (0.0 <= p < 0.28)
-            if (p < 0.28) {
-                const prog = p / 0.28;
-                const maxTravel = Math.max(16, Math.min(48, (cx - trackStart) * 0.85));
-                const nDist = maxTravel * (1 - prog);
-                const nx = cx - nDist;
-                const ny = mid + Math.sin(prog * 12) * 0.8;
-
-                // Incoming neutron
-                ctx.fillStyle = "#ffffff";
-                ctx.beginPath();
-                ctx.arc(nx, ny, 1.8, 0, TAU);
-                ctx.fill();
-
-                // Neutron speed trace
-                ctx.strokeStyle = rgba(a, 0.45 * prog);
-                ctx.lineWidth = 1.2;
-                ctx.beginPath();
-                ctx.moveTo(nx - 8, ny);
-                ctx.lineTo(nx, ny);
-                ctx.stroke();
-
-                // Bound resting Uranium-235 nucleus (gentle liquid drop breathing)
-                const breathe = 1 + 0.08 * Math.sin(t * 8 + idx);
-                ctx.fillStyle = rgba(a, 0.16);
-                ctx.strokeStyle = rgba(a, 0.65);
-                ctx.lineWidth = 1.2;
-                ctx.beginPath();
-                ctx.arc(cx, mid, 6.8 * breathe, 0, TAU);
-                ctx.fill();
-                ctx.stroke();
-
-                // Nucleon cluster
-                NUCLEONS.forEach((nuc) => {
-                    ctx.fillStyle = nuc.isP ? rgba(a, 0.95) : "rgba(255,255,255,0.85)";
-                    ctx.beginPath();
-                    ctx.arc(cx + nuc.dx * breathe, mid + nuc.dy * breathe, 1.3, 0, TAU);
-                    ctx.fill();
-                });
-
-                // Isotope label
-                if (trackWidth > 180) {
-                    ctx.font = '500 7.5px "JetBrains Mono", monospace';
-                    ctx.fillStyle = "rgba(255,255,255,0.45)";
-                    ctx.fillText("²³⁵U", cx - 7, mid - 10);
-                }
-            }
-            // STAGE 2: Compound nucleus excitation & liquid-drop necking (0.28 <= p < 0.44)
-            else if (p < 0.44) {
-                const prog = (p - 0.28) / 0.16;
-                // Necking deformation distance
-                const d = prog * 8.5;
-                const wobble = Math.sin(prog * 24) * 1.5;
-
-                const lx = cx - d;
-                const rx = cx + d * 1.2;
-                const rLeft = 5.6;
-                const rRight = 4.4; // Asymmetric fission: heavier Barium left, lighter Krypton right
-                const neckW = Math.max(1.2, 5.0 * (1 - prog * 0.85));
-
-                // Liquid drop envelope with necking
-                ctx.fillStyle = rgba(a, 0.25 + prog * 0.2);
-                ctx.strokeStyle = rgba(a, 0.85);
-                ctx.lineWidth = 1.4;
-
-                ctx.beginPath();
-                ctx.arc(lx, mid, rLeft, Math.PI * 0.5, Math.PI * 1.5);
-                ctx.lineTo(cx, mid - neckW);
-                ctx.arc(rx, mid, rRight, -Math.PI * 0.5, Math.PI * 0.5);
-                ctx.lineTo(cx, mid + neckW);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                // High-energy excitation core flicker
-                ctx.fillStyle = "rgba(255,255,255,0.9)";
-                ctx.beginPath();
-                ctx.arc(cx, mid + wobble, 1.8 + prog * 1.2, 0, TAU);
-                ctx.fill();
-
-                // Distributed nucleons in lobes
-                NUCLEONS.forEach((nuc, ni) => {
-                    const isLeft = ni < 6;
-                    const baseCx = isLeft ? lx : rx;
-                    const scale = isLeft ? 0.75 : 0.65;
-                    ctx.fillStyle = nuc.isP ? rgba(a, 0.95) : "rgba(255,255,255,0.85)";
-                    ctx.beginPath();
-                    ctx.arc(baseCx + nuc.dx * scale, mid + nuc.dy * scale, 1.2, 0, TAU);
-                    ctx.fill();
-                });
-
-                if (trackWidth > 180) {
-                    ctx.font = 'bold 7.5px "JetBrains Mono", monospace';
-                    ctx.fillStyle = rgba(a, 0.9);
-                    ctx.fillText("²³⁶U*", cx - 9, mid - 11);
-                }
-            }
-            // STAGE 3: Scission, Coulomb explosion, gamma flash & 3 prompt neutrons (0.44 <= p < 0.76)
-            else if (p < 0.76) {
-                const tau = (p - 0.44) / 0.32;
-                const invTau = 1 - tau;
-
-                // 1. Gamma radiation expanding flash
-                const rGamma = tau * 28;
-                ctx.save();
-                ctx.strokeStyle = rgba(a, invTau * 0.75);
-                ctx.lineWidth = 1.2;
-                ctx.beginPath();
-                ctx.arc(cx, mid, rGamma, 0, TAU);
-                ctx.stroke();
-                ctx.restore();
-
-                // 2. Coulomb explosion fragments (momentum conservation: m1*v1 = m2*v2)
-                // Heavier fragment: 141-Ba
-                const dBa = 8.5 + tau * 26;
-                const baX = cx - dBa;
-                const baY = mid - tau * 2.2;
-                // Lighter fragment: 92-Kr (flies ~1.5x faster)
-                const dKr = 10.2 + tau * 38;
-                const krX = cx + dKr;
-                const krY = mid + tau * 1.8;
-
-                // Recoil ionisation tracks
-                ctx.strokeStyle = rgba(a, invTau * 0.45);
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(cx, mid);
-                ctx.lineTo(baX, baY);
-                ctx.moveTo(cx, mid);
-                ctx.lineTo(krX, krY);
-                ctx.stroke();
-
-                // Daughter nucleus: 141-Ba
-                ctx.fillStyle = rgba(a, invTau * 0.95);
-                ctx.beginPath();
-                ctx.arc(baX, baY, 4.2 * invTau + 0.8, 0, TAU);
-                ctx.fill();
-
-                // Daughter nucleus: 92-Kr
-                ctx.fillStyle = rgba(b, invTau * 0.95);
-                ctx.beginPath();
-                ctx.arc(krX, krY, 3.4 * invTau + 0.8, 0, TAU);
-                ctx.fill();
-
-                // Fragment labels
-                if (trackWidth > 180 && tau < 0.75) {
-                    ctx.font = '6.5px "JetBrains Mono", monospace';
-                    ctx.fillStyle = rgba(a, invTau * 0.85);
-                    ctx.fillText("¹⁴¹Ba", baX - 8, baY - 6);
-                    ctx.fillStyle = rgba(b, invTau * 0.85);
-                    ctx.fillText("⁹²Kr", krX - 2, krY - 6);
-                }
-
-                // 3. Three fast prompt neutrons ejected at high velocity
-                const NEUTRONS = [
-                    { ang: -0.85, spd: 46 }, // top-right
-                    { ang: 2.35,  spd: 42 }, // bottom-left
-                    { ang: 0.95,  spd: 48 }, // bottom-right
-                ];
-                NEUTRONS.forEach((n) => {
-                    const nx = cx + Math.cos(n.ang) * tau * n.spd;
-                    const ny = mid + Math.sin(n.ang) * tau * n.spd * 0.75;
-
-                    ctx.fillStyle = "#ffffff";
-                    ctx.beginPath();
-                    ctx.arc(nx, ny, 1.5, 0, TAU);
-                    ctx.fill();
-
-                    // Neutron path streak
-                    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(cx, mid);
-                    ctx.lineTo(nx, ny);
-                    ctx.stroke();
-                });
-            }
-            // STAGE 4: De-excitation & Target Reformation (0.76 <= p <= 1.0)
-            else {
-                const tau = (p - 0.76) / 0.24;
-                // Re-forming nucleus condensing back
-                const r = 6.8 * tau;
-                ctx.fillStyle = rgba(a, 0.16 * tau);
-                ctx.strokeStyle = rgba(a, 0.65 * tau);
-                ctx.lineWidth = 1.2;
-                ctx.beginPath();
-                ctx.arc(cx, mid, r, 0, TAU);
-                ctx.fill();
-                ctx.stroke();
-
-                NUCLEONS.forEach((nuc) => {
-                    ctx.fillStyle = nuc.isP ? rgba(a, 0.95 * tau) : `rgba(255,255,255,${0.85 * tau})`;
-                    ctx.beginPath();
-                    ctx.arc(cx + nuc.dx * tau, mid + nuc.dy * tau, 1.3 * tau, 0, TAU);
-                    ctx.fill();
-                });
-            }
-        });
-    };
-};
-
-// Data science: Agent-Based Model mini-swarm telemetry in the nav bar.
-NAV.datascience = () => {
-    let W = 0;
-    const N = 18;
-    const boids = Array.from({ length: N }, () => ({
-        x: Math.random() * 120,
-        y: 4 + Math.random() * 20,
-        vx: (Math.random() - 0.5) * 1.6,
-        vy: (Math.random() - 0.5) * 0.9
-    }));
-    return (ctx, w, h, t, dt) => {
-        W = w;
-        const a = KW.col.a;
-        ctx.lineWidth = 1;
-        for (let i = 0; i < N; i++) {
-            const bi = boids[i];
-            for (let j = i + 1; j < N; j++) {
-                const bj = boids[j], dx = bj.x - bi.x, dy = bj.y - bi.y, d = Math.hypot(dx, dy);
-                if (d < 26) {
-                    ctx.strokeStyle = rgba(a, (1 - d / 26) * 0.35);
-                    ctx.beginPath(); ctx.moveTo(bi.x, bi.y); ctx.lineTo(bj.x, bj.y); ctx.stroke();
-                    if (d < 9) { bi.vx -= (dx / d) * dt * 4.5; bi.vy -= (dy / d) * dt * 4.5; }
-                    bi.vx += (bj.vx - bi.vx) * dt * 1.4;
-                    bi.vy += (bj.vy - bi.vy) * dt * 1.4;
-                }
-            }
-            bi.x += bi.vx; bi.y += bi.vy;
-            if (bi.x < 0) bi.x = w; else if (bi.x > w) bi.x = 0;
-            if (bi.y < 3) { bi.y = 3; bi.vy = Math.abs(bi.vy); } else if (bi.y > h - 3) { bi.y = h - 3; bi.vy = -Math.abs(bi.vy); }
-            ctx.fillStyle = rgba(a, 0.9);
-            ctx.beginPath(); ctx.arc(bi.x, bi.y, 1.8, 0, TAU); ctx.fill();
-        }
-    };
-};
-
-// Quant: live-streaming OHLC candlestick chart with high/low wicks, EMA overlay, and live-ticking active bar.
-NAV.quant = () => {
-    const CW = 9, bars = [];
-    let price = 100, ema = 100, tickAcc = 0, barAcc = 0, lo = 0, hi = 0, init = false;
-    const spawnBar = () => {
-        const o = price;
-        let c = o, h = o, l = o;
-        for (let k = 0; k < 6; k++) {
-            c += randn() * 0.45;
-            if (c > h) h = c;
-            if (c < l) l = c;
-        }
-        price = c;
-        ema = ema * 0.82 + c * 0.18;
-        bars.push({ o, h: h + Math.random() * 0.35, l: l - Math.random() * 0.35, c, ema });
-    };
-    return (ctx, w, h, t, dt) => {
-        const n = Math.ceil(w / CW) + 2;
-        if (!init) { for (let i = 0; i < n; i++) spawnBar(); init = true; }
-        tickAcc += dt * 18;
-        while (tickAcc >= 1) {
-            tickAcc--;
-            const cur = bars[bars.length - 1];
-            cur.c += randn() * 0.28;
-            if (cur.c > cur.h) cur.h = cur.c;
-            if (cur.c < cur.l) cur.l = cur.c;
-            price = cur.c;
-            cur.ema = cur.ema * 0.94 + cur.c * 0.06;
-            ema = cur.ema;
-        }
-        barAcc += dt * 2.4;
-        while (barAcc >= 1) {
-            barAcc--;
-            bars.push({ o: price, h: price + 0.15, l: price - 0.15, c: price, ema });
-        }
-        while (bars.length > n) bars.shift();
-
-        let mn = Infinity, mx = -Infinity;
-        for (const b of bars) { if (b.l < mn) mn = b.l; if (b.h > mx) mx = b.h; }
-        if (lo === hi) { lo = mn; hi = mx; }
-        lo += (mn - lo) * 0.12; hi += (mx - hi) * 0.12;
-        const span = Math.max(hi - lo, 1e-3);
-        const bull = KW.col.pal[3] || KW.col.a, bear = KW.col.pal[0] || [224, 40, 64], maCol = KW.col.pal[2] || [245, 158, 11];
-        const px = (i) => w - 10 - (bars.length - 1 - i + barAcc) * CW;
-        const py = (v) => h - 3 - ((v - lo) / span) * (h - 6);
-
-        // Dashed live price level
-        const lastY = py(bars[bars.length - 1].c);
-        ctx.save();
-        ctx.setLineDash([2, 3]);
-        ctx.strokeStyle = rgba(bull, 0.35);
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(0, lastY); ctx.lineTo(w, lastY); ctx.stroke();
         ctx.restore();
-
-        // Candlesticks (wicks + bodies)
-        for (let i = 0; i < bars.length; i++) {
-            const b = bars[i], x = px(i), up = b.c >= b.o, col = up ? bull : bear;
-            const yH = py(b.h), yL = py(b.l), yO = py(b.o), yC = py(b.c);
-            const top = Math.min(yO, yC), bh = Math.max(1.8, Math.abs(yC - yO));
-            ctx.strokeStyle = rgba(col, 0.85);
-            ctx.lineWidth = 1.1;
-            ctx.beginPath(); ctx.moveTo(x, yH); ctx.lineTo(x, yL); ctx.stroke();
-            ctx.fillStyle = rgba(col, i === bars.length - 1 ? 1 : 0.88);
-            ctx.fillRect(x - 2.6, top, 5.2, bh);
-        }
-
-        // Exponential Moving Average (EMA) line
-        ctx.strokeStyle = rgba(maCol, 0.78);
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        bars.forEach((b, i) => (i ? ctx.lineTo(px(i), py(b.ema)) : ctx.moveTo(px(i), py(b.ema))));
-        ctx.stroke();
     };
 };
 
-// Computer science: insertion sort stepping through a shuffled array, with a blinking prompt.
+// Physics: Gravitational Lensing & Geodesic Deviation with hyperbolic deflection around mass
+NAV.physics = () => {
+    let massX = -1, massY = -1;
+    return (ctx, w, h, t, dt) => {
+        const a = KW.col.a;
+        const mid = h / 2;
+
+        const badgeW = drawNavBadge(ctx, "a/M = 0.998 · r_+ = M + √(M² - a²) · ergosphere active", mid, w, a, {
+            short: "a/M = 0.998 · r_+ = M + √(M² - a²)"
+        });
+
+        const x0 = badgeW ? badgeW + 10 : 12;
+        const x1 = w - 12;
+        const trackW = x1 - x0;
+        if (trackW < 40) return;
+
+        const targetMassX = NAV_INPUT.inNav ? Math.max(x0 + 20, Math.min(x1 - 20, NAV_INPUT.canvasX)) : (x0 + trackW * 0.52);
+        const targetMassY = NAV_INPUT.inNav ? Math.max(4, Math.min(h - 4, NAV_INPUT.canvasY)) : mid;
+
+        if (massX < 0) { massX = targetMassX; massY = targetMassY; }
+        else {
+            massX += (targetMassX - massX) * Math.min(1, dt * 7);
+            massY += (targetMassY - massY) * Math.min(1, dt * 7);
+        }
+
+        ctx.save();
+
+        const rSchw = 4.2;
+        ctx.fillStyle = "#020408";
+        ctx.beginPath();
+        ctx.arc(massX, massY, rSchw, 0, TAU);
+        ctx.fill();
+
+        const ringPulse = 0.75 + 0.25 * Math.sin(t * 3.5);
+        ctx.strokeStyle = rgba(a, 0.85 * ringPulse);
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.arc(massX, massY, rSchw + 1.8, 0, TAU);
+        ctx.stroke();
+
+        ctx.strokeStyle = rgba(a, 0.22);
+        ctx.beginPath();
+        ctx.ellipse(massX, massY, rSchw + 5.5, rSchw + 2.8, 0, 0, TAU);
+        ctx.stroke();
+
+        const rayCount = 7;
+        const raySpan = h * 0.76;
+        const rayStep = raySpan / (rayCount - 1);
+        const rayBaseY0 = mid - raySpan / 2;
+
+        for (let r = 0; r < rayCount; r++) {
+            const yBase = rayBaseY0 + r * rayStep;
+            const impactB = yBase - massY;
+            const absB = Math.max(Math.abs(impactB), 2.5);
+
+            ctx.lineWidth = r === Math.floor(rayCount / 2) ? 1.4 : 1.0;
+            ctx.strokeStyle = rgba(a, 0.35 + (1 - Math.abs(r - 3) / 3) * 0.45);
+            ctx.beginPath();
+
+            const xStep = 3;
+            for (let x = x0; x <= x1; x += xStep) {
+                const dx = x - massX;
+                const r2 = dx * dx + absB * absB;
+                const deflection = (160 * impactB) / (r2 + 40);
+                const y = yBase - deflection;
+
+                x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            const photonProgress = ((t * 0.45 + r * 0.16) % 1);
+            const px = x0 + trackW * photonProgress;
+            const pdx = px - massX;
+            const pr2 = pdx * pdx + absB * absB;
+            const py = yBase - (160 * impactB) / (pr2 + 40);
+
+            ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+            ctx.beginPath();
+            ctx.arc(px, py, 1.5, 0, TAU);
+            ctx.fill();
+        }
+
+        ctx.restore();
+    };
+};
+
+// Data Science: Stochastic Diffusion / Denoising SDE Waveform from noise to clean density
+NAV.datascience = () => {
+    let noisePulsePos = -100;
+    let noisePulseAmp = 0;
+
+    return (ctx, w, h, t, dt) => {
+        const a = KW.col.a;
+        const mid = h / 2;
+        const R = h * 0.38;
+
+        const badgeW = drawNavBadge(ctx, "t ∈ [0, 1] · SNR = 14.2 dB · ∇_x log p_t(x)", mid, w, a, {
+            short: "t ∈ [0, 1] · SNR = 14.2 dB"
+        });
+
+        const x0 = badgeW ? badgeW + 10 : 12;
+        const x1 = w - 12;
+        const trackW = x1 - x0;
+        if (trackW < 40) return;
+
+        if (NAV_INPUT.clickImpulse > 0) {
+            noisePulseAmp = 1.0;
+            noisePulsePos = NAV_INPUT.inNav ? (NAV_INPUT.canvasX - x0) / trackW : 0;
+            NAV_INPUT.clickImpulse = 0;
+        } else if (NAV_INPUT.inNav && noisePulseAmp < 0.2) {
+            noisePulseAmp = 0.55;
+            noisePulsePos = (NAV_INPUT.canvasX - x0) / trackW;
+        }
+
+        if (noisePulseAmp > 0.01) {
+            noisePulseAmp *= Math.exp(-dt * 2.4);
+            noisePulsePos += dt * 0.7;
+        }
+
+        ctx.save();
+        ctx.strokeStyle = rgba(a, 0.92);
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+
+        const xStep = 2;
+        for (let x = x0; x <= x1; x += xStep) {
+            const s = (x - x0) / trackW;
+
+            const n1 = Math.sin(x * 0.65 + t * 14.0) * Math.cos(x * 1.3 - t * 9.0);
+            const n2 = Math.sin(x * 1.85 + t * 22.0) * 0.5;
+            const rawNoise = (n1 + n2) * 0.8;
+
+            const noiseStd = Math.pow(1 - s, 1.8);
+
+            const g1 = Math.exp(-Math.pow(s - 0.70, 2) / (2 * 0.05 * 0.05));
+            const g2 = Math.exp(-Math.pow(s - 0.88, 2) / (2 * 0.04 * 0.04));
+            const cleanTarget = (0.65 * g1 + 0.45 * g2) * 1.6 - 0.25;
+
+            const pulseDist = Math.abs(s - noisePulsePos);
+            const pulseShock = noisePulseAmp * Math.exp(-Math.pow(pulseDist, 2) / (2 * 0.08 * 0.08)) * Math.sin(x * 1.2 + t * 18);
+
+            const yVal = (rawNoise * noiseStd) + (cleanTarget * Math.pow(s, 1.4)) + pulseShock;
+            const y = mid - R * Math.max(-1.1, Math.min(1.1, yVal));
+
+            x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        ctx.strokeStyle = rgba(a, 0.20);
+        ctx.lineWidth = 1.0;
+        ctx.setLineDash([2, 3]);
+
+        ctx.beginPath();
+        for (let x = x0; x <= x1; x += 4) {
+            const s = (x - x0) / trackW;
+            const env = Math.pow(1 - s, 1.6) * 0.85;
+            const y = mid - R * env;
+            x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        ctx.beginPath();
+        for (let x = x0; x <= x1; x += 4) {
+            const s = (x - x0) / trackW;
+            const env = Math.pow(1 - s, 1.6) * 0.85;
+            const y = mid + R * env;
+            x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        if (trackW > 160) {
+            ctx.fillStyle = rgba(a, 0.55);
+            ctx.font = '500 7px "JetBrains Mono", monospace';
+            ctx.fillText("NOISE (t=1)", x0 + 4, mid + R + 1);
+            ctx.textAlign = "right";
+            ctx.fillText("DENOISED (t=0)", x1 - 4, mid + R + 1);
+            ctx.textAlign = "left";
+        }
+
+        ctx.restore();
+    };
+};
+
+// Quant Finance: Order Book Depth & Volatility Smile with hover execution cursor
+NAV.quant = () => {
+    let tickCount = 8842;
+    let poissonAcc = 0;
+    const BOOK_LEVELS = 18;
+    const bidDepths = Array.from({ length: BOOK_LEVELS }, () => 0.2 + Math.random() * 0.8);
+    const askDepths = Array.from({ length: BOOK_LEVELS }, () => 0.2 + Math.random() * 0.8);
+
+    return (ctx, w, h, t, dt) => {
+        const a = KW.col.a;
+        const bidCol = KW.col.pal[3] || [34, 197, 94];
+        const askCol = KW.col.pal[0] || [244, 63, 94];
+        const mid = h / 2;
+
+        poissonAcc += dt * 11;
+        while (poissonAcc >= 1) {
+            poissonAcc--;
+            tickCount++;
+            const idx = (Math.random() * BOOK_LEVELS) | 0;
+            if (Math.random() < 0.5) bidDepths[idx] = Math.max(0.1, Math.min(1.0, bidDepths[idx] + (Math.random() - 0.48) * 0.35));
+            else askDepths[idx] = Math.max(0.1, Math.min(1.0, askDepths[idx] + (Math.random() - 0.48) * 0.35));
+        }
+
+        const badgeW = drawNavBadge(ctx, `spread: 1.2 bps · tick #${tickCount} · dW_t ~ N(0, dt)`, mid, w, a, {
+            short: `spread: 1.2 bps · dW_t ~ N(0, dt)`
+        });
+
+        const x0 = badgeW ? badgeW + 10 : 12;
+        const x1 = w - 12;
+        const trackW = x1 - x0;
+        if (trackW < 40) return;
+
+        const isHovered = NAV_INPUT.inNav;
+        const execCursorX = isHovered ? Math.max(x0, Math.min(x1, NAV_INPUT.canvasX)) : -1;
+        const bookMidX = x0 + trackW * 0.5;
+
+        ctx.save();
+
+        const barW = Math.max(2, Math.floor((trackW * 0.46) / BOOK_LEVELS));
+        const maxH = h * 0.36;
+
+        for (let i = 0; i < BOOK_LEVELS; i++) {
+            const bx = bookMidX - 4 - (i + 1) * barW;
+            if (bx < x0) break;
+            const bh = bidDepths[i] * maxH;
+            ctx.fillStyle = rgba(bidCol, 0.40 + (1 - i / BOOK_LEVELS) * 0.45);
+            ctx.fillRect(bx, mid - bh, barW - 1, bh);
+        }
+
+        for (let i = 0; i < BOOK_LEVELS; i++) {
+            const ax = bookMidX + 4 + i * barW;
+            if (ax + barW > x1) break;
+            const ah = askDepths[i] * maxH;
+            ctx.fillStyle = rgba(askCol, 0.40 + (1 - i / BOOK_LEVELS) * 0.45);
+            ctx.fillRect(ax, mid, barW - 1, ah);
+        }
+
+        const jumpRisk = 0.08 * Math.sin(t * 3.2);
+        ctx.strokeStyle = rgba(a, 0.90);
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        for (let x = x0; x <= x1; x += 2) {
+            const normK = (x - bookMidX) / (trackW * 0.48);
+            const smileY = mid - (h * 0.32) + (normK * normK * 14) + (jumpRisk * normK * 6);
+            x === x0 ? ctx.moveTo(x, smileY) : ctx.lineTo(x, smileY);
+        }
+        ctx.stroke();
+
+        ctx.strokeStyle = rgba(a, 0.25);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x0, mid);
+        ctx.lineTo(x1, mid);
+        ctx.stroke();
+
+        if (isHovered && execCursorX >= x0 && execCursorX <= x1) {
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            ctx.moveTo(execCursorX, mid - maxH - 2);
+            ctx.lineTo(execCursorX, mid + maxH + 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = rgba(a, 1);
+            ctx.beginPath();
+            ctx.arc(execCursorX, mid, 2.5, 0, TAU);
+            ctx.fill();
+
+            ctx.font = '600 7.5px "JetBrains Mono", monospace';
+            ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+            ctx.fillText("EXEC @ 0.0 bps", Math.min(execCursorX + 4, x1 - 65), mid - 8);
+        }
+
+        ctx.restore();
+    };
+};
+
+// Computer Science: Live Instruction Pipeline / Sorting Ribbon with clock halt & opcode inspection
 NAV.cs = () => {
-    const LABEL = 64; let arr = [], gen = null, done = false, hold = 0, cmp = [-1, -1], steps = 0;
-    function* isort(v) {
-        for (let i = 1; i < v.length; i++) {
-            let j = i;
-            while (j > 0 && v[j - 1] > v[j]) { [v[j - 1], v[j]] = [v[j], v[j - 1]]; yield [j - 1, j]; j--; }
-            yield [j, i];
+    const N_BARS = 32;
+    let bars = Array.from({ length: N_BARS }, (_, i) => (i + 1) / N_BARS);
+    let sortGen = null;
+    let cmpA = -1, cmpB = -1;
+    let sortDone = false;
+    let holdTimer = 0;
+
+    function* bitonicSort(arr) {
+        for (let k = 2; k <= arr.length; k *= 2) {
+            for (let j = k / 2; j > 0; j = Math.floor(j / 2)) {
+                for (let i = 0; i < arr.length; i++) {
+                    const l = i ^ j;
+                    if (l > i) {
+                        const dir = ((i & k) === 0);
+                        if ((arr[i] > arr[l]) === dir) {
+                            const tmp = arr[i]; arr[i] = arr[l]; arr[l] = tmp;
+                            yield [i, l];
+                        }
+                    }
+                }
+            }
         }
     }
-    const shuffle = () => {
-        for (let i = arr.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [arr[i], arr[j]] = [arr[j], arr[i]]; }
-        gen = isort(arr); done = false; steps = 0;
-    };
-    return (ctx, w, h, t, dt) => {
-        const n = Math.max(12, Math.floor((w - LABEL) / 5));
-        if (n !== arr.length) { arr = Array.from({ length: n }, (_, i) => (i + 1) / n); shuffle(); }
-        if (!done) {
-            for (let k = Math.ceil(n * 6 * dt); k > 0; k--) {
-                const r = gen.next();
-                if (r.done) { done = true; hold = 1.4; cmp = [-1, -1]; break; }
-                cmp = r.value; steps++;
-            }
-        } else if ((hold -= dt) <= 0) shuffle();
-        const a = KW.col.a, muted = [150, 156, 172];
-        ctx.font = '500 10px "JetBrains Mono", ui-monospace, monospace'; ctx.textBaseline = "middle";
-        ctx.fillStyle = rgba(muted, 1); ctx.fillText(`$ isort${t % 1 < 0.5 ? "▊" : ""}`, 0, h / 2 - 6);
-        ctx.fillStyle = rgba(a, 0.9); ctx.fillText(done ? "sorted ✓" : `#${String(steps).padStart(5, "0")}`, 0, h / 2 + 7);
-        const bw = (w - LABEL) / n;
-        for (let i = 0; i < n; i++) {
-            const bh = arr[i] * (h - 6), hot = i === cmp[0] || i === cmp[1];
-            ctx.fillStyle = rgba(a, hot ? 1 : done ? 0.8 : 0.3);
-            ctx.fillRect(LABEL + i * bw, h - 3 - bh, Math.max(bw - 1, 1), bh);
+
+    const resetSort = () => {
+        for (let i = bars.length - 1; i > 0; i--) {
+            const j = (Math.random() * (i + 1)) | 0;
+            const tmp = bars[i]; bars[i] = bars[j]; bars[j] = tmp;
         }
+        sortGen = bitonicSort(bars);
+        sortDone = false;
+        cmpA = -1; cmpB = -1;
+    };
+    resetSort();
+
+    const OPCODES = [
+        { code: "0x90", name: "NOP" },
+        { code: "0xE9", name: "JMP" },
+        { code: "0x55", name: "PUSH" },
+        { code: "0x48", name: "MOV" },
+        { code: "0xC3", name: "RET" },
+        { code: "0x0F", name: "SYSCALL" }
+    ];
+
+    const STAGES = ["IF", "ID", "EX", "MEM", "WB"];
+
+    return (ctx, w, h, t, dt) => {
+        const a = KW.col.a;
+        const mid = h / 2;
+        const isHalted = NAV_INPUT.inNav;
+
+        let telemStr = "SSA IR block: %bb.4 · IPC: 2.4 · 8-bit bus clk: 10 MHz";
+        let shortTelem = "IPC: 2.4 · clk: 10 MHz";
+        let pipCol = a;
+
+        if (isHalted) {
+            const opIdx = Math.floor(Math.abs(NAV_INPUT.canvasX * 0.1)) % OPCODES.length;
+            const op = OPCODES[opIdx];
+            telemStr = `CLK HALT · ${op.code} ${op.name} · IP: 0x7FFF00`;
+            shortTelem = `CLK HALT · ${op.code} ${op.name}`;
+            pipCol = [248, 113, 113];
+        }
+
+        const badgeW = drawNavBadge(ctx, telemStr, mid, w, a, {
+            short: shortTelem,
+            pipCol,
+            borderCol: isHalted ? [248, 113, 113] : a
+        });
+
+        const x0 = badgeW ? badgeW + 10 : 12;
+        const x1 = w - 12;
+        const trackW = x1 - x0;
+        if (trackW < 40) return;
+
+        if (!isHalted) {
+            if (!sortDone && sortGen) {
+                for (let k = 0; k < 2; k++) {
+                    const r = sortGen.next();
+                    if (r.done) {
+                        sortDone = true;
+                        holdTimer = 1.6;
+                        cmpA = -1; cmpB = -1;
+                        break;
+                    }
+                    cmpA = r.value[0]; cmpB = r.value[1];
+                }
+            } else if ((holdTimer -= dt) <= 0) {
+                resetSort();
+            }
+        }
+
+        ctx.save();
+
+        const pipeY = mid - 4;
+        const pipeSpan = Math.min(trackW * 0.45, 180);
+        const stageGap = pipeSpan / STAGES.length;
+        const clkProgress = isHalted ? 0.5 : ((t * 2.2) % 1);
+        const activeStage = Math.floor(clkProgress * STAGES.length);
+
+        ctx.font = '600 7.5px "JetBrains Mono", monospace';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        for (let i = 0; i < STAGES.length; i++) {
+            const sx = x0 + i * stageGap + stageGap * 0.5;
+            const isActive = !isHalted && i === activeStage;
+            const stageW = stageGap - 4;
+            const stageH = 10;
+
+            ctx.fillStyle = rgba(a, isActive ? 0.35 : 0.09);
+            ctx.strokeStyle = rgba(a, isActive ? 1.0 : 0.30);
+            ctx.lineWidth = 1;
+            ctx.fillRect(sx - stageW / 2, pipeY - stageH / 2, stageW, stageH);
+            ctx.strokeRect(sx - stageW / 2, pipeY - stageH / 2, stageW, stageH);
+
+            ctx.fillStyle = rgba(isActive ? [255, 255, 255] : a, isActive ? 1.0 : 0.65);
+            ctx.fillText(STAGES[i], sx, pipeY);
+
+            if (i < STAGES.length - 1) {
+                ctx.strokeStyle = rgba(a, isActive ? 0.8 : 0.25);
+                ctx.beginPath();
+                ctx.moveTo(sx + stageW / 2, pipeY);
+                ctx.lineTo(sx + stageGap - stageW / 2, pipeY);
+                ctx.stroke();
+            }
+        }
+
+        const sortStartX = x0 + pipeSpan + 14;
+        const sortW = x1 - sortStartX;
+        if (sortW > 40) {
+            const n = Math.min(N_BARS, Math.floor(sortW / 4.5));
+            const bw = sortW / n;
+            const maxBarH = h * 0.65;
+
+            for (let i = 0; i < n; i++) {
+                const bx = sortStartX + i * bw;
+                const bh = Math.max(2, bars[i] * maxBarH);
+                const isHot = (i === cmpA || i === cmpB);
+                const by = h - 2 - bh;
+
+                ctx.fillStyle = rgba(a, isHot ? 1.0 : sortDone ? 0.85 : 0.32);
+                ctx.fillRect(bx, by, Math.max(bw - 1.2, 1), bh);
+
+                if (isHot) {
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(bx, by, Math.max(bw - 1.2, 1), 2);
+                }
+            }
+        }
+
+        if (isHalted && NAV_INPUT.canvasX >= x0 && NAV_INPUT.canvasX <= x1) {
+            const opIdx = Math.floor(Math.abs(NAV_INPUT.canvasX * 0.1)) % OPCODES.length;
+            const op = OPCODES[opIdx];
+            const hx = NAV_INPUT.canvasX;
+
+            ctx.font = '600 8px "JetBrains Mono", monospace';
+            ctx.textAlign = "center";
+            ctx.fillStyle = "rgba(248, 113, 113, 0.95)";
+            ctx.fillText(`[${op.code} ${op.name}]`, hx, h - 3);
+        }
+
+        ctx.restore();
     };
 };
 
@@ -1391,7 +1618,7 @@ const initNavSim = (c) => {
         if (!cur) cur = k;
         else if (k !== cur) { prev = cur; cur = k; mix = 0; }
         if (mix < 1) {
-            mix = Math.min(1, mix + dt * 3.2);
+            mix = Math.min(1, mix + dt * 2.5); // cross-fade over ~400ms
             if (prev) {
                 ctx.save(); ctx.globalAlpha = 1 - mix;
                 (inst[prev] || (inst[prev] = NAV[prev]()))(ctx, W, Hh, t, dt);
@@ -1401,7 +1628,7 @@ const initNavSim = (c) => {
         ctx.save(); ctx.globalAlpha = mix;
         (inst[cur] || (inst[cur] = NAV[cur]()))(ctx, W, Hh, t, dt);
         ctx.restore();
-        navFade(ctx, W, Hh, cur !== "cs" && (mix >= 1 || prev !== "cs"));
+        navFade(ctx, W, Hh, false);
     });
 };
 
