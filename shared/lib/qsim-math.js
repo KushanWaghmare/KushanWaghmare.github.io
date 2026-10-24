@@ -432,6 +432,16 @@
         return { m, Q, N, a, trivialGcd: 1, r, directR, candidateQ, convergents: convs, factors };
     };
 
+    const getShorResidues = (a, N = 15) => {
+        const list = [];
+        let cur = 1 % N;
+        while (!list.includes(cur)) {
+            list.push(cur);
+            cur = (cur * a) % N;
+        }
+        return list;
+    };
+
     //Deterministic hash of first `count` Grover/Shor measurement outcomes for Node<->Browser parity
     const measurementParityHash = (seed = 0x51514D32, count = 20) => {
         const prng = mulberry32(seed);
@@ -459,6 +469,6 @@
         applyGroverOracle, applyGroverDiffusion, groverClosedForm,
         buildQftCircuit, applyGate, applyQFT, applyInverseQFT,
         applyModExpOracle, workRegisterMarginals, measureWorkRegister, measureState,
-        continuedFractionConvergents, shorPostProcess, measurementParityHash
+        continuedFractionConvergents, shorPostProcess, getShorResidues, measurementParityHash
     };
 }));
