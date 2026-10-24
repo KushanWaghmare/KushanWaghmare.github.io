@@ -34,8 +34,8 @@ const SITE = {
         },
         cs: {
             name: "Computer Science", short: "CS", file: "cs.html",
-            label: "Computer Science · Systems & compilers",
-            blurb: "Compilers and machine architecture, from grammars and SSA form down to TTL gates on a breadboard.",
+            label: "Computer Science · Systems, compilers & quantum computing",
+            blurb: "Compilers, machine architecture and quantum state evolution — from grammars, SSA form and TTL gates to Grover search and Shor period finding.",
             eq: r`|\psi_{k+1}\rangle = (2|\psi\rangle\langle\psi| - \hat I)\,\hat O\,|\psi_k\rangle,\qquad \hat O = \hat I - 2|\omega\rangle\langle\omega|`,
             tag: "Grover search · 8 simulated qubits · oracle reflection & unitary diffusion operator · optimal k = 12",
         },

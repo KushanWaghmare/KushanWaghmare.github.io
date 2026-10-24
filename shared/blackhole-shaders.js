@@ -37,6 +37,7 @@ uniform float uSpin;          // Kerr spin parameter a in [0, 0.998]
 uniform float uTilt;          // Observer polar angle θ_obs in [0.05, π - 0.05]
 uniform float uCamDist;       // Observer distance r_obs (default ≥ 50.0)
 uniform float uFovScale;      // Screen impact parameter scale
+uniform float uOriginShiftX;  // Horizontal camera origin shift (positive moves black hole right)
 uniform float uRout;          // Outer disk radius (default 25.0)
 uniform float uDiskOpacity;   // Accretion disk opacity (default 0.85)
 uniform int uMaxSteps;        // Maximum geodesic integration steps
@@ -167,7 +168,7 @@ void sampleDiskEmission(float r, float phi, float t, float L, out vec3 outCol, o
 
 void main() {
     // Screen impact parameters (α, β) with sub-pixel Halton jitter
-    vec2 pScreen = ((gl_FragCoord.xy + uJitter) - 0.5 * uRes) / uRes.y;
+    vec2 pScreen = ((gl_FragCoord.xy + uJitter) - vec2(0.5 * uRes.x + uOriginShiftX * uRes.x, 0.5 * uRes.y)) / uRes.y;
     float alpha = pScreen.x * uFovScale;
     float beta = pScreen.y * uFovScale;
 

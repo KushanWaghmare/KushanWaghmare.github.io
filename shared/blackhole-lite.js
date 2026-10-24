@@ -21,6 +21,7 @@ precision mediump float;
 #endif
 
 uniform vec2 uRes;
+uniform float uOriginShiftX;
 uniform float uTime;
 uniform float uTilt;
 uniform float uFlare;
@@ -181,7 +182,7 @@ void sampleDisk(vec3 p, vec3 ro, float ds, inout vec3 emit, inout float transm) 
 }
 
 void main() {
-    vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
+    vec2 uv = (gl_FragCoord.xy - vec2(0.5 * uRes.x + uOriginShiftX * uRes.x, 0.5 * uRes.y)) / uRes.y;
 
     float az = uTime * 0.04;
     float th = uTilt;
@@ -286,7 +287,7 @@ void main() {
         gl.vertexAttribPointer(aLoc, 2, gl.FLOAT, false, 0, 0);
 
         const U = {};
-        ["uRes", "uTime", "uTilt", "uFlare", "uExposure", "uAccent", "uSteps"].forEach((n) => {
+        ["uRes", "uOriginShiftX", "uTime", "uTilt", "uFlare", "uExposure", "uAccent", "uSteps"].forEach((n) => {
             U[n] = gl.getUniformLocation(prog, n);
         });
 
@@ -333,6 +334,7 @@ void main() {
 
             const a = KW.col.a;
             gl.uniform2f(U.uRes, c.width, c.height);
+            gl.uniform1f(U.uOriginShiftX, mobile ? 0.0 : 0.16);
             gl.uniform1f(U.uTime, t);
             gl.uniform1f(U.uTilt, tilt);
             gl.uniform1f(U.uFlare, flare);

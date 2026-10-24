@@ -217,13 +217,13 @@ void main() {
     gl_Position = uViewProj * vec4(pos, 1.0);
 
     // Size with subtle distance attenuation
-    gl_PointSize = clamp(uPointScale / max(gl_Position.w * 0.35, 0.4), 1.2, 4.0);
+    gl_PointSize = clamp(uPointScale / max(gl_Position.w * 0.35, 0.32), 1.6, 5.2);
 
     // Colour: cool desaturated tint at noise -> warming to domain accent as structure forms
     float form = 1.0 - smoothstep(0.001, 0.75, t_i);
     vForm = form;
-    vec3 coolNoise = vec3(0.55, 0.68, 0.92);
-    vec3 warmBase  = vec3(1.0, 0.85, 0.45);
+    vec3 coolNoise = vec3(0.55, 0.70, 0.95);
+    vec3 warmBase  = vec3(1.0, 0.88, 0.48);
     vColor = mix(coolNoise, warmBase, form);
 }
 `;
@@ -244,10 +244,11 @@ void main() {
     float alpha = smoothstep(0.25, 0.0, distSq);
 
     float normSpd = clamp(vSpeed * 14.0, 0.0, 1.0);
-    vec3 col = mix(vColor, uAccent * 1.25 + vec3(0.25, 0.20, 0.15), 0.65);
-    col = mix(col, vec3(1.0, 0.98, 0.92), normSpd * 0.4);
+    vec3 col = mix(vColor, uAccent * 1.35 + vec3(0.28, 0.22, 0.16), 0.70);
+    col = mix(col, vec3(1.0, 0.98, 0.92), normSpd * 0.45);
 
-    float luminous = (0.028 + 0.055 * normSpd) * alpha;
+    // Boosted particle luminous opacity along trajectories
+    float luminous = (0.075 + 0.14 * normSpd) * alpha;
     fragColor = vec4(col * luminous, 1.0);
 }
 `;
@@ -350,9 +351,9 @@ void main() { fragColor = texture(uTex, vUV); }`;
             if (!DM && root.DiffusionMath) DM = root.DiffusionMath;
 
             targets = [
+                DM.getTorusTarget(K),
                 DM.getGalaxyTarget(K),
-                DM.getTrefoilTarget(K),
-                DM.getTorusTarget(K)
+                DM.getTrefoilTarget(K)
             ];
 
             updateProg = gfx.program(VS_QUAD, FS_UPDATE);
@@ -543,7 +544,7 @@ void main() { fragColor = texture(uTex, vUV); }`;
                     vp[3] = -v2;      vp[7] = -v6;      vp[11] = -v10;     vp[15] = -v14;
 
                     // 3. Fading Accumulation Trails Pass
-                    const trailScene = gfx.fadeScene(trailPP, isReduced ? 0.0 : 0.92);
+                    const trailScene = gfx.fadeScene(trailPP, isReduced ? 0.0 : 0.94);
                     sceneTarget.clear(0, 0, 0, 1);
 
                     // Copy faded trail into sceneTarget
@@ -559,7 +560,7 @@ void main() { fragColor = texture(uTex, vUV); }`;
                         .tex("uPrevState", statePP.write(), 1)
                         .mat4("uViewProj", vp)
                         .f3("uEyePos", eyeX, eyeY, eyeZ)
-                        .f1("uPointScale", isMob ? 2.2 : 2.6)
+                        .f1("uPointScale", isMob ? 2.6 : 3.4)
                         .i1("uTexW", side)
                         .f3("uAccent", aR, aG, aB);
 
@@ -573,9 +574,9 @@ void main() { fragColor = texture(uTex, vUV); }`;
                     // 4. Tonemap, Bloom, and Blit to Slide Canvas
                     gfx.compose(sceneTarget, ctx2d, outW, outH, {
                         time: t,
-                        bloomGain: 0.38,
-                        threshold: 0.42,
-                        exposure: 1.15,
+                        bloomGain: 0.55,
+                        threshold: 0.32,
+                        exposure: 1.25,
                         accent: aCol
                     });
 

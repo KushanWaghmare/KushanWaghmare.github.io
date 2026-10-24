@@ -882,20 +882,73 @@ NAV.physics = () => {
         const b = KW.col.pal[0] || [248, 113, 113];
         const mid = h / 2;
 
-        // Fission reaction sites across the nav bar strip
-        const sites = w > 360 ? [w * 0.22, w * 0.54, w * 0.82] : (w > 220 ? [w * 0.32, w * 0.72] : [w * 0.5]);
+        // 1. Top-left reaction/formula telemetry badge with clean, fixed bounding box
+        const showTelem = w > 260;
+        let trackStart = 8;
+        if (showTelem) {
+            const telemText = w > 380 ? "²³⁵U + n → ¹⁴¹Ba + ⁹²Kr + 3n · Q ≈ 200 MeV" : "²³⁵U + n → ¹⁴¹Ba + ⁹²Kr";
+            ctx.font = '500 8.5px "JetBrains Mono", ui-monospace, monospace';
+            const tw = ctx.measureText(telemText).width;
+            const bX = 6;
+            const bH = 18;
+            const bY = Math.round(mid - bH / 2);
+            const bW = Math.round(tw + 22);
 
-        // 1. Moderator neutron guide line
-        ctx.strokeStyle = rgba(a, 0.14);
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 4]);
-        ctx.beginPath();
-        ctx.moveTo(0, mid);
-        ctx.lineTo(w, mid);
-        ctx.stroke();
-        ctx.setLineDash([]);
+            ctx.save();
+            ctx.fillStyle = "rgba(7, 10, 18, 0.90)";
+            ctx.strokeStyle = rgba(a, 0.38);
+            ctx.lineWidth = 1;
+            if (ctx.roundRect) {
+                ctx.beginPath();
+                ctx.roundRect(bX, bY, bW, bH, 4);
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                ctx.fillRect(bX, bY, bW, bH);
+                ctx.strokeRect(bX, bY, bW, bH);
+            }
 
-        // 2. Render each Uranium-235 fission site
+            // Status pip
+            ctx.fillStyle = rgba(a, 0.95);
+            ctx.beginPath();
+            ctx.arc(bX + 8, mid, 2, 0, TAU);
+            ctx.fill();
+
+            // Formula label inside bounding box
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+            ctx.fillText(telemText, bX + 15, mid);
+            ctx.restore();
+
+            trackStart = bX + bW + 12;
+        }
+
+        const trackEnd = w - 8;
+        const trackWidth = trackEnd - trackStart;
+
+        // 2. Moderator neutron guide line across the graphic track
+        if (trackWidth > 30) {
+            ctx.strokeStyle = rgba(a, 0.16);
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 4]);
+            ctx.beginPath();
+            ctx.moveTo(trackStart, mid);
+            ctx.lineTo(trackEnd, mid);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // 3. Fission reaction sites distributed along the graphic track
+        let sites = [];
+        if (trackWidth > 260) {
+            sites = [trackStart + trackWidth * 0.20, trackStart + trackWidth * 0.58, trackStart + trackWidth * 0.88];
+        } else if (trackWidth > 140) {
+            sites = [trackStart + trackWidth * 0.32, trackStart + trackWidth * 0.78];
+        } else if (trackWidth > 50) {
+            sites = [trackStart + trackWidth * 0.5];
+        }
+
+        // 4. Render each Uranium-235 fission site
         sites.forEach((cx, idx) => {
             // Stagger phase across sites for continuous cascading fission
             const period = 3.6;
@@ -920,7 +973,8 @@ NAV.physics = () => {
             // STAGE 1: Incident thermal neutron approaching (0.0 <= p < 0.28)
             if (p < 0.28) {
                 const prog = p / 0.28;
-                const nDist = 48 * (1 - prog);
+                const maxTravel = Math.max(16, Math.min(48, (cx - trackStart) * 0.85));
+                const nDist = maxTravel * (1 - prog);
                 const nx = cx - nDist;
                 const ny = mid + Math.sin(prog * 12) * 0.8;
 
@@ -957,7 +1011,7 @@ NAV.physics = () => {
                 });
 
                 // Isotope label
-                if (w > 260) {
+                if (trackWidth > 180) {
                     ctx.font = '500 7.5px "JetBrains Mono", monospace';
                     ctx.fillStyle = "rgba(255,255,255,0.45)";
                     ctx.fillText("²³⁵U", cx - 7, mid - 10);
@@ -1007,7 +1061,7 @@ NAV.physics = () => {
                     ctx.fill();
                 });
 
-                if (w > 260) {
+                if (trackWidth > 180) {
                     ctx.font = 'bold 7.5px "JetBrains Mono", monospace';
                     ctx.fillStyle = rgba(a, 0.9);
                     ctx.fillText("²³⁶U*", cx - 9, mid - 11);
@@ -1061,7 +1115,7 @@ NAV.physics = () => {
                 ctx.fill();
 
                 // Fragment labels
-                if (w > 260 && tau < 0.75) {
+                if (trackWidth > 180 && tau < 0.75) {
                     ctx.font = '6.5px "JetBrains Mono", monospace';
                     ctx.fillStyle = rgba(a, invTau * 0.85);
                     ctx.fillText("¹⁴¹Ba", baX - 8, baY - 6);
@@ -1114,13 +1168,6 @@ NAV.physics = () => {
                 });
             }
         });
-
-        // 3. Top-left telemetry readout
-        if (w > 280) {
-            ctx.font = '500 8px "JetBrains Mono", ui-monospace, monospace';
-            ctx.fillStyle = "rgba(255,255,255,0.65)";
-            ctx.fillText("²³⁵U + n → ¹⁴¹Ba + ⁹²Kr + 3n · Q ≈ 200 MeV", 6, 9);
-        }
     };
 };
 

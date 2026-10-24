@@ -138,7 +138,7 @@
         // Uniform locations for Ray Marcher
         const uMarch = {};
         [
-            "uRes", "uTime", "uSpin", "uTilt", "uCamDist", "uFovScale",
+            "uRes", "uTime", "uSpin", "uTilt", "uCamDist", "uFovScale", "uOriginShiftX",
             "uRout", "uDiskOpacity", "uMaxSteps", "uEpsHorizon", "uExposure",
             "uAccent", "uRplus", "uRisco", "uDiskLUT", "uSkyCube", "uMode", "uDiskType",
             "uDiskH", "uTpeak", "uJitter", "uDebugMode"
@@ -503,6 +503,7 @@
             gl.uniform1f(uMarch.uTilt, tilt);
             gl.uniform1f(uMarch.uCamDist, 50.0);
             gl.uniform1f(uMarch.uFovScale, 38.0);
+            gl.uniform1f(uMarch.uOriginShiftX, mobile ? 0.0 : 0.16);
             gl.uniform1f(uMarch.uRout, R_OUT);
             gl.uniform1f(uMarch.uDiskOpacity, 0.85);
             gl.uniform1i(uMarch.uMaxSteps, MAX_STEPS);

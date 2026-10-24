@@ -403,7 +403,7 @@ pre.glass {
     inset: 0;
     z-index: 1;
     pointer-events: none;
-    background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.62) 0%, rgba(var(--bg-rgb), 0.30) 45%, rgba(var(--bg-rgb), 0.0) 78%);
+    background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.72) 0%, rgba(var(--bg-rgb), 0.40) 42%, rgba(var(--bg-rgb), 0.0) 76%);
 }
 
 .snap-inner {
@@ -413,6 +413,18 @@ pre.glass {
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+.snap-inner::before {
+    content: "";
+    position: absolute;
+    inset: -24px -36px;
+    background: radial-gradient(ellipse at 25% 45%, rgba(var(--bg-rgb), 0.78) 0%, rgba(var(--bg-rgb), 0.48) 55%, transparent 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 28px;
+    z-index: -1;
+    pointer-events: none;
 }
 
 .eyebrow {
