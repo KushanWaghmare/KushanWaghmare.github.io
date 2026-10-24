@@ -1427,10 +1427,10 @@ const initNavSim = (c) => {
                 return { mod: "math", key: "mobius-surfaces" };
             }
             if (simKey === "domain:physics:2" || simKey.startsWith("project:split-step-schrodinger")) {
-                return { mod: "physics", key: "split-step-schrodinger" };
+                return { mod: "schrodinger", key: "split-step-schrodinger" };
             }
             if (simKey === "domain:physics:1" || simKey.startsWith("project:nbody-leapfrog") || simKey.startsWith("paper:symplectic-energy-bounds-nbody:hero")) {
-                return { mod: "physics", key: "nbody-leapfrog" };
+                return { mod: "nbody", key: "nbody-leapfrog" };
             }
             if (simKey === "hub:domain-quant" || simKey === "domain:quant:0") {
                 return { mod: "crystal", key: "options-pricing" };
@@ -1451,13 +1451,13 @@ const initNavSim = (c) => {
                 return { mod: "datascience", key: "langevin-loss-landscapes" };
             }
             if (simKey === "course:PH2040") {
-                return { mod: "physics", key: "ising-model" };
+                return { mod: "ising", key: "ising-model" };
             }
             if (simKey === "course:PH3010" || simKey === "track:physics-curriculum") {
-                return { mod: "physics", key: "fdtd-wave-optics" };
+                return { mod: "fdtd", key: "fdtd-wave-optics" };
             }
             if (simKey === "domain:physics:3" || simKey === "course:PH2010") {
-                return { mod: "physics", key: "pendulum" };
+                return { mod: "pendulum", key: "pendulum" };
             }
             if (simKey === "domain:math:2" || simKey === "project:fourier-spectral:hero") {
                 return { mod: "primes-waves", key: "primes-waves" };
