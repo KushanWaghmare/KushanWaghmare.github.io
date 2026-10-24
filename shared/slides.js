@@ -81,9 +81,9 @@
             caption: "Möbius strip & normal vector transport n(2π,v) = −n(0,−v) · non-orientable topology",
         },
         "domain:math:2": {
-            engine: "primes-waves-2d",
-            params: { mode: "waves", maxN: 500, signal: "square", harmonics: 11, showSpectrum: true, baseR: 0.14 },
-            caption: "Explicit formula ψ(x) = x − Σ x^ρ/ρ − ln 2π − ½ ln(1 − x⁻²) · Riemann zeta zeros · sharp sum (click to toggle Cesàro)",
+            engine: "fourier",
+            params: { type: "fft-butterfly", stages: 4, points: 16, animSpeed: 0.85, showPhasors: true },
+            caption: "Cooley–Tukey radix-2 FFT · bit-reversal permutation & twiddle factor W_N^k butterflies · X_k = E_k + W_N^k O_k · O(N log N) flow · click to cycle signal",
         },
         "domain:math:3": {
             engine: "orbit",
@@ -229,9 +229,9 @@
            PROJECT 2: fourier-spectral (Mathematics)
            ===================================================================== */
         "project:fourier-spectral:hero": {
-            engine: "primes-waves-2d",
-            params: { mode: "hero-waves", maxN: 500, signal: "square", harmonics: 21, showSpectrum: true, baseR: 0.12, gibbsHighlight: true },
-            caption: "Explicit formula ψ(x) = x − Σ x^ρ/ρ − ln 2π − ½ ln(1 − x⁻²) · Riemann zeta zeros · sharp sum (click to toggle Cesàro)",
+            engine: "fourier",
+            params: { type: "fft-butterfly", stages: 4, points: 16, animSpeed: 1.05, showPhasors: true, interactiveTrace: true },
+            caption: "Cooley–Tukey radix-2 FFT · bit-reversal permutation & twiddle factor W_N^k butterflies · X_k = E_k + W_N^k O_k · O(N log N) flow · click to cycle signal",
         },
         "project:fourier-spectral:overview": {
             engine: "fourier",

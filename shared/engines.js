@@ -1337,9 +1337,14 @@
             }
         });
     };
-    ENGINES["fourier-2d"] = fourier2DFallback;
+    ENGINES.fourier = (canvas, params = {}) => {
+        if (root.SIMS && (root.SIMS["fourier-spectral"] || root.SIMS.fourier)) {
+            return (root.SIMS["fourier-spectral"] || root.SIMS.fourier)(canvas, params);
+        }
+        return fourier2DFallback(canvas, params);
+    };
+    ENGINES["fourier-2d"] = ENGINES.fourier;
     ENGINES["primes-waves-2d"] = fourier2DFallback;
-    ENGINES.fourier = fourier2DFallback;
     ENGINES["cy-cross-section-2d"] = ENGINES.surface;
 
     /* =========================================================================
