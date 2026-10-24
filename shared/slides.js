@@ -29,7 +29,7 @@
         "hub:domain-math": {
             engine: "cy-cross-section-2d",
             params: { type: "gauss-bonnet-figure8", uSteps: 140, vSteps: 28, scale: 1.1 },
-            caption: "Fermat curve z₁⁵ + z₂⁵ = 1 · cross-section of the quintic Calabi–Yau threefold · 25 patches · genus 6 (χ = −10 for the completed curve; the 5 ends at infinity are clipped) · projection angle α = 0.70 rad · click: next n",
+            caption: "Fermat curve z₁⁵ + z₂⁵ = 1 · Quintic Calabi–Yau threefold cross-section · 25 patches · genus 6 (χ = −10) · click: next n",
         },
         "hub:domain-physics": {
             engine: "blackhole",
@@ -44,7 +44,7 @@
         "hub:domain-quant": {
             engine: "paths",
             params: { process: "gbm", paths: 65, steps: 220, mu: 0.05, sigma: 0.32, band: 1.0 },
-            caption: "Exchange option on two assets · bivariate binomial lattice · n = 32 · 12,529 nodes · lattice 12.18 · Margrabe exact 12.18 · error 0.00 (0.00%) · ρ = 0.30 (move the pointer) · click: double the steps · Illustrative: S₁ = S₂ = 100, σ₁ = 30%, σ₂ = 20%, r = 3%, T = 1 year",
+            caption: "Exchange option on two assets · Bivariate lattice (n = 32 · 12,529 nodes) · Lattice: 12.18 · Margrabe exact: 12.18 (error 0.00%) · ρ = 0.30 · click: double steps",
         },
         "hub:domain-cs": {
             engine: "cs-2d",
@@ -73,7 +73,7 @@
         "domain:math:0": {
             engine: "cy-cross-section-2d",
             params: { type: "gauss-bonnet-figure8", uSteps: 140, vSteps: 28, scale: 1.1 },
-            caption: "Fermat curve z₁⁵ + z₂⁵ = 1 · cross-section of the quintic Calabi–Yau threefold · 25 patches · genus 6 (χ = −10 for the completed curve; the 5 ends at infinity are clipped) · projection angle α = 0.70 rad · click: next n",
+            caption: "Fermat curve z₁⁵ + z₂⁵ = 1 · Quintic Calabi–Yau threefold cross-section · 25 patches · genus 6 (χ = −10) · click: next n",
         },
         "domain:math:1": {
             engine: "surface",
@@ -145,7 +145,7 @@
         "domain:quant:0": {
             engine: "paths",
             params: { process: "gbm", paths: 65, steps: 220, mu: 0.05, sigma: 0.32, band: 1.0 },
-            caption: "Exchange option on two assets · bivariate binomial lattice · n = 32 · 12,529 nodes · lattice 12.18 · Margrabe exact 12.18 · error 0.00 (0.00%) · ρ = 0.30 (move the pointer) · click: double the steps · Illustrative: S₁ = S₂ = 100, σ₁ = 30%, σ₂ = 20%, r = 3%, T = 1 year",
+            caption: "Exchange option on two assets · Bivariate lattice (n = 32 · 12,529 nodes) · Lattice: 12.18 · Margrabe exact: 12.18 (error 0.00%) · ρ = 0.30 · click: double steps",
         },
         "domain:quant:1": {
             engine: "copula",
@@ -376,7 +376,7 @@
         "project:options-pricing:hero": {
             engine: "paths",
             params: { process: "gbm", paths: 80, steps: 240, mu: 0.04, sigma: 0.26, strikeLine: 1.05 },
-            caption: "Exchange option on two assets · bivariate binomial lattice · n = 32 · 12,529 nodes · lattice 12.18 · Margrabe exact 12.18 · error 0.00 (0.00%) · ρ = 0.30 (move the pointer) · click: double the steps · Illustrative: S₁ = S₂ = 100, σ₁ = 30%, σ₂ = 20%, r = 3%, T = 1 year",
+            caption: "Exchange option on two assets · Bivariate lattice (n = 32 · 12,529 nodes) · Lattice: 12.18 · Margrabe exact: 12.18 (error 0.00%) · ρ = 0.30 · click: double steps",
         },
         "project:options-pricing:overview": {
             engine: "paths",

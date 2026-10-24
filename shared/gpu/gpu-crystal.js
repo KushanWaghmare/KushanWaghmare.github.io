@@ -488,10 +488,10 @@
                 let caption;
                 if (isOneAssetMode) {
                     const nodeCount = latticeData ? latticeData.totalNodes : (((curN + 1) * (curN + 2)) / 2);
-                    caption = `European call option (one asset) · binomial lattice · n = ${curN} · ${nodeCount.toLocaleString("en-GB")} nodes · lattice ${latticePrice.toFixed(2)} · Black–Scholes exact ${bsExact.toFixed(2)} · error ${priceError.toFixed(2)} (${errorPct.toFixed(2)}%) · strike bond K = $100 · press B: toggle Margrabe crystal · Illustrative: S=100, σ=30%, r=3%, T=1y`;
+                    caption = `European call option (one asset) · Binomial lattice (n = ${curN} · ${nodeCount.toLocaleString("en-GB")} nodes) · Lattice: ${latticePrice.toFixed(2)} · Black–Scholes exact: ${bsExact.toFixed(2)} (error ${errorPct.toFixed(2)}%) · Strike K = $100 · press B: toggle Margrabe crystal`;
                 } else {
                     const nodeCount = latticeData ? latticeData.totalNodes : (((curN + 1) * (curN + 2) * (2 * curN + 3)) / 6);
-                    caption = `Exchange option on two assets · bivariate binomial lattice · n = ${curN} · ${nodeCount.toLocaleString("en-GB")} nodes · lattice ${latticePrice.toFixed(2)} · Margrabe exact ${margrabeExact.toFixed(2)} · error ${priceError.toFixed(2)} (${errorPct.toFixed(2)}%) · ρ = ${curRho.toFixed(2)} (move pointer) · click: double steps · Illustrative: S₁=S₂=100, σ₁=30%, σ₂=20%, r=3%, T=1y`;
+                    caption = `Exchange option on two assets · Bivariate lattice (n = ${curN} · ${nodeCount.toLocaleString("en-GB")} nodes) · Lattice: ${latticePrice.toFixed(2)} · Margrabe exact: ${margrabeExact.toFixed(2)} (error ${errorPct.toFixed(2)}%) · ρ = ${curRho.toFixed(2)} · click: double steps`;
                 }
                 if (root.KW && root.KW.tag) root.KW.tag(caption, cvs);
             };
