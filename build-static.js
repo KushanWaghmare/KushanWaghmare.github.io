@@ -151,14 +151,14 @@ const hubPage = () => `
                         <div class="tags" style="margin-top:20px">${tags(["Python", "C", "Java", "SQL", "Machine Learning", "Options Pricing", "Statistical Arbitrage", "LLVM", "Pandas", "Git"])}</div>
                     </div>
                     <div class="edu" data-reveal>
-                        <div class="glass"><strong>Indian Institute of Technology Madras</strong><span>Bachelor of Science in Data Science · 2023 – 2027</span></div>
-                        <div class="glass"><strong>Vidya Bharati Mahavidyalaya</strong><span>Bachelor of Science in Physics · 2025 – 2028</span></div>
+                        <a href="courses.html" class="glass edu-link"><strong>Indian Institute of Technology Madras</strong><span>Bachelor of Science in Data Science · 2023 – 2027</span><span class="edu-cue">Coursework &amp; Syllabi →</span></a>
+                        <a href="courses.html" class="glass edu-link"><strong>Vidya Bharati Mahavidyalaya</strong><span>Bachelor of Science in Physics · 2025 – 2028</span><span class="edu-cue">Coursework &amp; Syllabi →</span></a>
                     </div>
                 </div>
                 ${contactSection()}
+                <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
             </div>
             <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["hub:contact"].caption}</div>
-            <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
         </section>`;
 
 const contactSection = () => `
@@ -589,9 +589,10 @@ const renderNav = (active, pageType) => {
             <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
             ${badge}
         </div>
-        <div class="nav-live" aria-hidden="true"><canvas></canvas></div>
         <nav class="links" aria-label="Navigation">
             ${backLink}
+            <a href="papers.html" class="${isPapers ? 'active' : ''}"><span class="full">Papers</span><span class="short">Papers</span></a>
+            <a href="courses.html" class="${isCourses ? 'active' : ''}"><span class="full">Courses</span><span class="short">Courses</span></a>
             <a href="${pageType === 'hub' ? '#about-contact' : 'index.html#about-contact'}" class="nav-contact-link"><span class="full">Contact</span><span class="short">Contact</span></a>
             <button class="sound-btn" type="button" aria-label="Mute sound effects" title="Mute audio">🔊</button>
         </nav>
