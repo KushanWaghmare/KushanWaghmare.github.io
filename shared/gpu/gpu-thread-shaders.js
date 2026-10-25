@@ -93,7 +93,7 @@ void main() {
     fragPos = vec4(mx + s * curl, p);
 }`;
 
-    /* Flow Formation Update Shader (for Lorenz / Keplerian / Diffusion / Contact flow formations) */
+    /* Flow Formation Update Shader (for Lorenz / Keplerian flow formations) */
     const FS_FLOW_STEP = `#version 300 es
 precision highp float;
 precision highp int;
@@ -103,10 +103,8 @@ out vec4 fragState;
 
 uniform sampler2D uState;
 uniform float uDt;
-uniform int uFlowType; // 0 = Lorenz, 1 = Keplerian accretion, 2 = Reverse diffusion spiral, 3 = Calm curl-noise flow
+uniform int uFlowType; // 0 = Lorenz, 1 = Keplerian accretion
 uniform float uTime;
-
-${GLSL_CURL}
 
 void main() {
     ivec2 coord = ivec2(gl_FragCoord.xy);
@@ -122,7 +120,7 @@ void main() {
         p += k1 * uDt;
         p.z -= 25.0;
         fragState = vec4(p * (1.0 / 24.0), tau);
-    } else if (uFlowType == 1) {
+    } else {
         // Keplerian accretion differential rotation
         float r = length(pos.xy);
         float omega = 1.2 / max(pow(r, 1.5), 0.15);
@@ -130,27 +128,6 @@ void main() {
         float ca = cos(angle), sa = sin(angle);
         vec2 rot = vec2(pos.x * ca - pos.y * sa, pos.x * sa + pos.y * ca);
         fragState = vec4(rot, pos.z, tau);
-    } else if (uFlowType == 2) {
-        // Reverse diffusion spiral flow (Data Science):
-        // Inward logarithmic spiral circulation with analytical drift towards manifold
-        float r = length(pos.xy);
-        float omega = 0.85 / (r + 0.22);
-        float angle = omega * uDt;
-        float ca = cos(angle), sa = sin(angle);
-        vec2 rot = vec2(pos.x * ca - pos.y * sa, pos.x * sa + pos.y * ca);
-        vec3 curl = curlNoise(pos * 1.5, uTime * 0.4);
-        vec3 newP = vec3(rot * (1.0 - 0.04 * uDt) + curl.xy * (0.04 * uDt), pos.z * (1.0 - 0.3 * uDt) + curl.z * (0.03 * uDt));
-        if (length(newP.xy) < 0.10) {
-            newP.xy = normalize(rot + 1e-4) * 0.88;
-        }
-        fragState = vec4(newP, tau);
-    } else {
-        // Calm curl-noise flow (Contact):
-        // Laminar 3D streamline circulation
-        vec3 curl = curlNoise(pos * 0.8, uTime * 0.25);
-        vec3 newP = pos + curl * (0.35 * uDt);
-        if (length(newP) > 1.25) newP *= 0.82;
-        fragState = vec4(newP, tau);
     }
 }`;
 

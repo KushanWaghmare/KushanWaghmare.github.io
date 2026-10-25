@@ -481,7 +481,7 @@ void main() { fragColor = texture(uTex, vUV); }`;
                             .i1("uDoRenoise", doRenoise)
                             .f3("uClickCenter", clickCenter[0], clickCenter[1], clickCenter[2])
                             .f1("uClickRadius", clickRadius)
-                            .u1("uSeed", (seed + s) >>> 0);
+                            .i1("uSeed", seed + s);
 
                         gfx.quad(updateProg, statePP.write(), side, side);
                         statePP.swap();

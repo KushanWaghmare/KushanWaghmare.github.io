@@ -17,8 +17,6 @@ const phase1Keys = [
     "hub:domain-datascience",
     "hub:domain-quant",
     "hub:domain-cs",
-    "hub:papers",
-    "hub:courses",
     "hub:contact"
 ];
 for (const k of keys) {
@@ -106,9 +104,7 @@ const hubPage = () => `
             <a href="#intro" class="snap-dot active" data-title="00 Intro" aria-label="Introduction"><span class="dot-disc" style="--a:var(--rgb-hub)"></span><span class="dot-text">00 Intro</span></a>
             ${keys.map((k, i) => `
             <a href="#domain-${k}" class="snap-dot" data-d="${k}" data-title="${pad(i)} ${SITE.domains[k].short}" aria-label="${SITE.domains[k].name}"><span class="dot-disc" style="--a:var(--rgb-${k})"></span><span class="dot-text">${pad(i)} ${SITE.domains[k].short}</span></a>`).join("")}
-            <a href="#section-papers" class="snap-dot" data-d="papers" data-title="06 Papers" aria-label="Research Papers"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">06 Papers</span></a>
-            <a href="#section-courses" class="snap-dot" data-d="courses" data-title="07 Courses" aria-label="Academic Coursework"><span class="dot-disc" style="--a:var(--rgb-courses)"></span><span class="dot-text">07 Courses</span></a>
-            <a href="#about-contact" class="snap-dot" data-title="08 Contact" aria-label="About & Contact"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">08 Contact</span></a>
+            <a href="#about-contact" class="snap-dot" data-title="06 Contact" aria-label="About & Contact"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">06 Contact</span></a>
         </nav>
 
         <section class="snap-section hero" id="intro" data-domain="hub" data-sim="hub:intro" data-enter="zoom" style="--a:var(--rgb-hub)">
@@ -124,8 +120,8 @@ const hubPage = () => `
 
         ${keys.map((k, i) => {
             const d = SITE.domains[k], ps = list(k);
-            const nextKey = keys[i + 1] ? `domain-${keys[i + 1]}` : "section-papers";
-            const nextLabel = keys[i + 1] ? `Next: ${SITE.domains[keys[i + 1]].name}` : "Next: Research Papers";
+            const nextKey = keys[i + 1] ? `domain-${keys[i + 1]}` : "about-contact";
+            const nextLabel = keys[i + 1] ? `Next: ${SITE.domains[keys[i + 1]].name}` : "Next: About &amp; Contact";
             return `
         <section class="snap-section domain-snap" id="domain-${k}" data-domain="${k}" data-sim="hub:domain-${k}" data-enter="${VEC[i]}" style="--a:var(--rgb-${k})">
             ${k === "physics" ? '<div class="sim-wrapper"><canvas aria-hidden="true"></canvas></div>' : '<canvas aria-hidden="true"></canvas>'}
@@ -145,44 +141,10 @@ const hubPage = () => `
         </section>`;
         }).join("")}
 
-        <section class="snap-section domain-snap" id="section-papers" data-domain="papers" data-sim="hub:papers" data-enter="left" style="--a:var(--rgb-papers)">
-            <canvas aria-hidden="true"></canvas>
-            <div class="snap-inner">
-                <h2 class="snap-title" data-reveal>Research Papers</h2>
-                <p class="lead snap-lead" data-reveal>Preprints and research papers spanning statistical learning theory, non-equilibrium Langevin dynamics, quantitative market microstructure, and symplectic numerical integrators.</p>
-                <div class="hero-eq glass snap-eq" data-reveal>$$\\frac{\\partial p(\\boldsymbol\\theta, t)}{\\partial t}=\\nabla_{\\boldsymbol\\theta}\\cdot\\Big(\\nabla_{\\boldsymbol\\theta} L(\\boldsymbol\\theta)\\,p(\\boldsymbol\\theta, t)+D\\,\\nabla_{\\boldsymbol\\theta} p(\\boldsymbol\\theta, t)\\Big)$$</div>
-                <div class="snap-actions" data-reveal>
-                    <a href="papers.html" class="snap-cta-btn glass" style="--a:var(--rgb-papers)">
-                        <span>Explore Research Papers</span>
-                        <span class="arr">→</span>
-                    </a>
-                </div>
-            </div>
-            <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["hub:papers"].caption}</div>
-            <a class="snap-cue" href="#section-courses">Next: Academic Coursework</a>
-        </section>
-
-        <section class="snap-section domain-snap" id="section-courses" data-domain="courses" data-sim="hub:courses" data-enter="bottom" style="--a:var(--rgb-courses)">
-            <canvas aria-hidden="true"></canvas>
-            <div class="snap-inner">
-                <h2 class="snap-title" data-reveal>Academic Coursework</h2>
-                <p class="lead snap-lead" data-reveal>Core and honours academic coursework across Indian Institute of Technology Madras and Vidya Bharati Mahavidyalaya in data science, physics, and computer systems.</p>
-                <div class="hero-eq glass snap-eq" data-reveal>$$A = U\\Sigma V^\\top = \\sum_{i=1}^r \\sigma_i\\,\\mathbf u_i\\,\\mathbf v_i^\\top,\\qquad i\\hbar\\,\\frac{\\partial\\psi}{\\partial t}=\\Big[-\\frac{\\hbar^2}{2m}\\nabla^2+V(\\mathbf r)\\Big]\\psi$$</div>
-                <div class="snap-actions" data-reveal>
-                    <a href="courses.html" class="snap-cta-btn glass" style="--a:var(--rgb-courses)">
-                        <span>Explore Coursework &amp; Syllabi</span>
-                        <span class="arr">→</span>
-                    </a>
-                </div>
-            </div>
-            <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["hub:courses"].caption}</div>
-            <a class="snap-cue" href="#about-contact">Next: About &amp; Contact</a>
-        </section>
-
         <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-sim="hub:contact" data-enter="top" style="--a:var(--rgb-contact)">
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
-                <div class="section-head" data-reveal><span class="idx">08</span><h2>About &amp; Profile</h2></div>
+                <div class="section-head" data-reveal><span class="idx">06</span><h2>About &amp; Profile</h2></div>
                 <div class="two-col">
                     <div data-reveal>
                         <p class="lead">I work where data science, quantitative finance and physics overlap: stochastic models for markets, symplectic integrators for mechanics, compilers and hardware for the machines that run them.</p>
@@ -663,18 +625,18 @@ const buildHTML = ({ domain, pageType, title, desc, mainContent }) => `<!doctype
     <script defer src="shared/lib/lattice-math.js?v=42"></script>
     <script defer src="shared/gpu/gpu-crystal-shaders.js?v=42"></script>
     <script defer src="shared/gpu/gpu-crystal.js?v=42"></script>
-    <script defer src="shared/gfx.js?v=44"></script>
+    <script defer src="shared/gfx.js?v=42"></script>
     <script defer src="shared/engines.js?v=42"></script>
     <script defer src="shared/slides.js?v=42"></script>
-    <script defer src="shared/lib/thread-math.js?v=44"></script>
-    <script defer src="shared/gpu/gpu-thread-shaders.js?v=44"></script>
-    <script defer src="shared/gpu/gpu-thread-formations.js?v=44"></script>
-    <script defer src="shared/gpu/gpu-thread.js?v=44"></script>
+    <script defer src="shared/lib/thread-math.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-thread-shaders.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-thread-formations.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-thread.js?v=42"></script>
     <script defer src="shared/blackhole-physics.js?v=37"></script>
     <script defer src="shared/blackhole-shaders.js?v=37"></script>
     <script defer src="shared/blackhole-lite.js?v=37"></script>
     <script defer src="shared/blackhole.js?v=37"></script>
-    <script defer src="shared/app.js?v=44"></script>
+    <script defer src="shared/app.js?v=43"></script>
 
 </head>
 <body>

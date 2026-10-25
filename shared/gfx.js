@@ -170,7 +170,6 @@ void main() {
             prog: p, u, use: () => { gl.useProgram(p); return api; },
             f1: (n, x) => { gl.uniform1f(u(n), x); return api; },
             i1: (n, x) => { gl.uniform1i(u(n), x); return api; },
-            u1: (n, x) => { gl.uniform1ui(u(n), x >>> 0); return api; },
             f2: (n, x, y) => { gl.uniform2f(u(n), x, y); return api; },
             f3: (n, x, y, z) => { gl.uniform3f(u(n), x, y, z); return api; },
             f4: (n, x, y, z, w) => { gl.uniform4f(u(n), x, y, z, w); return api; },
@@ -201,8 +200,7 @@ void main() {
         const alloc = (nw, nh, data = null) => {
             nw = Math.max(1, nw | 0); nh = Math.max(1, nh | 0);
             gl.bindTexture(gl.TEXTURE_2D, tex);
-            const uploadType = (data instanceof Float32Array) ? gl.FLOAT : type;
-            gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, nw, nh, 0, gl.RGBA, uploadType, data);
+            gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, nw, nh, 0, gl.RGBA, type, data);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
