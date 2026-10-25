@@ -124,7 +124,7 @@ const hubPage = () => `
             const nextLabel = keys[i + 1] ? `Next: ${SITE.domains[keys[i + 1]].name}` : "Next: About &amp; Contact";
             return `
         <section class="snap-section domain-snap" id="domain-${k}" data-domain="${k}" data-sim="hub:domain-${k}" data-enter="${VEC[i]}" style="--a:var(--rgb-${k})">
-            <canvas aria-hidden="true"></canvas>
+            ${k === "physics" ? '<div class="sim-wrapper"><canvas aria-hidden="true"></canvas></div>' : '<canvas aria-hidden="true"></canvas>'}
             <div class="snap-inner">
                 <h2 class="snap-title" data-reveal>${d.name}</h2>
                 <p class="lead snap-lead" data-reveal>${d.blurb}</p>
@@ -194,7 +194,7 @@ const domainPage = (key) => {
     </nav>
 
     <section class="snap-section hero" id="domain-intro" data-domain="${key}" data-sim="domain:${key}:0">
-        <canvas aria-hidden="true"></canvas>
+        ${key === "physics" ? '<div class="sim-wrapper"><canvas aria-hidden="true"></canvas></div>' : '<canvas aria-hidden="true"></canvas>'}
         <div class="snap-inner">
             <h1 data-hero>${d.name}</h1>
             <p class="lead" data-hero>${d.blurb}</p>
@@ -628,6 +628,10 @@ const buildHTML = ({ domain, pageType, title, desc, mainContent }) => `<!doctype
     <script defer src="shared/gfx.js?v=42"></script>
     <script defer src="shared/engines.js?v=42"></script>
     <script defer src="shared/slides.js?v=42"></script>
+    <script defer src="shared/lib/thread-math.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-thread-shaders.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-thread-formations.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-thread.js?v=42"></script>
     <script defer src="shared/blackhole-physics.js?v=37"></script>
     <script defer src="shared/blackhole-shaders.js?v=37"></script>
     <script defer src="shared/blackhole-lite.js?v=37"></script>
@@ -636,6 +640,7 @@ const buildHTML = ({ domain, pageType, title, desc, mainContent }) => `<!doctype
 
 </head>
 <body>
+    <canvas id="stage-canvas" class="stage-canvas" aria-hidden="true"></canvas>
     ${renderNav(domain, pageType)}
     <main id="main">${mainContent}</main>
 </body>

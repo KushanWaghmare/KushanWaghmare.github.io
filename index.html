@@ -32,6 +32,10 @@
     <script defer src="shared/gfx.js?v=42"></script>
     <script defer src="shared/engines.js?v=42"></script>
     <script defer src="shared/slides.js?v=42"></script>
+    <script defer src="shared/lib/thread-math.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-thread-shaders.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-thread-formations.js?v=42"></script>
+    <script defer src="shared/gpu/gpu-thread.js?v=42"></script>
     <script defer src="shared/blackhole-physics.js?v=37"></script>
     <script defer src="shared/blackhole-shaders.js?v=37"></script>
     <script defer src="shared/blackhole-lite.js?v=37"></script>
@@ -40,6 +44,7 @@
 
 </head>
 <body>
+    <canvas id="stage-canvas" class="stage-canvas" aria-hidden="true"></canvas>
     
     <div class="progress"></div>
     <header class="nav glass">
@@ -97,7 +102,7 @@
             <a class="snap-cue" href="#domain-physics">Next: Physics</a>
         </section>
         <section class="snap-section domain-snap" id="domain-physics" data-domain="physics" data-sim="hub:domain-physics" data-enter="left" style="--a:var(--rgb-physics)">
-            <canvas aria-hidden="true"></canvas>
+            <div class="sim-wrapper"><canvas aria-hidden="true"></canvas></div>
             <div class="snap-inner">
                 <h2 class="snap-title" data-reveal>Physics</h2>
                 <p class="lead snap-lead" data-reveal>Classical and quantum mechanics as computation: symplectic integrators, gravitating systems and wave equations.</p>

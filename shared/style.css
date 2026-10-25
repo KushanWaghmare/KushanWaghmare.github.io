@@ -397,6 +397,29 @@ pre.glass {
     height: 100%;
     z-index: -2;
     display: block;
+    opacity: var(--native-opacity, 1);
+    transition: opacity 0.15s ease-out;
+}
+
+.sim-wrapper {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    pointer-events: none;
+    opacity: var(--native-opacity, 1);
+    transition: opacity 0.15s ease-out;
+}
+
+.stage-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+    display: block;
 }
 
 /* Ambient horizontal atmospheric falloff for left-column text */

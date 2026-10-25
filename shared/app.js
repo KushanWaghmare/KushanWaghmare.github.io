@@ -681,46 +681,6 @@
         }, true);
     }
 
-    const drawNavBadge = (ctx, text, mid, w, a, opt = {}) => {
-        if (w < 210) return 0;
-        ctx.save();
-        ctx.font = '500 8.5px "JetBrains Mono", ui-monospace, monospace';
-        let label = text;
-        if (w < 340 && opt.short) label = opt.short;
-        const tw = ctx.measureText(label).width;
-        const bH = 18;
-        const bW = Math.round(tw + 18);
-        const bX = opt.right ? Math.round(w - bW - 6) : 6;
-        const bY = Math.round(mid - bH / 2);
-
-        ctx.fillStyle = "rgba(7, 10, 18, 0.90)";
-        ctx.strokeStyle = rgba(opt.borderCol || a, 0.38);
-        ctx.lineWidth = 1;
-        if (ctx.roundRect) {
-            ctx.beginPath();
-            ctx.roundRect(bX, bY, bW, bH, 4);
-            ctx.fill();
-            ctx.stroke();
-        } else {
-            ctx.fillRect(bX, bY, bW, bH);
-            ctx.strokeRect(bX, bY, bW, bH);
-        }
-
-        // Status indicator pip
-        ctx.fillStyle = rgba(opt.pipCol || a, 0.95);
-        ctx.beginPath();
-        ctx.arc(bX + 7, mid, 2, 0, TAU);
-        ctx.fill();
-
-        // Monospace text label
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = opt.txtCol || "rgba(255, 255, 255, 0.92)";
-        ctx.fillText(label, bX + 13, mid);
-        ctx.restore();
-
-        return bW + 12;
-    };
-
 const NAV = {};
 const navFade = (ctx, w, h, left) => { // feather the strip's edges into the glass navbar
     ctx.save();
@@ -766,12 +726,7 @@ NAV.hub = () => {
     return (ctx, w, h, t, dt) => {
         const a = KW.col.a;
         const mid = h / 2;
-
-        const badgeW = drawNavBadge(ctx, "RK4 · dt=0.01 · Lyapunov λ > 0", mid, w, a, {
-            short: "RK4 · dt=0.01 · λ > 0"
-        });
-
-        const x0 = badgeW ? badgeW + 8 : 12;
+        const x0 = 12;
         const x1 = w - 12;
         const trackW = x1 - x0;
         if (trackW < 30) return;
@@ -877,12 +832,7 @@ NAV.math = () => {
         const b = KW.col.pal[1] || [129, 140, 248];
         const mid = h / 2;
         const R = h * 0.36;
-
-        const badgeW = drawNavBadge(ctx, "R_{μν} = 0 · genus g=3 · χ = -200", mid, w, a, {
-            short: "R_{μν} = 0 · g=3 · χ = -200"
-        });
-
-        const x0 = badgeW ? badgeW + 10 : 12;
+        const x0 = 12;
         const x1 = w - 12;
         const trackW = x1 - x0;
         if (trackW < 40) return;
@@ -956,12 +906,7 @@ NAV.physics = () => {
     return (ctx, w, h, t, dt) => {
         const a = KW.col.a;
         const mid = h / 2;
-
-        const badgeW = drawNavBadge(ctx, "a/M = 0.998 · r_+ = M + √(M² - a²) · ergosphere active", mid, w, a, {
-            short: "a/M = 0.998 · r_+ = M + √(M² - a²)"
-        });
-
-        const x0 = badgeW ? badgeW + 10 : 12;
+        const x0 = 12;
         const x1 = w - 12;
         const trackW = x1 - x0;
         if (trackW < 40) return;
@@ -1045,12 +990,7 @@ NAV.datascience = () => {
         const a = KW.col.a;
         const mid = h / 2;
         const R = h * 0.38;
-
-        const badgeW = drawNavBadge(ctx, "t ∈ [0, 1] · SNR = 14.2 dB · ∇_x log p_t(x)", mid, w, a, {
-            short: "t ∈ [0, 1] · SNR = 14.2 dB"
-        });
-
-        const x0 = badgeW ? badgeW + 10 : 12;
+        const x0 = 12;
         const x1 = w - 12;
         const trackW = x1 - x0;
         if (trackW < 40) return;
@@ -1157,11 +1097,7 @@ NAV.quant = () => {
             else askDepths[idx] = Math.max(0.1, Math.min(1.0, askDepths[idx] + (Math.random() - 0.48) * 0.35));
         }
 
-        const badgeW = drawNavBadge(ctx, `spread: 1.2 bps · tick #${tickCount} · dW_t ~ N(0, dt)`, mid, w, a, {
-            short: `spread: 1.2 bps · dW_t ~ N(0, dt)`
-        });
-
-        const x0 = badgeW ? badgeW + 10 : 12;
+        const x0 = 12;
         const x1 = w - 12;
         const trackW = x1 - x0;
         if (trackW < 40) return;
@@ -1286,25 +1222,7 @@ NAV.cs = () => {
         const mid = h / 2;
         const isHalted = NAV_INPUT.inNav;
 
-        let telemStr = "SSA IR block: %bb.4 · IPC: 2.4 · 8-bit bus clk: 10 MHz";
-        let shortTelem = "IPC: 2.4 · clk: 10 MHz";
-        let pipCol = a;
-
-        if (isHalted) {
-            const opIdx = Math.floor(Math.abs(NAV_INPUT.canvasX * 0.1)) % OPCODES.length;
-            const op = OPCODES[opIdx];
-            telemStr = `CLK HALT · ${op.code} ${op.name} · IP: 0x7FFF00`;
-            shortTelem = `CLK HALT · ${op.code} ${op.name}`;
-            pipCol = [248, 113, 113];
-        }
-
-        const badgeW = drawNavBadge(ctx, telemStr, mid, w, a, {
-            short: shortTelem,
-            pipCol,
-            borderCol: isHalted ? [248, 113, 113] : a
-        });
-
-        const x0 = badgeW ? badgeW + 10 : 12;
+        const x0 = 12;
         const x1 = w - 12;
         const trackW = x1 - x0;
         if (trackW < 40) return;
@@ -1607,6 +1525,9 @@ const initNavSim = (c) => {
         document.querySelectorAll(".snap-section canvas").forEach((c) => {
             const sec = c.closest(".snap-section");
             const simKey = sec && sec.dataset.sim;
+            if (simKey === "hub:intro" && window.THREAD_STAGE && window.GFX?.supported && !window.KW?.REDUCED) {
+                return; // Particle thread directly visualises intro; skip duplicate canvas sim
+            }
             if (simKey && window.SLIDE_SIMS && window.SLIDE_SIMS[simKey]) {
                 const item = window.SLIDE_SIMS[simKey];
                 const eng = window.ENGINES && window.ENGINES[item.engine];
