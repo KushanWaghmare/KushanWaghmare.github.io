@@ -548,11 +548,73 @@
         if (initialIdx !== -1) curIdx = initialIdx;
         let lastId = sections[curIdx] ? sections[curIdx].id : null;
 
+        const getClosest = () => {
+            const y = window.scrollY;
+            let best = 0, minD = Infinity;
+            sections.forEach((s, i) => {
+                const d = Math.abs(s.offsetTop - y);
+                if (d < minD) { minD = d; best = i; }
+            });
+            return best;
+        };
+
         const scrollToSection = (idx) => {
             if (idx < 0 || idx >= sections.length) return;
             curIdx = idx;
             sections[idx].scrollIntoView({ behavior: REDUCED ? "instant" : "smooth" });
         };
+
+        let locked = false;
+        let unlockTimer = null;
+
+        // Step exactly one section per wheel gesture with momentum rejection
+        window.addEventListener("wheel", (e) => {
+            if (e.ctrlKey || e.metaKey) return;
+            const hScroll = e.target && e.target.closest && e.target.closest(".course-grid");
+            if (hScroll && Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+
+            if (Math.abs(e.deltaY) < 16) return;
+            e.preventDefault();
+            if (locked) return;
+
+            locked = true;
+            clearTimeout(unlockTimer);
+            unlockTimer = setTimeout(() => { locked = false; }, 480);
+
+            const cur = getClosest();
+            const next = e.deltaY > 0 ? Math.min(sections.length - 1, cur + 1) : Math.max(0, cur - 1);
+            if (next !== cur) {
+                scrollToSection(next);
+            }
+        }, { passive: false, signal: sig });
+
+        // Touch swipe navigation for mobile
+        let touchStartY = 0, touchStartX = 0, touchConsumed = false;
+        window.addEventListener("touchstart", (e) => {
+            if (!e.touches || e.touches.length !== 1) return;
+            touchStartY = e.touches[0].clientY;
+            touchStartX = e.touches[0].clientX;
+            touchConsumed = false;
+        }, { passive: true, signal: sig });
+
+        window.addEventListener("touchmove", (e) => {
+            if (!e.touches || e.touches.length !== 1 || touchConsumed || locked) return;
+            const dy = touchStartY - e.touches[0].clientY;
+            const dx = touchStartX - e.touches[0].clientX;
+            if (Math.abs(dx) > Math.abs(dy)) return;
+            if (Math.abs(dy) > 32) {
+                touchConsumed = true;
+                locked = true;
+                clearTimeout(unlockTimer);
+                unlockTimer = setTimeout(() => { locked = false; }, 480);
+                const cur = getClosest();
+                const next = dy > 0 ? Math.min(sections.length - 1, cur + 1) : Math.max(0, cur - 1);
+                if (next !== cur) {
+                    if (e.cancelable) e.preventDefault();
+                    scrollToSection(next);
+                }
+            }
+        }, { passive: false, signal: sig });
 
         // Pointer drag for horizontal course grids
         $$(".course-grid").forEach((grid) => {
