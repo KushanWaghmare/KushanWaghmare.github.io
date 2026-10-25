@@ -547,25 +547,19 @@
         });
         if (initialIdx !== -1) curIdx = initialIdx;
         let lastId = sections[curIdx] ? sections[curIdx].id : null;
-
-        const getClosest = () => {
-            const y = window.scrollY;
-            let best = 0, minD = Infinity;
-            sections.forEach((s, i) => {
-                const d = Math.abs(s.offsetTop - y);
-                if (d < minD) { minD = d; best = i; }
-            });
-            return best;
-        };
+        let targetIdx = curIdx;
+        let isAnimating = false;
+        let isGestureConsumed = false;
+        let wheelStreamTimer = null;
 
         const scrollToSection = (idx) => {
             if (idx < 0 || idx >= sections.length) return;
             curIdx = idx;
+            targetIdx = idx;
+            isAnimating = true;
             sections[idx].scrollIntoView({ behavior: REDUCED ? "instant" : "smooth" });
+            setTimeout(() => { isAnimating = false; }, 550);
         };
-
-        let isWheelActive = false;
-        let wheelQuietTimer = null;
 
         // Step exactly one section per wheel gesture with momentum stream rejection
         window.addEventListener("wheel", (e) => {
@@ -575,23 +569,21 @@
 
             e.preventDefault();
 
-            // Track continuous gesture: as long as wheel events keep arriving within 180ms, it is the same physical gesture
-            clearTimeout(wheelQuietTimer);
-            wheelQuietTimer = setTimeout(() => {
-                isWheelActive = false;
-            }, 180);
+            // Track continuous gesture: as long as wheel events keep arriving within 260ms, it is the same physical gesture
+            clearTimeout(wheelStreamTimer);
+            wheelStreamTimer = setTimeout(() => {
+                isGestureConsumed = false;
+            }, 260);
 
-            // If this gesture already triggered a section switch, drop all subsequent inertial events
-            if (isWheelActive) return;
+            // Drop all trailing inertial events if this gesture already triggered, or if animation is in flight
+            if (isGestureConsumed || isAnimating) return;
 
             if (Math.abs(e.deltaY) < 16) return;
 
-            // Mark gesture as active so NO MORE section switches happen until user stops scrolling
-            isWheelActive = true;
-
-            const cur = getClosest();
-            const next = e.deltaY > 0 ? Math.min(sections.length - 1, cur + 1) : Math.max(0, cur - 1);
-            if (next !== cur) {
+            isGestureConsumed = true;
+            const dir = e.deltaY > 0 ? 1 : -1;
+            const next = dir > 0 ? Math.min(sections.length - 1, targetIdx + 1) : Math.max(0, targetIdx - 1);
+            if (next !== targetIdx) {
                 scrollToSection(next);
             }
         }, { passive: false, signal: sig });
@@ -606,20 +598,24 @@
         }, { passive: true, signal: sig });
 
         window.addEventListener("touchmove", (e) => {
-            if (!e.touches || e.touches.length !== 1 || touchConsumed) return;
+            if (!e.touches || e.touches.length !== 1 || touchConsumed || isAnimating) return;
             const dy = touchStartY - e.touches[0].clientY;
             const dx = touchStartX - e.touches[0].clientX;
             if (Math.abs(dx) > Math.abs(dy)) return;
-            if (Math.abs(dy) > 32) {
+            if (Math.abs(dy) > 36) {
                 touchConsumed = true;
-                const cur = getClosest();
-                const next = dy > 0 ? Math.min(sections.length - 1, cur + 1) : Math.max(0, cur - 1);
-                if (next !== cur) {
+                const dir = dy > 0 ? 1 : -1;
+                const next = dir > 0 ? Math.min(sections.length - 1, targetIdx + 1) : Math.max(0, targetIdx - 1);
+                if (next !== targetIdx) {
                     if (e.cancelable) e.preventDefault();
                     scrollToSection(next);
                 }
             }
         }, { passive: false, signal: sig });
+
+        window.addEventListener("touchend", () => {
+            touchConsumed = false;
+        }, { passive: true, signal: sig });
 
         // Pointer drag for horizontal course grids
         $$(".course-grid").forEach((grid) => {
@@ -678,7 +674,10 @@
                 if (entry.isIntersecting) {
                     const id = entry.target.id;
                     const idx = sections.indexOf(entry.target);
-                    if (idx !== -1) curIdx = idx;
+                    if (idx !== -1) {
+                        curIdx = idx;
+                        if (!isAnimating) targetIdx = idx;
+                    }
                     const d = entry.target.dataset.domain;
                     if (d && D.dataset.domain !== d) {
                         D.dataset.domain = d;
