@@ -379,7 +379,6 @@
                 </div>
             </div>
             <div class="sim-tag" aria-hidden="true">${(window.SLIDE_SIMS && SLIDE_SIMS[`project:${p.id}:nav`]?.caption) || "Related project navigation & domain links"}</div>
-            <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
         </section>`;
     };
 
@@ -481,7 +480,6 @@
                 </div>
             </div>
             <div class="sim-tag" aria-hidden="true">${(window.SLIDE_SIMS && SLIDE_SIMS[`paper:${p.id}:cite`]?.caption) || (window.SIM_TAGS && SIM_TAGS["papers"]) || "Poincaré hyperbolic disc · ds² = 4|dz|²/(1 − |z|²)² · conformal Möbius citation geodesics"}</div>
-            <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
         </section>`;
     };
 
@@ -547,75 +545,12 @@
         });
         if (initialIdx !== -1) curIdx = initialIdx;
         let lastId = sections[curIdx] ? sections[curIdx].id : null;
-        let targetIdx = curIdx;
-        let isAnimating = false;
-        let isGestureConsumed = false;
-        let wheelStreamTimer = null;
 
         const scrollToSection = (idx) => {
             if (idx < 0 || idx >= sections.length) return;
             curIdx = idx;
-            targetIdx = idx;
-            isAnimating = true;
             sections[idx].scrollIntoView({ behavior: REDUCED ? "instant" : "smooth" });
-            setTimeout(() => { isAnimating = false; }, 550);
         };
-
-        // Step exactly one section per wheel gesture with momentum stream rejection
-        window.addEventListener("wheel", (e) => {
-            if (e.ctrlKey || e.metaKey) return;
-            const hScroll = e.target && e.target.closest && e.target.closest(".course-grid");
-            if (hScroll && Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-
-            e.preventDefault();
-
-            // Track continuous gesture: as long as wheel events keep arriving within 260ms, it is the same physical gesture
-            clearTimeout(wheelStreamTimer);
-            wheelStreamTimer = setTimeout(() => {
-                isGestureConsumed = false;
-            }, 260);
-
-            // Drop all trailing inertial events if this gesture already triggered, or if animation is in flight
-            if (isGestureConsumed || isAnimating) return;
-
-            if (Math.abs(e.deltaY) < 16) return;
-
-            isGestureConsumed = true;
-            const dir = e.deltaY > 0 ? 1 : -1;
-            const next = dir > 0 ? Math.min(sections.length - 1, targetIdx + 1) : Math.max(0, targetIdx - 1);
-            if (next !== targetIdx) {
-                scrollToSection(next);
-            }
-        }, { passive: false, signal: sig });
-
-        // Touch swipe navigation for mobile
-        let touchStartY = 0, touchStartX = 0, touchConsumed = false;
-        window.addEventListener("touchstart", (e) => {
-            if (!e.touches || e.touches.length !== 1) return;
-            touchStartY = e.touches[0].clientY;
-            touchStartX = e.touches[0].clientX;
-            touchConsumed = false;
-        }, { passive: true, signal: sig });
-
-        window.addEventListener("touchmove", (e) => {
-            if (!e.touches || e.touches.length !== 1 || touchConsumed || isAnimating) return;
-            const dy = touchStartY - e.touches[0].clientY;
-            const dx = touchStartX - e.touches[0].clientX;
-            if (Math.abs(dx) > Math.abs(dy)) return;
-            if (Math.abs(dy) > 36) {
-                touchConsumed = true;
-                const dir = dy > 0 ? 1 : -1;
-                const next = dir > 0 ? Math.min(sections.length - 1, targetIdx + 1) : Math.max(0, targetIdx - 1);
-                if (next !== targetIdx) {
-                    if (e.cancelable) e.preventDefault();
-                    scrollToSection(next);
-                }
-            }
-        }, { passive: false, signal: sig });
-
-        window.addEventListener("touchend", () => {
-            touchConsumed = false;
-        }, { passive: true, signal: sig });
 
         // Pointer drag for horizontal course grids
         $$(".course-grid").forEach((grid) => {
@@ -674,10 +609,7 @@
                 if (entry.isIntersecting) {
                     const id = entry.target.id;
                     const idx = sections.indexOf(entry.target);
-                    if (idx !== -1) {
-                        curIdx = idx;
-                        if (!isAnimating) targetIdx = idx;
-                    }
+                    if (idx !== -1) curIdx = idx;
                     const d = entry.target.dataset.domain;
                     if (d && D.dataset.domain !== d) {
                         D.dataset.domain = d;

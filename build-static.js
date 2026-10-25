@@ -145,10 +145,10 @@ const hubPage = () => `
             <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="section-head" data-reveal><span class="idx">06</span><h2>About &amp; Profile</h2></div>
-                <div class="two-col" style="margin-bottom:36px">
+                <div class="two-col">
                     <div data-reveal>
                         <p class="lead">I work where data science, quantitative finance and physics overlap: stochastic models for markets, symplectic integrators for mechanics, compilers and hardware for the machines that run them.</p>
-                        <div class="tags" style="margin-top:20px">${tags(["Python", "C", "Java", "SQL", "Machine Learning", "Options Pricing", "Statistical Arbitrage", "LLVM", "Pandas", "Git"])}</div>
+                        <div class="tags">${tags(["Python", "C", "Java", "SQL", "Machine Learning", "Options Pricing", "Statistical Arbitrage", "LLVM", "Pandas", "Git"])}</div>
                     </div>
                     <div class="edu" data-reveal>
                         <a href="courses.html" class="glass edu-link"><strong>Indian Institute of Technology Madras</strong><span>Bachelor of Science in Data Science · 2023 – 2027</span><span class="edu-cue">Coursework &amp; Syllabi →</span></a>
@@ -156,9 +156,7 @@ const hubPage = () => `
                     </div>
                 </div>
                 ${contactSection()}
-                <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
             </div>
-            <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["hub:contact"].caption}</div>
         </section>`;
 
 const contactSection = () => `
@@ -253,7 +251,6 @@ const domainPage = (key) => {
             ${contactSection()}
         </div>
         <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS[`domain:${key}:${ps.length + 1}`].caption}</div>
-        <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
     </section>`;
 };
 
@@ -386,7 +383,6 @@ const papersPage = () => {
             ${contactSection()}
         </div>
         <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["papers-index:contact"].caption}</div>
-        <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
     </section>`;
 };
 
@@ -487,7 +483,6 @@ const paperDetailPage = (p) => {
             </div>
         </div>
         <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["paper:" + p.id + ":cite"].caption}</div>
-        <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
     </section>`;
 };
 
@@ -564,7 +559,6 @@ const coursesPage = () => {
             ${contactSection()}
         </div>
         <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["courses-index:contact"].caption}</div>
-        <footer class="foot snap-foot"><span>© ${new Date().getFullYear()} Kushan Waghmare</span><a href="https://github.com/KushanWaghmare" target="_blank" rel="noopener">GitHub</a></footer>
     </section>`;
 };
 
@@ -613,7 +607,7 @@ const buildHTML = ({ domain, pageType, title, desc, mainContent }) => `<!doctype
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" />
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" />
-    <link rel="stylesheet" href="shared/style.css?v=42" />
+    <link rel="stylesheet" href="shared/style.css?v=43" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
@@ -638,7 +632,7 @@ const buildHTML = ({ domain, pageType, title, desc, mainContent }) => `<!doctype
     <script defer src="shared/blackhole-shaders.js?v=37"></script>
     <script defer src="shared/blackhole-lite.js?v=37"></script>
     <script defer src="shared/blackhole.js?v=37"></script>
-    <script defer src="shared/app.js?v=42"></script>
+    <script defer src="shared/app.js?v=43"></script>
 
 </head>
 <body>

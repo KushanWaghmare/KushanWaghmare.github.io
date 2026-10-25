@@ -102,6 +102,7 @@ html.tt .snap-section {
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html {
     scroll-behavior: smooth;
+    scroll-snap-type: y mandatory;
     scrollbar-width: thin;
     scrollbar-color: rgba(var(--a), 0.7) var(--bg);
 }
@@ -372,12 +373,18 @@ pre.glass {
 .snap-section {
     position: relative;
     isolation: isolate;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    height: 100vh;
+    height: 100dvh;
+    height: 100svh;
     min-height: 100svh;
+    max-height: 100svh;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
-    padding: clamp(90px, 12vh, 130px) clamp(24px, 6vw, 96px) clamp(60px, 8vh, 80px);
+    padding: clamp(60px, 8vh, 88px) clamp(24px, 6vw, 96px) clamp(30px, 4vh, 52px);
     overflow: hidden;
     box-sizing: border-box;
 }
@@ -666,7 +673,7 @@ pre.glass {
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 18px;
+    margin-top: clamp(8px, 1.2vh, 14px);
 }
 
 .jump-pill {
@@ -771,10 +778,54 @@ pre.glass {
 }
 
 .about-contact-section {
-    padding-bottom: 32px;
+    padding-top: clamp(52px, 7vh, 76px);
+    padding-bottom: clamp(16px, 2.5vh, 28px);
+    justify-content: center;
 }
 .about-contact-section .snap-inner {
     max-width: min(880px, 70ch);
+    gap: clamp(8px, 1.2vh, 12px);
+    width: 100%;
+}
+.about-contact-section .section-head {
+    margin-bottom: clamp(6px, 1vh, 12px);
+}
+.about-contact-section .two-col {
+    gap: clamp(14px, 2vw, 24px);
+    margin-bottom: clamp(8px, 1.2vh, 14px) !important;
+}
+.about-contact-section .tags {
+    margin-top: clamp(6px, 0.8vh, 10px) !important;
+    gap: 6px;
+}
+.about-contact-section .edu {
+    gap: 8px;
+}
+.about-contact-section .edu > a,
+.about-contact-section .edu > div {
+    padding: clamp(8px, 1vh, 11px) 14px;
+}
+.about-contact-section .contact-card {
+    padding: clamp(12px, 1.6vw, 18px);
+    gap: clamp(8px, 1vh, 12px);
+}
+.about-contact-section .contact-header .contact-title {
+    font-size: clamp(1.1rem, 1.6vw, 1.35rem);
+    margin: 2px 0 4px;
+}
+.about-contact-section .contact-header .contact-lead {
+    font-size: 13px;
+    line-height: 1.42;
+}
+.about-contact-section .contact-grid {
+    padding-top: clamp(8px, 1vh, 12px);
+    gap: 14px;
+}
+.about-contact-section .contact-item {
+    gap: 4px;
+}
+.about-contact-section .contact-value {
+    font-size: 13px;
 }
 
 .snap-foot {
@@ -960,15 +1011,15 @@ pre.glass {
 
 /* ---------- Research Papers Page Layout ---------- */
 .paper-snap {
-    padding-top: clamp(80px, 11vh, 110px);
-    padding-bottom: clamp(45px, 6vh, 65px);
+    padding-top: clamp(64px, 8vh, 88px);
+    padding-bottom: clamp(30px, 4vh, 48px);
     justify-content: center;
 }
 
 .paper-inner {
     max-width: 1060px;
     width: 100%;
-    max-height: calc(100svh - 130px);
+    max-height: calc(100svh - clamp(96px, 13vh, 136px));
     overflow-y: auto;
     scrollbar-width: thin;
     padding-right: 8px;
@@ -1120,14 +1171,14 @@ pre.glass {
 
 /* ---------- Coursework Page Layout ---------- */
 .course-snap {
-    padding-top: clamp(80px, 11vh, 110px);
-    padding-bottom: clamp(45px, 6vh, 65px);
+    padding-top: clamp(64px, 8vh, 88px);
+    padding-bottom: clamp(30px, 4vh, 48px);
     justify-content: center;
 }
 .course-inner {
     max-width: 100%;
     width: 100%;
-    max-height: calc(100svh - 110px);
+    max-height: calc(100svh - clamp(96px, 13vh, 136px));
     overflow-y: auto;
     overflow-x: visible;
     scrollbar-width: none;
@@ -1441,15 +1492,23 @@ a.contact-value:hover {
     }
     .snap-section,
     .snap-section.hero {
-        padding: 72px 18px 66px;
+        padding: 68px 18px 56px;
+        height: 100vh;
+        height: 100dvh;
+        height: 100svh;
         min-height: 100svh;
+        max-height: 100svh;
         justify-content: center;
     }
     .about-contact-section {
+        height: 100vh;
+        height: 100dvh;
+        height: 100svh;
         min-height: 100svh;
-        padding-top: 68px;
-        padding-bottom: 24px;
-        justify-content: space-between;
+        max-height: 100svh;
+        padding-top: 60px;
+        padding-bottom: 20px;
+        justify-content: center;
     }
     .about-contact-section .section-head { margin-bottom: 12px; }
     .about-contact-section .two-col { gap: 14px; margin-bottom: 14px !important; }
