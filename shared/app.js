@@ -1525,8 +1525,8 @@ const initNavSim = (c) => {
         document.querySelectorAll(".snap-section canvas").forEach((c) => {
             const sec = c.closest(".snap-section");
             const simKey = sec && sec.dataset.sim;
-            if (simKey === "hub:intro" && window.THREAD_STAGE && window.GFX?.supported && !window.KW?.REDUCED) {
-                return; // Particle thread directly visualises intro; skip duplicate canvas sim
+            if ((simKey === "hub:intro" || simKey === "hub:domain-datascience" || simKey === "hub:contact") && window.THREAD_STAGE && window.GFX?.supported && !window.KW?.REDUCED) {
+                return; // Particle thread directly visualises intro, diffusion spiral, and contact; skip duplicate canvas sim
             }
             if (simKey && window.SLIDE_SIMS && window.SLIDE_SIMS[simKey]) {
                 const item = window.SLIDE_SIMS[simKey];
@@ -1604,42 +1604,65 @@ const initNavSim = (c) => {
             const newDomain = doc.documentElement.dataset.domain || "hub";
             const newPage = doc.documentElement.dataset.page || "hub";
 
-            const newNav = doc.querySelector("header.nav");
-            const curNav = $("header.nav");
-            if (newNav && curNav) {
-                const curBrandGroup = $(".nav-brand-group", curNav);
-                const newBrandGroup = $(".nav-brand-group", newNav);
-                if (curBrandGroup && newBrandGroup) curBrandGroup.innerHTML = newBrandGroup.innerHTML;
-                const curLinks = $(".links", curNav);
-                const newLinks = $(".links", newNav);
-                if (curLinks && newLinks) {
-                    const curBack = $(".nav-back-link", curLinks);
-                    const newBack = $(".nav-back-link", newLinks);
-                    if (curBack) curBack.remove();
-                    if (newBack) curLinks.prepend(newBack.cloneNode(true));
-                    const contactLink = $(".nav-contact-link", curLinks);
-                    if (contactLink) {
-                        contactLink.setAttribute("href", newPage === "hub" ? "#about-contact" : "index.html#about-contact");
+            const targetUrl = new URL(urlStr, location.origin);
+            let targetSec = null;
+            if (targetUrl.hash) targetSec = doc.querySelector(targetUrl.hash);
+            if (!targetSec) targetSec = doc.querySelector(".snap-section");
+            const toSimKey = targetSec ? targetSec.dataset.sim : (newDomain === "hub" ? "hub:intro" : `domain:${newDomain}:0`);
+            const isHashJump = !!targetUrl.hash;
+
+            if (window.__stageController) {
+                window.__stageController.startTimedTransition(toSimKey, {
+                    durationMs: isHashJump ? 500 : 1200
+                });
+            }
+
+            const updateDOM = () => {
+                const newNav = doc.querySelector("header.nav");
+                const curNav = $("header.nav");
+                if (newNav && curNav) {
+                    const curBrandGroup = $(".nav-brand-group", curNav);
+                    const newBrandGroup = $(".nav-brand-group", newNav);
+                    if (curBrandGroup && newBrandGroup) curBrandGroup.innerHTML = newBrandGroup.innerHTML;
+                    const curLinks = $(".links", curNav);
+                    const newLinks = $(".links", newNav);
+                    if (curLinks && newLinks) {
+                        const curBack = $(".nav-back-link", curLinks);
+                        const newBack = $(".nav-back-link", newLinks);
+                        if (curBack) curBack.remove();
+                        if (newBack) curLinks.prepend(newBack.cloneNode(true));
+                        const contactLink = $(".nav-contact-link", curLinks);
+                        if (contactLink) {
+                            contactLink.setAttribute("href", newPage === "hub" ? "#about-contact" : "index.html#about-contact");
+                        }
                     }
                 }
-            }
 
-            main.innerHTML = newMain.innerHTML;
-            document.title = doc.title;
-            D.dataset.domain = newDomain;
-            D.dataset.page = newPage;
-            KW.refresh();
+                main.innerHTML = newMain.innerHTML;
+                document.title = doc.title;
+                D.dataset.domain = newDomain;
+                D.dataset.page = newPage;
+                KW.refresh();
 
-            if (push) history.pushState(null, "", urlStr);
-            const targetUrl = new URL(urlStr, location.origin);
-            if (targetUrl.hash) {
-                const targetEl = document.querySelector(targetUrl.hash);
-                if (targetEl) targetEl.scrollIntoView({ behavior: "instant" });
-                else window.scrollTo({ top: 0, behavior: "instant" });
+                if (push) history.pushState(null, "", urlStr);
+                if (targetUrl.hash) {
+                    const targetEl = document.querySelector(targetUrl.hash);
+                    if (targetEl) targetEl.scrollIntoView({ behavior: "instant" });
+                    else window.scrollTo({ top: 0, behavior: "instant" });
+                } else {
+                    window.scrollTo({ top: 0, behavior: "instant" });
+                }
+                initPage();
+                if (window.__stageController) {
+                    window.__stageController.syncToPage();
+                }
+            };
+
+            if (document.startViewTransition && !KW.REDUCED) {
+                document.startViewTransition(updateDOM);
             } else {
-                window.scrollTo({ top: 0, behavior: "instant" });
+                updateDOM();
             }
-            initPage();
         } catch (e) {
             location.href = urlStr;
         }

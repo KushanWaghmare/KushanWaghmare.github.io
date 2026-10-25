@@ -17,7 +17,7 @@
     const TS = root.THREAD_SHADERS || (typeof require === "function" ? require("./gpu-thread-shaders.js") : null);
     const TF = root.THREAD_FORMATIONS || (typeof require === "function" ? require("./gpu-thread-formations.js") : null);
 
-    const FORMATION_FACTORIES = [
+    const FORMATION_FACTORIES = (TF && TF.ALL_FACTORIES) ? TF.ALL_FACTORIES : [
         (n) => TF.createIntroFormation(n),
         (n) => TF.createMathsFormation(n),
         (n) => TF.createPhysicsFormation(n)
@@ -94,13 +94,22 @@
         // Persistent morph position target
         const morphTarget = GFX.target(texW, texH, { fp32: true, nearest: true });
 
-        // Lazy formation cache: Map of index -> GPU formation
+        // Lazy formation cache: Map of key -> GPU formation
         const cache = new Map();
+        let timedTransition = null;
 
-        const loadFormation = (idx) => {
-            if (cache.has(idx)) return cache.get(idx);
-            if (idx < 0 || idx >= FORMATION_FACTORIES.length) return null;
-            const data = FORMATION_FACTORIES[idx](count);
+        const loadFormation = (key) => {
+            const cacheKey = String(key);
+            if (cache.has(cacheKey)) return cache.get(cacheKey);
+            let data = null;
+            if (typeof key === "number" && key >= 0 && key < FORMATION_FACTORIES.length) {
+                data = FORMATION_FACTORIES[key](count);
+            } else if (TF && TF.getFormationByKey) {
+                data = TF.getFormationByKey(key, count);
+            } else {
+                data = FORMATION_FACTORIES[0](count);
+            }
+            if (!data) return null;
 
             const posTex = GFX.target(texW, texH, { fp32: true, nearest: true, data: data.posData });
             const colTex = GFX.target(texW, texH, { fp32: false, nearest: true, data: data.colData });
@@ -109,18 +118,46 @@
                 pingPong = GFX.pingPong(texW, texH, { fp32: true, nearest: true, data: data.posData });
             }
 
-            const item = { ...data, posTex, colTex, pingPong };
-            cache.set(idx, item);
+            const item = { ...data, posTex, colTex, pingPong, key: cacheKey };
+            cache.set(cacheKey, item);
             return item;
         };
 
-        const disposeFormation = (idx) => {
-            if (!cache.has(idx)) return;
-            const item = cache.get(idx);
+        const disposeFormation = (key) => {
+            const cacheKey = String(key);
+            if (!cache.has(cacheKey)) return;
+            const item = cache.get(cacheKey);
             if (item.posTex) item.posTex.dispose();
             if (item.colTex) item.colTex.dispose();
             if (item.pingPong) item.pingPong.dispose();
-            cache.delete(idx);
+            cache.delete(cacheKey);
+        };
+
+        const startTimedTransition = (targetKey, opts = {}) => {
+            const durationMs = opts.durationMs || 1200;
+            let currForm = null;
+            if (timedTransition) {
+                currForm = timedTransition.formB;
+            } else {
+                const s = getContinuousS();
+                currForm = loadFormation(Math.round(s));
+            }
+            const targetForm = loadFormation(targetKey);
+            if (!targetForm || currForm === targetForm) return;
+
+            timedTransition = {
+                formA: currForm,
+                formB: targetForm,
+                startTime: performance.now(),
+                durationMs,
+                targetSecIdx: typeof targetKey === "number" ? targetKey : 0,
+                onComplete: opts.onComplete || null
+            };
+        };
+
+        const syncToPage = () => {
+            const s = getContinuousS();
+            updateNativeOpacities(s);
         };
 
         // Screen size & adaptive resolution scaling
@@ -216,29 +253,67 @@
                 }
             }
 
-            const s = getContinuousS();
-            updateNativeOpacities(s);
+            let formA, formB, w, camA, camB, activeForm, activeSecIdx, sigmaActive, nativeFade;
 
-            const maxSec = FORMATION_FACTORIES.length - 1;
-            const clampedS = Math.min(maxSec, Math.max(0.0, s));
-            const secA = Math.min(maxSec, Math.floor(clampedS));
-            const secB = Math.min(maxSec, secA + 1);
-            const frac = clampedS - secA;
-            const w = secA === secB ? 0.0 : TM.smoothstep(0.15, 0.85, frac);
+            if (timedTransition) {
+                const elapsed = now - timedTransition.startTime;
+                const u = Math.min(1.0, Math.max(0.0, elapsed / timedTransition.durationMs));
+                w = TM.ease(u);
+                formA = timedTransition.formA;
+                formB = timedTransition.formB;
+                camA = formA.camera;
+                camB = formB.camera;
+                activeForm = formB;
+                activeSecIdx = timedTransition.targetSecIdx || 0;
+                sigmaActive = u >= 0.88 ? (u - 0.88) / 0.12 : 0.0;
+                nativeFade = activeForm.native === null ? 1.0 : (1.0 - 0.75 * sigmaActive);
 
-            // Lazy creation of formations within 1 section of current s
-            const formA = loadFormation(secA);
-            const formB = loadFormation(secB);
+                if (u >= 1.0) {
+                    if (timedTransition.onComplete) timedTransition.onComplete();
+                    timedTransition = null;
+                }
+            } else {
+                const s = getContinuousS();
+                updateNativeOpacities(s);
 
-            // Step flow formations
-            if (!root.KW?.REDUCED) {
-                stepFlowFormation(formA, dt);
-                if (secB !== secA) stepFlowFormation(formB, dt);
-            }
+                const sections = document.querySelectorAll(".snap-section");
+                const maxSec = Math.max(0, sections.length - 1);
+                const clampedS = Math.min(maxSec, Math.max(0.0, s));
+                const secA = Math.min(maxSec, Math.floor(clampedS));
+                const secB = Math.min(maxSec, secA + 1);
+                const frac = clampedS - secA;
+                w = secA === secB ? 0.0 : TM.smoothstep(0.15, 0.85, frac);
 
-            // Dispose formations >= 2 sections away
-            for (const key of Array.from(cache.keys())) {
-                if (Math.abs(key - s) >= 2.0) disposeFormation(key);
+                const simKeyA = (sections[secA] && sections[secA].dataset.sim) || secA;
+                const simKeyB = (sections[secB] && sections[secB].dataset.sim) || secB;
+
+                formA = loadFormation(simKeyA);
+                formB = loadFormation(simKeyB);
+                camA = formA.camera;
+                camB = formB.camera;
+
+                activeSecIdx = Math.round(clampedS);
+                activeForm = activeSecIdx === secB ? formB : formA;
+                sigmaActive = TM.settle(s, activeSecIdx);
+                nativeFade = activeForm.native === null ? 1.0 : (1.0 - 0.75 * sigmaActive);
+
+                if (!root.KW?.REDUCED) {
+                    stepFlowFormation(formA, dt);
+                    if (secB !== secA) stepFlowFormation(formB, dt);
+                }
+
+                for (const key of Array.from(cache.keys())) {
+                    let secIdx = -1;
+                    const num = Number(key);
+                    if (!Number.isNaN(num)) {
+                        secIdx = num;
+                    } else {
+                        secIdx = Array.from(sections).findIndex((sec) => (sec.dataset && sec.dataset.sim === key) || sec.id === key);
+                    }
+                    if (secIdx !== -1 && Math.abs(secIdx - s) >= 2.0) {
+                        disposeFormation(key);
+                    }
+                }
             }
 
             const texPosA = formA.pingPong ? formA.pingPong.read() : formA.posTex;
@@ -255,7 +330,6 @@
             GFX.quad(morphProg, morphTarget, texW, texH);
 
             // 2. Camera pose interpolation
-            const camA = formA.camera, camB = formB.camera;
             const ew = TM.ease(w);
             const eye = [
                 camA.eye[0] + (camB.eye[0] - camA.eye[0]) * ew,
@@ -271,10 +345,6 @@
             const vpMat = mat4Mul(projMat, viewMat);
 
             // 3. Native settle dimming & text bounds
-            const activeSecIdx = Math.round(clampedS);
-            const activeForm = activeSecIdx === secB ? formB : formA;
-            const sigmaActive = TM.settle(s, activeSecIdx);
-            const nativeFade = activeForm.native === null ? 1.0 : (1.0 - 0.75 * sigmaActive);
             const textRect = getTextRect(activeSecIdx);
 
             // 4. Render particles to offscreen canvas
@@ -328,10 +398,13 @@
             get count() { return count; },
             get texW() { return texW; },
             get cache() { return cache; },
+            get canvas() { return stageCanvas; },
             loadFormation,
             getContinuousS,
             updateResolution,
             renderFrame,
+            startTimedTransition,
+            syncToPage,
             dispose
         };
     };
