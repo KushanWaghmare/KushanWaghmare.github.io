@@ -638,6 +638,863 @@
     chrome();
     const main = $("#main");
 
+    /* ---------- live navbar canvas animation ---------- */
+    const NAV_INPUT = {
+        x: 0.5, y: 0.5,
+        canvasX: -1000, canvasY: -1000,
+        inNav: false,
+        brandHover: false,
+        clickImpulse: 0
+    };
+
+    if (typeof window !== "undefined") {
+        window.addEventListener("pointermove", (e) => {
+            NAV_INPUT.x = e.clientX / Math.max(window.innerWidth, 1);
+            NAV_INPUT.y = e.clientY / Math.max(window.innerHeight, 1);
+            const navEl = $(".nav-live");
+            if (navEl) {
+                const r = navEl.getBoundingClientRect();
+                NAV_INPUT.canvasX = e.clientX - r.left;
+                NAV_INPUT.canvasY = e.clientY - r.top;
+                NAV_INPUT.inNav = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+            }
+        }, { passive: true });
+
+        window.addEventListener("pointerdown", (e) => {
+            const navEl = $(".nav-live");
+            if (navEl) {
+                const r = navEl.getBoundingClientRect();
+                if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+                    NAV_INPUT.clickImpulse = 1.0;
+                }
+            }
+        }, { passive: true });
+
+        document.addEventListener("pointerenter", (e) => {
+            if (e.target && e.target.closest && e.target.closest(".brand")) {
+                NAV_INPUT.brandHover = true;
+            }
+        }, true);
+
+        document.addEventListener("pointerleave", (e) => {
+            if (e.target && e.target.closest && e.target.closest(".brand")) {
+                NAV_INPUT.brandHover = false;
+            }
+        }, true);
+    }
+
+    const drawNavBadge = (ctx, text, mid, w, a, opt = {}) => {
+        if (w < 210) return 0;
+        ctx.save();
+        ctx.font = '500 8.5px "JetBrains Mono", ui-monospace, monospace';
+        let label = text;
+        if (w < 340 && opt.short) label = opt.short;
+        const tw = ctx.measureText(label).width;
+        const bH = 18;
+        const bW = Math.round(tw + 18);
+        const bX = opt.right ? Math.round(w - bW - 6) : 6;
+        const bY = Math.round(mid - bH / 2);
+
+        ctx.fillStyle = "rgba(7, 10, 18, 0.90)";
+        ctx.strokeStyle = rgba(opt.borderCol || a, 0.38);
+        ctx.lineWidth = 1;
+        if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(bX, bY, bW, bH, 4);
+            ctx.fill();
+            ctx.stroke();
+        } else {
+            ctx.fillRect(bX, bY, bW, bH);
+            ctx.strokeRect(bX, bY, bW, bH);
+        }
+
+        // Status indicator pip
+        ctx.fillStyle = rgba(opt.pipCol || a, 0.95);
+        ctx.beginPath();
+        ctx.arc(bX + 7, mid, 2, 0, TAU);
+        ctx.fill();
+
+        // Monospace text label
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = opt.txtCol || "rgba(255, 255, 255, 0.92)";
+        ctx.fillText(label, bX + 13, mid);
+        ctx.restore();
+
+        return bW + 12;
+    };
+
+const NAV = {};
+const navFade = (ctx, w, h, left) => { // feather the strip's edges into the glass navbar
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-in";
+    const g = ctx.createLinearGradient(0, 0, w, 0);
+    g.addColorStop(0, left ? "rgba(0,0,0,0)" : "#000"); g.addColorStop(0.04, "#000");
+    g.addColorStop(0.96, "#000"); g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+};
+
+// Hero: Dynamic Phase Space / Strange Attractor Tracer with sensitive dependence & brand bifurcation
+NAV.hub = () => {
+    let x = 0.1, y = 0.0, z = 0.0;
+    const sigma = 10, beta = 8 / 3;
+    const TRAIL_MAX = 130;
+    const trail = [];
+    let collapse = 0;
+    let bifurcateTimer = 0;
+    let wasBrandHover = false;
+
+    const rk4Step = (dtStep, rhoVal) => {
+        const dx = (cx, cy, cz) => sigma * (cy - cx);
+        const dy = (cx, cy, cz) => cx * (rhoVal - cz) - cy;
+        const dz = (cx, cy, cz) => cx * cy - beta * cz;
+
+        const k1x = dx(x, y, z), k1y = dy(x, y, z), k1z = dz(x, y, z);
+        const k2x = dx(x + 0.5 * dtStep * k1x, y + 0.5 * dtStep * k1y, z + 0.5 * dtStep * k1z);
+        const k2y = dy(x + 0.5 * dtStep * k1x, y + 0.5 * dtStep * k1y, z + 0.5 * dtStep * k1z);
+        const k2z = dz(x + 0.5 * dtStep * k1x, y + 0.5 * dtStep * k1y, z + 0.5 * dtStep * k1z);
+        const k3x = dx(x + 0.5 * dtStep * k2x, y + 0.5 * dtStep * k2y, z + 0.5 * dtStep * k2z);
+        const k3y = dy(x + 0.5 * dtStep * k2x, y + 0.5 * dtStep * k2y, z + 0.5 * dtStep * k2z);
+        const k3z = dz(x + 0.5 * dtStep * k2x, y + 0.5 * dtStep * k2y, z + 0.5 * dtStep * k2z);
+        const k4x = dx(x + dtStep * k3x, y + dtStep * k3y, z + dtStep * k3z);
+        const k4y = dy(x + dtStep * k3x, y + dtStep * k3y, z + dtStep * k3z);
+        const k4z = dz(x + dtStep * k3x, y + dtStep * k3y, z + dtStep * k3z);
+
+        x += (dtStep / 6) * (k1x + 2 * k2x + 2 * k3x + k4x);
+        y += (dtStep / 6) * (k1y + 2 * k2y + 2 * k3y + k4y);
+        z += (dtStep / 6) * (k1z + 2 * k2z + 2 * k3z + k4z);
+    };
+
+    return (ctx, w, h, t, dt) => {
+        const a = KW.col.a;
+        const mid = h / 2;
+
+        const badgeW = drawNavBadge(ctx, "RK4 · dt=0.01 · Lyapunov λ > 0", mid, w, a, {
+            short: "RK4 · dt=0.01 · λ > 0"
+        });
+
+        const x0 = badgeW ? badgeW + 8 : 12;
+        const x1 = w - 12;
+        const trackW = x1 - x0;
+        if (trackW < 30) return;
+
+        // Detect brand hover state transitions
+        if (NAV_INPUT.brandHover && !wasBrandHover) {
+            wasBrandHover = true;
+        } else if (!NAV_INPUT.brandHover && wasBrandHover) {
+            wasBrandHover = false;
+            bifurcateTimer = 1.0; // Trigger bifurcation burst outward
+        }
+
+        if (NAV_INPUT.brandHover) {
+            collapse = Math.min(1, collapse + dt * 4.5);
+        } else {
+            collapse = Math.max(0, collapse - dt * 3.0);
+        }
+
+        if (bifurcateTimer > 0) {
+            bifurcateTimer = Math.max(0, bifurcateTimer - dt * 1.8);
+        }
+
+        // Sensitive dependence: cursor modulates Rayleigh number rho
+        const cursorPerturb = (NAV_INPUT.x - 0.5) * 12;
+        const rho = 28 + cursorPerturb;
+
+        // Run RK4 micro-steps
+        for (let s = 0; s < 3; s++) {
+            rk4Step(0.012, rho);
+            trail.push({ x, y, z });
+            if (trail.length > TRAIL_MAX) trail.shift();
+        }
+
+        // Mapping Lorenz coordinates into canvas track
+        const centreX = x0 + trackW * 0.5;
+        const scaleX = (trackW * 0.44) / 22;
+        const scaleY = (h * 0.38) / 24;
+
+        ctx.save();
+        ctx.lineWidth = 1.2;
+
+        if (trail.length > 2) {
+            for (let i = 1; i < trail.length; i++) {
+                const frac = i / trail.length;
+                const p0 = trail[i - 1], p1 = trail[i];
+
+                const c0x = p0.x * (1 - collapse);
+                const c0z = 27 + (p0.z - 27) * (1 - collapse);
+                const c1x = p1.x * (1 - collapse);
+                const c1z = 27 + (p1.z - 27) * (1 - collapse);
+
+                const sx0 = centreX + c0x * scaleX;
+                const sy0 = mid - (c0z - 27) * scaleY;
+                const sx1 = centreX + c1x * scaleX;
+                const sy1 = mid - (c1z - 27) * scaleY;
+
+                ctx.strokeStyle = rgba(a, frac * 0.85 * (1 - collapse * 0.5));
+                ctx.beginPath();
+                ctx.moveTo(sx0, sy0);
+                ctx.lineTo(sx1, sy1);
+                ctx.stroke();
+
+                if (bifurcateTimer > 0) {
+                    const bFrac = bifurcateTimer;
+                    const bx0 = centreX - c0x * scaleX * (1 + bFrac * 0.6);
+                    const by0 = mid - (c0z - 27) * scaleY * (1 + bFrac * 0.4);
+                    const bx1 = centreX - c1x * scaleX * (1 + bFrac * 0.6);
+                    const by1 = mid - (c1z - 27) * scaleY * (1 + bFrac * 0.4);
+
+                    ctx.strokeStyle = rgba(KW.col.pal[1] || a, frac * bFrac * 0.9);
+                    ctx.beginPath();
+                    ctx.moveTo(bx0, by0);
+                    ctx.lineTo(bx1, by1);
+                    ctx.stroke();
+                }
+            }
+
+            const head = trail[trail.length - 1];
+            const hx = centreX + head.x * (1 - collapse) * scaleX;
+            const hy = mid - (head.z - 27) * (1 - collapse) * scaleY;
+
+            ctx.fillStyle = rgba(a, 0.95);
+            ctx.beginPath();
+            ctx.arc(hx, hy, collapse > 0.5 ? 3.2 : 2.2, 0, TAU);
+            ctx.fill();
+
+            if (collapse > 0.1) {
+                ctx.strokeStyle = rgba(a, collapse * 0.7);
+                ctx.beginPath();
+                ctx.arc(centreX, mid, 4 + (1 - collapse) * 6, 0, TAU);
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    };
+};
+NAV.contact = NAV.hub;
+
+// Mathematics: Calabi-Yau Cross-Section Morph & Riemann Curvature with metric contraction
+NAV.math = () => {
+    return (ctx, w, h, t) => {
+        const a = KW.col.a;
+        const b = KW.col.pal[1] || [129, 140, 248];
+        const mid = h / 2;
+        const R = h * 0.36;
+
+        const badgeW = drawNavBadge(ctx, "R_{μν} = 0 · genus g=3 · χ = -200", mid, w, a, {
+            short: "R_{μν} = 0 · g=3 · χ = -200"
+        });
+
+        const x0 = badgeW ? badgeW + 10 : 12;
+        const x1 = w - 12;
+        const trackW = x1 - x0;
+        if (trackW < 40) return;
+
+        const k = TAU / Math.max(trackW / 2.5, 90);
+        const omega = 2.2;
+        const phi = t * 1.6;
+        const mouseX = NAV_INPUT.inNav ? NAV_INPUT.canvasX : (w * NAV_INPUT.x);
+
+        ctx.save();
+        const step = 6;
+        for (let x = x0; x <= x1; x += step) {
+            const dx = x - mouseX;
+            const contraction = Math.exp(-(dx * dx) / (2 * 45 * 45));
+            const warpedX = x - dx * 0.48 * contraction;
+
+            const y1 = mid - R * Math.sin(k * (x - x0) - omega * t);
+            const y2 = mid - R * Math.cos(k * (x - x0) + phi);
+
+            const ribIntensity = 0.18 + 0.55 * contraction;
+            ctx.strokeStyle = rgba(a, ribIntensity);
+            ctx.lineWidth = 1 + contraction * 0.8;
+            ctx.beginPath();
+            ctx.moveTo(warpedX, y1);
+            ctx.lineTo(warpedX, y2);
+            ctx.stroke();
+
+            if (contraction > 0.4) {
+                ctx.fillStyle = rgba(b, contraction * 0.9);
+                ctx.beginPath();
+                ctx.arc(warpedX, y1, 1.3, 0, TAU);
+                ctx.arc(warpedX, y2, 1.3, 0, TAU);
+                ctx.fill();
+            }
+        }
+
+        const drawWave = (fn, isPsi1, col) => {
+            ctx.strokeStyle = col;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for (let x = x0; x <= x1; x += 2) {
+                const dx = x - mouseX;
+                const contraction = Math.exp(-(dx * dx) / (2 * 45 * 45));
+                const warpedX = x - dx * 0.48 * contraction;
+                const arg = isPsi1 ? (k * (x - x0) - omega * t) : (k * (x - x0) + phi);
+                const y = mid - R * fn(arg);
+                x === x0 ? ctx.moveTo(warpedX, y) : ctx.lineTo(warpedX, y);
+            }
+            ctx.stroke();
+        };
+
+        drawWave(Math.cos, false, rgba(b, 0.85));
+        drawWave(Math.sin, true, rgba(a, 0.95));
+
+        if (mouseX >= x0 && mouseX <= x1) {
+            ctx.strokeStyle = rgba(a, 0.45);
+            ctx.setLineDash([2, 3]);
+            ctx.beginPath();
+            ctx.moveTo(mouseX, mid - R - 2);
+            ctx.lineTo(mouseX, mid + R + 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        ctx.restore();
+    };
+};
+
+// Physics: Gravitational Lensing & Geodesic Deviation with hyperbolic deflection around mass
+NAV.physics = () => {
+    let massX = -1, massY = -1;
+    return (ctx, w, h, t, dt) => {
+        const a = KW.col.a;
+        const mid = h / 2;
+
+        const badgeW = drawNavBadge(ctx, "a/M = 0.998 · r_+ = M + √(M² - a²) · ergosphere active", mid, w, a, {
+            short: "a/M = 0.998 · r_+ = M + √(M² - a²)"
+        });
+
+        const x0 = badgeW ? badgeW + 10 : 12;
+        const x1 = w - 12;
+        const trackW = x1 - x0;
+        if (trackW < 40) return;
+
+        const targetMassX = NAV_INPUT.inNav ? Math.max(x0 + 20, Math.min(x1 - 20, NAV_INPUT.canvasX)) : (x0 + trackW * 0.52);
+        const targetMassY = NAV_INPUT.inNav ? Math.max(4, Math.min(h - 4, NAV_INPUT.canvasY)) : mid;
+
+        if (massX < 0) { massX = targetMassX; massY = targetMassY; }
+        else {
+            massX += (targetMassX - massX) * Math.min(1, dt * 7);
+            massY += (targetMassY - massY) * Math.min(1, dt * 7);
+        }
+
+        ctx.save();
+
+        const rSchw = 4.2;
+        ctx.fillStyle = "#020408";
+        ctx.beginPath();
+        ctx.arc(massX, massY, rSchw, 0, TAU);
+        ctx.fill();
+
+        const ringPulse = 0.75 + 0.25 * Math.sin(t * 3.5);
+        ctx.strokeStyle = rgba(a, 0.85 * ringPulse);
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.arc(massX, massY, rSchw + 1.8, 0, TAU);
+        ctx.stroke();
+
+        ctx.strokeStyle = rgba(a, 0.22);
+        ctx.beginPath();
+        ctx.ellipse(massX, massY, rSchw + 5.5, rSchw + 2.8, 0, 0, TAU);
+        ctx.stroke();
+
+        const rayCount = 7;
+        const raySpan = h * 0.76;
+        const rayStep = raySpan / (rayCount - 1);
+        const rayBaseY0 = mid - raySpan / 2;
+
+        for (let r = 0; r < rayCount; r++) {
+            const yBase = rayBaseY0 + r * rayStep;
+            const impactB = yBase - massY;
+            const absB = Math.max(Math.abs(impactB), 2.5);
+
+            ctx.lineWidth = r === Math.floor(rayCount / 2) ? 1.4 : 1.0;
+            ctx.strokeStyle = rgba(a, 0.35 + (1 - Math.abs(r - 3) / 3) * 0.45);
+            ctx.beginPath();
+
+            const xStep = 3;
+            for (let x = x0; x <= x1; x += xStep) {
+                const dx = x - massX;
+                const r2 = dx * dx + absB * absB;
+                const deflection = (160 * impactB) / (r2 + 40);
+                const y = yBase - deflection;
+
+                x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            const photonProgress = ((t * 0.45 + r * 0.16) % 1);
+            const px = x0 + trackW * photonProgress;
+            const pdx = px - massX;
+            const pr2 = pdx * pdx + absB * absB;
+            const py = yBase - (160 * impactB) / (pr2 + 40);
+
+            ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+            ctx.beginPath();
+            ctx.arc(px, py, 1.5, 0, TAU);
+            ctx.fill();
+        }
+
+        ctx.restore();
+    };
+};
+
+// Data Science: Stochastic Diffusion / Denoising SDE Waveform from noise to clean density
+NAV.datascience = () => {
+    let noisePulsePos = -100;
+    let noisePulseAmp = 0;
+
+    return (ctx, w, h, t, dt) => {
+        const a = KW.col.a;
+        const mid = h / 2;
+        const R = h * 0.38;
+
+        const badgeW = drawNavBadge(ctx, "t ∈ [0, 1] · SNR = 14.2 dB · ∇_x log p_t(x)", mid, w, a, {
+            short: "t ∈ [0, 1] · SNR = 14.2 dB"
+        });
+
+        const x0 = badgeW ? badgeW + 10 : 12;
+        const x1 = w - 12;
+        const trackW = x1 - x0;
+        if (trackW < 40) return;
+
+        if (NAV_INPUT.clickImpulse > 0) {
+            noisePulseAmp = 1.0;
+            noisePulsePos = NAV_INPUT.inNav ? (NAV_INPUT.canvasX - x0) / trackW : 0;
+            NAV_INPUT.clickImpulse = 0;
+        } else if (NAV_INPUT.inNav && noisePulseAmp < 0.2) {
+            noisePulseAmp = 0.55;
+            noisePulsePos = (NAV_INPUT.canvasX - x0) / trackW;
+        }
+
+        if (noisePulseAmp > 0.01) {
+            noisePulseAmp *= Math.exp(-dt * 2.4);
+            noisePulsePos += dt * 0.7;
+        }
+
+        ctx.save();
+        ctx.strokeStyle = rgba(a, 0.92);
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+
+        const xStep = 2;
+        for (let x = x0; x <= x1; x += xStep) {
+            const s = (x - x0) / trackW;
+
+            const n1 = Math.sin(x * 0.65 + t * 14.0) * Math.cos(x * 1.3 - t * 9.0);
+            const n2 = Math.sin(x * 1.85 + t * 22.0) * 0.5;
+            const rawNoise = (n1 + n2) * 0.8;
+
+            const noiseStd = Math.pow(1 - s, 1.8);
+
+            const g1 = Math.exp(-Math.pow(s - 0.70, 2) / (2 * 0.05 * 0.05));
+            const g2 = Math.exp(-Math.pow(s - 0.88, 2) / (2 * 0.04 * 0.04));
+            const cleanTarget = (0.65 * g1 + 0.45 * g2) * 1.6 - 0.25;
+
+            const pulseDist = Math.abs(s - noisePulsePos);
+            const pulseShock = noisePulseAmp * Math.exp(-Math.pow(pulseDist, 2) / (2 * 0.08 * 0.08)) * Math.sin(x * 1.2 + t * 18);
+
+            const yVal = (rawNoise * noiseStd) + (cleanTarget * Math.pow(s, 1.4)) + pulseShock;
+            const y = mid - R * Math.max(-1.1, Math.min(1.1, yVal));
+
+            x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        ctx.strokeStyle = rgba(a, 0.20);
+        ctx.lineWidth = 1.0;
+        ctx.setLineDash([2, 3]);
+
+        ctx.beginPath();
+        for (let x = x0; x <= x1; x += 4) {
+            const s = (x - x0) / trackW;
+            const env = Math.pow(1 - s, 1.6) * 0.85;
+            const y = mid - R * env;
+            x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        ctx.beginPath();
+        for (let x = x0; x <= x1; x += 4) {
+            const s = (x - x0) / trackW;
+            const env = Math.pow(1 - s, 1.6) * 0.85;
+            const y = mid + R * env;
+            x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        if (trackW > 160) {
+            ctx.fillStyle = rgba(a, 0.55);
+            ctx.font = '500 7px "JetBrains Mono", monospace';
+            ctx.fillText("NOISE (t=1)", x0 + 4, mid + R + 1);
+            ctx.textAlign = "right";
+            ctx.fillText("DENOISED (t=0)", x1 - 4, mid + R + 1);
+            ctx.textAlign = "left";
+        }
+
+        ctx.restore();
+    };
+};
+
+// Quant Finance: Order Book Depth & Volatility Smile with hover execution cursor
+NAV.quant = () => {
+    let tickCount = 8842;
+    let poissonAcc = 0;
+    const BOOK_LEVELS = 18;
+    const bidDepths = Array.from({ length: BOOK_LEVELS }, () => 0.2 + Math.random() * 0.8);
+    const askDepths = Array.from({ length: BOOK_LEVELS }, () => 0.2 + Math.random() * 0.8);
+
+    return (ctx, w, h, t, dt) => {
+        const a = KW.col.a;
+        const bidCol = KW.col.pal[3] || [34, 197, 94];
+        const askCol = KW.col.pal[0] || [244, 63, 94];
+        const mid = h / 2;
+
+        poissonAcc += dt * 11;
+        while (poissonAcc >= 1) {
+            poissonAcc--;
+            tickCount++;
+            const idx = (Math.random() * BOOK_LEVELS) | 0;
+            if (Math.random() < 0.5) bidDepths[idx] = Math.max(0.1, Math.min(1.0, bidDepths[idx] + (Math.random() - 0.48) * 0.35));
+            else askDepths[idx] = Math.max(0.1, Math.min(1.0, askDepths[idx] + (Math.random() - 0.48) * 0.35));
+        }
+
+        const badgeW = drawNavBadge(ctx, `spread: 1.2 bps · tick #${tickCount} · dW_t ~ N(0, dt)`, mid, w, a, {
+            short: `spread: 1.2 bps · dW_t ~ N(0, dt)`
+        });
+
+        const x0 = badgeW ? badgeW + 10 : 12;
+        const x1 = w - 12;
+        const trackW = x1 - x0;
+        if (trackW < 40) return;
+
+        const isHovered = NAV_INPUT.inNav;
+        const execCursorX = isHovered ? Math.max(x0, Math.min(x1, NAV_INPUT.canvasX)) : -1;
+        const bookMidX = x0 + trackW * 0.5;
+
+        ctx.save();
+
+        const barW = Math.max(2, Math.floor((trackW * 0.46) / BOOK_LEVELS));
+        const maxH = h * 0.36;
+
+        for (let i = 0; i < BOOK_LEVELS; i++) {
+            const bx = bookMidX - 4 - (i + 1) * barW;
+            if (bx < x0) break;
+            const bh = bidDepths[i] * maxH;
+            ctx.fillStyle = rgba(bidCol, 0.40 + (1 - i / BOOK_LEVELS) * 0.45);
+            ctx.fillRect(bx, mid - bh, barW - 1, bh);
+        }
+
+        for (let i = 0; i < BOOK_LEVELS; i++) {
+            const ax = bookMidX + 4 + i * barW;
+            if (ax + barW > x1) break;
+            const ah = askDepths[i] * maxH;
+            ctx.fillStyle = rgba(askCol, 0.40 + (1 - i / BOOK_LEVELS) * 0.45);
+            ctx.fillRect(ax, mid, barW - 1, ah);
+        }
+
+        const jumpRisk = 0.08 * Math.sin(t * 3.2);
+        ctx.strokeStyle = rgba(a, 0.90);
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        for (let x = x0; x <= x1; x += 2) {
+            const normK = (x - bookMidX) / (trackW * 0.48);
+            const smileY = mid - (h * 0.32) + (normK * normK * 14) + (jumpRisk * normK * 6);
+            x === x0 ? ctx.moveTo(x, smileY) : ctx.lineTo(x, smileY);
+        }
+        ctx.stroke();
+
+        ctx.strokeStyle = rgba(a, 0.25);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x0, mid);
+        ctx.lineTo(x1, mid);
+        ctx.stroke();
+
+        if (isHovered && execCursorX >= x0 && execCursorX <= x1) {
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            ctx.moveTo(execCursorX, mid - maxH - 2);
+            ctx.lineTo(execCursorX, mid + maxH + 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = rgba(a, 1);
+            ctx.beginPath();
+            ctx.arc(execCursorX, mid, 2.5, 0, TAU);
+            ctx.fill();
+
+            ctx.font = '600 7.5px "JetBrains Mono", monospace';
+            ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+            ctx.fillText("EXEC @ 0.0 bps", Math.min(execCursorX + 4, x1 - 65), mid - 8);
+        }
+
+        ctx.restore();
+    };
+};
+
+// Computer Science: Live Instruction Pipeline / Sorting Ribbon with clock halt & opcode inspection
+NAV.cs = () => {
+    const N_BARS = 32;
+    let bars = Array.from({ length: N_BARS }, (_, i) => (i + 1) / N_BARS);
+    let sortGen = null;
+    let cmpA = -1, cmpB = -1;
+    let sortDone = false;
+    let holdTimer = 0;
+
+    function* bitonicSort(arr) {
+        for (let k = 2; k <= arr.length; k *= 2) {
+            for (let j = k / 2; j > 0; j = Math.floor(j / 2)) {
+                for (let i = 0; i < arr.length; i++) {
+                    const l = i ^ j;
+                    if (l > i) {
+                        const dir = ((i & k) === 0);
+                        if ((arr[i] > arr[l]) === dir) {
+                            const tmp = arr[i]; arr[i] = arr[l]; arr[l] = tmp;
+                            yield [i, l];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    const resetSort = () => {
+        for (let i = bars.length - 1; i > 0; i--) {
+            const j = (Math.random() * (i + 1)) | 0;
+            const tmp = bars[i]; bars[i] = bars[j]; bars[j] = tmp;
+        }
+        sortGen = bitonicSort(bars);
+        sortDone = false;
+        cmpA = -1; cmpB = -1;
+    };
+    resetSort();
+
+    const OPCODES = [
+        { code: "0x90", name: "NOP" },
+        { code: "0xE9", name: "JMP" },
+        { code: "0x55", name: "PUSH" },
+        { code: "0x48", name: "MOV" },
+        { code: "0xC3", name: "RET" },
+        { code: "0x0F", name: "SYSCALL" }
+    ];
+
+    const STAGES = ["IF", "ID", "EX", "MEM", "WB"];
+
+    return (ctx, w, h, t, dt) => {
+        const a = KW.col.a;
+        const mid = h / 2;
+        const isHalted = NAV_INPUT.inNav;
+
+        let telemStr = "SSA IR block: %bb.4 · IPC: 2.4 · 8-bit bus clk: 10 MHz";
+        let shortTelem = "IPC: 2.4 · clk: 10 MHz";
+        let pipCol = a;
+
+        if (isHalted) {
+            const opIdx = Math.floor(Math.abs(NAV_INPUT.canvasX * 0.1)) % OPCODES.length;
+            const op = OPCODES[opIdx];
+            telemStr = `CLK HALT · ${op.code} ${op.name} · IP: 0x7FFF00`;
+            shortTelem = `CLK HALT · ${op.code} ${op.name}`;
+            pipCol = [248, 113, 113];
+        }
+
+        const badgeW = drawNavBadge(ctx, telemStr, mid, w, a, {
+            short: shortTelem,
+            pipCol,
+            borderCol: isHalted ? [248, 113, 113] : a
+        });
+
+        const x0 = badgeW ? badgeW + 10 : 12;
+        const x1 = w - 12;
+        const trackW = x1 - x0;
+        if (trackW < 40) return;
+
+        if (!isHalted) {
+            if (!sortDone && sortGen) {
+                for (let k = 0; k < 2; k++) {
+                    const r = sortGen.next();
+                    if (r.done) {
+                        sortDone = true;
+                        holdTimer = 1.6;
+                        cmpA = -1; cmpB = -1;
+                        break;
+                    }
+                    cmpA = r.value[0]; cmpB = r.value[1];
+                }
+            } else if ((holdTimer -= dt) <= 0) {
+                resetSort();
+            }
+        }
+
+        ctx.save();
+
+        const pipeY = mid - 4;
+        const pipeSpan = Math.min(trackW * 0.45, 180);
+        const stageGap = pipeSpan / STAGES.length;
+        const clkProgress = isHalted ? 0.5 : ((t * 2.2) % 1);
+        const activeStage = Math.floor(clkProgress * STAGES.length);
+
+        ctx.font = '600 7.5px "JetBrains Mono", monospace';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        for (let i = 0; i < STAGES.length; i++) {
+            const sx = x0 + i * stageGap + stageGap * 0.5;
+            const isActive = !isHalted && i === activeStage;
+            const stageW = stageGap - 4;
+            const stageH = 10;
+
+            ctx.fillStyle = rgba(a, isActive ? 0.35 : 0.09);
+            ctx.strokeStyle = rgba(a, isActive ? 1.0 : 0.30);
+            ctx.lineWidth = 1;
+            ctx.fillRect(sx - stageW / 2, pipeY - stageH / 2, stageW, stageH);
+            ctx.strokeRect(sx - stageW / 2, pipeY - stageH / 2, stageW, stageH);
+
+            ctx.fillStyle = rgba(isActive ? [255, 255, 255] : a, isActive ? 1.0 : 0.65);
+            ctx.fillText(STAGES[i], sx, pipeY);
+
+            if (i < STAGES.length - 1) {
+                ctx.strokeStyle = rgba(a, isActive ? 0.8 : 0.25);
+                ctx.beginPath();
+                ctx.moveTo(sx + stageW / 2, pipeY);
+                ctx.lineTo(sx + stageGap - stageW / 2, pipeY);
+                ctx.stroke();
+            }
+        }
+
+        const sortStartX = x0 + pipeSpan + 14;
+        const sortW = x1 - sortStartX;
+        if (sortW > 40) {
+            const n = Math.min(N_BARS, Math.floor(sortW / 4.5));
+            const bw = sortW / n;
+            const maxBarH = h * 0.65;
+
+            for (let i = 0; i < n; i++) {
+                const bx = sortStartX + i * bw;
+                const bh = Math.max(2, bars[i] * maxBarH);
+                const isHot = (i === cmpA || i === cmpB);
+                const by = h - 2 - bh;
+
+                ctx.fillStyle = rgba(a, isHot ? 1.0 : sortDone ? 0.85 : 0.32);
+                ctx.fillRect(bx, by, Math.max(bw - 1.2, 1), bh);
+
+                if (isHot) {
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(bx, by, Math.max(bw - 1.2, 1), 2);
+                }
+            }
+        }
+
+        if (isHalted && NAV_INPUT.canvasX >= x0 && NAV_INPUT.canvasX <= x1) {
+            const opIdx = Math.floor(Math.abs(NAV_INPUT.canvasX * 0.1)) % OPCODES.length;
+            const op = OPCODES[opIdx];
+            const hx = NAV_INPUT.canvasX;
+
+            ctx.font = '600 8px "JetBrains Mono", monospace';
+            ctx.textAlign = "center";
+            ctx.fillStyle = "rgba(248, 113, 113, 0.95)";
+            ctx.fillText(`[${op.code} ${op.name}]`, hx, h - 3);
+        }
+
+        ctx.restore();
+    };
+};
+
+// Research Papers: Poincaré hyperbolic disk gauge with citation stream telemetry
+NAV.papers = () => {
+    return (ctx, w, h, t) => {
+        const a = KW.col.a, mid = h / 2, R = Math.min(h * 0.38, 12);
+        const cx = 18;
+        // Mini Poincaré disk glyph
+        ctx.strokeStyle = rgba(a, 0.45); ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(cx, mid, R, 0, TAU); ctx.stroke();
+        const sweep = t * 2.2;
+        ctx.strokeStyle = rgba(a, 0.9); ctx.beginPath();
+        ctx.arc(cx, mid, R, sweep, sweep + 1.6); ctx.stroke();
+        ctx.fillStyle = rgba(a, 1); ctx.beginPath();
+        ctx.arc(cx + Math.cos(sweep) * R * 0.6, mid + Math.sin(sweep) * R * 0.6, 2, 0, TAU); ctx.fill();
+
+        // Citation stream horizon
+        const x0 = 38, x1 = w - 16;
+        ctx.strokeStyle = rgba(a, 0.22); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x0, mid); ctx.lineTo(x1, mid); ctx.stroke();
+        const px = x0 + (x1 - x0) * ((t * 0.5) % 1);
+        ctx.fillStyle = rgba(a, 0.95); ctx.beginPath(); ctx.arc(px, mid, 2.5, 0, TAU); ctx.fill();
+
+        [0.25, 0.55, 0.82].forEach((frac) => {
+            const bx = x0 + (x1 - x0) * frac;
+            const hot = Math.abs(px - bx) < 16;
+            ctx.fillStyle = rgba(a, hot ? 1 : 0.35);
+            ctx.fillRect(bx - 3, mid - 4, 6, 8);
+        });
+    };
+};
+
+// Academic Coursework: 4-stage prerequisite pipeline [FND] → [CORE] → [HNR] → [DEG]
+NAV.courses = () => {
+    const labels = ["FND", "CORE", "HNR", "DEG"];
+    return (ctx, w, h, t) => {
+        const a = KW.col.a, mid = h / 2, n = labels.length;
+        const x0 = 18, span = w - 36, gap = span / (n - 1);
+        ctx.font = '700 8.5px "JetBrains Mono", ui-monospace, monospace';
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+
+        ctx.strokeStyle = rgba(a, 0.25); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x0, mid); ctx.lineTo(x0 + span, mid); ctx.stroke();
+
+        const cycle = (t * 0.7) % (n - 1);
+        const stage = Math.floor(cycle), frac = cycle - stage;
+        const sx = x0 + stage * gap + frac * gap;
+        ctx.fillStyle = rgba(a, 0.95); ctx.beginPath(); ctx.arc(sx, mid, 2.6, 0, TAU); ctx.fill();
+
+        for (let i = 0; i < n; i++) {
+            const x = x0 + i * gap;
+            const active = i <= stage + (frac > 0.5 ? 1 : 0);
+            ctx.fillStyle = rgba(a, active ? 0.2 : 0.08);
+            ctx.strokeStyle = rgba(a, active ? 0.9 : 0.35);
+            ctx.lineWidth = 1;
+            ctx.fillRect(x - 14, mid - 7, 28, 14);
+            ctx.strokeRect(x - 14, mid - 7, 28, 14);
+            ctx.fillStyle = rgba(a, active ? 1 : 0.45);
+            ctx.fillText(labels[i], x, mid);
+        }
+    };
+};
+
+const initNavSim = (c) => {
+    const ctx = c.getContext("2d"), inst = {};
+    let W = 0, Hh = 0, cur = null, prev = null, mix = 1;
+    KW.fit(c, (w, h, dpr) => { W = w; Hh = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); });
+    KW.loop(c, (t, dt) => {
+        ctx.clearRect(0, 0, W, Hh);
+        if (W < 76) return;
+        const d = document.documentElement.dataset.domain, k = NAV[d] ? d : "math";
+        if (!cur) cur = k;
+        else if (k !== cur) { prev = cur; cur = k; mix = 0; }
+        if (mix < 1) {
+            mix = Math.min(1, mix + dt * 2.5); // cross-fade over ~400ms
+            if (prev) {
+                ctx.save(); ctx.globalAlpha = 1 - mix;
+                (inst[prev] || (inst[prev] = NAV[prev]()))(ctx, W, Hh, t, dt);
+                ctx.restore();
+            }
+        }
+        ctx.save(); ctx.globalAlpha = mix;
+        (inst[cur] || (inst[cur] = NAV[cur]()))(ctx, W, Hh, t, dt);
+        ctx.restore();
+        navFade(ctx, W, Hh, false);
+    });
+};
+
+    const navCanvas = $(".nav-live canvas");
+    if (navCanvas) {
+        try { initNavSim(navCanvas); } catch (e) { console.warn("Nav sim:", e); }
+    }
+
+
+
     const initPage = () => {
         const u = new URL(location.href);
         const file = u.pathname.split("/").pop() || "index.html";

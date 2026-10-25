@@ -589,6 +589,7 @@ const renderNav = (active, pageType) => {
             <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
             ${badge}
         </div>
+        <div class="nav-live" aria-hidden="true"><canvas></canvas></div>
         <nav class="links" aria-label="Navigation">
             ${backLink}
             <a href="papers.html" class="${isPapers ? 'active' : ''}"><span class="full">Papers</span><span class="short">Papers</span></a>
