@@ -564,22 +564,30 @@
             sections[idx].scrollIntoView({ behavior: REDUCED ? "instant" : "smooth" });
         };
 
-        let locked = false;
-        let unlockTimer = null;
+        let isWheelActive = false;
+        let wheelQuietTimer = null;
 
-        // Step exactly one section per wheel gesture with momentum rejection
+        // Step exactly one section per wheel gesture with momentum stream rejection
         window.addEventListener("wheel", (e) => {
             if (e.ctrlKey || e.metaKey) return;
             const hScroll = e.target && e.target.closest && e.target.closest(".course-grid");
             if (hScroll && Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
 
-            if (Math.abs(e.deltaY) < 16) return;
             e.preventDefault();
-            if (locked) return;
 
-            locked = true;
-            clearTimeout(unlockTimer);
-            unlockTimer = setTimeout(() => { locked = false; }, 480);
+            // Track continuous gesture: as long as wheel events keep arriving within 180ms, it is the same physical gesture
+            clearTimeout(wheelQuietTimer);
+            wheelQuietTimer = setTimeout(() => {
+                isWheelActive = false;
+            }, 180);
+
+            // If this gesture already triggered a section switch, drop all subsequent inertial events
+            if (isWheelActive) return;
+
+            if (Math.abs(e.deltaY) < 16) return;
+
+            // Mark gesture as active so NO MORE section switches happen until user stops scrolling
+            isWheelActive = true;
 
             const cur = getClosest();
             const next = e.deltaY > 0 ? Math.min(sections.length - 1, cur + 1) : Math.max(0, cur - 1);
@@ -598,15 +606,12 @@
         }, { passive: true, signal: sig });
 
         window.addEventListener("touchmove", (e) => {
-            if (!e.touches || e.touches.length !== 1 || touchConsumed || locked) return;
+            if (!e.touches || e.touches.length !== 1 || touchConsumed) return;
             const dy = touchStartY - e.touches[0].clientY;
             const dx = touchStartX - e.touches[0].clientX;
             if (Math.abs(dx) > Math.abs(dy)) return;
             if (Math.abs(dy) > 32) {
                 touchConsumed = true;
-                locked = true;
-                clearTimeout(unlockTimer);
-                unlockTimer = setTimeout(() => { locked = false; }, 480);
                 const cur = getClosest();
                 const next = dy > 0 ? Math.min(sections.length - 1, cur + 1) : Math.max(0, cur - 1);
                 if (next !== cur) {
