@@ -443,21 +443,31 @@
             const rawDtMs = lastFrameMs > 0 ? Math.min(200, Math.max(1, nowMs - lastFrameMs)) : 16.0;
             lastFrameMs = nowMs;
 
-            // Interactive camera inclination
+            // Interactive camera inclination: maps cursor / touch y to 5° to 85° [0.087, 1.484] rad
             const p = KW.local(c);
             const inside = p.x > 0 && p.y > 0 && p.x < W && p.y < H;
-            // Map cursor y to inclination θ_obs in [0.08, 1.53] rad (4.6° to 87.6°)
-            tiltT = inside ? 0.08 + 1.45 * Math.min(1.0, Math.max(0.0, p.y / H)) : initialTilt;
-            tilt += (tiltT - tilt) * Math.min(1.0, dt * 2.5);
+            if (inside) {
+                tiltT = 0.087 + (1.484 - 0.087) * Math.min(1.0, Math.max(0.0, p.y / H));
+            } else {
+                // Autonomous gentle harmonic drift when idle (±3.5°)
+                tiltT = initialTilt + 0.06 * Math.sin(t * 0.32);
+            }
+            // Exponential smoothing (1 - exp(-k * dt)) prevents abrupt popping
+            const dampFactor = 1.0 - Math.exp(-3.5 * Math.min(0.1, dt));
+            tilt += (tiltT - tilt) * dampFactor;
             flare = Math.max(0.0, flare - dt * 0.8);
 
-            // Temporal Anti-Aliasing (TAA) static detection
-            const moved = Math.abs(tilt - prevTilt) > 0.0003 || flare > 0.001 || debugMode !== prevDebugMode;
+            // Temporal Anti-Aliasing (TAA) static detection & fast-motion reset
+            const deltaTilt = Math.abs(tilt - prevTilt);
+            const fastMotion = deltaTilt > 0.0035;
+            const moved = deltaTilt > 0.00025 || flare > 0.001 || debugMode !== prevDebugMode;
             prevTilt = tilt;
             prevDebugMode = debugMode;
 
-            if (moved) {
+            if (fastMotion) {
                 accumCount = 0;
+            } else if (moved) {
+                accumCount = Math.max(0, accumCount - 2);
             } else if (accumCount < 64) {
                 accumCount++;
             }

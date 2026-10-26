@@ -79,3 +79,8 @@ True section order derived from `shared/data.js` (`Object.keys(SITE.domains)` = 
 - Upgraded baked procedural starfield to 14,000 Poisson-distributed stars with power-law Pareto magnitude distribution, Tanner Helland blackbody temperatures (2,400 K to 36,000 K), and tilted Milky Way galactic plane with central bulge and dust lane attenuation.
 - Implemented ray-bundle Jacobian finite-difference magnification ($\mu = \operatorname{clamp}(0.00018 / \|\text{dDirX} \times \text{dDirY}\|, 0.45, 4.5)$) in `FS_KERR_MARCH`, generating amplified Einstein arcs and duplicate images near the shadow boundary.
 - Enforced pitch-black sky background away from the black hole with screen-corner luminance $< 0.02$.
+
+### 3.6 Commit 5 Completed Actions (Post Chain + TAA)
+- Upgraded compose shader (`FS_COMPOSE`) with very light edge chromatic aberration ($0.0032 \cdot r^2$ radial RGB split), selective highlight lens glare ($> 2.8$ peak flare), luminance-masked film grain $\le 1.6\%$, and spatial gradient dithering to prevent banding.
+- Enhanced TAA accumulation: 8-phase Halton sub-pixel jitter with fast-cursor-motion reset ($|\Delta\theta| > 0.0035$) to prevent ghosting while supersampling the thin photon ring and higher-order lensed images when stationary.
+- Smooth exponential inclination damping ($1 - e^{-3.5 \Delta t}$) covering $5^\circ \le \theta \le 85^\circ$ with autonomous slow harmonic idle drift ($\pm 3.5^\circ$).

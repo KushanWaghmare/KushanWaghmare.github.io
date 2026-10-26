@@ -649,33 +649,47 @@ float hashGrain(vec2 p) {
 }
 
 void main() {
-    vec4 raw = texture(uRayTarget, vUV);
-
     // Bypass post-processing in debug modes to show exact false-colour telemetry
     if (uDebugMode > 0) {
+        vec4 raw = texture(uRayTarget, vUV);
         fragColor = vec4(raw.rgb, 1.0);
         return;
     }
 
-    vec3 bloom = texture(uBloomTarget, vUV).rgb;
-    vec3 hdr = raw.rgb + bloom * uBloomIntensity;
-    hdr *= uExposure;
-
-    // Subtle vignette: 12% falloff towards corners
+    // 1. Very light chromatic aberration at the edges (radial split)
     vec2 uvDist = vUV - 0.5;
-    float vig = clamp(1.0 - 0.35 * dot(uvDist, uvDist), 0.0, 1.0);
+    float r2 = dot(uvDist, uvDist);
+    vec2 caOffset = uvDist * (0.0032 * r2);
+    vec3 rawRgb;
+    rawRgb.r = texture(uRayTarget, vUV - caOffset).r;
+    rawRgb.g = texture(uRayTarget, vUV).g;
+    rawRgb.b = texture(uRayTarget, vUV + caOffset).b;
+
+    // 2. Dual-Kawase Bloom with subtle lens glare on the brightest points only
+    vec3 bloom = texture(uBloomTarget, vUV).rgb;
+    float peak = max(rawRgb.r, max(rawRgb.g, rawRgb.b));
+    float glare = max(0.0, peak - 2.8) * 0.10;
+    vec3 hdr = rawRgb + bloom * uBloomIntensity + vec3(glare * 0.75, glare * 0.88, glare * 1.05);
+
+    // 3. Gentle exposure adaptation & subtle corner vignette
+    hdr *= uExposure;
+    float vig = clamp(1.0 - 0.32 * r2, 0.0, 1.0);
     hdr *= vig;
 
-    // Filmic tonemapping
+    // 4. Filmic tonemapping (ACES)
     vec3 mapped = aces(hdr);
 
-    // sRGB gamma 2.2
+    // 5. sRGB gamma 2.2
     vec3 finalRGB = pow(mapped, vec3(1.0 / 2.2));
 
-    // Subtle film grain weighted by luminance so pitch-black space & shadow remain pure #000000
+    // 6. Subtle film grain (<= 1.6%) weighted by luminance so pitch-black space remains pure #000000
     float luma = dot(finalRGB, vec3(0.2126, 0.7152, 0.0722));
-    float grain = (hashGrain(vUV * uRes + fract(uTime * 19.3)) - 0.5) * 0.016 * smoothstep(0.0, 0.18, luma);
-    finalRGB = clamp(finalRGB + grain, 0.0, 1.0);
+    float grain = (hashGrain(vUV * uRes + fract(uTime * 19.3)) - 0.5) * 0.015 * smoothstep(0.01, 0.25, luma);
+
+    // 7. Spatial gradient dithering to eliminate banding in dark gradients
+    float dither = (hashGrain(vUV * uRes + vec2(1.23, 4.56)) - 0.5) / 255.0;
+
+    finalRGB = clamp(finalRGB + grain + dither, 0.0, 1.0);
     fragColor = vec4(finalRGB, 1.0);
 }
 `;
