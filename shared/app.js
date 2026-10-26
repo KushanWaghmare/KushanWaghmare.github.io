@@ -300,7 +300,6 @@
         </nav>
 
         <section class="snap-section hero" id="proj-hero" data-domain="${p.domain}" data-sim="project:${p.id}:hero">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="${d.file}">${d.name}</a> / ${p.title}</div>
                 <h1 data-hero>${p.title}</h1>
@@ -318,7 +317,6 @@
         </section>
 
         <section class="snap-section project-snap" id="proj-overview" data-domain="${p.domain}" data-sim="project:${p.id}:overview">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:880px">
                 <h2 class="snap-title" data-reveal style="font-size:clamp(30px, 4.2vw, 52px)">Context &amp; Formulation</h2>
                 <div class="snap-overview-card glass" data-reveal>
@@ -330,7 +328,6 @@
         </section>
 
         <section class="snap-section project-snap" id="proj-arch" data-domain="${p.domain}" data-sim="project:${p.id}:arch">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:960px">
                 <h2 class="snap-title" data-reveal style="font-size:clamp(30px, 4.2vw, 52px)">System Pipeline</h2>
                 <ol class="snap-arch-grid" data-reveal>
@@ -342,7 +339,6 @@
         </section>
 
         <section class="snap-section project-snap" id="proj-math" data-domain="${p.domain}" data-sim="project:${p.id}:math">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:960px">
                 <h2 class="snap-title" data-reveal style="font-size:clamp(30px, 4.2vw, 52px)">Analytical &amp; Numerical Formulations</h2>
                 <div class="snap-math-grid" data-reveal>
@@ -360,7 +356,6 @@
         </section>
 
         <section class="snap-section about-contact-section" id="proj-nav" data-domain="${p.domain}" data-sim="project:${p.id}:nav">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:960px">
                 <div class="section-head" data-reveal><span class="idx">04</span><h2>Related Work &amp; Source Code</h2></div>
                 <p class="lead" data-reveal>Explore other technical deep-dives in ${d.name} or navigate back to the domain index.</p>
@@ -397,7 +392,6 @@
         </nav>
 
         <section class="snap-section hero" id="paper-hero" data-domain="papers" data-sim="paper:${p.id}:hero" style="--a:var(--rgb-papers)">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:980px">
                 <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>${p.short || p.title}</span></div>
                 <h1 data-hero style="font-size:clamp(24px, 3.2vw, 42px);line-height:1.2;max-width:980px">${p.title}</h1>
@@ -427,7 +421,6 @@
         </section>
 
         <section class="snap-section project-snap" id="paper-theory" data-domain="papers" data-sim="paper:${p.id}:theory" style="--a:var(--rgb-papers)">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:980px">
                 <h2 class="snap-title" data-reveal style="font-size:clamp(24px, 3.2vw, 42px)">Analytical Model &amp; Core Contributions</h2>
                 <div class="snap-overview-card glass" data-reveal style="padding:20px 26px;max-width:980px">
@@ -444,7 +437,6 @@
         </section>
 
         <section class="snap-section about-contact-section" id="paper-cite" data-domain="papers" data-sim="paper:${p.id}:cite" style="--a:var(--rgb-papers)">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner" style="max-width:980px">
                 <div class="section-head" data-reveal><span class="idx">02</span><h2>Citation, Code &amp; Sibling Papers</h2></div>
                 <p class="lead" data-reveal style="margin-bottom:16px">Official academic reference citation for LaTeX publications, along with sibling deep-dives across research domains.</p>
@@ -549,6 +541,10 @@
         const scrollToSection = (idx) => {
             if (idx < 0 || idx >= sections.length) return;
             curIdx = idx;
+            if (window.THREAD_STAGE && typeof window.THREAD_STAGE.goToSection === "function") {
+                window.THREAD_STAGE.goToSection(idx);
+                return;
+            }
             sections[idx].scrollIntoView({ behavior: REDUCED ? "instant" : "smooth" });
         };
 
@@ -1522,38 +1518,9 @@ const initNavSim = (c) => {
             return null;
         };
 
-        document.querySelectorAll(".snap-section canvas").forEach((c) => {
-            const sec = c.closest(".snap-section");
-            const simKey = sec && sec.dataset.sim;
-            if (simKey === "hub:intro" && window.THREAD_STAGE && window.GFX?.supported && !window.KW?.REDUCED) {
-                return; // Particle thread directly visualises intro; skip duplicate canvas sim
-            }
-            if (simKey && window.SLIDE_SIMS && window.SLIDE_SIMS[simKey]) {
-                const item = window.SLIDE_SIMS[simKey];
-                const eng = window.ENGINES && window.ENGINES[item.engine];
-                const gpu = resolveGpuSim(simKey);
-
-                if (gpu && window.GFX && window.GFX.supported) {
-                    if (window.SIMS && window.SIMS[gpu.key]) {
-                        try { window.SIMS[gpu.key](c, item.params); return; } catch (e) {}
-                    }
-                    if (window.KW && window.KW.loadModule) {
-                        window.KW.loadModule(gpu.mod).then(() => {
-                            if (c.isConnected && window.SIMS && window.SIMS[gpu.key]) {
-                                window.SIMS[gpu.key](c, item.params);
-                            }
-                        }).catch(() => {
-                            if (eng) try { eng(c, item.params); } catch (e) {}
-                        });
-                        return;
-                    }
-                }
-
-                if (eng) {
-                    try { eng(c, item.params); } catch (err) { console.warn("Slide sim error:", simKey, err); }
-                }
-            }
-        });
+        if (window.THREAD_STAGE && typeof window.THREAD_STAGE.refreshSections === "function") {
+            window.THREAD_STAGE.refreshSections();
+        }
 
         setupSnapObserver();
         observeReveals();

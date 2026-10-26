@@ -108,7 +108,6 @@ const hubPage = () => `
         </nav>
 
         <section class="snap-section hero" id="intro" data-domain="hub" data-sim="hub:intro" data-enter="zoom" style="--a:var(--rgb-hub)">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <h1 data-hero>Kushan<br>Waghmare</h1>
                 <p class="lead" data-hero>Data Science &amp; Quantitative Finance student at IIT Madras, building complex systems from compilers to statistical-arbitrage models, and studying the physics underneath them.</p>
@@ -124,7 +123,6 @@ const hubPage = () => `
             const nextLabel = keys[i + 1] ? `Next: ${SITE.domains[keys[i + 1]].name}` : "Next: About &amp; Contact";
             return `
         <section class="snap-section domain-snap" id="domain-${k}" data-domain="${k}" data-sim="hub:domain-${k}" data-enter="${VEC[i]}" style="--a:var(--rgb-${k})">
-            ${k === "physics" ? '<div class="sim-wrapper"><canvas aria-hidden="true"></canvas></div>' : '<canvas aria-hidden="true"></canvas>'}
             <div class="snap-inner">
                 <h2 class="snap-title" data-reveal>${d.name}</h2>
                 <p class="lead snap-lead" data-reveal>${d.blurb}</p>
@@ -142,7 +140,6 @@ const hubPage = () => `
         }).join("")}
 
         <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-sim="hub:contact" data-enter="top" style="--a:var(--rgb-contact)">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="section-head" data-reveal><span class="idx">06</span><h2>About &amp; Profile</h2></div>
                 <div class="two-col">
@@ -194,7 +191,6 @@ const domainPage = (key) => {
     </nav>
 
     <section class="snap-section hero" id="domain-intro" data-domain="${key}" data-sim="domain:${key}:0">
-        ${key === "physics" ? '<div class="sim-wrapper"><canvas aria-hidden="true"></canvas></div>' : '<canvas aria-hidden="true"></canvas>'}
         <div class="snap-inner">
             <h1 data-hero>${d.name}</h1>
             <p class="lead" data-hero>${d.blurb}</p>
@@ -215,7 +211,6 @@ const domainPage = (key) => {
         const slideKey = `domain:${key}:${i + 1}`;
         return `
     <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${key}" data-sim="${slideKey}">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <h2 class="snap-title" data-reveal>${p.title}</h2>
             <p class="lead snap-lead" data-reveal>${p.summary}</p>
@@ -239,7 +234,6 @@ const domainPage = (key) => {
     }).join("")}
 
     <section class="snap-section about-contact-section" id="domain-explore" data-domain="contact" data-sim="domain:${key}:${ps.length + 1}" style="--a:var(--rgb-contact)">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="section-head" data-reveal><span class="idx">${String(ps.length + 1).padStart(2, "0")}</span><h2>Explore Other Domains</h2></div>
             <p class="lead" data-reveal style="margin-bottom:28px">Navigate through other core domains of mathematical modelling, physics simulations, stochastic calculus, and machine systems.</p>
@@ -263,7 +257,6 @@ const projectIndexPage = () => {
     </nav>
 
     <section class="snap-section hero" id="proj-index-hero" data-domain="hub" data-sim="project-index:hero">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Projects</div>
             <h1 data-hero>Selected Projects</h1>
@@ -285,7 +278,6 @@ const projectIndexPage = () => {
         const simKey = `project:${p.id}:hero`;
         return `
     <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${p.domain}" data-sim="${simKey}" style="--a:var(--rgb-${p.domain})">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <h2 class="snap-title" data-reveal>${p.title}</h2>
             <p class="lead snap-lead" data-reveal>${p.summary}</p>
@@ -321,7 +313,6 @@ const papersPage = () => {
     </nav>
 
     <section class="snap-section hero" id="papers-hero" data-domain="papers" data-sim="papers-index:hero" style="--a:var(--rgb-papers)">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Research Papers</div>
             <h1 data-hero>Research Papers</h1>
@@ -342,7 +333,6 @@ const papersPage = () => {
         const d = SITE.domains[p.domain];
         return `
     <section class="snap-section project-snap" id="paper-${p.id}" data-domain="papers" data-sim="paper:${p.id}:hero" style="--a:var(--rgb-papers)">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:880px">
             <h2 class="snap-title" data-reveal style="font-size:clamp(26px, 3.6vw, 48px);line-height:1.16">
                 <a href="paper.html?p=${p.id}" style="color:inherit;text-decoration:none">${p.title}</a>
@@ -372,7 +362,6 @@ const papersPage = () => {
     }).join("")}
 
     <section class="snap-section about-contact-section" id="papers-contact" data-domain="contact" data-sim="papers-index:contact" style="--a:var(--rgb-contact)">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="section-head" data-reveal><span class="idx">${String(papers.length + 1).padStart(2, "0")}</span><h2>Research Enquiries &amp; Collaboration</h2></div>
             <p class="lead" data-reveal style="margin-bottom:28px">Interested in co-authorship, paper review, or expanding theoretical derivations into production systems? Get in touch directly.</p>
@@ -400,7 +389,6 @@ const paperDetailPage = (p) => {
     </nav>
 
     <section class="snap-section hero" id="paper-hero" data-domain="papers" data-sim="paper:${p.id}:hero" style="--a:var(--rgb-papers)">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:980px">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>${p.short || p.title}</span></div>
             <h1 data-hero style="font-size:clamp(24px, 3.2vw, 42px);line-height:1.2;max-width:980px">${p.title}</h1>
@@ -430,7 +418,6 @@ const paperDetailPage = (p) => {
     </section>
 
     <section class="snap-section project-snap" id="paper-theory" data-domain="papers" data-sim="paper:${p.id}:theory" style="--a:var(--rgb-papers)">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:980px">
             <h2 class="snap-title" data-reveal style="font-size:clamp(24px, 3.2vw, 42px)">Analytical Model &amp; Core Contributions</h2>
             <div class="snap-overview-card glass" data-reveal style="padding:20px 26px;max-width:980px">
@@ -447,7 +434,6 @@ const paperDetailPage = (p) => {
     </section>
 
     <section class="snap-section about-contact-section" id="paper-cite" data-domain="papers" data-sim="paper:${p.id}:cite" style="--a:var(--rgb-papers)">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner" style="max-width:980px">
             <div class="section-head" data-reveal><span class="idx">02</span><h2>Citation, Code &amp; Sibling Papers</h2></div>
             <p class="lead" data-reveal style="margin-bottom:16px">Official academic reference citation for LaTeX publications, along with sibling deep-dives across research domains.</p>
@@ -497,7 +483,6 @@ const coursesPage = () => {
     </nav>
 
     <section class="snap-section hero" id="courses-hero" data-domain="courses" data-sim="courses-index:hero" style="--a:var(--rgb-courses)">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Coursework</div>
             <h1 data-hero>Academic Coursework &amp;<br>Curricula</h1>
@@ -518,7 +503,6 @@ const coursesPage = () => {
         const d = SITE.domains[tr.domain];
         return `
     <section class="snap-section project-snap course-snap" id="track-${tr.track}" data-domain="courses" data-sim="track:${tr.track}" style="--a:var(--rgb-courses)">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner course-inner">
             <h2 class="snap-title" data-reveal style="font-size:clamp(24px, 3.2vw, 42px)">${tr.degree}</h2>
             <p class="lead snap-lead" data-reveal>${tr.blurb}</p>
@@ -548,7 +532,6 @@ const coursesPage = () => {
     }).join("")}
 
     <section class="snap-section about-contact-section" id="courses-contact" data-domain="contact" data-sim="courses-index:contact" style="--a:var(--rgb-contact)">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="section-head" data-reveal><span class="idx">${String(tracks.length + 1).padStart(2, "0")}</span><h2>Academic Transcripts &amp; Verification</h2></div>
             <p class="lead" data-reveal style="margin-bottom:28px">Official academic transcripts, syllabi, and coursework credentials available upon request for institutional and professional review.</p>
@@ -625,18 +608,19 @@ const buildHTML = ({ domain, pageType, title, desc, mainContent }) => `<!doctype
     <script defer src="shared/lib/lattice-math.js?v=42"></script>
     <script defer src="shared/gpu/gpu-crystal-shaders.js?v=42"></script>
     <script defer src="shared/gpu/gpu-crystal.js?v=42"></script>
-    <script defer src="shared/gfx.js?v=42"></script>
-    <script defer src="shared/engines.js?v=42"></script>
-    <script defer src="shared/slides.js?v=42"></script>
-    <script defer src="shared/lib/thread-math.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-thread-shaders.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-thread-formations.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-thread.js?v=42"></script>
-    <script defer src="shared/blackhole-physics.js?v=37"></script>
-    <script defer src="shared/blackhole-shaders.js?v=37"></script>
-    <script defer src="shared/blackhole-lite.js?v=37"></script>
-    <script defer src="shared/blackhole.js?v=37"></script>
-    <script defer src="shared/app.js?v=43"></script>
+    <script defer src="shared/lib/cy-math.js?v=44"></script>
+    <script defer src="shared/blackhole-physics.js?v=44"></script>
+    <script defer src="shared/blackhole-shaders.js?v=44"></script>
+    <script defer src="shared/blackhole-lite.js?v=44"></script>
+    <script defer src="shared/blackhole.js?v=44"></script>
+    <script defer src="shared/gfx.js?v=44"></script>
+    <script defer src="shared/engines.js?v=44"></script>
+    <script defer src="shared/slides.js?v=44"></script>
+    <script defer src="shared/lib/thread-math.js?v=44"></script>
+    <script defer src="shared/gpu/gpu-thread-shaders.js?v=44"></script>
+    <script defer src="shared/gpu/gpu-thread-formations.js?v=44"></script>
+    <script defer src="shared/gpu/gpu-thread.js?v=44"></script>
+    <script defer src="shared/app.js?v=44"></script>
 
 </head>
 <body>

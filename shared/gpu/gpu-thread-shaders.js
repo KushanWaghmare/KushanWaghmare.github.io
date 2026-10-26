@@ -1,241 +1,233 @@
-/* WebGL2 Shaders for Particle Thread (shared/gpu/gpu-thread-shaders.js).
-   Contains morph transition compute shader, particle rendering vertex/fragment shaders,
-   and flow update integration shaders. */
+/* WebGL2 Shaders for Unified Single-Buffer Particle Stage & Same-Scene Auxiliary Objects
+   (shared/gpu/gpu-thread-shaders.js). */
 
 (function (root, factory) {
-    if (typeof module === "object" && module.exports) {
-        module.exports = factory();
-    } else {
-        root.THREAD_SHADERS = factory();
-    }
+    if (typeof module === "object" && module.exports) module.exports = factory(root);
+    else root.THREAD_SHADERS = factory(root);
 }(typeof self !== "undefined" ? self : this, function () {
     "use strict";
 
-    /* Full-screen triangle vertex shader */
-    const VS_QUAD = `#version 300 es
-layout(location = 0) in vec2 aPos;
-out vec2 vUV;
-void main() {
-    vUV = aPos * 0.5 + 0.5;
-    gl_Position = vec4(aPos, 0.0, 1.0);
-}`;
-
-    /* Analytical divergence-free curl noise GLSL block matching thread-math.js exactly */
-    const GLSL_CURL = `
-vec3 curlNoise(vec3 p, float t) {
-    vec3 k1 = vec3(1.8, 1.2, 1.4);
-    vec3 k2 = vec3(-1.3, 2.1, 1.1);
-    vec3 k3 = vec3(1.4, -1.6, 2.2);
-
-    vec3 c1 = vec3(-2.36, 1.44, 1.80);
-    vec3 c2 = vec3(2.52, 2.66, -2.10);
-    vec3 c3 = vec3(-2.42, -1.98, 0.10);
-
-    float p1 = dot(p, k1) * 1.5 + t * 0.4;
-    float p2 = dot(p, k2) * 1.5 + t * 0.5;
-    float p3 = dot(p, k3) * 1.5 + t * 0.35;
-
-    float cos1 = cos(p1);
-    float cos2 = cos(p2);
-    float cos3 = cos(p3);
-
-    return (c1 * cos1 + c2 * cos2 + c3 * cos3) * 0.22;
-}
-
-float easeHermite(float p) {
-    return p * p * (3.0 - 2.0 * p);
-}`;
-
-    /* Transition / Morph Compute Fragment Shader.
-       Renders into RGBA32F morph target texture.
-       Output: vec4(pos.xyz, localProgress) */
-    const FS_MORPH = `#version 300 es
+    /* 1. Single Shared THREE.Points Vertex Shader */
+    const VS_SHARED_POINTS = `#version 300 es
 precision highp float;
-precision highp int;
 
-in vec2 vUV;
-out vec4 fragPos;
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aColour;
+layout(location = 2) in float aSize;
+layout(location = 3) in vec4 aSeed;
 
-uniform sampler2D uPosA;
-uniform sampler2D uPosB;
-uniform float uBlend;  // w in [0, 1]
-uniform float uTime;
-uniform float uSwirl;
-uniform int uTexW;
-
-${GLSL_CURL}
-
-void main() {
-    ivec2 coord = ivec2(gl_FragCoord.xy);
-    vec4 stA = texelFetch(uPosA, coord, 0);
-    vec4 stB = texelFetch(uPosB, coord, 0);
-
-    vec3 xA = stA.xyz;
-    vec3 xB = stB.xyz;
-    float tau = stA.w; // per-particle stagger in [0, 0.3]
-
-    float p = clamp((uBlend - tau) / 0.7, 0.0, 1.0);
-
-    if (p <= 0.0) {
-        fragPos = vec4(xA, 0.0);
-        return;
-    }
-    if (p >= 1.0) {
-        fragPos = vec4(xB, 1.0);
-        return;
-    }
-
-    float ep = easeHermite(p);
-    vec3 mx = mix(xA, xB, ep);
-    vec3 curl = curlNoise(mx, uTime);
-    float s = uSwirl * sin(3.141592653589793 * p);
-
-    fragPos = vec4(mx + s * curl, p);
-}`;
-
-    /* Flow Formation Update Shader (for Lorenz / Keplerian / Diffusion / Contact flow formations) */
-    const FS_FLOW_STEP = `#version 300 es
-precision highp float;
-precision highp int;
-
-in vec2 vUV;
-out vec4 fragState;
-
-uniform sampler2D uState;
-uniform float uDt;
-uniform int uFlowType; // 0 = Lorenz, 1 = Keplerian accretion, 2 = Reverse diffusion spiral, 3 = Calm curl-noise flow
-uniform float uTime;
-
-${GLSL_CURL}
-
-void main() {
-    ivec2 coord = ivec2(gl_FragCoord.xy);
-    vec4 st = texelFetch(uState, coord, 0);
-    vec3 pos = st.xyz;
-    float tau = st.w;
-
-    if (uFlowType == 0) {
-        // Lorenz attractor integration step
-        vec3 p = pos * 24.0;
-        p.z += 25.0;
-        vec3 k1 = vec3(10.0 * (p.y - p.x), p.x * (28.0 - p.z) - p.y, p.x * p.y - (8.0 / 3.0) * p.z);
-        p += k1 * uDt;
-        p.z -= 25.0;
-        fragState = vec4(p * (1.0 / 24.0), tau);
-    } else if (uFlowType == 1) {
-        // Keplerian accretion differential rotation
-        float r = length(pos.xy);
-        float omega = 1.2 / max(pow(r, 1.5), 0.15);
-        float angle = omega * uDt;
-        float ca = cos(angle), sa = sin(angle);
-        vec2 rot = vec2(pos.x * ca - pos.y * sa, pos.x * sa + pos.y * ca);
-        fragState = vec4(rot, pos.z, tau);
-    } else if (uFlowType == 2) {
-        // Reverse diffusion spiral flow (Data Science):
-        // Inward logarithmic spiral circulation with analytical drift towards manifold
-        float r = length(pos.xy);
-        float omega = 0.85 / (r + 0.22);
-        float angle = omega * uDt;
-        float ca = cos(angle), sa = sin(angle);
-        vec2 rot = vec2(pos.x * ca - pos.y * sa, pos.x * sa + pos.y * ca);
-        vec3 curl = curlNoise(pos * 1.5, uTime * 0.4);
-        vec3 newP = vec3(rot * (1.0 - 0.04 * uDt) + curl.xy * (0.04 * uDt), pos.z * (1.0 - 0.3 * uDt) + curl.z * (0.03 * uDt));
-        if (length(newP.xy) < 0.10) {
-            newP.xy = normalize(rot + 1e-4) * 0.88;
-        }
-        fragState = vec4(newP, tau);
-    } else {
-        // Calm curl-noise flow (Contact):
-        // Laminar 3D streamline circulation
-        vec3 curl = curlNoise(pos * 0.8, uTime * 0.25);
-        vec3 newP = pos + curl * (0.35 * uDt);
-        if (length(newP) > 1.25) newP *= 0.82;
-        fragState = vec4(newP, tau);
-    }
-}`;
-
-    /* Particle Render Vertex Shader */
-    const VS_RENDER = `#version 300 es
-precision highp float;
-precision highp int;
-
-uniform sampler2D uMorphPos;
-uniform sampler2D uColA;
-uniform sampler2D uColB;
 uniform mat4 uViewProj;
-uniform vec2 uMouse;        // Cursor in normalized screen [-1, 1]
-uniform float uMouseActive;
-uniform int uTexW;
+uniform vec3 uCamPos;
+uniform vec2 uViewport;
+uniform float uDpr;
+uniform float uHeroBoost;   // 0 in steady state, ramps 0 -> 1 during DETACH/FLIGHT
+uniform float uIsLight;     // 0.0 dark theme, 1.0 light theme
 
-out vec4 vColour;
-out vec2 vScreenPos;
-
-${GLSL_CURL}
+out vec3 vColour;
+out float vAlpha;
+out float vIsHero;
 
 void main() {
-    ivec2 uv = ivec2(gl_VertexID % uTexW, gl_VertexID / uTexW);
-    vec4 morph = texelFetch(uMorphPos, uv, 0);
-    vec3 pos = morph.xyz;
-    float p = morph.w;
+    vec4 clip = uViewProj * vec4(aPosition, 1.0);
+    gl_Position = clip;
 
-    vec4 cA = texelFetch(uColA, uv, 0);
-    vec4 cB = texelFetch(uColB, uv, 0);
-    vColour = mix(cA, cB, easeHermite(p));
+    float dist = max(1.2, length(aPosition - uCamPos));
+    float perspectiveScale = (uViewport.y * 0.0115) / dist;
 
-    gl_Position = uViewProj * vec4(pos, 1.0);
+    bool isHero = (gl_VertexID == 0);
+    float heroScale = isHero ? (1.0 + uHeroBoost * 2.8) : 1.0;
 
-    // Screen coordinate for pointer deflection & text bounding check
-    vec2 screen = gl_Position.xy / max(gl_Position.w, 1e-4);
-    vScreenPos = screen;
+    float ptSize = clamp(aSize * perspectiveScale * uDpr * heroScale, 1.35 * uDpr, 38.0 * uDpr);
+    gl_PointSize = ptSize;
 
-    // Pointer soft radial displacement in vertex shader (max 0.04 units)
-    if (uMouseActive > 0.5) {
-        vec2 mDiff = screen - uMouse;
-        float mDist = length(mDiff);
-        if (mDist < 0.35) {
-            float disp = 0.038 * exp(-mDist * mDist / (2.0 * 0.12 * 0.12));
-            gl_Position.xy += normalize(mDiff + 1e-5) * disp * gl_Position.w;
-        }
+    vec3 col = aColour;
+    if (isHero && uHeroBoost > 0.001) {
+        vec3 heroGlow = mix(vec3(1.0, 0.95, 0.82), vec3(0.45, 0.78, 1.0), 0.35);
+        col = mix(col, heroGlow, clamp(uHeroBoost * 0.88, 0.0, 1.0)) * (1.0 + uHeroBoost * 0.95);
     }
 
-    // Depth-attenuated point size
-    gl_PointSize = clamp(2.4 / max(gl_Position.w * 0.45, 0.4), 1.2, 3.6);
-}`;
+    // Gentle distance fade for far-field depth clarity
+    float depthAlpha = clamp(18.0 / (dist + 6.0), 0.18, 1.0);
+    float seedTwinkle = 0.86 + 0.14 * aSeed.w;
+    vAlpha = depthAlpha * seedTwinkle * (isHero ? (1.0 + uHeroBoost * 0.6) : 1.0);
+    vColour = col;
+    vIsHero = isHero ? uHeroBoost : 0.0;
+}
+`;
 
-    /* Particle Render Fragment Shader with Text Legibility Dimming */
-    const FS_RENDER = `#version 300 es
+    /* 2. Single Shared THREE.Points Fragment Shader */
+    const FS_SHARED_POINTS = `#version 300 es
 precision highp float;
-precision highp int;
 
-in vec4 vColour;
-in vec2 vScreenPos;
+in vec3 vColour;
+in float vAlpha;
+in float vIsHero;
+
+uniform float uIsLight;
 out vec4 fragColor;
 
-uniform vec4 uTextRect;      // vec4(minX, minY, maxX, maxY) in [-1, 1]
-uniform float uNativeFade;   // Settle dimming factor (1.0 down to 0.25)
-uniform vec3 uAccent;
+void main() {
+    vec2 uv = gl_PointCoord * 2.0 - 1.0;
+    float r2 = dot(uv, uv);
+    if (r2 > 1.0) discard;
+
+    // Smooth Gaussian core + Airy halo
+    float core = exp(-r2 * 4.2);
+    float halo = (1.0 - r2) * (1.0 - r2) * 0.48;
+    float profile = core * 0.78 + halo;
+
+    if (vIsHero > 0.01) {
+        float heroCorona = exp(-r2 * 1.8) * vIsHero * 0.85;
+        profile += heroCorona;
+    }
+
+    float alpha = clamp(profile * vAlpha, 0.0, 1.0);
+
+    if (uIsLight > 0.5) {
+        // High-contrast ink-toned particles for light mode
+        vec3 ink = clamp(vColour * 0.72, 0.04, 0.88);
+        fragColor = vec4(ink, alpha * 0.75);
+    } else {
+        // Pre-multiplied additive radiance for dark mode
+        vec3 rad = vColour * (0.62 + 0.68 * core) * alpha;
+        fragColor = vec4(rad, alpha);
+    }
+}
+`;
+
+    /* 3. Same-Scene Auxiliary Line / Wireframe / Translucent Shell Shaders (faded by uAuxOpacity) */
+    const VS_AUX_SCENE = `#version 300 es
+precision highp float;
+
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec4 aColour;
+
+uniform mat4 uViewProj;
+out vec4 vColour;
 
 void main() {
-    vec2 circ = gl_PointCoord - 0.5;
-    float distSq = dot(circ, circ);
-    if (distSq > 0.25) discard;
-    float alpha = smoothstep(0.25, 0.0, distSq);
+    gl_Position = uViewProj * vec4(aPosition, 1.0);
+    vColour = aColour;
+}
+`;
 
-    // Text legibility dimming inside section text column (up to 60% dimming)
-    float inTextX = smoothstep(uTextRect.x - 0.05, uTextRect.x, vScreenPos.x) * (1.0 - smoothstep(uTextRect.z, uTextRect.z + 0.05, vScreenPos.x));
-    float inTextY = smoothstep(uTextRect.y - 0.05, uTextRect.y, vScreenPos.y) * (1.0 - smoothstep(uTextRect.w, uTextRect.w + 0.05, vScreenPos.y));
-    float textDim = mix(1.0, 0.40, inTextX * inTextY);
+    const FS_AUX_SCENE = `#version 300 es
+precision highp float;
 
-    // HDR additive luminous splat
-    vec3 col = vColour.rgb;
-    fragColor = vec4(col * (vColour.a * alpha * textDim * uNativeFade), 1.0);
-}`;
+in vec4 vColour;
+uniform float uAuxOpacity;
+uniform float uIsLight;
+out vec4 fragColor;
+
+void main() {
+    float a = vColour.a * uAuxOpacity;
+    if (a <= 0.001) discard;
+    if (uIsLight > 0.5) {
+        fragColor = vec4(vColour.rgb * 0.65, a * 0.7);
+    } else {
+        fragColor = vec4(vColour.rgb * a, a);
+    }
+}
+`;
+
+    /* 4. Same-Scene Kerr Black Hole Ray-Traced Lensing & Photon Ring Shader
+       Renders inside the unified 3D scene around the Physics origin and fades in via
+       uAuxOpacity only after the shared particles have matched the accretion disc. */
+    const VS_KERR_SCENE = `#version 300 es
+precision highp float;
+
+layout(location = 0) in vec2 aQuad;
+out vec2 vUV;
+
+void main() {
+    vUV = aQuad * 0.5 + 0.5;
+    gl_Position = vec4(aQuad, 0.999, 1.0);
+}
+`;
+
+    const FS_KERR_SCENE = `#version 300 es
+precision highp float;
+
+in vec2 vUV;
+out vec4 fragColor;
+
+uniform vec2 uRes;
+uniform vec2 uBhScreenCentre; // Projected screen UV of Physics section origin
+uniform float uBhScale;       // Apparent angular scale from active 3D camera distance
+uniform float uSpin;          // Kerr spin a = 0.99
+uniform float uTilt;          // Observer inclination θ_obs
+uniform float uTime;
+uniform float uAuxOpacity;    // Ramps 0 -> 1 only after particles settle into the disc
+uniform float uIsLight;
+
+vec3 blackbody(float T) {
+    float t = clamp(T, 1000.0, 35000.0) * 0.01;
+    float tA = max(t - 60.0, 1.0);
+    float tB = max(t - 10.0, 1.0);
+    vec3 c;
+    c.r = t <= 66.0 ? 1.0 : clamp(329.6987 * pow(tA, -0.1332) / 255.0, 0.0, 1.0);
+    c.g = t <= 66.0
+        ? clamp((99.4708 * log(t) - 161.1196) / 255.0, 0.0, 1.0)
+        : clamp(288.1222 * pow(tA, -0.0755) / 255.0, 0.0, 1.0);
+    c.b = t >= 66.0 ? 1.0 : (t <= 19.0 ? 0.0 : clamp((138.5177 * log(tB) - 305.0448) / 255.0, 0.0, 1.0));
+    return c;
+}
+
+void main() {
+    if (uAuxOpacity <= 0.002) discard;
+
+    vec2 aspectUV = (vUV - uBhScreenCentre) * vec2(uRes.x / max(1.0, uRes.y), 1.0);
+    vec2 bp = aspectUV * uBhScale;
+
+    float a = uSpin;
+    // D-shaped Kerr frame-dragging shift of critical curve (Bardeen 1973)
+    vec2 shifted = bp - vec2(0.19 * a * sin(uTilt), 0.0);
+    float b = length(shifted);
+
+    // Critical photon capture impact parameter b_crit ≈ 5.196 M (Schwarzschild) shifted by Kerr spin
+    float asym = 1.0 - 0.14 * a * (shifted.x / max(0.001, b)) * sin(uTilt);
+    float bCrit = 2.65 * asym;
+
+    // Relativistic Doppler beaming factor across prograde rotation
+    float sinPhi = shifted.x / max(0.05, b);
+    float omega = 1.0 / (pow(max(1.45, b), 1.5) + a);
+    float g = clamp(1.0 / (1.18 * (1.0 - 0.42 * sinPhi * sin(uTilt))), 0.35, 2.25);
+
+    // Photon ring (n = 1, 2 demagnified lensed sub-rings at b = b_crit)
+    float ringDist = abs(b - bCrit);
+    float n1Ring = exp(-ringDist * ringDist / 0.018) * 1.45;
+    float n2Ring = exp(-abs(b - bCrit * 0.965) * 42.0) * 0.85;
+
+    // Lensed upper & lower Einstein-ring arches from back of accretion disc
+    float cosTilt = cos(uTilt);
+    float bEll = length(vec2(shifted.x, shifted.y / max(0.18, abs(cosTilt) + 0.14)));
+    float discHalo = exp(-pow(max(0.0, b - bCrit * 1.02) * 0.55, 1.6)) * smoothstep(bCrit * 0.88, bCrit * 1.04, b);
+    float innerShadow = smoothstep(bCrit * 0.94, bCrit * 0.72, b);
+
+    float Tobs = 9200.0 * pow(g, 0.65);
+    vec3 ringCol = blackbody(Tobs) * pow(g, 2.4);
+
+    vec3 radiance = ringCol * (n1Ring + n2Ring + discHalo * 0.42) * (1.0 - 0.92 * innerShadow);
+    float shadowMask = innerShadow * 0.92;
+    float totalAlpha = clamp((n1Ring + n2Ring + discHalo * 0.45 + shadowMask * 0.65) * uAuxOpacity, 0.0, 0.95);
+
+    if (uIsLight > 0.5) {
+        vec3 colLight = mix(vec3(0.06, 0.07, 0.11), radiance * 0.55, clamp(n1Ring + n2Ring, 0.0, 1.0));
+        fragColor = vec4(colLight, totalAlpha * 0.75);
+    } else {
+        // In dark mode, photon ring adds radiance while inner horizon carves out the shadow
+        vec3 outRgb = radiance * uAuxOpacity * (1.0 - innerShadow * 0.95);
+        fragColor = vec4(outRgb, totalAlpha);
+    }
+}
+`;
 
     return {
-        VS_QUAD,
-        FS_MORPH,
-        FS_FLOW_STEP,
-        VS_RENDER,
-        FS_RENDER
+        VS_SHARED_POINTS,
+        FS_SHARED_POINTS,
+        VS_AUX_SCENE,
+        FS_AUX_SCENE,
+        VS_KERR_SCENE,
+        FS_KERR_SCENE
     };
 }));

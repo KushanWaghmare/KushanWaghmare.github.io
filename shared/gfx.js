@@ -126,9 +126,9 @@ void main() {
     const init = () => {
         if (gl !== null) return !!gl;
         if (typeof document === "undefined") return false;
-        glCanvas = document.createElement("canvas");
+        glCanvas = document.getElementById("stage-canvas") || document.createElement("canvas");
         gl = glCanvas.getContext("webgl2", {
-            alpha: false, depth: false, stencil: false, antialias: false,
+            alpha: false, depth: true, stencil: false, antialias: false,
             premultipliedAlpha: false, preserveDrawingBuffer: false, powerPreference: "high-performance"
         });
         if (!gl) return false;

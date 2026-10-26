@@ -29,18 +29,19 @@
     <script defer src="shared/lib/lattice-math.js?v=42"></script>
     <script defer src="shared/gpu/gpu-crystal-shaders.js?v=42"></script>
     <script defer src="shared/gpu/gpu-crystal.js?v=42"></script>
-    <script defer src="shared/gfx.js?v=42"></script>
-    <script defer src="shared/engines.js?v=42"></script>
-    <script defer src="shared/slides.js?v=42"></script>
-    <script defer src="shared/lib/thread-math.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-thread-shaders.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-thread-formations.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-thread.js?v=42"></script>
-    <script defer src="shared/blackhole-physics.js?v=37"></script>
-    <script defer src="shared/blackhole-shaders.js?v=37"></script>
-    <script defer src="shared/blackhole-lite.js?v=37"></script>
-    <script defer src="shared/blackhole.js?v=37"></script>
-    <script defer src="shared/app.js?v=43"></script>
+    <script defer src="shared/lib/cy-math.js?v=44"></script>
+    <script defer src="shared/blackhole-physics.js?v=44"></script>
+    <script defer src="shared/blackhole-shaders.js?v=44"></script>
+    <script defer src="shared/blackhole-lite.js?v=44"></script>
+    <script defer src="shared/blackhole.js?v=44"></script>
+    <script defer src="shared/gfx.js?v=44"></script>
+    <script defer src="shared/engines.js?v=44"></script>
+    <script defer src="shared/slides.js?v=44"></script>
+    <script defer src="shared/lib/thread-math.js?v=44"></script>
+    <script defer src="shared/gpu/gpu-thread-shaders.js?v=44"></script>
+    <script defer src="shared/gpu/gpu-thread-formations.js?v=44"></script>
+    <script defer src="shared/gpu/gpu-thread.js?v=44"></script>
+    <script defer src="shared/app.js?v=44"></script>
 
 </head>
 <body>
@@ -74,7 +75,6 @@
         </nav>
 
         <section class="snap-section hero" id="intro" data-domain="hub" data-sim="hub:intro" data-enter="zoom" style="--a:var(--rgb-hub)">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <h1 data-hero>Kushan<br>Waghmare</h1>
                 <p class="lead" data-hero>Data Science &amp; Quantitative Finance student at IIT Madras, building complex systems from compilers to statistical-arbitrage models, and studying the physics underneath them.</p>
@@ -86,7 +86,6 @@
 
         
         <section class="snap-section domain-snap" id="domain-math" data-domain="math" data-sim="hub:domain-math" data-enter="right" style="--a:var(--rgb-math)">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <h2 class="snap-title" data-reveal>Mathematics</h2>
                 <p class="lead snap-lead" data-reveal>Topology, differential geometry and analysis: the surfaces and spectra behind the models on the rest of this site.</p>
@@ -102,7 +101,6 @@
             <a class="snap-cue" href="#domain-physics">Next: Physics</a>
         </section>
         <section class="snap-section domain-snap" id="domain-physics" data-domain="physics" data-sim="hub:domain-physics" data-enter="left" style="--a:var(--rgb-physics)">
-            <div class="sim-wrapper"><canvas aria-hidden="true"></canvas></div>
             <div class="snap-inner">
                 <h2 class="snap-title" data-reveal>Physics</h2>
                 <p class="lead snap-lead" data-reveal>Classical and quantum mechanics as computation: symplectic integrators, gravitating systems and wave equations.</p>
@@ -118,7 +116,6 @@
             <a class="snap-cue" href="#domain-datascience">Next: Data Science</a>
         </section>
         <section class="snap-section domain-snap" id="domain-datascience" data-domain="datascience" data-sim="hub:domain-datascience" data-enter="bottom" style="--a:var(--rgb-datascience)">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <h2 class="snap-title" data-reveal>Data Science</h2>
                 <p class="lead snap-lead" data-reveal>Statistical learning, agent-based modelling and non-convex optimisation: emergent collective behaviour, opinion dynamics, and complex stochastic systems.</p>
@@ -134,7 +131,6 @@
             <a class="snap-cue" href="#domain-quant">Next: Quant Finance</a>
         </section>
         <section class="snap-section domain-snap" id="domain-quant" data-domain="quant" data-sim="hub:domain-quant" data-enter="top" style="--a:var(--rgb-quant)">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <h2 class="snap-title" data-reveal>Quant Finance</h2>
                 <p class="lead snap-lead" data-reveal>Stochastic calculus applied to markets: derivative pricing, the Greeks and mean-reversion strategies.</p>
@@ -150,7 +146,6 @@
             <a class="snap-cue" href="#domain-cs">Next: Computer Science</a>
         </section>
         <section class="snap-section domain-snap" id="domain-cs" data-domain="cs" data-sim="hub:domain-cs" data-enter="right" style="--a:var(--rgb-cs)">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <h2 class="snap-title" data-reveal>Computer Science</h2>
                 <p class="lead snap-lead" data-reveal>Compilers, machine architecture and quantum state evolution — from grammars, SSA form and TTL gates to Grover search and Shor period finding.</p>
@@ -167,7 +162,6 @@
         </section>
 
         <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-sim="hub:contact" data-enter="top" style="--a:var(--rgb-contact)">
-            <canvas aria-hidden="true"></canvas>
             <div class="snap-inner">
                 <div class="section-head" data-reveal><span class="idx">06</span><h2>About &amp; Profile</h2></div>
                 <div class="two-col">

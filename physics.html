@@ -29,18 +29,19 @@
     <script defer src="shared/lib/lattice-math.js?v=42"></script>
     <script defer src="shared/gpu/gpu-crystal-shaders.js?v=42"></script>
     <script defer src="shared/gpu/gpu-crystal.js?v=42"></script>
-    <script defer src="shared/gfx.js?v=42"></script>
-    <script defer src="shared/engines.js?v=42"></script>
-    <script defer src="shared/slides.js?v=42"></script>
-    <script defer src="shared/lib/thread-math.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-thread-shaders.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-thread-formations.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-thread.js?v=42"></script>
-    <script defer src="shared/blackhole-physics.js?v=37"></script>
-    <script defer src="shared/blackhole-shaders.js?v=37"></script>
-    <script defer src="shared/blackhole-lite.js?v=37"></script>
-    <script defer src="shared/blackhole.js?v=37"></script>
-    <script defer src="shared/app.js?v=43"></script>
+    <script defer src="shared/lib/cy-math.js?v=44"></script>
+    <script defer src="shared/blackhole-physics.js?v=44"></script>
+    <script defer src="shared/blackhole-shaders.js?v=44"></script>
+    <script defer src="shared/blackhole-lite.js?v=44"></script>
+    <script defer src="shared/blackhole.js?v=44"></script>
+    <script defer src="shared/gfx.js?v=44"></script>
+    <script defer src="shared/engines.js?v=44"></script>
+    <script defer src="shared/slides.js?v=44"></script>
+    <script defer src="shared/lib/thread-math.js?v=44"></script>
+    <script defer src="shared/gpu/gpu-thread-shaders.js?v=44"></script>
+    <script defer src="shared/gpu/gpu-thread-formations.js?v=44"></script>
+    <script defer src="shared/gpu/gpu-thread.js?v=44"></script>
+    <script defer src="shared/app.js?v=44"></script>
 
 </head>
 <body>
@@ -71,7 +72,6 @@
     </nav>
 
     <section class="snap-section hero" id="domain-intro" data-domain="physics" data-sim="domain:physics:0">
-        <div class="sim-wrapper"><canvas aria-hidden="true"></canvas></div>
         <div class="snap-inner">
             <h1 data-hero>Physics</h1>
             <p class="lead" data-hero>Classical and quantum mechanics as computation: symplectic integrators, gravitating systems and wave equations.</p>
@@ -87,7 +87,6 @@
 
     
     <section class="snap-section project-snap" id="proj-nbody-leapfrog" data-domain="physics" data-sim="domain:physics:1">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <h2 class="snap-title" data-reveal>Gravitational N-Body Integrator</h2>
             <p class="lead snap-lead" data-reveal>A self-gravitating disc integrated with a symplectic kick–drift–kick leapfrog. The hero is the live simulation.</p>
@@ -109,7 +108,6 @@
         <a class="snap-cue" href="#proj-split-step-schrodinger">Next: Time-Dependent Schrödinger Equation</a>
     </section>
     <section class="snap-section project-snap" id="proj-split-step-schrodinger" data-domain="physics" data-sim="domain:physics:2">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <h2 class="snap-title" data-reveal>Time-Dependent Schrödinger Equation</h2>
             <p class="lead snap-lead" data-reveal>Split-step Fourier evolution of a wave packet: unitary by construction and spectrally accurate in space.</p>
@@ -132,7 +130,6 @@
     </section>
 
     <section class="snap-section about-contact-section" id="domain-explore" data-domain="contact" data-sim="domain:physics:3" style="--a:var(--rgb-contact)">
-        <canvas aria-hidden="true"></canvas>
         <div class="snap-inner">
             <div class="section-head" data-reveal><span class="idx">03</span><h2>Explore Other Domains</h2></div>
             <p class="lead" data-reveal style="margin-bottom:28px">Navigate through other core domains of mathematical modelling, physics simulations, stochastic calculus, and machine systems.</p>

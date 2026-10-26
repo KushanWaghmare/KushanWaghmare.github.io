@@ -389,29 +389,6 @@ pre.glass {
     box-sizing: border-box;
 }
 
-.hero canvas,
-.snap-section canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -2;
-    display: block;
-    opacity: var(--native-opacity, 1);
-    transition: opacity 0.15s ease-out;
-}
-
-.sim-wrapper {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -2;
-    pointer-events: none;
-    opacity: var(--native-opacity, 1);
-    transition: opacity 0.15s ease-out;
-}
-
 .stage-canvas {
     position: fixed;
     inset: 0;
@@ -420,6 +397,23 @@ pre.glass {
     pointer-events: none;
     z-index: 0;
     display: block;
+}
+
+.stage-debug-hud {
+    position: fixed;
+    top: 72px;
+    right: 18px;
+    z-index: 9999;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(8, 12, 20, 0.86);
+    border: 1px solid rgba(124, 184, 255, 0.28);
+    color: #e6eefc;
+    font: 500 11.5px/1.55 var(--mono, monospace);
+    pointer-events: none;
+    backdrop-filter: blur(10px);
+    white-space: pre;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
 /* Ambient horizontal atmospheric falloff for left-column text */
