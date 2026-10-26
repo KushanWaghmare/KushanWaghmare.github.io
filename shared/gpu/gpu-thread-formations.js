@@ -84,7 +84,6 @@
             const by = new Float32Array(backboneLen);
             const bz = new Float32Array(backboneLen);
             let rx = 0.1, ry = 0.0, rz = 0.0;
-            // Burn-in 600 steps to settle onto the strange attractor manifold
             for (let k = 0; k < 600; k++) {
                 const next = this._rk4Lorenz(rx, ry, rz, 0.006);
                 rx = next[0]; ry = next[1]; rz = next[2];
@@ -95,8 +94,6 @@
                 bx[k] = rx; by[k] = ry; bz[k] = rz;
             }
 
-            // Seed each particle i from a slightly different initial condition along the attractor
-            // and integrate forward by a deterministic number of RK4 steps
             for (let i = 0; i < N; i++) {
                 const i3 = i * 3, i4 = i * 4;
                 const u1 = seeds[i4], u2 = seeds[i4 + 1], u3 = seeds[i4 + 2], u4 = seeds[i4 + 3];
@@ -118,6 +115,23 @@
             }
 
             this.initialized = true;
+        }
+
+        applyPermutation(perm, count) {
+            if (!this.state) return;
+            const N = count | 0;
+            const tmpState = new Float32Array(N * 3);
+            const tmpSpd = new Float32Array(N);
+            for (let i = 0; i < N; i++) {
+                const src = perm[i];
+                const i3 = i * 3, s3 = src * 3;
+                tmpState[i3] = this.state[s3];
+                tmpState[i3 + 1] = this.state[s3 + 1];
+                tmpState[i3 + 2] = this.state[s3 + 2];
+                tmpSpd[i] = this.speeds[src];
+            }
+            this.state.set(tmpState);
+            this.speeds.set(tmpSpd);
         }
 
         _projectPoint(lx, ly, lz, cosY, sinY, cosP, sinP, offsetX, out, i3) {
@@ -174,7 +188,6 @@
                 const i3 = i * 3;
                 let x = state[i3], y = state[i3 + 1], z = state[i3 + 2];
 
-                // RK4 integration of the real Lorenz ODE: dx/dt = σ(y-x), dy/dt = x(ρ-z)-y, dz/dt = xy - βz
                 const dx1 = s * (y - x);
                 const dy1 = x * (r - z) - y;
                 const dz1 = x * y - b * z;
@@ -198,7 +211,6 @@
                 y += (h / 6.0) * (dy1 + 2.0 * dy2 + 2.0 * dy3 + dy4);
                 z += (h / 6.0) * (dz1 + 2.0 * dz2 + 2.0 * dz3 + dz4);
 
-                // Guard against numerical divergence
                 if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || Math.abs(x) > 80) {
                     x = (seeds[i * 4] - 0.5) * 16.0;
                     y = (seeds[i * 4 + 1] - 0.5) * 16.0;
@@ -209,15 +221,12 @@
                 state[i3 + 1] = y;
                 state[i3 + 2] = z;
 
-                // Instantaneous speed ||dx/dt|| for velocity-based colour mapping
                 const speed = Math.hypot(dx1, dy1, dz1);
                 const vNorm = clamp((speed - 6.0) / 58.0, 0.0, 1.0);
                 this.speeds[i] = vNorm;
 
-                // Project to world coordinates around this.origin
                 this._projectPoint(x, y, z, cosY, sinY, cosP, sinP, offsetX, pos, i3);
 
-                // Speed-to-colour ramp: deep sapphire lobe centres -> electric cyan-blue -> warm incandescent gold wing tips
                 const v2 = vNorm * vNorm;
                 col[i3]     = 0.16 + 0.36 * vNorm + 0.46 * v2;
                 col[i3 + 1] = 0.34 + 0.44 * vNorm + 0.18 * v2;
@@ -239,13 +248,226 @@
             this._projectPoint(this.state[i3], this.state[i3 + 1], this.state[i3 + 2], cosY, sinY, cosP, sinP, 2.15, tmp, 0);
             return out.set(tmp[0], tmp[1], tmp[2]);
         }
+    }
 
-        dispose() {
-            super.dispose();
+    /* ============================================================================
+       1. MATHEMATICS FORMATION — Quintic Calabi–Yau Cross-Section (z₁ⁿ + z₂ⁿ = 1)
+       Wraps shared/lib/cy-math.js (CYMath.evalPatch & project). Particles sample
+       the welded n² complex branch patches and branch seams, animating with α(t)
+       and 3D rotation. Also provides a faint wireframe/surface shell in the same
+       scene that fades in after particle arrival.
+       ============================================================================ */
+    const CY_PATCH_PALETTE = [
+        [0.42, 0.12, 0.85], [0.55, 0.15, 0.90], [0.70, 0.18, 0.85], [0.85, 0.20, 0.70], [0.92, 0.28, 0.52],
+        [0.95, 0.40, 0.35], [0.96, 0.55, 0.22], [0.95, 0.72, 0.18], [0.85, 0.82, 0.22], [0.60, 0.85, 0.35],
+        [0.30, 0.82, 0.52], [0.15, 0.78, 0.70], [0.12, 0.68, 0.85], [0.18, 0.52, 0.92], [0.28, 0.35, 0.92],
+        [0.48, 0.22, 0.88], [0.65, 0.25, 0.82], [0.82, 0.30, 0.65], [0.90, 0.45, 0.45], [0.92, 0.62, 0.30],
+        [0.80, 0.75, 0.28], [0.50, 0.80, 0.45], [0.22, 0.75, 0.65], [0.20, 0.58, 0.85], [0.35, 0.40, 0.88]
+    ];
+
+    class MathematicsFormation extends Formation {
+        constructor(origin, simKey = "hub:domain-math", params = {}, sectionIndex = 1) {
+            super(origin, simKey);
+            this.params = params || {};
+            this.sectionIndex = sectionIndex;
+            this.degrees = [5, 6, 7, 8, 3, 4];
+            this.degIdx = 0;
+            this.n = (params && Number.isInteger(params.n) && params.n >= 3 && params.n <= 8) ? params.n : 5;
+            this.coords4D = null;   // Float32Array(N * 4): (re1, im1, re2, im2)
+            this.baseCols = null;   // Float32Array(N * 3): patch palette colour
+            this.seamMask = null;   // Float32Array(N): 1 on branch locus seams, 0 inside patch
+            this.auxLines = null;   // Float32Array for same-scene wireframe shell (x,y,z, r,g,b,a)
+            this.auxVertexCount = 0;
+            this.alpha = 0.65;
+            this.yaw = 0.3;
+            this.pitch = 0.38;
+        }
+
+        _rebuildSurfaceSamples(N, seeds) {
+            const CY = root.CYMath || (typeof require === "function" ? require("../lib/cy-math.js") : null);
+            if (!this.coords4D || this.coords4D.length !== N * 4) {
+                this.coords4D = new Float32Array(N * 4);
+                this.baseCols = new Float32Array(N * 3);
+                this.seamMask = new Float32Array(N);
+            }
+
+            const n = this.n;
+            const n2 = n * n;
+            const out4 = new Float32Array(4);
+            const tab = (CY && CY.rootsOfUnity) ? CY.rootsOfUnity(n) : null;
+            const limit = 1.15;
+            const halfPi = Math.PI * 0.5;
+
+            for (let i = 0; i < N; i++) {
+                const i3 = i * 3, i4 = i * 4;
+                const u1 = seeds[i4], u2 = seeds[i4 + 1], u3 = seeds[i4 + 2], u4 = seeds[i4 + 3];
+                const patchIdx = (i + ((u3 * n2) | 0)) % n2;
+                const k1 = (patchIdx / n) | 0;
+                const k2 = patchIdx % n;
+
+                // 22% of particles sample the branch locus seams (b ≈ 0 or a ≈ 0, π/2) for crisp structural edges
+                let a, b, isSeam = 0.0;
+                if (u4 < 0.22) {
+                    a = (u4 < 0.11) ? (u1 < 0.5 ? 0.01 : halfPi - 0.01) : (u1 * halfPi);
+                    b = (u4 < 0.11) ? ((u2 * 2.0 - 1.0) * limit) : ((u2 - 0.5) * 0.03);
+                    isSeam = 1.0;
+                } else {
+                    a = u1 * halfPi;
+                    b = (u2 * 2.0 - 1.0) * limit;
+                }
+
+                if (CY && CY.evalPatch) {
+                    CY.evalPatch(n, k1, k2, a, b, out4, tab);
+                } else {
+                    out4[0] = Math.cos(a); out4[1] = b; out4[2] = Math.cos(k1); out4[3] = Math.sin(k2);
+                }
+
+                this.coords4D[i4]     = out4[0];
+                this.coords4D[i4 + 1] = out4[1];
+                this.coords4D[i4 + 2] = out4[2];
+                this.coords4D[i4 + 3] = out4[3];
+                this.seamMask[i] = isSeam;
+
+                const pal = CY_PATCH_PALETTE[patchIdx % CY_PATCH_PALETTE.length];
+                if (isSeam > 0.5) {
+                    // Luminous violet-gold seam accent
+                    this.baseCols[i3]     = Math.min(1.0, pal[0] * 0.55 + 0.45);
+                    this.baseCols[i3 + 1] = Math.min(1.0, pal[1] * 0.55 + 0.38);
+                    this.baseCols[i3 + 2] = Math.min(1.0, pal[2] * 0.55 + 0.48);
+                } else {
+                    this.baseCols[i3]     = pal[0];
+                    this.baseCols[i3 + 1] = pal[1];
+                    this.baseCols[i3 + 2] = pal[2];
+                }
+            }
+        }
+
+        init(buffer, _ctx) {
+            this._rebuildSurfaceSamples(buffer.maxCount, buffer.seeds);
+            this.initialized = true;
+        }
+
+        applyPermutation(perm, count) {
+            if (!this.coords4D) return;
+            const N = count | 0;
+            const tmp4 = new Float32Array(N * 4);
+            const tmpCol = new Float32Array(N * 3);
+            const tmpSeam = new Float32Array(N);
+            for (let i = 0; i < N; i++) {
+                const src = perm[i];
+                const i4 = i * 4, s4 = src * 4;
+                const i3 = i * 3, s3 = src * 3;
+                tmp4[i4] = this.coords4D[s4];
+                tmp4[i4 + 1] = this.coords4D[s4 + 1];
+                tmp4[i4 + 2] = this.coords4D[s4 + 2];
+                tmp4[i4 + 3] = this.coords4D[s4 + 3];
+                tmpCol[i3] = this.baseCols[s3];
+                tmpCol[i3 + 1] = this.baseCols[s3 + 1];
+                tmpCol[i3 + 2] = this.baseCols[s3 + 2];
+                tmpSeam[i] = this.seamMask[src];
+            }
+            this.coords4D.set(tmp4);
+            this.baseCols.set(tmpCol);
+            this.seamMask.set(tmpSeam);
+        }
+
+        onClick() {
+            this.degIdx = (this.degIdx + 1) % this.degrees.length;
+            this.n = this.degrees[this.degIdx];
+            if (this._lastBuffer) {
+                this._rebuildSurfaceSamples(this._lastBuffer.maxCount, this._lastBuffer.seeds);
+            }
+            const supMap = { 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸" };
+            const sup = supMap[this.n] || `^${this.n}`;
+            const tag = typeof document !== "undefined" ? document.querySelector('#domain-math .sim-tag, [data-sim="hub:domain-math"] .sim-tag') : null;
+            if (tag) {
+                tag.textContent = `Fermat curve · z₁${sup} + z₂${sup} = 1 in ℂ² · n² = ${this.n * this.n} patches (click to cycle)`;
+            }
+        }
+
+        _project4DtoWorld(re1, im1, re2, im2, cosA, sinA, cosY, sinY, cosP, sinP, offsetX, out, i3) {
+            const lx = re1;
+            const ly = re2;
+            const lz = im1 * cosA + im2 * sinA;
+            const lw = -im1 * sinA + im2 * cosA;
+
+            const rx = lx * cosY - lz * sinY;
+            const rz = lx * sinY + lz * cosY;
+            const ry = ly * cosP - rz * sinP;
+            const rz2 = ly * sinP + rz * cosP;
+
+            const scale = 2.55;
+            out[i3]     = this.origin.x + offsetX + rx * scale;
+            out[i3 + 1] = this.origin.y + ry * scale;
+            out[i3 + 2] = this.origin.z + rz2 * scale;
+            return lw;
+        }
+
+        update(_dt, t, buffer, ctx) {
+            this._lastBuffer = buffer;
+            if (!this.initialized || !this.coords4D) this.init(buffer, ctx);
+
+            const N = buffer.count;
+            const pos = buffer.positions;
+            const col = buffer.colours;
+            const sz = buffer.sizes;
+            const seeds = buffer.seeds;
+            const c4 = this.coords4D;
+            const bCol = this.baseCols;
+            const seam = this.seamMask;
+
+            const ptrX = (ctx && ctx.pointerX) || 0;
+            const ptrY = (ctx && ctx.pointerY) || 0;
+
+            // Continuous 4D -> 3D projection sweep α(t) and 3D rotation
+            this.alpha = 0.58 + 0.36 * Math.sin(t * 0.27);
+            this.yaw = t * 0.21 + ptrX * 0.48;
+            this.pitch = 0.36 + ptrY * 0.32;
+
+            const cosA = Math.cos(this.alpha), sinA = Math.sin(this.alpha);
+            const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
+            const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
+            const offsetX = (ctx && ctx.isMobile) ? 0.0 : 2.15;
+
+            for (let i = 0; i < N; i++) {
+                const i3 = i * 3, i4 = i * 4;
+                const lw = this._project4DtoWorld(
+                    c4[i4], c4[i4 + 1], c4[i4 + 2], c4[i4 + 3],
+                    cosA, sinA, cosY, sinY, cosP, sinP, offsetX,
+                    pos, i3
+                );
+
+                // 4D depth shading (w-coordinate iridescence + seam brilliance)
+                const shade = clamp(0.76 + 0.32 * lw, 0.42, 1.28);
+                const isSeam = seam[i];
+                col[i3]     = clamp(bCol[i3] * shade, 0.05, 1.0);
+                col[i3 + 1] = clamp(bCol[i3 + 1] * shade, 0.05, 1.0);
+                col[i3 + 2] = clamp(bCol[i3 + 2] * shade, 0.05, 1.0);
+
+                sz[i] = (isSeam > 0.5 ? 2.15 : 1.48) + 0.45 * seeds[i4 + 3];
+            }
+        }
+
+        targetFor(i, out = new Vector3()) {
+            if (!this.initialized || !this.coords4D) return out.copy(this.origin);
+            const idx = clamp(i | 0, 0, (this.coords4D.length / 4) - 1);
+            const i4 = idx * 4;
+            const cosA = Math.cos(this.alpha), sinA = Math.sin(this.alpha);
+            const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
+            const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
+            const tmp = [0, 0, 0];
+            this._project4DtoWorld(
+                this.coords4D[i4], this.coords4D[i4 + 1], this.coords4D[i4 + 2], this.coords4D[i4 + 3],
+                cosA, sinA, cosY, sinY, cosP, sinP, 2.15,
+                tmp, 0
+            );
+            return out.set(tmp[0], tmp[1], tmp[2]);
         }
     }
 
     registerFormation("hub:intro", LorenzFormation);
+    registerFormation("hub:domain-math", MathematicsFormation);
+    registerFormation("domain:math:0", MathematicsFormation);
     registerFormation("default", LorenzFormation);
 
     const createFormation = (simKey, sectionIndex, params = {}) => {
@@ -257,6 +479,7 @@
     return {
         Formation,
         LorenzFormation,
+        MathematicsFormation,
         registerFormation,
         createFormation,
         registry
