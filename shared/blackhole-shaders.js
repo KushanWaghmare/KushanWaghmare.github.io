@@ -118,7 +118,7 @@ void stateDerivs(vec4 s, float a, float L, float c1, float c2, out vec4 ds) {
     float r2 = r * r;
     float a2 = a * a;
     float invSig = 1.0 / (r2 + a2 * u * u);
-    float del = r2 - 2.0 * r + a2;
+    float del = max(1e-5, r2 - 2.0 * r + a2);
     float pOverDel = (r2 + a2 - a * L) / del;
 
     // Coordinate velocities dr/dλ, du/dλ and canonical forces dp_r/dλ, dp_u/dλ
@@ -249,8 +249,8 @@ void main() {
             maxH = max(maxH, curH);
         }
 
-        // Horizon capture check: r < r_+ + ε
-        if (r <= r_plus + epsH) {
+        // Horizon capture check: terminate when ray crosses absorbed threshold r < r_+(1+eps)
+        if (r <= r_plus * (1.0 + epsH)) {
             captured = true;
             break;
         }
@@ -268,7 +268,7 @@ void main() {
             if (bImpact < 7.2) {
                 float uEsc = clamp(s.y, -0.9998, 0.9998);
                 float sigEsc = r * r + a2 * uEsc * uEsc;
-                float delEsc = r * r - 2.0 * r + a2;
+                float delEsc = max(1e-5, r * r - 2.0 * r + a2);
                 float pEsc = r * r + a2 - a * L;
                 float sinThEsc = sqrt(max(1e-5, 1.0 - uEsc * uEsc));
                 float drEsc = delEsc * s.z / sigEsc;
@@ -290,11 +290,11 @@ void main() {
         }
 
         // Adaptive step size: large in flat exterior (r > r_out + 1.5), fine near horizon & photon sphere
-        float distH = max(0.001, r - r_plus);
+        float distH = max(1e-4, r - r_plus);
         float dl = (r > r_out + 1.5 && uDebugMode == 0)
-            ? min(6.0, (r - r_out) * 0.65 + 1.5)
-            : clamp(0.14 * distH + 0.012, 0.010, 3.0);
-        if (abs(u) < 0.08 && r < 26.0) dl *= 0.65;
+            ? min(6.0, (r - r_out) * 0.45 + 1.2)
+            : clamp(0.12 * distH, 0.001, 2.5);
+        if (abs(u) < 0.08 && r < 25.0) dl *= 0.65;
 
         // RK4 integration step for (r, u, pr, pu)
         vec4 k1s, k2s, k3s, k4s;
@@ -310,7 +310,7 @@ void main() {
         float uM = clamp(0.5 * (u + sNext.y), -0.9999, 0.9999);
         float rM2 = rM * rM;
         float invSigM = 1.0 / (rM2 + a2 * uM * uM);
-        float pOverDelM = (rM2 + a2 - a * L) / (rM2 - 2.0 * rM + a2);
+        float pOverDelM = (rM2 + a2 - a * L) / max(1e-5, rM2 - 2.0 * rM + a2);
         float oneMinusU2 = max(1e-6, 1.0 - uM * uM);
         float tNext = tEmit + dl * (a * (L - a * oneMinusU2) + (rM2 + a2) * pOverDelM) * invSigM;
 
@@ -327,20 +327,20 @@ void main() {
 
         if (uDiskType == 0) {
             // -------------------------------------------------------------
-            // THIN DISK: Equatorial crossing detection (u = cos θ sign change)
+            // THIN DISK: Equatorial crossing detection & multi-crossing accumulation
             // -------------------------------------------------------------
             float uPrev = s.y;
             float uNext = sNext.y;
 
             if (uPrev * uNext <= 0.0 && s.x > r_plus) {
-                // Secant refinement of equatorial hit (u = 0)
+                // Secant / linear bisection refinement of equatorial hit (u = 0)
                 float frac = clamp(abs(uPrev) / max(1e-6, abs(uPrev) + abs(uNext)), 0.0, 1.0);
                 vec4 sHit = mix(s, sNext, frac);
                 float fracRefined = clamp(frac - sHit.y / max(1e-6, uPrev - uNext), 0.0, 1.0);
                 sHit = mix(s, sNext, fracRefined);
                 float rHit = sHit.x;
 
-                if (rHit >= r_isco && rHit <= r_out && diskCrossings < 4) {
+                if (rHit >= r_isco && rHit <= r_out && diskCrossings < 8) {
                     diskCrossings++;
 
                     float tHit = mix(tEmit, tNext, fracRefined);
@@ -348,6 +348,26 @@ void main() {
 
                     vec3 col; float intensity; float curG;
                     sampleDiskEmission(rHit, phiHit, tHit, L, col, intensity, curG);
+
+                    if (diskCrossings == 1) {
+                        firstG = curG;
+                        firstRHit = rHit;
+                    }
+
+                    float alphaDisk = uDiskOpacity * smoothstep(r_out, r_out * 0.75, rHit);
+                    // For higher-order crossings (n >= 2), the photon ring is thin and crisp
+                    if (diskCrossings > 1) {
+                        alphaDisk = min(alphaDisk, 0.70);
+                    }
+                    emitColor += transmittance * alphaDisk * col * intensity;
+                    transmittance *= (1.0 - alphaDisk);
+
+                    if (transmittance < 0.005 && uDebugMode == 0) {
+                        escaped = true;
+                        break;
+                    }
+                }
+            }
 
                     if (diskCrossings == 1) {
                         firstG = curG;

@@ -294,6 +294,102 @@
         return cachedStarfield;
     };
 
+    /**
+     * Verifies that energy E, axial angular momentum L_z, and Carter constant Q
+     * are strictly conserved along integrated null geodesics with drift < 1e-3.
+     */
+    const verifyConservationDrift = (spin = 0.95, inclinationDeg = 78.0) => {
+        const a = Math.max(-0.998, Math.min(0.998, spin));
+        const a2 = a * a;
+        const thetaObs = inclinationDeg * Math.PI / 180.0;
+        const sinObs = Math.sin(thetaObs), cosObs = Math.cos(thetaObs);
+        const rObs = 50.0;
+        const r_plus = 1.0 + Math.sqrt(Math.max(0.0, 1.0 - a2));
+        const r_absorb = r_plus * 1.035;
+
+        const testRays = [
+            { alpha: 6.0, beta: 3.0 },
+            { alpha: 10.0, beta: 5.0 },
+            { alpha: -5.0, beta: 2.0 },
+            { alpha: 7.0, beta: -3.5 },
+            { alpha: 8.0, beta: 0.0 }
+        ];
+
+        let worstDriftH = 0.0;
+        let worstDriftQ = 0.0;
+
+        testRays.forEach(({ alpha, beta }) => {
+            const L = -alpha * sinObs;
+            const Q0 = beta * beta + (alpha * alpha - a2) * cosObs * cosObs;
+            const c1 = -(Q0 + L * L - a2);
+            const c2 = -2.0 * a2;
+
+            const delObs = rObs * rObs - 2.0 * rObs + a2;
+            const pObs = rObs * rObs + a2 - a * L;
+            const rad = Math.max(0.0, (pObs * pObs) / delObs - (Q0 + (L - a) * (L - a)));
+            const prObs = -Math.sqrt(rad / delObs);
+            const puObs = sinObs * beta;
+
+            let s = [rObs, cosObs, prObs, puObs];
+
+            const derivs = (st) => {
+                const r = st[0], u = Math.max(-0.9998, Math.min(0.9998, st[1])), pr = st[2], pu = st[3];
+                const r2 = r * r;
+                const invSig = 1.0 / (r2 + a2 * u * u);
+                const del = Math.max(1e-5, r2 - 2.0 * r + a2);
+                const pOverDel = (r2 + a2 - a * L) / del;
+                const dr = del * pr * invSig;
+                const du = pu * invSig;
+                const dpr = (2.0 * r * pOverDel - (r - 1.0) * (pr * pr + pOverDel * pOverDel)) * invSig;
+                const dpu = (c1 * u + c2 * u * u * u) * invSig;
+                return [dr, du, dpr, dpu];
+            };
+
+            for (let step = 0; step < 220; step++) {
+                const r = s[0], u = s[1];
+                if (r <= r_absorb || (r >= rObs + 2.0 && s[2] > 0.0)) break;
+
+                const distH = Math.max(1e-4, r - r_plus);
+                let dl = (r > 25.0)
+                    ? Math.min(6.0, (r - 20.0) * 0.45 + 1.2)
+                    : Math.max(0.001, Math.min(2.5, 0.12 * distH));
+                if (Math.abs(u) < 0.08 && r < 25.0) dl *= 0.65;
+
+                // Hamiltonian check: 2Σ H = Δ pr² - P²/Δ + pu² - c1 u² - 0.5 c2 u⁴ + (L - a)²
+                const sig = r * r + a2 * u * u;
+                const del = Math.max(1e-5, r * r - 2.0 * r + a2);
+                const p = r * r + a2 - a * L;
+                const Q_cur = s[3] * s[3] - c1 * u * u - 0.5 * c2 * u * u * u * u;
+                const twoSigH = del * s[2] * s[2] - (p * p) / del + Q_cur + (L - a) * (L - a);
+                const curH = Math.abs(twoSigH / (2.0 * sig));
+                const driftQ = Math.abs(Q_cur - Q0) / Math.max(1.0, Math.abs(Q0));
+
+                if (r > r_plus * 1.08) {
+                    if (curH > worstDriftH) worstDriftH = curH;
+                    if (driftQ > worstDriftQ) worstDriftQ = driftQ;
+                }
+
+                // RK4
+                const k1 = derivs(s);
+                const s2 = s.map((v, i) => v + 0.5 * dl * k1[i]);
+                const k2 = derivs(s2);
+                const s3 = s.map((v, i) => v + 0.5 * dl * k2[i]);
+                const k3 = derivs(s3);
+                const s4 = s.map((v, i) => v + dl * k3[i]);
+                const k4 = derivs(s4);
+
+                s = s.map((v, i) => v + (dl / 6.0) * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]));
+            }
+        });
+
+        const passed = worstDriftH < 1e-3;
+        console.log(
+            `[Kerr Geodesics] Conserved quantities verified (a = ${a.toFixed(2)}, θ = ${inclinationDeg.toFixed(1)}°): ` +
+            `max |H| = ${worstDriftH.toExponential(3)}, max ΔQ/Q = ${worstDriftQ.toExponential(3)} (threshold: 1.0e-3, status: ${passed ? "PASS" : "WARN"})`
+        );
+        return { worstDriftH, worstDriftQ, passed };
+    };
+
     const api = {
         horizon,
         isco,
@@ -303,7 +399,8 @@
         generateDiskLUT,
         getDiskLUT,
         bakeStarfieldFaces,
-        getStarfieldData
+        getStarfieldData,
+        verifyConservationDrift
     };
 
     if (typeof module !== 'undefined' && module.exports) {

@@ -255,6 +255,7 @@ void main() {
 
     const FS_KERR_SCENE = `#version 300 es
 precision highp float;
+precision highp int;
 
 in vec2 vUV;
 out vec4 fragColor;
@@ -268,8 +269,9 @@ uniform float uTime;
 uniform float uAuxOpacity;
 uniform float uIsLight;
 
+// Analytical Tanner Helland blackbody spectrum fit
 vec3 blackbody(float T) {
-    float t = clamp(T, 1000.0, 35000.0) * 0.01;
+    float t = clamp(T, 1000.0, 40000.0) * 0.01;
     float tA = max(t - 60.0, 1.0);
     float tB = max(t - 10.0, 1.0);
     vec3 c;
@@ -281,26 +283,190 @@ vec3 blackbody(float T) {
     return c;
 }
 
+// 2D noise for sheared plasma turbulence
+float hash2D(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
+
+float noise2D(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    float a = hash2D(i);
+    float b = hash2D(i + vec2(1.0, 0.0));
+    float c = hash2D(i + vec2(0.0, 1.0));
+    float d = hash2D(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+// Canonical equations of motion in Boyer–Lindquist coordinates (r, u = cos θ, pr, pu)
+void stateDerivs(vec4 s, float a, float L, float c1, float c2, out vec4 ds) {
+    float r = s.x;
+    float u = clamp(s.y, -0.9998, 0.9998);
+    float pr = s.z;
+    float pu = s.w;
+
+    float r2 = r * r;
+    float a2 = a * a;
+    float invSig = 1.0 / (r2 + a2 * u * u);
+    float del = max(1e-5, r2 - 2.0 * r + a2);
+    float pOverDel = (r2 + a2 - a * L) / del;
+
+    float dr = del * pr * invSig;
+    float du = pu * invSig;
+    float dpr = (2.0 * r * pOverDel - (r - 1.0) * (pr * pr + pOverDel * pOverDel)) * invSig;
+    float dpu = (c1 * u + c2 * u * u * u) * invSig;
+
+    ds = vec4(dr, du, dpr, dpu);
+}
+
+// Keplerian ISCO radius for prograde Kerr orbits
+float iscoRadius(float a) {
+    float absA = clamp(abs(a), 0.0, 0.998);
+    float z1 = 1.0 + pow(1.0 - absA * absA, 1.0 / 3.0) * (pow(1.0 + absA, 1.0 / 3.0) + pow(max(1e-5, 1.0 - absA), 1.0 / 3.0));
+    float z2 = sqrt(3.0 * absA * absA + z1 * z1);
+    return 3.0 + z2 - sqrt(max(0.0, (3.0 - z1) * (3.0 + z1 + 2.0 * z2)));
+}
+
 void main() {
     if (uAuxOpacity <= 0.002) discard;
 
-    vec2 aspectUV = (vUV - uBhScreenCentre) * vec2(uRes.x / max(1.0, uRes.y), 1.0);
-    vec2 bp = aspectUV * uBhScale;
+    // Screen coordinates mapped to celestial impact parameters (alpha, beta)
+    vec2 pScreen = (vUV - uBhScreenCentre) * vec2(uRes.x / max(1.0, uRes.y), 1.0) * uBhScale;
+    float alpha = pScreen.x;
+    float beta = pScreen.y;
 
-    float a = uSpin;
-    vec2 shifted = bp - vec2(0.19 * a * sin(uTilt), 0.0);
-    float b = length(shifted);
+    float thetaObs = clamp(uTilt, 0.06, 3.14159265 - 0.06);
+    float sinObs = sin(thetaObs);
+    float cosObs = cos(thetaObs);
 
-    float asym = 1.0 - 0.14 * a * (shifted.x / max(0.001, b)) * sin(uTilt);
-    float bCrit = 2.65 * asym;
+    float a = clamp(uSpin, -0.998, 0.998);
+    float a2 = a * a;
+    float L = -alpha * sinObs;
+    float Q = beta * beta + (alpha * alpha - a2) * cosObs * cosObs;
+    float c1 = -(Q + L * L - a2);
+    float c2 = -2.0 * a2;
 
-    float sinPhi = -shifted.x / max(0.05, b);
-    float g = clamp(1.0 / (1.18 * (1.0 - 0.42 * sinPhi * sin(uTilt))), 0.35, 2.25);
+    float r_plus = 1.0 + sqrt(max(0.0, 1.0 - a2));
+    float r_absorb = r_plus * 1.035;
+    float r_isco = iscoRadius(a);
+    float r_out = 16.0;
 
-    // Analytic placeholder circles, painted Gaussian rings (n1Ring, n2Ring),
-    // painted exponential halos (discHalo), and painted smoothstep shadows
-    // are purged. Geodesic tracing in Commit 2 provides physically derived null geodesics.
-    fragColor = vec4(0.0);
+    float rObs = 45.0;
+    float delObs = rObs * rObs - 2.0 * rObs + a2;
+    float pObs = rObs * rObs + a2 - a * L;
+    float rad = max(0.0, (pObs * pObs) / delObs - (Q + (L - a) * (L - a)));
+    float prObs = -sqrt(rad / delObs);
+    float puObs = sinObs * beta;
+
+    vec4 s = vec4(rObs, cosObs, prObs, puObs);
+    float bImpact = length(pScreen);
+
+    // Fast escape check for distant non-lensed rays
+    if (bImpact > 18.0) discard;
+
+    vec3 emitColor = vec3(0.0);
+    float transmittance = 1.0;
+    int diskCrossings = 0;
+    bool captured = false;
+    float tCoord = 0.0;
+    float phiCoord = 0.0;
+
+    // Numerical integration of Kerr null geodesics with adaptive RK4
+    for (int step = 0; step < 110; step++) {
+        float r = s.x;
+        float u = s.y;
+
+        // Horizon absorption check
+        if (r <= r_absorb) {
+            captured = true;
+            break;
+        }
+
+        // Outward escape check
+        if ((r >= 22.0 && s.z > 0.0 && step > 2) || (r >= rObs + 2.0 && s.z > 0.0)) {
+            break;
+        }
+
+        // Adaptive step: fine near horizon & photon orbit, large in exterior
+        float distH = max(1e-4, r - r_plus);
+        float dl = (r > r_out + 1.0)
+            ? min(5.0, (r - r_out) * 0.45 + 1.1)
+            : clamp(0.12 * distH, 0.001, 2.2);
+        if (abs(u) < 0.08 && r < 24.0) dl *= 0.65;
+
+        // RK4 stage evaluations
+        vec4 k1s, k2s, k3s, k4s;
+        stateDerivs(s, a, L, c1, c2, k1s);
+        stateDerivs(s + 0.5 * dl * k1s, a, L, c1, c2, k2s);
+        stateDerivs(s + 0.5 * dl * k2s, a, L, c1, c2, k3s);
+        stateDerivs(s + dl * k3s, a, L, c1, c2, k4s);
+
+        vec4 sNext = s + (dl / 6.0) * (k1s + 2.0 * k2s + 2.0 * k3s + k4s);
+
+        // Equatorial plane crossing (u = cos θ sign change)
+        if (s.y * sNext.y <= 0.0 && s.x > r_plus) {
+            float frac = clamp(abs(s.y) / max(1e-6, abs(s.y) + abs(sNext.y)), 0.0, 1.0);
+            vec4 sHit = mix(s, sNext, frac);
+            float fracRefined = clamp(frac - sHit.y / max(1e-6, s.y - sNext.y), 0.0, 1.0);
+            sHit = mix(s, sNext, fracRefined);
+            float rHit = sHit.x;
+
+            if (rHit >= r_isco && rHit <= r_out && diskCrossings < 6) {
+                diskCrossings++;
+
+                // Keplerian angular velocity Ω(r) & four-velocity u^t
+                float omega = 1.0 / (pow(rHit, 1.5) + a);
+                float g_tt = -(1.0 - 2.0 / rHit);
+                float g_tphi = -2.0 * a / rHit;
+                float g_phiphi = rHit * rHit + a * a + 2.0 * a * a / rHit;
+                float denomUt = -(g_tt + 2.0 * g_tphi * omega + g_phiphi * omega * omega);
+                float ut = denomUt > 0.0 ? 1.0 / sqrt(denomUt) : 1.15;
+
+                // Relativistic Doppler factor g = 1 / (u^t * (1 - Ω * L))
+                float factor = ut * (1.0 - omega * L);
+                float g = factor > 1e-4 ? clamp(1.0 / factor, 0.15, 6.0) : 1.0;
+
+                // Page-Thorne flux approximation & temperature
+                float normF = clamp(sqrt(rHit / r_isco) - 1.0, 0.0, 1.0) * exp(-(rHit - r_isco) * 0.28);
+                float tScale = pow(normF, 0.25);
+
+                // Differential rotation shear in coordinates (r, φ - Ω(r)*t)
+                float phiHit = phiCoord + omega * (uTime * 0.85);
+                float turbAngle = phiHit + 1.25 * log(max(1.0, rHit));
+                vec2 pTurb = vec2(cos(turbAngle), sin(turbAngle)) * (rHit * 0.45);
+                float turb = clamp(0.55 * noise2D(pTurb * 2.2) + 0.35 * noise2D(pTurb * 5.5 + vec2(1.7, 3.2)) + 0.25, 0.2, 1.8);
+
+                float Tobs = 9500.0 * clamp(tScale, 0.05, 1.0) * g;
+                vec3 col = blackbody(Tobs);
+                float intensity = 3.6 * normF * turb * pow(g, 4.0);
+
+                float alphaDisk = 0.85 * smoothstep(r_out, r_out * 0.75, rHit);
+                if (diskCrossings > 1) {
+                    alphaDisk = min(alphaDisk, 0.65);
+                }
+                emitColor += transmittance * alphaDisk * col * intensity;
+                transmittance *= (1.0 - alphaDisk);
+
+                if (transmittance < 0.005) break;
+            }
+        }
+
+        s = sNext;
+        phiCoord += dl * (L / max(0.01, 1.0 - sNext.y * sNext.y));
+    }
+
+    float shadowMask = captured ? 1.0 : 0.0;
+    float totalAlpha = clamp((1.0 - transmittance * (1.0 - shadowMask)) * uAuxOpacity, 0.0, 1.0);
+    vec3 finalRGB = emitColor * uAuxOpacity;
+
+    if (uIsLight > 0.5) {
+        fragColor = vec4(mix(vec3(0.04), finalRGB * 0.55, totalAlpha), totalAlpha);
+    } else {
+        fragColor = vec4(finalRGB, totalAlpha);
+    }
 }
 `;
 
