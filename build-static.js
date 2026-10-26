@@ -134,7 +134,7 @@ const hubPage = () => `
 
         <section class="snap-section about-contact-section" id="about-contact" data-domain="contact" data-sim="hub:contact" data-enter="top" style="--a:var(--rgb-contact)">
             <div class="snap-inner">
-                <div class="section-head" data-reveal><span class="idx">06</span><h2>About &amp; Profile</h2></div>
+                <div class="section-head" data-reveal><h2>About &amp; Profile</h2></div>
                 <div class="two-col">
                     <div data-reveal>
                         <p class="lead">I work where data science, quantitative finance and physics overlap: stochastic models for markets, symplectic integrators for mechanics, compilers and hardware for the machines that run them.</p>
