@@ -244,7 +244,8 @@ pre.glass {
     background: var(--glass);
     -webkit-backdrop-filter: blur(18px) saturate(140%);
     backdrop-filter: blur(18px) saturate(140%);
-    border: 1px solid var(--glass-line);
+    border: none;
+    box-shadow: none;
 }
 .brand {
     font: 700 14px var(--mono);
