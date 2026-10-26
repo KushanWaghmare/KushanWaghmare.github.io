@@ -74,3 +74,8 @@ True section order derived from `shared/data.js` (`Object.keys(SITE.domains)` = 
 - Generated 1D Blackbody LUT and analytic Planckian grading (1,000 K to 32,000 K): white-hot inner boundary, golden-amber mid disc, and deep rich burnt orange-brown outer falloff ($T < 3,500$ K).
 - Implemented relativistic Keplerian 4-velocity $u^t$ and local Doppler factor $g = \frac{1}{u^t (1 - \Omega L_z)}$ with bolometric intensity scaling $I_\text{obs} \propto g^4$ and temperature shift $T_\text{obs} = g T$. At $80^\circ$ inclination, the approaching (left) side is visibly bluer and $> 20\times$ brighter than the receding (right) side.
 - Implemented 4-octave continuous plasma turbulence sheared by differential Keplerian flow in $(r, \phi - \Omega(r)t)$ with advected orbiting hot spots inside the tracer and smooth radial alpha falloff.
+
+### 3.5 Commit 4 Completed Actions (Starfield & Gravitational Lensing)
+- Upgraded baked procedural starfield to 14,000 Poisson-distributed stars with power-law Pareto magnitude distribution, Tanner Helland blackbody temperatures (2,400 K to 36,000 K), and tilted Milky Way galactic plane with central bulge and dust lane attenuation.
+- Implemented ray-bundle Jacobian finite-difference magnification ($\mu = \operatorname{clamp}(0.00018 / \|\text{dDirX} \times \text{dDirY}\|, 0.45, 4.5)$) in `FS_KERR_MARCH`, generating amplified Einstein arcs and duplicate images near the shadow boundary.
+- Enforced pitch-black sky background away from the black hole with screen-corner luminance $< 0.02$.

@@ -512,13 +512,16 @@ void main() {
         return;
     }
 
-    // Uniform control-flow cubemap sampling using ray derivatives
-    // Taking derivatives of the final ray direction after the loop lets lens
-    // magnification select the appropriate mip level, eliminating star aliasing.
-    // Clamping the gradients near the horizon edge prevents seams and over-blurring.
-    vec3 dDirX = clamp(dFdx(skyDir), vec3(-0.015), vec3(0.015));
-    vec3 dDirY = clamp(dFdy(skyDir), vec3(-0.015), vec3(0.015));
-    vec3 bgSky = textureGrad(uSkyCube, skyDir, dDirX, dDirY).rgb;
+    // Ray-bundle Jacobian finite-difference magnification:
+    // Near the photon sphere and shadow boundary, ray bundle cross section shrinks,
+    // magnifying background starlight and generating Einstein arcs and double images.
+    vec3 dDirX = dFdx(skyDir);
+    vec3 dDirY = dFdy(skyDir);
+    float bundleArea = max(1e-7, length(cross(dDirX, dDirY)));
+    float mu = clamp(0.00018 / bundleArea, 0.45, 4.5);
+    vec3 gradX = clamp(dDirX, vec3(-0.015), vec3(0.015));
+    vec3 gradY = clamp(dDirY, vec3(-0.015), vec3(0.015));
+    vec3 bgSky = textureGrad(uSkyCube, skyDir, gradX, gradY).rgb * mu;
 
     // Rays captured by the event horizon are completely dark if not occluded by the foreground disk
     if (captured || !escaped) {

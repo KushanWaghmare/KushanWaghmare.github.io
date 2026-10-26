@@ -162,6 +162,11 @@
             return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
         };
 
+        const smoothstep = (e0, e1, x) => {
+            const t = Math.max(0.0, Math.min(1.0, (x - e0) / Math.max(1e-5, e1 - e0)));
+            return t * t * (3.0 - 2.0 * t);
+        };
+
         // Tanner Helland blackbody colour approximation
         const blackbodyCol = (tempK) => {
             const t = Math.max(1000, Math.min(40000, tempK)) * 0.01;
@@ -193,12 +198,14 @@
         const e2y = n2 * e1x - n0 * e1z;
         const e2z = n0 * e1y - n1 * e1x;
 
-        // Poisson-distributed stars with power-law magnitude and blackbody colours on pitch-black space
-        const numStars = 8500;
+        // Denser Poisson-distributed stars with power-law magnitude and blackbody colours
+        // Includes faint procedural Milky Way galactic band with central bulge and dark dust lanes
+        const numStars = 14000;
         for (let i = 0; i < numStars; i++) {
             let dx, dy, dz;
-            // 65% isotropic distribution across the sphere, 35% smoothly concentrated along galactic plane
-            if (rand() < 0.65) {
+            let isGalactic = false;
+            // 55% isotropic distribution across the sphere, 45% concentrated along galactic plane
+            if (rand() < 0.55) {
                 const z = rand() * 2.0 - 1.0;
                 const phi = rand() * 2.0 * Math.PI;
                 const rxy = Math.sqrt(Math.max(0, 1.0 - z * z));
@@ -206,9 +213,10 @@
                 dy = z;
                 dz = rxy * Math.sin(phi);
             } else {
+                isGalactic = true;
                 const phi = rand() * 2.0 * Math.PI;
                 // Smooth bell-shaped latitude distribution (sum of 4 uniforms) to avoid hard strip edges
-                const b = ((rand() + rand() + rand() + rand()) - 2.0) * 0.22;
+                const b = ((rand() + rand() + rand() + rand()) - 2.0) * 0.18;
                 const rxy = Math.cos(b);
                 const sinB = Math.sin(b);
                 const cPhi = rxy * Math.cos(phi), sPhi = rxy * Math.sin(phi);
@@ -219,12 +227,19 @@
 
             // Power-law magnitude distribution (Pareto): most stars faint, few prominent
             const u = Math.max(1e-4, rand());
-            const brightness = 0.22 * Math.pow(u, -0.65);
-            const clampedB = Math.min(32.0, brightness);
+            let brightness = 0.20 * Math.pow(u, -0.68);
+
+            // Dark dust lane attenuation along galactic equator
+            if (isGalactic) {
+                const galDist = Math.abs(dx * n0 + dy * n1 + dz * n2);
+                const dustLane = smoothstep(0.015, 0.065, galDist);
+                brightness *= (0.45 + 0.55 * dustLane);
+            }
+            const clampedB = Math.min(36.0, brightness);
 
             // Blackbody temperature: IMF heavily skewed toward cooler dwarf stars
             const uT = rand();
-            const tempK = 2600 + (32000 - 2600) * uT * uT * uT;
+            const tempK = 2400 + (34000 - 2400) * uT * uT * uT;
             const [cr, cg, cb] = blackbodyCol(tempK);
 
             // Determine cubemap face and UV projection
