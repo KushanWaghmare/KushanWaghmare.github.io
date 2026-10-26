@@ -758,10 +758,11 @@
             const cosObs = Math.cos(this.tilt);
             const offsetX = (ctx && ctx.isMobile) ? 0.0 : 2.35;
 
+            const isMob = (ctx && ctx.isMobile) || (typeof window !== "undefined" && window.innerWidth <= 768);
             this.kerrOverlay.tilt = this.tilt;
-            this.kerrOverlay.screenX = (ctx && ctx.isMobile) ? 0.50 : (0.66 - ptrX * 0.015);
-            this.kerrOverlay.screenY = 0.50 + ptrY * 0.02;
-            this.kerrOverlay.scale = (dbg && dbg.scale !== undefined && dbg.scale !== null) ? dbg.scale : 34.0;
+            this.kerrOverlay.screenX = isMob ? 0.50 : (0.66 - ptrX * 0.015);
+            this.kerrOverlay.screenY = isMob ? 0.68 : (0.50 + ptrY * 0.02);
+            this.kerrOverlay.scale = (dbg && dbg.scale !== undefined && dbg.scale !== null) ? dbg.scale : (isMob ? 44.0 : 34.0);
             if (dbg && dbg.spin !== null && dbg.spin !== undefined) {
                 this.kerrOverlay.spin = dbg.spin;
             } else {
