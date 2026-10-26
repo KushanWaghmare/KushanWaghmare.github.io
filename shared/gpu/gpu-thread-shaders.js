@@ -297,27 +297,10 @@ void main() {
     float sinPhi = -shifted.x / max(0.05, b);
     float g = clamp(1.0 / (1.18 * (1.0 - 0.42 * sinPhi * sin(uTilt))), 0.35, 2.25);
 
-    float ringDist = abs(b - bCrit);
-    float n1Ring = exp(-ringDist * ringDist / 0.016) * 1.55;
-    float n2Ring = exp(-abs(b - bCrit * 0.965) * 44.0) * 0.90;
-
-    float discHalo = exp(-pow(max(0.0, b - bCrit * 1.02) * 0.55, 1.6)) * smoothstep(bCrit * 0.88, bCrit * 1.04, b);
-    float innerShadow = smoothstep(bCrit * 0.94, bCrit * 0.72, b);
-
-    float Tobs = 9400.0 * pow(g, 0.65);
-    vec3 ringCol = blackbody(Tobs) * pow(g, 2.2);
-
-    vec3 radiance = ringCol * (n1Ring + n2Ring + discHalo * 0.42) * (1.0 - 0.94 * innerShadow);
-    float shadowMask = innerShadow * 0.92;
-    float totalAlpha = clamp((n1Ring + n2Ring + discHalo * 0.45 + shadowMask * 0.65) * uAuxOpacity, 0.0, 0.95);
-
-    if (uIsLight > 0.5) {
-        vec3 colLight = mix(vec3(0.06, 0.07, 0.11), radiance * 0.55, clamp(n1Ring + n2Ring, 0.0, 1.0));
-        fragColor = vec4(colLight, totalAlpha * 0.75);
-    } else {
-        vec3 outRgb = radiance * uAuxOpacity * (1.0 - innerShadow * 0.95);
-        fragColor = vec4(outRgb, totalAlpha);
-    }
+    // Analytic placeholder circles, painted Gaussian rings (n1Ring, n2Ring),
+    // painted exponential halos (discHalo), and painted smoothstep shadows
+    // are purged. Geodesic tracing in Commit 2 provides physically derived null geodesics.
+    fragColor = vec4(0.0);
 }
 `;
 

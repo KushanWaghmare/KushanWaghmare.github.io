@@ -568,7 +568,7 @@
                         gl.uniform1i(uBloomDown.uTexture, 0);
                         gl.uniform2f(uBloomDown.uTexelSize, 1.0 / targetW, 1.0 / targetH);
                         gl.uniform1i(uBloomDown.uFirstPass, 1);
-                        gl.uniform1f(uBloomDown.uThreshold, 0.85);
+                        gl.uniform1f(uBloomDown.uThreshold, 1.15);
                     } else {
                         gl.bindTexture(gl.TEXTURE_2D, bloomTex[k - 1]);
                         gl.uniform1i(uBloomDown.uTexture, 0);

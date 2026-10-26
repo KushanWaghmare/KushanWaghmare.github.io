@@ -568,6 +568,7 @@
             this.role = null;       // Uint8Array(N): 0 = equatorial disc, 1 = upper lensed arch, 2 = lower lensed arch
             this.tilt = 1.41;       // ~81 deg inclination
             this.cameraDistance = 13.5;
+            this.bloomThreshold = 1.15; // > 1.0 threshold eliminates background haze wash
             this.kerrOverlay = {
                 screenX: 0.64,
                 screenY: 0.50,
@@ -631,10 +632,10 @@
                 this.ut[i] = Number.isFinite(utVal) ? utVal : 1.2;
                 this.tempScale[i] = Math.pow(clamp(flux, 0.02, 1.0), 0.25);
 
-                // 74% primary equatorial accretion disc, 15% upper lensed photon arch, 11% lower lensed photon arch
-                if (u3 < 0.74) this.role[i] = 0;
-                else if (u3 < 0.89) this.role[i] = 1;
-                else this.role[i] = 2;
+                // All particles sample the physical equatorial accretion disc r in [r_isco, r_out].
+                // Fake trigonometric upper/lower arches have been removed so all lensed features
+                // originate exclusively from the Kerr null geodesic ray tracer.
+                this.role[i] = 0;
             }
 
             this.initialized = true;
@@ -687,26 +688,13 @@
             const scale = 0.42;
             let lx, ly, lz;
 
-            if (role === 0) {
-                // Equatorial accretion disc tilted by θ_obs, with relativistic rear-disc gravitational bending
-                const diskH = (seeds[i4 + 3] - 0.5) * 0.06 * r;
-                const xDisk = -r * cosPhi;
-                const zDisk = r * sinPhi;
-                // Back side of disc (zDisk < 0) is bent upward by Kerr gravitational lensing
-                const lensLift = zDisk < 0 ? (-zDisk * 0.32 * Math.exp(-r * 0.14)) : 0.0;
-                lx = xDisk;
-                ly = zDisk * cosObs + diskH * sinObs + lensLift;
-                lz = zDisk * sinObs - diskH * cosObs;
-            } else {
-                // Upper (role 1) & lower (role 2) gravitationally lensed Einstein / photon ring halo
-                const bCrit = 2.65 + (r - this.rIsco) * 0.18;
-                const archSign = role === 1 ? 1.0 : -1.0;
-                const archAngle = phi;
-                // D-shaped Kerr frame-dragging shift (+0.18 a)
-                lx = bCrit * Math.cos(archAngle) + 0.18 * this.spin;
-                ly = archSign * bCrit * Math.abs(Math.sin(archAngle)) * (role === 1 ? 1.02 : 0.88);
-                lz = (seeds[i4 + 2] - 0.5) * 0.8;
-            }
+            // Physical equatorial accretion disc tilted by θ_obs
+            const diskH = (seeds[i4 + 3] - 0.5) * 0.04 * r;
+            const xDisk = -r * cosPhi;
+            const zDisk = r * sinPhi;
+            lx = xDisk;
+            ly = zDisk * cosObs + diskH * sinObs;
+            lz = zDisk * sinObs - diskH * cosObs;
 
             outPos[i3]     = this.origin.x + offsetX + lx * scale;
             outPos[i3 + 1] = this.origin.y + ly * scale;

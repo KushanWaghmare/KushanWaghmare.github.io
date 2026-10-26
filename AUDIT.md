@@ -34,3 +34,29 @@ True section order derived from `shared/data.js` (`Object.keys(SITE.domains)` = 
    - Delete `--native-opacity` rules in `shared/style.css` and `shared/gpu/gpu-thread.js`. Zero crossfading of canvases occurs at any frame.
 3. **Fold Existing Simulation Maths into `Formation` Adapters on the Single Shared Buffer**:
    - Replace `shared/gpu/gpu-thread-formations.js`, `shared/gpu/gpu-thread-shaders.js`, and `shared/gpu/gpu-thread.js` with the unified single-buffer `THREE.Points` stage and per-section `Formation` adapters driven directly by `CYMath`, `BLACKHOLE_PHYSICS` + `BLACKHOLE_SHADERS`, `DiffusionMath`, `LatticeMath`, `QSimMath`, and `ENGINES`.
+
+---
+
+## 3. Physics-Section Kerr Black Hole Simulation Audit & Upgrade Roadmap
+
+### 3.1 Architectural Audit
+1. **Ray Tracer Location**:
+   - Primary ray tracer lives in GLSL fragment shader `FS_KERR_MARCH` (`shared/blackhole-shaders.js`), orchestrated by WebGL2 engine `SIMS.blackhole` (`shared/blackhole.js`) and astrophysics computations `BLACKHOLE_PHYSICS` (`shared/blackhole-physics.js`).
+   - A secondary billboard overlay shader `FS_KERR_SCENE` in `shared/gpu/gpu-thread-shaders.js` contained analytical circular placeholders.
+2. **Coordinates Used**:
+   - Boyer–Lindquist $(t, r, \theta, \phi)$ with Carter's polynomial parameterisation in $u = \cos\theta \in [-1, 1]$ and conjugate momenta $(p_r, p_u)$, regularised against polar axis singularities.
+3. **Step Counts & Resolution**:
+   - Tracing loop: 88 steps max on desktop, 64 on mobile, with adaptive step size $\Delta\lambda \propto (r - r_+)$.
+   - Offscreen HDR framebuffer (`RGBA16F`) dynamically scaled between 0.35× and 0.65× DPR targeting 14 ms EMA.
+4. **Origin of Features (Before Upgrade)**:
+   - *Shadow*: Traced in `FS_KERR_MARCH` via horizon capture ($r \le r_+ + \varepsilon$), but painted with an empirical smoothstep in `FS_KERR_SCENE`.
+   - *Photon Ring*: Traced via higher-order disc crossings in `FS_KERR_MARCH`, but faked with analytical Gaussian rings in `FS_KERR_SCENE`.
+   - *Haze/Glow*: Low bloom threshold (0.75–0.85) produced a pale milky haze wash; painted exponential halos existed in `FS_KERR_SCENE`.
+   - *Disc Streaks*: 90,000 particle points in `BlackHoleFormation` had 26% of particles placed on unlensed geometric upper and lower arches ($y = \pm 2.8 \sin\theta$).
+5. **Post-Processing Chain**:
+   - RGBA16F HDR buffer $\to$ TAA accumulation $\to$ 4-level Dual-Kawase bloom pyramid $\to$ ACES filmic tonemapper + grain.
+
+### 3.2 Commit 1 Completed Actions (Audit & Purge of Painted Rings/Haze)
+- Deleted painted Gaussian rings (`n1Ring`, `n2Ring`), analytical halo (`discHalo`), and smoothstep shadow (`innerShadow`) from `shared/gpu/gpu-thread-shaders.js`.
+- Removed fake geometric arch particles (`role === 1` and `role === 2`) from `shared/gpu/gpu-thread-formations.js`. All particles now orbit in the true equatorial disc $r \in [r_\text{isco}, r_\text{out}]$ as physical plasma glints.
+- Raised HDR bloom threshold to $1.15$ ($> 1.0$) in both `shared/blackhole.js` and `shared/gpu/gpu-thread-formations.js` to eliminate pale-grey background haze and enforce screen-corner luminance $< 0.02$.
