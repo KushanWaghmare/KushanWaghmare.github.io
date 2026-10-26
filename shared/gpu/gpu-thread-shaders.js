@@ -172,17 +172,15 @@ precision highp float;
 in vec2 vUV;
 out vec4 fragColor;
 
-uniform vec3 uCamPos;
-uniform vec3 uCamForward;
-uniform vec3 uCamRight;
-uniform vec3 uCamUp;
-uniform float uTanHalfFov;
-uniform float uAspect;
+uniform vec2 uRes;
+uniform vec2 uBhScreenCentre;
+uniform float uBhScale;
+uniform float uTilt;
 uniform float uTime;
 uniform float uIsLight;
 
-// Analytical Tanner Helland blackbody spectrum fit with Planckian tonal grading (matches Black Hole sim)
-vec3 starBlackbody(float T) {
+// Analytical Tanner Helland blackbody spectrum fit with Planckian tonal grading (identical to Black Hole sim)
+vec3 blackbody(float T) {
     float t = clamp(T, 1000.0, 40000.0) * 0.01;
     float tA = max(t - 60.0, 1.0);
     float tB = max(t - 10.0, 1.0);
@@ -192,11 +190,16 @@ vec3 starBlackbody(float T) {
         ? clamp((99.4708 * log(max(t, 1.0)) - 161.1196) / 255.0, 0.0, 1.0)
         : clamp((288.1222 * pow(tA, -0.0755)) / 255.0, 0.0, 1.0);
     c.b = t >= 66.0 ? 1.0 : (t <= 19.0 ? 0.0 : clamp((138.5177 * log(tB) - 305.0448) / 255.0, 0.0, 1.0));
+
+    if (T < 3500.0) {
+        float warmRamp = clamp((T - 1000.0) / 2500.0, 0.0, 1.0);
+        c = mix(vec3(0.55, 0.12, 0.02), c, warmRamp);
+    }
     return c;
 }
 
 // Procedural celestial sphere: anti-aliased starfield & faint Milky Way band (identical to Black Hole sky)
-vec3 celestialSky(vec3 d, float time) {
+vec3 lensedSky(vec3 d, float time) {
     // 1. Faint procedural Milky Way band (peak luminance ~0.010, near-black space)
     vec3 galPole = normalize(vec3(-0.35, 0.72, 0.59));
     float b = dot(d, galPole);
@@ -229,7 +232,7 @@ vec3 celestialSky(vec3 d, float time) {
             float magScale = pow(h.x / prob, 3.6);
             float bright = mix(0.12, 3.5, magScale);
             float starT = mix(2800.0, 22000.0, pow(h.y, 2.0));
-            vec3 starColor = starBlackbody(starT);
+            vec3 starColor = blackbody(starT);
             
             float twinkle = 0.88 + 0.12 * sin(time * (1.6 + 2.4 * h.z) + h.x * 40.0);
             starAcc += starProfile * starColor * (bright * twinkle) * 0.42;
@@ -240,19 +243,25 @@ vec3 celestialSky(vec3 d, float time) {
 }
 
 void main() {
-    vec2 pScreen = (vUV - 0.5) * vec2(uAspect, 1.0) * (2.0 * uTanHalfFov);
-    // Subtle translation parallax gives deep 3D sensation as camera navigates between sections
-    vec3 baseDir = uCamForward + uCamRight * pScreen.x + uCamUp * pScreen.y;
-    vec3 d = normalize(baseDir - uCamPos * 0.0015);
+    // Screen coordinates mapped to celestial impact parameters (alpha, beta)
+    // Exactly matches the Kerr Black Hole ray tracer celestial projection
+    vec2 pScreen = (vUV - uBhScreenCentre) * vec2(uRes.x / max(1.0, uRes.y), 1.0) * uBhScale;
+    float alpha = pScreen.x;
+    float beta = pScreen.y;
+
+    float thetaObs = clamp(uTilt, 0.001, 3.14159265 - 0.001);
+    float sinObs = sin(thetaObs);
+    float cosObs = cos(thetaObs);
+
+    vec3 dSky = normalize(vec3(alpha, beta * cosObs + 35.0 * sinObs, -beta * sinObs + 35.0 * cosObs));
+    vec3 sky = lensedSky(dSky, uTime);
 
     if (uIsLight > 0.5) {
-        vec3 sky = celestialSky(d, uTime);
         float lum = dot(sky, vec3(0.299, 0.587, 0.114));
         fragColor = vec4(vec3(0.08, 0.10, 0.16) * lum, clamp(lum * 0.25, 0.0, 0.08));
         return;
     }
 
-    vec3 sky = celestialSky(d, uTime);
     fragColor = vec4(sky, 1.0);
 }
 `;

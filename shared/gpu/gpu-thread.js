@@ -319,7 +319,7 @@
             "uHeroBoost", "uIsLight", "uStreakScale", "uMaxStreakPx", "uTrailGain", "uFogTint"
         ]);
         starUniforms = getUniforms(starProg, [
-            "uCamPos", "uCamForward", "uCamRight", "uCamUp", "uTanHalfFov", "uAspect", "uTime", "uIsLight"
+            "uRes", "uBhScreenCentre", "uBhScale", "uTilt", "uTime", "uIsLight"
         ]);
         auxUniforms = getUniforms(auxProg, ["uViewProj", "uAuxOpacity", "uIsLight"]);
         kerrUniforms = getUniforms(kerrProg, [
@@ -1372,39 +1372,31 @@
             gl.blendFunc(gl.ONE, gl.ONE);
         }
 
-        // 2a. Celestial background starfield & Milky Way layer (matches Black Hole celestial sphere)
+        // 2a. Celestial background starfield & Milky Way layer (matches Black Hole celestial sphere exactly)
         if (starProg) {
-            const camFwdX = camera.target.x - camera.position.x;
-            const camFwdY = camera.target.y - camera.position.y;
-            const camFwdZ = camera.target.z - camera.position.z;
-            const camFwdLen = Math.hypot(camFwdX, camFwdY, camFwdZ) || 1.0;
-            const fwdX = camFwdX / camFwdLen;
-            const fwdY = camFwdY / camFwdLen;
-            const fwdZ = camFwdZ / camFwdLen;
-
-            const rX = fwdY * camera.up.z - fwdZ * camera.up.y;
-            const rY = fwdZ * camera.up.x - fwdX * camera.up.z;
-            const rZ = fwdX * camera.up.y - fwdY * camera.up.x;
-            const rLen = Math.hypot(rX, rY, rZ) || 1.0;
-            const rightX = rX / rLen;
-            const rightY = rY / rLen;
-            const rightZ = rZ / rLen;
-
-            const upX = rightY * fwdZ - rightZ * fwdY;
-            const upY = rightZ * fwdX - rightX * fwdZ;
-            const upZ = rightX * fwdY - rightY * fwdX;
-
-            const halfFovRad = (camera.fov * Math.PI) / 360.0;
-            const tanHalfFov = Math.tan(halfFovRad);
+            const isMob = isMobileDevice();
+            const baseScreenX = isMob ? 0.50 : (0.66 - ctxState.pointerX * 0.015);
+            const baseScreenY = isMob ? 0.68 : (0.50 + ctxState.pointerY * 0.02);
+            const baseScale = isMob ? 44.0 : 34.0;
+            const currentTilt = (activeRenderForm && activeRenderForm.kerrOverlay && activeRenderForm.kerrOverlay.tilt !== undefined)
+                ? activeRenderForm.kerrOverlay.tilt
+                : (1.41 + ctxState.pointerY * 0.08);
+            const currentScreenX = (activeRenderForm && activeRenderForm.kerrOverlay && activeRenderForm.kerrOverlay.screenX !== undefined)
+                ? activeRenderForm.kerrOverlay.screenX
+                : baseScreenX;
+            const currentScreenY = (activeRenderForm && activeRenderForm.kerrOverlay && activeRenderForm.kerrOverlay.screenY !== undefined)
+                ? activeRenderForm.kerrOverlay.screenY
+                : baseScreenY;
+            const currentScale = (activeRenderForm && activeRenderForm.kerrOverlay && activeRenderForm.kerrOverlay.scale !== undefined)
+                ? activeRenderForm.kerrOverlay.scale
+                : baseScale;
 
             gl.disable(gl.BLEND);
             gl.useProgram(starProg);
-            gl.uniform3f(starUniforms.uCamPos, camera.position.x, camera.position.y, camera.position.z);
-            gl.uniform3f(starUniforms.uCamForward, fwdX, fwdY, fwdZ);
-            gl.uniform3f(starUniforms.uCamRight, rightX, rightY, rightZ);
-            gl.uniform3f(starUniforms.uCamUp, upX, upY, upZ);
-            gl.uniform1f(starUniforms.uTanHalfFov, tanHalfFov);
-            gl.uniform1f(starUniforms.uAspect, camera.aspect);
+            gl.uniform2f(starUniforms.uRes, pw, ph);
+            gl.uniform2f(starUniforms.uBhScreenCentre, currentScreenX, currentScreenY);
+            gl.uniform1f(starUniforms.uBhScale, currentScale);
+            gl.uniform1f(starUniforms.uTilt, currentTilt);
             gl.uniform1f(starUniforms.uTime, simTime);
             gl.uniform1f(starUniforms.uIsLight, isLight ? 1.0 : 0.0);
             drawQuad();
