@@ -430,23 +430,12 @@ pre.glass {
 }
 
 .snap-inner::before {
-    content: "";
-    position: absolute;
-    inset: -28px -48px;
-    background: radial-gradient(ellipse 62% 70% at 26% 50%, rgba(var(--bg-rgb), 0.76) 0%, rgba(var(--bg-rgb), 0.36) 52%, transparent 95%);
-    border-radius: 28px;
-    z-index: -1;
-    pointer-events: none;
+    display: none;
 }
 
-/* Dedicated soft dark scrim for Physics text column to maintain pristine legibility */
 #domain-physics .snap-inner::before,
 #domain-intro[data-domain="physics"] .snap-inner::before {
-    inset: -32px -48px;
-    background: radial-gradient(ellipse 72% 82% at 22% 50%, rgba(var(--bg-rgb), 0.88) 0%, rgba(var(--bg-rgb), 0.58) 60%, transparent 100%);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-radius: 32px;
+    display: none;
 }
 
 .hero h1 {
@@ -486,16 +475,13 @@ pre.glass {
     max-width: min(100%, 720px);
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 10px 22px;
-    margin-top: 18px;
+    padding: 6px 0;
+    margin-top: 14px;
     font-size: clamp(0.72rem, 1.8vw, 0.98rem);
     color: var(--fg);
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
-    backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid var(--glass-line);
-    border-radius: var(--radius);
-    box-shadow: 0 8px 30px -10px rgba(var(--a), 0.22);
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 .hero-eq .eq-body {
     max-width: 100%;
@@ -507,7 +493,7 @@ pre.glass {
 .hero-eq .eq-caption {
     margin-top: 6px;
     padding-top: 6px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
     font-size: clamp(0.68rem, 1.35vw, 0.82rem);
     opacity: 0.82;
     max-width: 100%;
@@ -524,7 +510,19 @@ pre.glass {
     height: 0;
 }
 .hero-eq,
-.snap-eq,
+.snap-eq {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    color: var(--fg);
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
 .eq,
 .paper-eq,
 .math-block .eq {
@@ -544,7 +542,10 @@ pre.glass {
 .eq::-webkit-scrollbar,
 .paper-eq::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .hero-eq .katex,
-.snap-eq .katex,
+.snap-eq .katex {
+    color: var(--fg);
+    text-shadow: 0 1px 12px rgba(var(--bg-rgb), 0.85);
+}
 .eq .katex,
 .paper-eq .katex,
 .math-block .eq .katex,
@@ -602,8 +603,11 @@ pre.glass {
 
 .snap-eq {
     align-self: flex-start;
-    padding: 10px 24px;
+    padding: 6px 0;
     margin: 8px 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 
 .snap-projects {
@@ -1561,29 +1565,18 @@ a.contact-value:hover {
     .about-contact-section .edu > div { padding: 10px 12px; font-size: 13px; }
     .about-contact-section .edu span { font-size: 12px; }
     .snap-inner { width: 100%; gap: 10px; }
-    .snap-inner::before { inset: -14px -14px; }
-    #domain-physics .snap-inner,
-    #domain-intro[data-domain="physics"] .snap-inner {
-        background: rgba(var(--bg-rgb), 0.62);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-        padding: 20px 16px;
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
-    }
-    #domain-physics .snap-inner::before,
-    #domain-intro[data-domain="physics"] .snap-inner::before {
-        display: none;
-    }
+    .snap-inner::before { display: none; }
     .hero h1 { font-size: clamp(2.125rem, 10vw, 3.6rem); margin: 6px 0 10px; }
     .snap-title { font-size: clamp(1.75rem, 7.5vw, 3rem); }
     .snap-lead, .lead { font-size: 15px; line-height: 1.6; }
     .hero-eq, .snap-eq {
-        padding: 8px 12px;
+        padding: 4px 0;
         margin-top: 6px;
         font-size: clamp(0.66rem, 3.2vw, 0.84rem);
         max-width: calc(100vw - 36px);
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
     }
     .snap-cta-btn { padding: 10px 18px; font-size: 12px; width: 100%; justify-content: center; }
     .snap-actions { width: 100%; gap: 8px; }
