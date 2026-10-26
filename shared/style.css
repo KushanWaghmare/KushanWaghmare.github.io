@@ -439,6 +439,16 @@ pre.glass {
     pointer-events: none;
 }
 
+/* Dedicated soft dark scrim for Physics text column to maintain pristine legibility */
+#domain-physics .snap-inner::before,
+#domain-intro[data-domain="physics"] .snap-inner::before {
+    inset: -32px -48px;
+    background: radial-gradient(ellipse 72% 82% at 22% 50%, rgba(var(--bg-rgb), 0.88) 0%, rgba(var(--bg-rgb), 0.58) 60%, transparent 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 32px;
+}
+
 .hero h1 {
     font-family: var(--heading-font, var(--sans));
     font-size: clamp(2.5rem, 6.5vw, 5.75rem);
@@ -471,13 +481,14 @@ pre.glass {
 }
 
 .hero-eq {
-    display: inline-block;
-    max-width: 100%;
+    display: inline-flex;
+    flex-direction: column;
+    max-width: min(100%, 720px);
     overflow-x: auto;
     overflow-y: hidden;
     padding: 10px 22px;
     margin-top: 18px;
-    font-size: 1.02rem;
+    font-size: clamp(0.72rem, 1.8vw, 0.98rem);
     color: var(--fg);
     background: var(--glass);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
@@ -485,6 +496,32 @@ pre.glass {
     border: 1px solid var(--glass-line);
     border-radius: var(--radius);
     box-shadow: 0 8px 30px -10px rgba(var(--a), 0.22);
+}
+.hero-eq .eq-body {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.hero-eq .eq-caption {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: clamp(0.68rem, 1.35vw, 0.82rem);
+    opacity: 0.82;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    letter-spacing: 0.01em;
+}
+.hero-eq .eq-body::-webkit-scrollbar,
+.hero-eq .eq-caption::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
 }
 .hero-eq,
 .snap-eq,
@@ -1525,13 +1562,27 @@ a.contact-value:hover {
     .about-contact-section .edu span { font-size: 12px; }
     .snap-inner { width: 100%; gap: 10px; }
     .snap-inner::before { inset: -14px -14px; }
+    #domain-physics .snap-inner,
+    #domain-intro[data-domain="physics"] .snap-inner {
+        background: rgba(var(--bg-rgb), 0.62);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 20px 16px;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+    }
+    #domain-physics .snap-inner::before,
+    #domain-intro[data-domain="physics"] .snap-inner::before {
+        display: none;
+    }
     .hero h1 { font-size: clamp(2.125rem, 10vw, 3.6rem); margin: 6px 0 10px; }
     .snap-title { font-size: clamp(1.75rem, 7.5vw, 3rem); }
     .snap-lead, .lead { font-size: 15px; line-height: 1.6; }
     .hero-eq, .snap-eq {
         padding: 8px 12px;
         margin-top: 6px;
-        font-size: 0.88rem;
+        font-size: clamp(0.66rem, 3.2vw, 0.84rem);
         max-width: calc(100vw - 36px);
     }
     .snap-cta-btn { padding: 10px 18px; font-size: 12px; width: 100%; justify-content: center; }

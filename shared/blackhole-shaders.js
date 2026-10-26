@@ -383,23 +383,6 @@ void main() {
                     }
                 }
             }
-
-                    if (diskCrossings == 1) {
-                        firstG = curG;
-                        firstRHit = rHit;
-                    }
-
-                    float alphaDisk = uDiskOpacity * smoothstep(r_out, r_out * 0.75, rHit);
-                    emitColor += transmittance * alphaDisk * col * intensity;
-                    transmittance *= (1.0 - alphaDisk);
-
-                    // Rays with b > 10.5 can never wrap around for a 2nd disk hit
-                    if ((transmittance < 0.01 || bImpact > 10.5) && uDebugMode == 0) {
-                        escaped = true;
-                        break;
-                    }
-                }
-            }
         } else {
             // -------------------------------------------------------------
             // VOLUMETRIC DISK: Gaussian vertical profile H/R in [0.03, 0.08]
@@ -528,6 +511,11 @@ void main() {
         bgSky = vec3(0.0);
     }
 
+    // Screen-space mask fading leftward disc extension on desktop
+    // so streaks never cross or collide with subtitle or formula card
+    float leftFade = (uOriginShiftX > 0.05) ? smoothstep(0.08, 0.44, gl_FragCoord.x / uRes.x) : 1.0;
+    emitColor *= leftFade;
+
     vec3 finalHdr = emitColor + bgSky * transmittance;
     fragColor = vec4(finalHdr, 1.0);
 }
@@ -630,6 +618,10 @@ uniform float uExposure;
 uniform float uTime;
 uniform vec2 uRes;
 uniform int uDebugMode;
+uniform float uIntensity;
+uniform vec2 uRevealCentre;
+uniform float uRevealRadius;
+uniform float uRevealSoftness;
 
 // ACES filmic tonemapping
 vec3 aces(vec3 x) {
@@ -672,7 +664,7 @@ void main() {
     vec3 hdr = rawRgb + bloom * uBloomIntensity + vec3(glare * 0.75, glare * 0.88, glare * 1.05);
 
     // 3. Gentle exposure adaptation & subtle corner vignette
-    hdr *= uExposure;
+    hdr *= (uExposure * max(0.0, uIntensity));
     float vig = clamp(1.0 - 0.32 * r2, 0.0, 1.0);
     hdr *= vig;
 
@@ -690,6 +682,14 @@ void main() {
     float dither = (hashGrain(vUV * uRes + vec2(1.23, 4.56)) - 0.5) / 255.0;
 
     finalRGB = clamp(finalRGB + grain + dither, 0.0, 1.0);
+
+    // Optional circular reveal / iris mask for transit transitions (radius >= 1.95 leaves visuals unchanged)
+    if (uRevealRadius < 1.95) {
+        float dReveal = length(vUV - uRevealCentre);
+        float revealMask = 1.0 - smoothstep(max(0.0, uRevealRadius - uRevealSoftness), uRevealRadius + uRevealSoftness, dReveal);
+        finalRGB *= revealMask;
+    }
+
     fragColor = vec4(finalRGB, 1.0);
 }
 `;

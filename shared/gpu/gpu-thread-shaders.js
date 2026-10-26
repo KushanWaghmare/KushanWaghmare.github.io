@@ -486,6 +486,11 @@ void main() {
         phiCoord += dl * (L / max(0.01, 1.0 - sNext.y * sNext.y));
     }
 
+    // Screen-space mask fading leftward disc extension on desktop
+    // so streaks never cross or collide with subtitle or formula card
+    float leftFade = (uBhScreenCentre.x > 0.55) ? smoothstep(0.08, 0.44, vUV.x) : 1.0;
+    emitColor *= leftFade;
+
     float shadowMask = captured ? 1.0 : 0.0;
     float totalAlpha = clamp((1.0 - transmittance * (1.0 - shadowMask)) * uAuxOpacity, 0.0, 1.0);
     vec3 finalRGB = emitColor * uAuxOpacity;

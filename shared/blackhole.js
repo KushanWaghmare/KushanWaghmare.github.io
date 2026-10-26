@@ -168,19 +168,26 @@
         const uCompose = {};
         [
             "uRayTarget", "uBloomTarget", "uBloomIntensity", "uExposure",
-            "uTime", "uRes", "uDebugMode"
+            "uTime", "uRes", "uDebugMode", "uIntensity",
+            "uRevealCentre", "uRevealRadius", "uRevealSoftness"
         ].forEach((name) => {
             uCompose[name] = gl.getUniformLocation(composeProg, name);
         });
 
         // Configurable simulation parameters
-        const SPIN = typeof opts.spin === "number" ? Math.max(-0.998, Math.min(0.998, opts.spin)) : 0.95;
+        let SPIN = typeof opts.spin === "number" ? Math.max(0.0, Math.min(0.998, opts.spin)) : 0.95;
         const initialTilt = typeof opts.inclination === "number" ? (opts.inclination * Math.PI / 180) : (78.0 * Math.PI / 180);
         const MODE = opts.mode === "cinematic" ? 1 : 0;
         const DISK_TYPE = opts.disk === "volumetric" ? 1 : 0;
         const T_PEAK = typeof opts.Tpeak === "number" ? opts.Tpeak : 7000.0;
         const DISK_H = typeof opts.diskH === "number" ? opts.diskH : 0.05;
         const R_OUT = typeof opts.rOut === "number" ? opts.rOut : 25.0;
+
+        // Transit & reveal hook state (defaults preserve exact baseline visuals)
+        let intensityScale = 1.0;
+        let revealCentre = [0.5, 0.5];
+        let revealRadius = 2.0;
+        let revealSoftness = 0.1;
 
         // Ensure pitch-black space background unwashed by section accent overlays
         const prevZIndex = c.style ? c.style.zIndex : "";
@@ -195,12 +202,12 @@
             });
         }
 
-        const r_plus = physics.horizon(SPIN);
-        const r_isco = physics.isco(SPIN, true);
+        let r_plus = physics.horizon(SPIN);
+        let r_isco = physics.isco(SPIN, true);
 
         // Debug mode selection via URL query parameter ?bh=debug or opts.debug
         const urlParams = typeof window !== 'undefined' && window.location ? new URLSearchParams(window.location.search) : null;
-        const isDebugUrl = urlParams && urlParams.has("bh") && (urlParams.get("bh") === "debug" || urlParams.get("bh") !== "false");
+        const isDebugUrl = urlParams && (urlParams.has("bh") && (urlParams.get("bh") === "debug" || urlParams.get("bh") !== "false") || urlParams.has("debug"));
         let debugMode = isDebugUrl
             ? Math.max(1, Math.min(4, parseInt(urlParams.get("view") || "1", 10)))
             : (typeof opts.debug === "number" ? opts.debug : (opts.debug ? 1 : 0));
@@ -231,13 +238,13 @@
 
         updateLUT(SPIN);
 
-        // Performance & mobile configuration (tuned for 60 FPS)
+        // Performance & mobile configuration (governor targeting 16.6 ms frame time)
         const mobile = matchMedia("(max-width: 900px)").matches;
-        const MAX_STEPS = mobile ? 64 : 88;
-        const MIN_SCALE = mobile ? 0.30 : 0.35;
-        const MAX_SCALE = mobile ? 0.55 : 0.65;
+        const MAX_STEPS = mobile ? 72 : 160;
+        const MIN_SCALE = mobile ? 0.35 : 0.40;
+        const MAX_SCALE = mobile ? 0.75 : 1.00;
         const numBloomLevels = mobile ? 3 : 4;
-        let W = 0, H = 0, DPR = 1, scale = mobile ? 0.38 : 0.52, ema = 14, fc = 0;
+        let W = 0, H = 0, DPR = 1, scale = mobile ? 0.50 : 0.75, ema = 16.6, fc = 0;
 
         // Bake procedural starfield cubemap (RGBA16F, mipmapped)
         const skyCubeTex = gl.createTexture();
@@ -363,13 +370,102 @@
             return [h2 - 0.5, h3 - 0.5];
         };
 
-        // Keyboard listener to cycle debug modes
+        const setSpin = (val) => {
+            if (typeof val !== "number" || isNaN(val)) return;
+            SPIN = Math.max(0.0, Math.min(0.998, val));
+            r_plus = physics.horizon(SPIN);
+            r_isco = physics.isco(SPIN, true);
+            updateLUT(SPIN);
+            accumCount = 0;
+            updateTag();
+        };
+
+        let sliderContainer = null;
+        const toggleSpinSlider = (forceShow) => {
+            if (sliderContainer) {
+                if (forceShow === true) return;
+                sliderContainer.remove();
+                sliderContainer = null;
+                return;
+            }
+            sliderContainer = document.createElement("div");
+            sliderContainer.className = "bh-debug-slider";
+            sliderContainer.style.cssText = `
+                position: absolute;
+                bottom: 64px;
+                right: 32px;
+                z-index: 100;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding: 12px 16px;
+                background: rgba(10, 10, 15, 0.88);
+                border: 1px solid rgba(255, 255, 255, 0.14);
+                border-radius: 12px;
+                font: 12px var(--mono, monospace);
+                color: #e2e8f0;
+                backdrop-filter: blur(14px);
+                -webkit-backdrop-filter: blur(14px);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65);
+            `;
+            const header = document.createElement("div");
+            header.style.display = "flex";
+            header.style.justifyContent = "space-between";
+            header.style.alignItems = "center";
+            header.innerHTML = `<span>Kerr Spin <i>a</i>: <strong id="bh-spin-val">${SPIN.toFixed(3)}</strong></span>`;
+
+            const slider = document.createElement("input");
+            slider.type = "range";
+            slider.min = "0.000";
+            slider.max = "0.998";
+            slider.step = "0.005";
+            slider.value = String(SPIN);
+            slider.style.cssText = "width: 180px; accent-color: #38bdf8; cursor: pointer;";
+
+            slider.addEventListener("input", (e) => {
+                const val = parseFloat(e.target.value);
+                setSpin(val);
+                const valLabel = sliderContainer.querySelector("#bh-spin-val");
+                if (valLabel) valLabel.textContent = val.toFixed(3);
+            });
+
+            const presets = document.createElement("div");
+            presets.style.cssText = "display: flex; gap: 8px; margin-top: 2px;";
+            presets.innerHTML = `
+                <button type="button" style="padding: 3px 8px; font-size: 11px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 4px; cursor: pointer;">a = 0 (Circular)</button>
+                <button type="button" style="padding: 3px 8px; font-size: 11px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 4px; cursor: pointer;">a = 0.95 (D-shaped)</button>
+            `;
+            const [btn0, btn95] = presets.querySelectorAll("button");
+            btn0.addEventListener("click", () => {
+                slider.value = "0";
+                slider.dispatchEvent(new Event("input"));
+            });
+            btn95.addEventListener("click", () => {
+                slider.value = "0.95";
+                slider.dispatchEvent(new Event("input"));
+            });
+
+            sliderContainer.appendChild(header);
+            sliderContainer.appendChild(slider);
+            sliderContainer.appendChild(presets);
+
+            const parent = c.parentElement || document.body;
+            parent.appendChild(sliderContainer);
+        };
+        if (isDebugUrl) {
+            toggleSpinSlider(true);
+        }
+
+        // Keyboard listener to cycle debug modes ('D') and toggle spin slider ('A')
         const onKeyDown = (e) => {
             if (e.key === "d" || e.key === "D") {
                 debugMode = (debugMode + 1) % 5;
                 updateTag();
+            } else if (e.key === "a" || e.key === "A") {
+                toggleSpinSlider();
             }
         };
+        window.addEventListener("keydown", onKeyDown);
         const onContextLost = (e) => {
             e.preventDefault();
             console.warn("WebGL2 context lost, falling back to blackhole-lite");
@@ -387,6 +483,10 @@
                 }
                 c.removeEventListener("webglcontextlost", onContextLost);
                 window.removeEventListener("keydown", onKeyDown);
+                if (sliderContainer) {
+                    sliderContainer.remove();
+                    sliderContainer = null;
+                }
                 if (targetFBO) gl.deleteFramebuffer(targetFBO);
                 if (targetTex) gl.deleteTexture(targetTex);
                 accumFBO.forEach((f) => f && gl.deleteFramebuffer(f));
@@ -421,9 +521,9 @@
         ];
 
         const updateTag = () => {
-            const diskDesc = opts.disk === "volumetric" ? "Gaussian volumetric disk" : "Novikov–Thorne thin disk";
+            const diskDesc = opts.disk === "volumetric" ? "Gaussian volumetric disc" : "Novikov–Thorne thin disc";
             const modeDesc = opts.mode === "cinematic" ? "cinematic beaming" : "Doppler beaming g⁴";
-            const debugPrefix = debugMode > 0 ? `[DEBUG ${debugMode}/4: ${debugNames[debugMode]} (press 'D' to cycle)] · ` : "";
+            const debugPrefix = debugMode > 0 ? `[DEBUG ${debugMode}/4: ${debugNames[debugMode]} (press 'D' to cycle, 'A' for spin)] · ` : "";
             KW.tag(
                 `${debugPrefix}Kerr null geodesics (a = ${SPIN}) · Boyer–Lindquist RK4 ray tracer · ${diskDesc} · ${modeDesc} · lensed starfield · cursor tilts inclination`,
                 c
@@ -472,14 +572,14 @@
                 accumCount++;
             }
 
-            // Dynamic resolution scaling with unclamped frame-time hysteresis (targeting 60 FPS)
-            ema += (rawDtMs - ema) * 0.08;
-            if (++fc % 45 === 0) {
-                if (ema > 22.0 && scale > MIN_SCALE) {
-                    scale = Math.max(MIN_SCALE, scale * 0.88);
+            // Dynamic resolution scaling with governor targeting 16.6 ms frame time (60 FPS)
+            ema += (rawDtMs - ema) * 0.10;
+            if (++fc % 30 === 0) {
+                if (ema > 18.0 && scale > MIN_SCALE) {
+                    scale = Math.max(MIN_SCALE, scale * 0.92);
                     applyScale();
-                } else if (ema < 9.0 && scale < MAX_SCALE) {
-                    scale = Math.min(MAX_SCALE, scale * 1.05);
+                } else if (ema < 14.5 && scale < MAX_SCALE) {
+                    scale = Math.min(MAX_SCALE, scale * 1.06);
                     applyScale();
                 }
             }
@@ -513,7 +613,7 @@
             gl.uniform1f(uMarch.uTilt, tilt);
             gl.uniform1f(uMarch.uCamDist, 50.0);
             gl.uniform1f(uMarch.uFovScale, 38.0);
-            gl.uniform1f(uMarch.uOriginShiftX, mobile ? 0.0 : 0.16);
+            gl.uniform1f(uMarch.uOriginShiftX, mobile ? 0.0 : 0.15);
             gl.uniform1f(uMarch.uRout, R_OUT);
             gl.uniform1f(uMarch.uDiskOpacity, 0.85);
             gl.uniform1i(uMarch.uMaxSteps, MAX_STEPS);
@@ -632,11 +732,28 @@
             gl.uniform1f(uCompose.uTime, t);
             gl.uniform2f(uCompose.uRes, c.width, c.height);
             gl.uniform1i(uCompose.uDebugMode, debugMode);
+            gl.uniform1f(uCompose.uIntensity, intensityScale);
+            gl.uniform2f(uCompose.uRevealCentre, revealCentre[0], revealCentre[1]);
+            gl.uniform1f(uCompose.uRevealRadius, revealRadius);
+            gl.uniform1f(uCompose.uRevealSoftness, revealSoftness);
 
             gl.drawArrays(gl.TRIANGLES, 0, 3);
 
             accumIdx = 1 - accumIdx;
         });
+
+        const api = {
+            setIntensity: (x) => { intensityScale = (typeof x === "number") ? x : 1.0; },
+            setReveal: (centre = [0.5, 0.5], radius = 2.0, softness = 0.1) => {
+                revealCentre = centre;
+                revealRadius = radius;
+                revealSoftness = softness;
+            },
+            setSpin,
+            toggleSpinSlider
+        };
+        c.__sim = api;
+        return api;
     };
 
     SIMS.physics = (c) => SIMS.blackhole(c, { spin: 0.95, inclination: 78, mode: "physical", disk: "thin" });

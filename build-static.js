@@ -119,7 +119,7 @@ const hubPage = () => `
             <div class="snap-inner">
                 <h2 class="snap-title" data-reveal>${d.name}</h2>
                 <p class="lead snap-lead" data-reveal>${d.blurb}</p>
-                <div class="hero-eq glass snap-eq" data-reveal>$$${d.eq}$$</div>
+                <div class="hero-eq glass snap-eq" data-reveal><div class="eq-body">$$${d.eq}$$</div>${d.eqCaption ? `<div class="eq-caption">$$${d.eqCaption}$$</div>` : ""}</div>
                 <div class="snap-actions" data-reveal>
                     <a href="${d.file}" class="snap-cta-btn glass" style="--a:var(--rgb-${k})">
                         <span>Explore ${d.name} Section</span>
@@ -180,7 +180,7 @@ const domainPage = (key) => {
         <div class="snap-inner">
             <h1 data-hero>${d.name}</h1>
             <p class="lead" data-hero>${d.blurb}</p>
-            <div class="hero-eq glass snap-eq" data-hero>$$${d.eq}$$</div>
+            <div class="hero-eq glass snap-eq" data-hero><div class="eq-body">$$${d.eq}$$</div>${d.eqCaption ? `<div class="eq-caption">$$${d.eqCaption}$$</div>` : ""}</div>
             <div class="snap-jump-pills" data-hero>
                 <span class="snap-jump-label">Selected work:</span>
                 ${ps.map((p) => `<a href="#proj-${p.id}" class="pill jump-pill"><strong>${p.title}</strong></a>`).join("")}

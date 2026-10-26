@@ -15,8 +15,9 @@ const SITE = {
             name: "Physics", short: "Physics", file: "physics.html",
             label: "Physics · Mechanics & quantum dynamics",
             blurb: "Classical and quantum mechanics as computation: symplectic integrators, gravitating systems and wave equations.",
-            eq: r`ds^2 = -\left(1 - \frac{2Mr}{\rho^2}\right)dt^2 - \frac{4Mar\sin^2\theta}{\rho^2}dt\,d\phi + \frac{\rho^2}{\Delta}dr^2 + \rho^2 d\theta^2 + \frac{\Sigma\sin^2\theta}{\rho^2}d\phi^2`,
-            tag: "Kerr null geodesics (a = 0.95) · Boyer–Lindquist RK4 ray tracer · Novikov–Thorne thin disk · cursor tilts inclination",
+            eq: r`\begin{aligned} ds^2 &= -\left(1 - \frac{2Mr}{\rho^2}\right)dt^2 - \frac{4M\,a\,r\,\sin^2\theta}{\rho^2}\,dt\,d\phi \\ &\quad + \frac{\rho^2}{\Delta}dr^2 + \rho^2 d\theta^2 + \frac{\Sigma\sin^2\theta}{\rho^2}d\phi^2 \end{aligned}`,
+            eqCaption: r`\Sigma = (r^2+a^2)^2 - a^2\Delta\sin^2\theta,\quad \Delta = r^2 - 2Mr + a^2,\quad \rho^2 = r^2 + a^2\cos^2\theta`,
+            tag: "Kerr null geodesics (a = 0.95) · Boyer–Lindquist RK4 ray tracer · Novikov–Thorne thin disc · cursor tilts inclination",
         },
         datascience: {
             name: "Data Science", short: "Data", file: "datascience.html",

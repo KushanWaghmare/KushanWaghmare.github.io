@@ -570,7 +570,7 @@
             this.cameraDistance = 13.5;
             this.bloomThreshold = 1.15; // > 1.0 threshold eliminates background haze wash
             this.kerrOverlay = {
-                screenX: 0.64,
+                screenX: 0.65,
                 screenY: 0.50,
                 scale: 13.5,
                 spin: 0.99,
@@ -732,7 +732,7 @@
             const offsetX = (ctx && ctx.isMobile) ? 0.0 : 2.35;
 
             this.kerrOverlay.tilt = this.tilt;
-            this.kerrOverlay.screenX = (ctx && ctx.isMobile) ? 0.50 : (0.595 - ptrX * 0.02);
+            this.kerrOverlay.screenX = (ctx && ctx.isMobile) ? 0.50 : (0.65 - ptrX * 0.015);
             this.kerrOverlay.screenY = 0.50 + ptrY * 0.02;
             this.kerrOverlay.scale = 12.2;
 
