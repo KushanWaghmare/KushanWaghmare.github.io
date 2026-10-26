@@ -484,6 +484,9 @@
      * and the target index mapping into `outPerm` (Int32Array(N)).
      * Hero Particle #0 is always pinned to slot 0 so its identity and seed role are preserved.
      */
+    const radixBuckets = new Int32Array(1024);
+    let radixTmp = new Int32Array(60000);
+
     const computeSpatialMatching = (
         srcPositions,
         rawTargets,
@@ -543,27 +546,26 @@
             // Keep index 0 pinned at position 0 (Hero Particle #0)
             const subLen = n - 1;
             if (subLen <= 1) return;
-            const buckets = new Int32Array(1024);
-            const tmp = new Int32Array(subLen);
+            if (radixTmp.length < subLen) radixTmp = new Int32Array(subLen);
             for (let shift = 0; shift < 30; shift += 10) {
-                buckets.fill(0);
+                radixBuckets.fill(0);
                 for (let k = 1; k < n; k++) {
                     const c = (codes[order[k]] >>> shift) & 1023;
-                    buckets[c]++;
+                    radixBuckets[c]++;
                 }
                 let sum = 0;
                 for (let b = 0; b < 1024; b++) {
-                    const cnt = buckets[b];
-                    buckets[b] = sum;
+                    const cnt = radixBuckets[b];
+                    radixBuckets[b] = sum;
                     sum += cnt;
                 }
                 for (let k = 1; k < n; k++) {
                     const idx = order[k];
                     const c = (codes[idx] >>> shift) & 1023;
-                    tmp[buckets[c]++] = idx;
+                    radixTmp[radixBuckets[c]++] = idx;
                 }
                 for (let k = 0; k < subLen; k++) {
-                    order[k + 1] = tmp[k];
+                    order[k + 1] = radixTmp[k];
                 }
             }
         };

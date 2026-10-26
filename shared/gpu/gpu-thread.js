@@ -738,7 +738,12 @@
     const tmpHeroPos = new Vector3();
     const tmpHeroTan = new Vector3();
     const tmpStreamPos = new Vector3();
-    const tmpCurl = new Vector3();
+    const tanTmpA = new Vector3();
+    const tanTmpB = new Vector3();
+    const LUT_STEPS = 64;
+    const curveLutX = new Float32Array(LUT_STEPS + 1);
+    const curveLutY = new Float32Array(LUT_STEPS + 1);
+    const curveLutZ = new Float32Array(LUT_STEPS + 1);
 
     const evalFlightPath = (s, out) => {
         if (trans.waypoints && trans.waypoints.length > 2) {
@@ -751,9 +756,9 @@
     const evalFlightTangent = (s, out) => {
         if (trans.waypoints && trans.waypoints.length > 2) {
             const eps = 0.01;
-            const pA = evalWaypointSpline(trans.waypoints, Math.max(0, s - eps), new Vector3());
-            const pB = evalWaypointSpline(trans.waypoints, Math.min(1, s + eps), new Vector3());
-            return out.subVectors(pB, pA).normalize();
+            evalWaypointSpline(trans.waypoints, Math.max(0, s - eps), tanTmpA);
+            evalWaypointSpline(trans.waypoints, Math.min(1, s + eps), tanTmpB);
+            return out.subVectors(tanTmpB, tanTmpA).normalize();
         }
         const a = trans.arc;
         return evalBezierTangent3D(a.p0, a.p1, a.p2, a.p3, s, out);
@@ -879,11 +884,7 @@
             const hx0 = trans.heroStart.x, hy0 = trans.heroStart.y, hz0 = trans.heroStart.z;
             const hx1 = trans.heroEnd.x, hy1 = trans.heroEnd.y, hz1 = trans.heroEnd.z;
 
-            // Pre-sample 64 points along the 3D flight curve for fast O(1) comet-tail lookup per particle
-            const LUT_STEPS = 64;
-            const curveLutX = new Float32Array(LUT_STEPS + 1);
-            const curveLutY = new Float32Array(LUT_STEPS + 1);
-            const curveLutZ = new Float32Array(LUT_STEPS + 1);
+            // Pre-sample 64 points along the 3D flight curve into pre-allocated LUT for fast O(1) comet-tail lookup
             for (let k = 0; k <= LUT_STEPS; k++) {
                 evalFlightPath(k / LUT_STEPS, tmpStreamPos);
                 curveLutX[k] = tmpStreamPos.x;
