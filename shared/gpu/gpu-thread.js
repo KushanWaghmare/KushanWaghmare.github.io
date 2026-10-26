@@ -351,7 +351,7 @@
         starUniforms = getUniforms(starProg, ["uViewProj", "uCamPos", "uViewport", "uDpr", "uTime", "uIsLight"]);
         auxUniforms = getUniforms(auxProg, ["uViewProj", "uAuxOpacity", "uIsLight"]);
         kerrUniforms = getUniforms(kerrProg, [
-            "uRes", "uBhScreenCentre", "uBhScale", "uSpin", "uTilt", "uTime", "uAuxOpacity", "uIsLight"
+            "uRes", "uBhScreenCentre", "uBhScale", "uSpin", "uTilt", "uTime", "uAuxOpacity", "uIsLight", "uDebugMode"
         ]);
         trailDecayUniforms = getUniforms(trailDecayProg, ["uPrevTex", "uDecay"]);
         blitAddUniforms = getUniforms(blitAddProg, ["uTex"]);
@@ -359,7 +359,7 @@
         blurUniforms = getUniforms(blurProg, ["uTex", "uTexelStep"]);
         compositeUniforms = getUniforms(compositeProg, [
             "uSceneTex", "uBloomTex", "uRes", "uTime", "uBloomStrength",
-            "uVignette", "uGrain", "uCaStrength", "uWarpStrength", "uWarpCentre", "uFogTint", "uIsLight"
+            "uVignette", "uGrain", "uCaStrength", "uWarpStrength", "uWarpCentre", "uFogTint", "uIsLight", "uDebugMode"
         ]);
 
         // 1. Single Shared Swarm VAO
@@ -825,15 +825,63 @@
 
     refreshSections();
 
-    /* ---------- ?debug Telemetry HUD ---------- */
+    /* ---------- ?debug Telemetry HUD & Kerr Geodesic Diagnostics ---------- */
+    window.__KERR_DEBUG__ = window.__KERR_DEBUG__ || {
+        mode: 0,
+        inc: null,
+        spin: null
+    };
+
+    const parseUrlDebug = () => {
+        try {
+            const sp = new URLSearchParams(location.search);
+            if (sp.has("debug")) {
+                const modeStr = (sp.get("mode") || "").toLowerCase();
+                const modeMap = {
+                    "a": 0, "final": 0, "0": 0,
+                    "b": 1, "term": 1, "1": 1,
+                    "c": 2, "steps": 2, "2": 2,
+                    "d": 3, "order": 3, "3": 3,
+                    "e": 4, "radius": 4, "4": 4,
+                    "f": 5, "drift": 5, "5": 5,
+                    "g": 6, "accum": 6, "6": 6,
+                    "h": 7, "bounds": 7, "7": 7
+                };
+                if (modeStr in modeMap) {
+                    window.__KERR_DEBUG__.mode = modeMap[modeStr];
+                }
+                if (sp.has("inc")) {
+                    const incVal = parseFloat(sp.get("inc"));
+                    if (!isNaN(incVal)) window.__KERR_DEBUG__.inc = incVal;
+                }
+                if (sp.has("spin")) {
+                    const spinVal = parseFloat(sp.get("spin"));
+                    if (!isNaN(spinVal)) window.__KERR_DEBUG__.spin = spinVal;
+                }
+            }
+        } catch (_e) {}
+    };
+    parseUrlDebug();
+
     let debugEl = null;
     const isDebugEnabled = () => {
         try {
-            return new URLSearchParams(location.search).has("debug");
+            return new URLSearchParams(location.search).has("debug") || (window.__KERR_DEBUG__ && window.__KERR_DEBUG__.active);
         } catch (_e) {
             return false;
         }
     };
+
+    const DEBUG_MODES_INFO = [
+        { key: "a", id: 0, label: "Final" },
+        { key: "b", id: 1, label: "Term Reason" },
+        { key: "c", id: 2, label: "Step Heatmap" },
+        { key: "d", id: 3, label: "Crossing Order" },
+        { key: "e", id: 4, label: "Hit Radius r" },
+        { key: "f", id: 5, label: "Conserved |H|" },
+        { key: "g", id: 6, label: "Accumulation" },
+        { key: "h", id: 7, label: "Viewport Seams" }
+    ];
 
     const updateDebugHud = () => {
         if (!isDebugEnabled()) {
@@ -843,19 +891,94 @@
         if (!debugEl) {
             debugEl = document.createElement("div");
             debugEl.className = "stage-debug-hud";
+            debugEl.style.cssText = "position:fixed;top:68px;right:16px;z-index:9999;padding:12px 14px;border-radius:10px;background:rgba(8,12,20,0.92);border:1px solid rgba(124,184,255,0.32);color:#e6eefc;font:500 11px/1.5 var(--mono,monospace);pointer-events:auto;backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,0.5);width:340px;user-select:none;";
+            debugEl.innerHTML = `
+                <div style="font-weight:700;letter-spacing:0.06em;color:#7cb8ff;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+                    <span>KERR GEODESIC TELEMETRY</span>
+                    <span id="dbg-fps-tag" style="color:#8af;">60 FPS</span>
+                </div>
+                <div style="margin-bottom:6px;font-size:10px;color:#8aa2c2;text-transform:uppercase;letter-spacing:0.04em;">Telemetry Mode:</div>
+                <div id="dbg-modes" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px;"></div>
+                <div style="margin-bottom:6px;font-size:10px;color:#8aa2c2;text-transform:uppercase;letter-spacing:0.04em;">Inclination (θ):</div>
+                <div id="dbg-incs" style="display:flex;gap:4px;margin-bottom:10px;"></div>
+                <pre id="dbg-stats" style="margin:0;font:inherit;color:#a8c4ea;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;font-size:10.5px;"></pre>
+            `;
             document.body.appendChild(debugEl);
+
+            const modesContainer = debugEl.querySelector("#dbg-modes");
+            DEBUG_MODES_INFO.forEach((m) => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.dataset.mode = m.id;
+                btn.textContent = `${m.key}: ${m.label}`;
+                btn.style.cssText = "padding:3px 4px;font:500 9.5px var(--mono,monospace);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#d0e2ff;border-radius:4px;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+                btn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    window.__KERR_DEBUG__.mode = m.id;
+                    updateDebugHud();
+                });
+                modesContainer.appendChild(btn);
+            });
+
+            const incsContainer = debugEl.querySelector("#dbg-incs");
+            const incPresets = [
+                { label: "0°", val: 0 },
+                { label: "17°", val: 17 },
+                { label: "45°", val: 45 },
+                { label: "80°", val: 80 },
+                { label: "Auto", val: null }
+            ];
+            incPresets.forEach((p) => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.dataset.inc = p.val === null ? "auto" : p.val;
+                btn.textContent = p.label;
+                btn.style.cssText = "flex:1;padding:3px 2px;font:500 10px var(--mono,monospace);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#d0e2ff;border-radius:4px;cursor:pointer;text-align:center;";
+                btn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    window.__KERR_DEBUG__.inc = p.val;
+                    updateDebugHud();
+                });
+                incsContainer.appendChild(btn);
+            });
         }
+
         const activeForm = formations[trans.active ? trans.toIndex : currentIndex];
         const formName = activeForm ? activeForm.id : "hub:intro";
         const hx = positions[0].toFixed(2), hy = positions[1].toFixed(2), hz = positions[2].toFixed(2);
-        debugEl.textContent =
-            `formation : ${formName} (#${currentIndex}${trans.active ? " → #" + trans.toIndex : ""})\n` +
-            `phase     : ${trans.phase}\n` +
-            `progress  : ${(trans.u * 100).toFixed(1)}%\n` +
-            `fov       : ${camera.fov.toFixed(1)}°\n` +
-            `fps       : ${fps.toFixed(1)} (HDR16F: ${hdrSupported ? "on" : "8b"})\n` +
-            `particles : ${sharedBuffer.count} (reallocs: ${bufferReallocations})\n` +
-            `hero #0   : (${hx}, ${hy}, ${hz})`;
+        const curMode = (window.__KERR_DEBUG__ && window.__KERR_DEBUG__.mode !== undefined) ? window.__KERR_DEBUG__.mode : 0;
+        const curInc = (window.__KERR_DEBUG__ && window.__KERR_DEBUG__.inc !== null) ? `${window.__KERR_DEBUG__.inc}° (override)` : "Auto (tilt pointer)";
+        const curSpin = (window.__KERR_DEBUG__ && window.__KERR_DEBUG__.spin !== null) ? window.__KERR_DEBUG__.spin : 0.95;
+
+        // Update button highlights
+        debugEl.querySelectorAll("#dbg-modes button").forEach((b) => {
+            const isActive = parseInt(b.dataset.mode, 10) === curMode;
+            b.style.background = isActive ? "rgba(124,184,255,0.3)" : "rgba(255,255,255,0.06)";
+            b.style.borderColor = isActive ? "#7cb8ff" : "rgba(255,255,255,0.15)";
+            b.style.color = isActive ? "#ffffff" : "#d0e2ff";
+        });
+        debugEl.querySelectorAll("#dbg-incs button").forEach((b) => {
+            const isAuto = b.dataset.inc === "auto";
+            const isMatch = isAuto ? (window.__KERR_DEBUG__.inc === null) : (window.__KERR_DEBUG__.inc === parseFloat(b.dataset.inc));
+            b.style.background = isMatch ? "rgba(124,184,255,0.3)" : "rgba(255,255,255,0.06)";
+            b.style.borderColor = isMatch ? "#7cb8ff" : "rgba(255,255,255,0.15)";
+            b.style.color = isMatch ? "#ffffff" : "#d0e2ff";
+        });
+
+        const fpsTag = debugEl.querySelector("#dbg-fps-tag");
+        if (fpsTag) fpsTag.textContent = `${fps.toFixed(1)} FPS (${hdrSupported ? "HDR16F" : "8b"})`;
+
+        const statsEl = debugEl.querySelector("#dbg-stats");
+        if (statsEl) {
+            statsEl.textContent =
+                `formation : ${formName} (#${currentIndex})\n` +
+                `active mode: [${DEBUG_MODES_INFO[curMode].key}] ${DEBUG_MODES_INFO[curMode].label}\n` +
+                `inclination: ${curInc}\n` +
+                `spin a     : ${curSpin} (ISCO ~1.94M)\n` +
+                `progress   : ${(trans.u * 100).toFixed(1)}% | fov: ${camera.fov.toFixed(1)}°\n` +
+                `particles  : ${sharedBuffer.count} (reallocs: ${bufferReallocations})\n` +
+                `hero #0    : (${hx}, ${hy}, ${hz})`;
+        }
     };
 
     /* ---------- Main Simulation, Transition & HDR Post-Processing Loop ---------- */
@@ -1278,17 +1401,23 @@
         }
 
         // 2b. Optional same-scene Kerr Black Hole lensing & photon ring shader
+        const debugState = window.__KERR_DEBUG__ || { mode: 0, inc: null, spin: null };
+        const debugMode = (debugState.mode !== undefined && debugState.mode !== null) ? debugState.mode : 0;
+        const debugTilt = (debugState.inc !== undefined && debugState.inc !== null) ? (debugState.inc * Math.PI / 180.0) : null;
+        const debugSpin = (debugState.spin !== undefined && debugState.spin !== null) ? debugState.spin : null;
+
         if (activeRenderForm && activeRenderForm.kerrOverlay && trans.auxOpacity > 0.005 && kerrProg) {
             const ko = activeRenderForm.kerrOverlay;
             gl.useProgram(kerrProg);
             gl.uniform2f(kerrUniforms.uRes, pw, ph);
             gl.uniform2f(kerrUniforms.uBhScreenCentre, ko.screenX, ko.screenY);
             gl.uniform1f(kerrUniforms.uBhScale, ko.scale);
-            gl.uniform1f(kerrUniforms.uSpin, ko.spin);
-            gl.uniform1f(kerrUniforms.uTilt, ko.tilt);
+            gl.uniform1f(kerrUniforms.uSpin, debugSpin !== null ? debugSpin : ko.spin);
+            gl.uniform1f(kerrUniforms.uTilt, debugTilt !== null ? debugTilt : ko.tilt);
             gl.uniform1f(kerrUniforms.uTime, simTime);
             gl.uniform1f(kerrUniforms.uAuxOpacity, trans.auxOpacity);
             gl.uniform1f(kerrUniforms.uIsLight, isLight ? 1.0 : 0.0);
+            gl.uniform1i(kerrUniforms.uDebugMode, debugMode);
             drawQuad();
         }
 
@@ -1309,17 +1438,19 @@
             gl.bindVertexArray(null);
         }
 
-        // 2d. Composite persistent trailed particle swarm into sceneRT
-        if (isLight) {
-            gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        } else {
-            gl.blendFunc(gl.ONE, gl.ONE);
+        // 2d. Composite persistent trailed particle swarm into sceneRT (suppressed during geodesic debugging)
+        if (debugMode === 0) {
+            if (isLight) {
+                gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+            } else {
+                gl.blendFunc(gl.ONE, gl.ONE);
+            }
+            gl.useProgram(blitAddProg);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, trailRT[trailReadIdx].tex);
+            gl.uniform1i(blitAddUniforms.uTex, 0);
+            drawQuad();
         }
-        gl.useProgram(blitAddProg);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, trailRT[trailReadIdx].tex);
-        gl.uniform1i(blitAddUniforms.uTex, 0);
-        drawQuad();
 
         // Pass 3: Selective HDR Bloom (Bright-Pass + Separable 9-Tap Gaussian Blur)
         gl.disable(gl.BLEND);
@@ -1395,6 +1526,7 @@
         gl.uniform2f(compositeUniforms.uWarpCentre, 0.5, 0.5);
         gl.uniform3f(compositeUniforms.uFogTint, postState.fogTint[0], postState.fogTint[1], postState.fogTint[2]);
         gl.uniform1f(compositeUniforms.uIsLight, isLight ? 1.0 : 0.0);
+        gl.uniform1i(compositeUniforms.uDebugMode, debugMode);
 
         drawQuad();
         gl.activeTexture(gl.TEXTURE0);

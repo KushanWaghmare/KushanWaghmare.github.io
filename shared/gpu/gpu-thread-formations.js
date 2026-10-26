@@ -726,7 +726,15 @@
 
             const ptrX = (ctx && ctx.pointerX) || 0;
             const ptrY = (ctx && ctx.pointerY) || 0;
-            this.tilt = clamp(1.41 + ptrY * 0.16, 1.12, 1.53);
+            const dbg = (typeof window !== "undefined") ? window.__KERR_DEBUG__ : null;
+            if (dbg && dbg.inc !== null && dbg.inc !== undefined) {
+                this.tilt = (dbg.inc * Math.PI) / 180.0;
+            } else {
+                this.tilt = clamp(1.41 + ptrY * 0.16, 1.12, 1.53);
+            }
+            if (dbg && dbg.spin !== null && dbg.spin !== undefined) {
+                this.kerrOverlay.spin = dbg.spin;
+            }
             const sinObs = Math.sin(this.tilt);
             const cosObs = Math.cos(this.tilt);
             const offsetX = (ctx && ctx.isMobile) ? 0.0 : 2.35;

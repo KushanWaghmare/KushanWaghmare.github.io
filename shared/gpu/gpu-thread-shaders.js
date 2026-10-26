@@ -268,6 +268,7 @@ uniform float uTilt;
 uniform float uTime;
 uniform float uAuxOpacity;
 uniform float uIsLight;
+uniform int uDebugMode;
 
 // Analytical Tanner Helland blackbody spectrum fit with Planckian tonal grading
 vec3 blackbody(float T) {
@@ -391,20 +392,39 @@ void main() {
     vec4 s = vec4(rObs, cosObs, prObs, puObs);
     float bImpact = length(pScreen);
 
-    // Fast escape check for distant non-lensed rays
-    if (bImpact > 18.0) discard;
-
     vec3 emitColor = vec3(0.0);
     float transmittance = 1.0;
     int diskCrossings = 0;
     bool captured = false;
+    bool escaped = false;
     float tCoord = 0.0;
     float phiCoord = 0.0;
+    int totalSteps = 0;
+    float worstH = 0.0;
+    float firstHitR = 0.0;
+    bool stepLimitReached = false;
+
+    // Fast escape check for distant non-lensed rays
+    if (bImpact > 18.0) {
+        if (uDebugMode == 0) discard;
+        escaped = true;
+    }
 
     // Numerical integration of Kerr null geodesics with adaptive RK4
+    if (!escaped) {
     for (int step = 0; step < 110; step++) {
+        totalSteps = step + 1;
         float r = s.x;
         float u = s.y;
+
+        // Conserved quantity drift tracking: Hamiltonian error |H|
+        float sig_check = r * r + a2 * u * u;
+        float del_check = max(1e-5, r * r - 2.0 * r + a2);
+        float p_check = r * r + a2 - a * L;
+        float Q_check = s.w * s.w - c1 * u * u - 0.5 * c2 * u * u * u * u;
+        float twoSigH = del_check * s.z * s.z - (p_check * p_check) / del_check + Q_check + (L - a) * (L - a);
+        float curH = abs(twoSigH / (2.0 * sig_check));
+        if (r > r_plus * 1.05) worstH = max(worstH, curH);
 
         // Horizon absorption check
         if (r <= r_absorb) {
@@ -414,6 +434,7 @@ void main() {
 
         // Outward escape check
         if ((r >= 22.0 && s.z > 0.0 && step > 2) || (r >= rObs + 2.0 && s.z > 0.0)) {
+            escaped = true;
             break;
         }
 
@@ -443,6 +464,9 @@ void main() {
 
             if (rHit >= r_isco && rHit <= r_out && diskCrossings < 6) {
                 diskCrossings++;
+                if (diskCrossings == 1) {
+                    firstHitR = rHit;
+                }
 
                 // Keplerian angular velocity Ω(r) & four-velocity u^t
                 float omega = 1.0 / (pow(rHit, 1.5) + a);
@@ -484,6 +508,90 @@ void main() {
 
         s = sNext;
         phiCoord += dl * (L / max(0.01, 1.0 - sNext.y * sNext.y));
+    }
+    }
+
+    if (!captured && !escaped && totalSteps >= 110) {
+        stepLimitReached = true;
+    }
+
+    // Diagnostics Views (Telemetry Modes 1 to 7)
+    if (uDebugMode == 1) {
+        // Mode 1 (b): Ray termination reason as flat colours
+        // Horizon: Black | Disc hit: Amber | Escaped: Sky Blue | Step limit: Magenta
+        vec3 colTerm = vec3(0.12, 0.55, 0.95);
+        if (captured) colTerm = vec3(0.0, 0.0, 0.0);
+        else if (stepLimitReached) colTerm = vec3(0.95, 0.05, 0.35);
+        else if (diskCrossings > 0) colTerm = vec3(0.98, 0.70, 0.10);
+        fragColor = vec4(colTerm, 1.0);
+        return;
+    }
+    if (uDebugMode == 2) {
+        // Mode 2 (c): Number of steps used per pixel (heatmap)
+        float tStep = float(totalSteps) / 110.0;
+        vec3 colHeat;
+        if (tStep < 0.33) colHeat = mix(vec3(0.05, 0.10, 0.65), vec3(0.0, 0.75, 0.80), tStep * 3.0);
+        else if (tStep < 0.66) colHeat = mix(vec3(0.0, 0.75, 0.80), vec3(0.95, 0.85, 0.10), (tStep - 0.33) * 3.0);
+        else colHeat = mix(vec3(0.95, 0.85, 0.10), vec3(1.0, 0.10, 0.05), (tStep - 0.66) * 3.0);
+        fragColor = vec4(colHeat, 1.0);
+        return;
+    }
+    if (uDebugMode == 3) {
+        // Mode 3 (d): Disc crossing order n
+        vec3 colOrder = vec3(0.04);
+        if (captured && diskCrossings == 0) colOrder = vec3(0.0);
+        else if (diskCrossings == 1) colOrder = vec3(0.15, 0.45, 0.95);      // n=1 Primary (blue)
+        else if (diskCrossings == 2) colOrder = vec3(0.15, 0.85, 0.35);      // n=2 Secondary (green)
+        else if (diskCrossings == 3) colOrder = vec3(0.95, 0.80, 0.10);      // n=3 Tertiary (yellow)
+        else if (diskCrossings >= 4) colOrder = vec3(0.95, 0.15, 0.10);      // n>=4 Quaternary+ (red)
+        fragColor = vec4(colOrder, 1.0);
+        return;
+    }
+    if (uDebugMode == 4) {
+        // Mode 4 (e): Disc radius r at first hit (false-colour)
+        vec3 colR = vec3(0.03);
+        if (diskCrossings > 0) {
+            float rNorm = clamp((firstHitR - r_isco) / (r_out - r_isco), 0.0, 1.0);
+            colR = mix(vec3(1.0, 0.92, 0.45), vec3(0.42, 0.05, 0.62), rNorm);
+            float rings = 0.85 + 0.15 * cos(firstHitR * 6.283185);
+            colR *= rings;
+        }
+        fragColor = vec4(colR, 1.0);
+        return;
+    }
+    if (uDebugMode == 5) {
+        // Mode 5 (f): Conserved-quantity drift per pixel (|H| error)
+        float logH = log(max(1e-9, worstH)) / 2.302585;
+        float tH = clamp((logH + 7.0) / 4.5, 0.0, 1.0);
+        vec3 colH;
+        if (tH < 0.33) colH = mix(vec3(0.02, 0.08, 0.55), vec3(0.0, 0.70, 0.75), tH * 3.0);
+        else if (tH < 0.66) colH = mix(vec3(0.0, 0.70, 0.75), vec3(0.90, 0.85, 0.10), (tH - 0.33) * 3.0);
+        else colH = mix(vec3(0.90, 0.85, 0.10), vec3(1.0, 0.08, 0.05), (tH - 0.66) * 3.0);
+        fragColor = vec4(colH, 1.0);
+        return;
+    }
+    if (uDebugMode == 6) {
+        // Mode 6 (g): Temporal accumulation / sample convergence weight
+        float wAccum = clamp(uAuxOpacity, 0.0, 1.0);
+        vec3 colAccum = mix(vec3(0.1, 0.05, 0.2), vec3(0.3, 0.85, 0.95), wAccum);
+        fragColor = vec4(colAccum, 1.0);
+        return;
+    }
+    if (uDebugMode == 7) {
+        // Mode 7 (h): Tile / viewport boundaries & clipping seams
+        float dXSeam = abs(gl_FragCoord.x - 1160.0);
+        float lineX = smoothstep(1.5, 0.0, dXSeam);
+        float dImpactSeam = abs(bImpact - 18.0);
+        float lineImpact = smoothstep(0.25, 0.0, dImpactSeam);
+        float dCenter = min(abs(vUV.x - uBhScreenCentre.x), abs(vUV.y - uBhScreenCentre.y));
+        float lineCenter = smoothstep(0.002, 0.0, dCenter);
+        vec3 colBound = vec3(0.06);
+        if (bImpact > 18.0) colBound = vec3(0.18, 0.05, 0.05);
+        colBound = mix(colBound, vec3(1.0, 0.1, 0.1), lineImpact);
+        colBound = mix(colBound, vec3(1.0, 0.8, 0.1), lineX);
+        colBound = mix(colBound, vec3(0.2, 0.9, 1.0), lineCenter);
+        fragColor = vec4(colBound, 1.0);
+        return;
     }
 
     // Screen-space mask fading leftward disc extension on desktop
@@ -602,6 +710,7 @@ uniform float uWarpStrength;
 uniform vec2 uWarpCentre;
 uniform vec3 uFogTint;
 uniform float uIsLight;
+uniform int uDebugMode;
 out vec4 fragColor;
 
 vec3 acesFilm(vec3 x) {
@@ -620,6 +729,11 @@ float hash12(vec2 p) {
 }
 
 void main() {
+    if (uDebugMode > 0) {
+        fragColor = vec4(texture(uSceneTex, vUV).rgb, 1.0);
+        return;
+    }
+
     if (uIsLight > 0.5) {
         vec4 s = texture(uSceneTex, vUV);
         float a = clamp(s.a, 0.0, 0.92);
