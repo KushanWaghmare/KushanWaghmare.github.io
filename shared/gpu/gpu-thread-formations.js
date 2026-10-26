@@ -752,7 +752,6 @@
             this.livePos = new Float32Array(N * 3);
             this.priorNoise = new Float32Array(N * 3);
 
-            const pt = [0, 0];
             for (let i = 0; i < N; i++) {
                 const i3 = i * 3, i4 = i * 4;
                 const u1 = Math.max(1e-6, seeds[i4]);
@@ -769,17 +768,16 @@
                 this.priorNoise[i3 + 1] = clamp(rA * Math.sin(thA), -3.2, 3.2);
                 this.priorNoise[i3 + 2] = clamp(rB * Math.cos(thB), -3.2, 3.2);
 
-                // 0: Spiral Galaxy in 3D
-                if (DM && DM.getGalaxyTarget) {
-                    DM.getGalaxyTarget(i, N, u1, u2, pt);
-                } else {
-                    const arm = i % 4, r = Math.pow(u1, 0.7) * 1.4, a = (arm * 1.5708) + r * 2.8;
-                    pt[0] = r * Math.cos(a); pt[1] = r * Math.sin(a);
-                }
-                const galR = Math.hypot(pt[0], pt[1]);
-                this.targets[0][i3]     = pt[0] * 2.3;
-                this.targets[0][i3 + 1] = pt[1] * 2.3;
-                this.targets[0][i3 + 2] = (u4 - 0.5) * 0.55 * Math.exp(-galR * 0.8);
+                // 0: Two-arm Spiral Galaxy in 3D (logarithmic spiral with central bulge and vertical Gaussian scale height)
+                const arm = i % 2;
+                const r = 0.22 + 1.25 * Math.sqrt(u1);
+                const theta = (arm * Math.PI) + 2.85 * Math.pow(r / 1.47, 0.85) + (u2 - 0.5) * 0.32;
+                const gx = r * Math.cos(theta);
+                const gy = (u4 - 0.5) * 0.26 * Math.exp(-r * 0.8);
+                const gz = r * Math.sin(theta);
+                this.targets[0][i3]     = gx * 2.2;
+                this.targets[0][i3 + 1] = gy * 2.2;
+                this.targets[0][i3 + 2] = gz * 2.2;
 
                 // 1: 3D Trefoil Knot tube
                 const sKnot = (i / N) * Math.PI * 2.0;
@@ -807,18 +805,22 @@
         applyPermutation(perm, count) {
             if (!this.targets) return;
             const N = count | 0;
-            const tmpNoise = new Float32Array(N * 3);
+            if (!this._scratchTgt || this._scratchTgt.length < N * 3) {
+                this._scratchTgt = new Float32Array(N * 3);
+                this._scratchNoise = new Float32Array(N * 3);
+            }
+            const tmpT = this._scratchTgt;
+            const tmpNoise = this._scratchNoise;
             for (let m = 0; m < 3; m++) {
                 const tgt = this.targets[m];
-                const tmpT = new Float32Array(N * 3);
                 for (let i = 0; i < N; i++) {
                     const s = perm[i];
                     const i3 = i * 3, s3 = s * 3;
-                    tmpT[i3] = tgt[s3];
+                    tmpT[i3]     = tgt[s3];
                     tmpT[i3 + 1] = tgt[s3 + 1];
                     tmpT[i3 + 2] = tgt[s3 + 2];
                     if (m === 0) {
-                        tmpNoise[i3] = this.priorNoise[s3];
+                        tmpNoise[i3]     = this.priorNoise[s3];
                         tmpNoise[i3 + 1] = this.priorNoise[s3 + 1];
                         tmpNoise[i3 + 2] = this.priorNoise[s3 + 2];
                     }
@@ -839,10 +841,11 @@
             }
         }
 
-        _evalDiffusionPoint(i, tDiff, alphaT, sigmaT, cosY, sinY, cosP, sinP, offsetX, tSim, outPos, i3, outCol, outSz, seeds) {
+        _evalDiffusionPoint(i, tDiff, alphaT, sigmaT, cosY, sinY, cosP, sinP, offsetX, tSim, outPos, outOffset, outCol, outSz, seeds) {
             const tgt = this.targets[this.shapeIdx];
-            const x0 = tgt[i3], y0 = tgt[i3 + 1], z0 = tgt[i3 + 2];
-            const zx = this.priorNoise[i3], zy = this.priorNoise[i3 + 1], zz = this.priorNoise[i3 + 2];
+            const src3 = i * 3;
+            const x0 = tgt[src3], y0 = tgt[src3 + 1], z0 = tgt[src3 + 2];
+            const zx = this.priorNoise[src3], zy = this.priorNoise[src3 + 1], zz = this.priorNoise[src3 + 2];
 
             // Exact VP-SDE marginal: x_t = α(t) x_0 + σ(t) z, plus stochastic Langevin score curl
             const jitScale = this.odeMode ? 0.0 : (sigmaT * 0.22);
@@ -859,9 +862,9 @@
             const ry = ly * cosP - rz * sinP;
             const rz2 = ly * sinP + rz * cosP;
 
-            outPos[i3]     = this.origin.x + offsetX + rx * 1.15;
-            outPos[i3 + 1] = this.origin.y + ry * 1.15;
-            outPos[i3 + 2] = this.origin.z + rz2 * 1.15;
+            outPos[outOffset]     = this.origin.x + offsetX + rx * 1.15;
+            outPos[outOffset + 1] = this.origin.y + ry * 1.15;
+            outPos[outOffset + 2] = this.origin.z + rz2 * 1.15;
 
             if (outCol) {
                 // Score magnitude ||∇_x log p_t(x)|| = ||(x_t - α(t) x_0) / σ²(t)||
@@ -871,9 +874,9 @@
                 const rCol = (1.0 - structureProgress) * 0.96 + structureProgress * (0.14 + 0.25 * radial);
                 const gCol = (1.0 - structureProgress) * 0.58 + structureProgress * (0.82 - 0.18 * radial);
                 const bCol = (1.0 - structureProgress) * 0.22 + structureProgress * (0.76 + 0.22 * radial);
-                outCol[i3]     = clamp(rCol, 0.05, 1.0);
-                outCol[i3 + 1] = clamp(gCol, 0.05, 1.0);
-                outCol[i3 + 2] = clamp(bCol, 0.05, 1.0);
+                outCol[outOffset]     = clamp(rCol, 0.05, 1.0);
+                outCol[outOffset + 1] = clamp(gCol, 0.05, 1.0);
+                outCol[outOffset + 2] = clamp(bCol, 0.05, 1.0);
             }
             if (outSz && seeds) {
                 outSz[i] = 1.42 + 0.65 * (1.0 - tDiff) + 0.45 * seeds[i * 4 + 3];
