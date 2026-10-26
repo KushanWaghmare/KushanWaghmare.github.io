@@ -858,6 +858,10 @@
                     const spinVal = parseFloat(sp.get("spin"));
                     if (!isNaN(spinVal)) window.__KERR_DEBUG__.spin = spinVal;
                 }
+                if (sp.has("scale")) {
+                    const scaleVal = parseFloat(sp.get("scale"));
+                    if (!isNaN(scaleVal)) window.__KERR_DEBUG__.scale = scaleVal;
+                }
             }
         } catch (_e) {}
     };
@@ -901,6 +905,8 @@
                 <div id="dbg-modes" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px;"></div>
                 <div style="margin-bottom:6px;font-size:10px;color:#8aa2c2;text-transform:uppercase;letter-spacing:0.04em;">Inclination (θ):</div>
                 <div id="dbg-incs" style="display:flex;gap:4px;margin-bottom:10px;"></div>
+                <div style="margin-bottom:6px;font-size:10px;color:#8aa2c2;text-transform:uppercase;letter-spacing:0.04em;">Metric & Verification Presets:</div>
+                <div id="dbg-presets" style="display:flex;gap:4px;margin-bottom:10px;"></div>
                 <pre id="dbg-stats" style="margin:0;font:inherit;color:#a8c4ea;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;font-size:10.5px;"></pre>
             `;
             document.body.appendChild(debugEl);
@@ -940,6 +946,26 @@
                     updateDebugHud();
                 });
                 incsContainer.appendChild(btn);
+            });
+
+            const presetsContainer = debugEl.querySelector("#dbg-presets");
+            const testPresets = [
+                { label: "Schwarzschild (0°)", spin: 0.0, inc: 0.001 },
+                { label: "Kerr 17°", spin: 0.95, inc: 17.0 },
+                { label: "Kerr 80°", spin: 0.95, inc: 80.0 }
+            ];
+            testPresets.forEach((tp) => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.textContent = tp.label;
+                btn.style.cssText = "flex:1;padding:3px 2px;font:500 9.5px var(--mono,monospace);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#d0e2ff;border-radius:4px;cursor:pointer;text-align:center;";
+                btn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    window.__KERR_DEBUG__.spin = tp.spin;
+                    window.__KERR_DEBUG__.inc = tp.inc;
+                    updateDebugHud();
+                });
+                presetsContainer.appendChild(btn);
             });
         }
 
@@ -1405,13 +1431,14 @@
         const debugMode = (debugState.mode !== undefined && debugState.mode !== null) ? debugState.mode : 0;
         const debugTilt = (debugState.inc !== undefined && debugState.inc !== null) ? (debugState.inc * Math.PI / 180.0) : null;
         const debugSpin = (debugState.spin !== undefined && debugState.spin !== null) ? debugState.spin : null;
+        const debugScale = (debugState.scale !== undefined && debugState.scale !== null) ? debugState.scale : null;
 
         if (activeRenderForm && activeRenderForm.kerrOverlay && trans.auxOpacity > 0.005 && kerrProg) {
             const ko = activeRenderForm.kerrOverlay;
             gl.useProgram(kerrProg);
             gl.uniform2f(kerrUniforms.uRes, pw, ph);
             gl.uniform2f(kerrUniforms.uBhScreenCentre, ko.screenX, ko.screenY);
-            gl.uniform1f(kerrUniforms.uBhScale, ko.scale);
+            gl.uniform1f(kerrUniforms.uBhScale, debugScale !== null ? debugScale : ko.scale);
             gl.uniform1f(kerrUniforms.uSpin, debugSpin !== null ? debugSpin : ko.spin);
             gl.uniform1f(kerrUniforms.uTilt, debugTilt !== null ? debugTilt : ko.tilt);
             gl.uniform1f(kerrUniforms.uTime, simTime);

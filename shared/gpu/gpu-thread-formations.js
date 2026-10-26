@@ -570,10 +570,10 @@
             this.cameraDistance = 13.5;
             this.bloomThreshold = 1.15; // > 1.0 threshold eliminates background haze wash
             this.kerrOverlay = {
-                screenX: 0.65,
+                screenX: 0.66,
                 screenY: 0.50,
-                scale: 13.5,
-                spin: 0.99,
+                scale: 34.0,
+                spin: 0.95,
                 tilt: 1.41
             };
         }
@@ -740,9 +740,14 @@
             const offsetX = (ctx && ctx.isMobile) ? 0.0 : 2.35;
 
             this.kerrOverlay.tilt = this.tilt;
-            this.kerrOverlay.screenX = (ctx && ctx.isMobile) ? 0.50 : (0.65 - ptrX * 0.015);
+            this.kerrOverlay.screenX = (ctx && ctx.isMobile) ? 0.50 : (0.66 - ptrX * 0.015);
             this.kerrOverlay.screenY = 0.50 + ptrY * 0.02;
-            this.kerrOverlay.scale = 12.2;
+            this.kerrOverlay.scale = (dbg && dbg.scale !== undefined && dbg.scale !== null) ? dbg.scale : 34.0;
+            if (dbg && dbg.spin !== null && dbg.spin !== undefined) {
+                this.kerrOverlay.spin = dbg.spin;
+            } else {
+                this.kerrOverlay.spin = 0.95;
+            }
 
             for (let i = 0; i < N; i++) {
                 this._evalParticleState(i, t, sinObs, cosObs, offsetX, seeds, pos, i * 3, col, sz);

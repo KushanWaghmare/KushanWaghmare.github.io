@@ -366,7 +366,7 @@ void main() {
     float alpha = pScreen.x;
     float beta = pScreen.y;
 
-    float thetaObs = clamp(uTilt, 0.06, 3.14159265 - 0.06);
+    float thetaObs = clamp(uTilt, 0.001, 3.14159265 - 0.001);
     float sinObs = sin(thetaObs);
     float cosObs = cos(thetaObs);
 
@@ -378,16 +378,16 @@ void main() {
     float c2 = -2.0 * a2;
 
     float r_plus = 1.0 + sqrt(max(0.0, 1.0 - a2));
-    float r_absorb = r_plus * 1.035;
+    float r_absorb = r_plus * 1.025;
     float r_isco = iscoRadius(a);
-    float r_out = 16.0;
+    float r_out = 18.0;
 
-    float rObs = 45.0;
+    float rObs = 80.0;
     float delObs = rObs * rObs - 2.0 * rObs + a2;
     float pObs = rObs * rObs + a2 - a * L;
     float rad = max(0.0, (pObs * pObs) / delObs - (Q + (L - a) * (L - a)));
     float prObs = -sqrt(rad / delObs);
-    float puObs = sinObs * beta;
+    float puObs = -beta * sinObs;
 
     vec4 s = vec4(rObs, cosObs, prObs, puObs);
     float bImpact = length(pScreen);
@@ -405,14 +405,13 @@ void main() {
     bool stepLimitReached = false;
 
     // Fast escape check for distant non-lensed rays
-    if (bImpact > 18.0) {
-        if (uDebugMode == 0) discard;
+    if (bImpact > 36.0) {
         escaped = true;
     }
 
     // Numerical integration of Kerr null geodesics with adaptive RK4
     if (!escaped) {
-    for (int step = 0; step < 110; step++) {
+    for (int step = 0; step < 180; step++) {
         totalSteps = step + 1;
         float r = s.x;
         float u = s.y;
@@ -421,9 +420,10 @@ void main() {
         float sig_check = r * r + a2 * u * u;
         float del_check = max(1e-5, r * r - 2.0 * r + a2);
         float p_check = r * r + a2 - a * L;
-        float Q_check = s.w * s.w - c1 * u * u - 0.5 * c2 * u * u * u * u;
-        float twoSigH = del_check * s.z * s.z - (p_check * p_check) / del_check + Q_check + (L - a) * (L - a);
-        float curH = abs(twoSigH / (2.0 * sig_check));
+        float Hr = abs(del_check * s.z * s.z - (p_check * p_check) / del_check + (Q + (L - a) * (L - a))) / (2.0 * sig_check);
+        float u2_c = u * u;
+        float Hu = abs((s.w * s.w + u2_c * L * L) / max(1e-4, 1.0 - u2_c) - a2 * u2_c - Q);
+        float curH = max(Hr, Hu * 0.05);
         if (r > r_plus * 1.05) worstH = max(worstH, curH);
 
         // Horizon absorption check
@@ -433,17 +433,17 @@ void main() {
         }
 
         // Outward escape check
-        if ((r >= 22.0 && s.z > 0.0 && step > 2) || (r >= rObs + 2.0 && s.z > 0.0)) {
+        if ((r >= 25.0 && s.z > 0.0 && step > 2) || (r >= rObs + 2.0 && s.z > 0.0)) {
             escaped = true;
             break;
         }
 
-        // Adaptive step: fine near horizon & photon orbit, large in exterior
-        float distH = max(1e-4, r - r_plus);
-        float dl = (r > r_out + 1.0)
-            ? min(5.0, (r - r_out) * 0.45 + 1.1)
-            : clamp(0.12 * distH, 0.001, 2.2);
-        if (abs(u) < 0.08 && r < 24.0) dl *= 0.65;
+        // Smooth, continuous adaptive integration step proportional to horizon distance
+        float distH = max(0.01, r - r_plus);
+        float dl = clamp(distH * 0.12, 0.02, 1.6);
+        if (r < 4.5 && r > r_plus) {
+            dl = clamp(distH * 0.07, 0.022, 0.09);
+        }
 
         // RK4 stage evaluations
         vec4 k1s, k2s, k3s, k4s;
@@ -454,12 +454,23 @@ void main() {
 
         vec4 sNext = s + (dl / 6.0) * (k1s + 2.0 * k2s + 2.0 * k3s + k4s);
 
-        // Equatorial plane crossing (u = cos θ sign change)
+        // Equatorial plane crossing (u = cos θ sign change) with 5 bisection refinement steps
         if (s.y * sNext.y <= 0.0 && s.x > r_plus) {
-            float frac = clamp(abs(s.y) / max(1e-6, abs(s.y) + abs(sNext.y)), 0.0, 1.0);
-            vec4 sHit = mix(s, sNext, frac);
-            float fracRefined = clamp(frac - sHit.y / max(1e-6, s.y - sNext.y), 0.0, 1.0);
-            sHit = mix(s, sNext, fracRefined);
+            float t0 = 0.0;
+            float t1 = 1.0;
+            float u0 = s.y;
+            for (int b = 0; b < 5; b++) {
+                float tm = 0.5 * (t0 + t1);
+                vec4 sm = mix(s, sNext, tm);
+                if (u0 * sm.y <= 0.0) {
+                    t1 = tm;
+                } else {
+                    t0 = tm;
+                    u0 = sm.y;
+                }
+            }
+            float tRefined = 0.5 * (t0 + t1);
+            vec4 sHit = mix(s, sNext, tRefined);
             float rHit = sHit.x;
 
             if (rHit >= r_isco && rHit <= r_out && diskCrossings < 6) {
@@ -511,8 +522,14 @@ void main() {
     }
     }
 
-    if (!captured && !escaped && totalSteps >= 110) {
-        stepLimitReached = true;
+    if (!captured && !escaped && totalSteps >= 180) {
+        if (s.z < 0.0 && s.x < 3.0) {
+            captured = true;
+        } else if (s.z > 0.0 && s.x > 3.0) {
+            escaped = true;
+        } else {
+            stepLimitReached = true;
+        }
     }
 
     // Diagnostics Views (Telemetry Modes 1 to 7)
@@ -528,7 +545,7 @@ void main() {
     }
     if (uDebugMode == 2) {
         // Mode 2 (c): Number of steps used per pixel (heatmap)
-        float tStep = float(totalSteps) / 110.0;
+        float tStep = float(totalSteps) / 180.0;
         vec3 colHeat;
         if (tStep < 0.33) colHeat = mix(vec3(0.05, 0.10, 0.65), vec3(0.0, 0.75, 0.80), tStep * 3.0);
         else if (tStep < 0.66) colHeat = mix(vec3(0.0, 0.75, 0.80), vec3(0.95, 0.85, 0.10), (tStep - 0.33) * 3.0);
@@ -581,12 +598,12 @@ void main() {
         // Mode 7 (h): Tile / viewport boundaries & clipping seams
         float dXSeam = abs(gl_FragCoord.x - 1160.0);
         float lineX = smoothstep(1.5, 0.0, dXSeam);
-        float dImpactSeam = abs(bImpact - 18.0);
-        float lineImpact = smoothstep(0.25, 0.0, dImpactSeam);
+        float dImpactSeam = abs(bImpact - 34.0);
+        float lineImpact = smoothstep(0.35, 0.0, dImpactSeam);
         float dCenter = min(abs(vUV.x - uBhScreenCentre.x), abs(vUV.y - uBhScreenCentre.y));
         float lineCenter = smoothstep(0.002, 0.0, dCenter);
         vec3 colBound = vec3(0.06);
-        if (bImpact > 18.0) colBound = vec3(0.18, 0.05, 0.05);
+        if (bImpact > 34.0) colBound = vec3(0.12, 0.04, 0.04);
         colBound = mix(colBound, vec3(1.0, 0.1, 0.1), lineImpact);
         colBound = mix(colBound, vec3(1.0, 0.8, 0.1), lineX);
         colBound = mix(colBound, vec3(0.2, 0.9, 1.0), lineCenter);
