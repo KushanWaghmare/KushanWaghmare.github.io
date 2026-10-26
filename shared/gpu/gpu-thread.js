@@ -1346,6 +1346,10 @@
         gl.bindFramebuffer(gl.FRAMEBUFFER, trailRT[trailWriteIdx].fbo);
         gl.viewport(0, 0, pw, ph);
 
+        if (typeof window !== "undefined" && window.__KERR_TILT_FAST__) {
+            trailNeedsReset = true;
+            window.__KERR_TILT_FAST__ = false;
+        }
         const effDecay = (trailNeedsReset || isLight || isReducedMotion()) ? 0.0 : clamp(postState.trailDecay, 0.0, 0.93);
         trailNeedsReset = false;
 

@@ -730,7 +730,26 @@
             if (dbg && dbg.inc !== null && dbg.inc !== undefined) {
                 this.tilt = (dbg.inc * Math.PI) / 180.0;
             } else {
-                this.tilt = clamp(1.41 + ptrY * 0.16, 1.12, 1.53);
+                // Map vertical pointer [-1, 1] to 5°-85° inclination [0.087, 1.483 rad]
+                // Neutral sits at ~75° (1.31 rad) with subtle autonomous idle drift
+                const idleDrift = 0.045 * Math.sin(t * 0.35);
+                const hasPointer = Math.abs(ptrY) > 0.005 || Math.abs(ptrX) > 0.005;
+                const baseInclination = hasPointer
+                    ? (1.31 - ptrY * 0.65)
+                    : (1.31 + idleDrift);
+                const targetTilt = clamp(baseInclination, 0.087266, 1.48353);
+
+                // Exponential damping (1 - exp(-k * dt)) ensures fluid motion with zero shadow popping
+                const dtSec = clamp(_dt || 0.016, 0.001, 0.1);
+                const prevTilt = this.tilt;
+                const damp = 1.0 - Math.exp(-7.5 * dtSec);
+                this.tilt += (targetTilt - this.tilt) * damp;
+
+                // Detect fast tilt changes (> 0.2 deg/frame = ~0.0035 rad) to reset accumulation trails
+                const tiltDeltaDeg = Math.abs(this.tilt - prevTilt) * (180.0 / Math.PI);
+                if (tiltDeltaDeg > 0.2 && typeof window !== "undefined") {
+                    window.__KERR_TILT_FAST__ = true;
+                }
             }
             if (dbg && dbg.spin !== null && dbg.spin !== undefined) {
                 this.kerrOverlay.spin = dbg.spin;
@@ -749,13 +768,33 @@
                 this.kerrOverlay.spin = 0.95;
             }
 
-            for (let i = 0; i < N; i++) {
+            // Keep only a sparse set of accent glints (N_GLINTS = 120) orbiting near the inner disc.
+            // All other particles are silenced so they do not form unlensed 2D tan dashes over the geodesic ray tracer.
+            const N_GLINTS = Math.min(120, N);
+            for (let i = 0; i < N_GLINTS; i++) {
                 this._evalParticleState(i, t, sinObs, cosObs, offsetX, seeds, pos, i * 3, col, sz);
+            }
+            for (let i = N_GLINTS; i < N; i++) {
+                const i3 = i * 3;
+                pos[i3] = 0.0;
+                pos[i3 + 1] = 0.0;
+                pos[i3 + 2] = -9999.0;
+                if (col) {
+                    col[i3] = 0.0;
+                    col[i3 + 1] = 0.0;
+                    col[i3 + 2] = 0.0;
+                }
+                if (sz) {
+                    sz[i] = 0.0;
+                }
             }
         }
 
         targetFor(i, out = new Vector3()) {
             if (!this.initialized || !this.radii) return out.copy(this.origin);
+            if (i >= 120) {
+                return out.set(0.0, 0.0, -9999.0);
+            }
             const idx = clamp(i | 0, 0, this.radii.length - 1);
             const sinObs = Math.sin(this.tilt), cosObs = Math.cos(this.tilt);
             const tmp = [0, 0, 0];

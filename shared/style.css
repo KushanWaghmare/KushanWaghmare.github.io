@@ -420,6 +420,11 @@ pre.glass {
     background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.68) 0%, rgba(var(--bg-rgb), 0.34) 38%, rgba(var(--bg-rgb), 0.0) 68%);
 }
 
+#domain-physics::after,
+#domain-intro[data-domain="physics"]::after {
+    background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.88) 0%, rgba(var(--bg-rgb), 0.70) 32%, rgba(var(--bg-rgb), 0.25) 52%, transparent 72%);
+}
+
 .snap-inner {
     max-width: min(760px, 64ch);
     position: relative;
@@ -433,9 +438,35 @@ pre.glass {
     display: none;
 }
 
+/* Soft organic radial vignette behind the Physics text column (no hard edges) */
 #domain-physics .snap-inner::before,
 #domain-intro[data-domain="physics"] .snap-inner::before {
-    display: none;
+    content: "";
+    display: block;
+    position: absolute;
+    inset: -36px -48px -36px -64px;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(ellipse 75% 65% at 30% 50%, rgba(5, 8, 15, 0.75) 0%, rgba(5, 8, 15, 0.40) 55%, transparent 100%);
+    border-radius: 40px;
+    filter: blur(14px);
+}
+
+#domain-physics .snap-lead,
+#domain-intro[data-domain="physics"] .snap-lead,
+#domain-intro[data-domain="physics"] .lead {
+    color: #e2eaf6;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.95), 0 1px 4px rgba(0, 0, 0, 0.9);
+    max-width: 62ch;
+}
+
+#domain-physics .hero-eq,
+#domain-physics .snap-eq,
+#domain-intro[data-domain="physics"] .hero-eq,
+#domain-intro[data-domain="physics"] .snap-eq {
+    background: rgba(7, 11, 20, 0.72);
+    border: 1px solid rgba(124, 184, 255, 0.16);
+    box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .hero h1 {

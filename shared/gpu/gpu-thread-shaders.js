@@ -47,6 +47,13 @@ void main() {
     float heroScale = isHero ? (1.0 + uHeroBoost * 3.0) : 1.0;
     float seedVar = 0.80 + 0.42 * aSeed.x;
 
+    if (aSize <= 0.0001 || aPosition.z < -500.0) {
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+        gl_PointSize = 0.0;
+        vAlpha = 0.0;
+        return;
+    }
+
     float baseSize = clamp(aSize * seedVar * perspectiveScale * uDpr * heroScale, 1.35 * uDpr, 40.0 * uDpr);
 
     // Velocity-aligned ribbon stretch from previous frame position
@@ -308,25 +315,37 @@ float noise2D(vec2 p) {
 }
 
 // Multi-octave continuous plasma turbulence with differential Keplerian shear & advected hot spots
-float diskPlasmaTurbulence(float r, float phiCorot) {
+// Band-limited across crossing orders n = 1, 2, 3+ to eliminate shimmering and moiré artefacts
+float diskPlasmaTurbulence(float r, float phiCorot, int order) {
+    if (order >= 3) {
+        // High-order photon rings are sub-pixel: pure smooth flux prevents noise aliasing & moiré
+        return 1.0;
+    }
+
     float shear = 2.4 * log(max(1.0, r));
     float spiralAngle = phiCorot + shear;
     vec2 pDisk = vec2(cos(spiralAngle), sin(spiralAngle)) * (r * 0.55);
 
     float n1 = noise2D(pDisk * 1.6);
     float n2 = noise2D(pDisk * 3.6 + vec2(1.7, 3.2));
+
+    if (order == 2) {
+        // Secondary lensed arch: radial coordinate is compressed ~20-50x; filter out high octaves
+        float fbmSecondary = 0.65 * n1 + 0.35 * n2;
+        return clamp(0.55 + 0.90 * fbmSecondary, 0.25, 2.0);
+    }
+
+    // Primary disc (n = 1): 4-octave sheared turbulence + advected relativistic hot spots
     float n3 = noise2D(pDisk * 8.2 + vec2(4.1, 0.9));
     float n4 = noise2D(pDisk * 17.5 + vec2(2.3, 5.7));
-    float fbm = 0.48 * n1 + 0.28 * n2 + 0.16 * n3 + 0.08 * n4;
-
-    float ripples = 0.82 + 0.18 * sin(r * 4.2 + 2.5 * fbm);
+    float fbm = 0.46 * n1 + 0.28 * n2 + 0.16 * n3 + 0.10 * n4;
 
     float spot1 = exp(-pow(length(vec2(cos(phiCorot - 0.4), sin(phiCorot - 0.4)) * r - vec2(2.8, 0.0)), 2.0) * 1.8);
     float spot2 = exp(-pow(length(vec2(cos(phiCorot - 2.6), sin(phiCorot - 2.6)) * r - vec2(4.2, 0.0)), 2.0) * 1.4);
     float spot3 = exp(-pow(length(vec2(cos(phiCorot - 4.8), sin(phiCorot - 4.8)) * r - vec2(6.5, 0.0)), 2.0) * 0.9);
-    float hotSpots = 1.0 + 1.4 * spot1 + 0.9 * spot2 + 0.7 * spot3;
+    float hotSpots = 1.0 + 1.25 * spot1 + 0.85 * spot2 + 0.65 * spot3;
 
-    return clamp((0.35 + 1.25 * fbm) * ripples * hotSpots, 0.15, 3.5);
+    return clamp((0.40 + 1.20 * fbm) * hotSpots, 0.2, 3.2);
 }
 
 // Canonical equations of motion in Boyer–Lindquist coordinates (r, u = cos θ, pr, pu)
@@ -438,12 +457,10 @@ void main() {
             break;
         }
 
-        // Smooth, continuous adaptive integration step proportional to horizon distance
-        float distH = max(0.01, r - r_plus);
-        float dl = clamp(distH * 0.12, 0.02, 1.6);
-        if (r < 4.5 && r > r_plus) {
-            dl = clamp(distH * 0.07, 0.022, 0.09);
-        }
+        // Strictly continuous adaptive integration step proportional to horizon distance
+        // Monotonic rational profile with zero derivative discontinuities
+        float distH = max(0.005, r - r_plus);
+        float dl = clamp(0.024 + 0.12 * (distH / (1.0 + distH * 0.28)) + 0.035 * max(0.0, r - 12.0), 0.024, 1.4);
 
         // RK4 stage evaluations
         vec4 k1s, k2s, k3s, k4s;
@@ -499,16 +516,18 @@ void main() {
 
                 // Differential rotation shear in coordinates (r, φ - Ω(r)*t)
                 float phiCorot = phiCoord + omega * (uTime * 0.85);
-                float turb = diskPlasmaTurbulence(rHit, phiCorot);
+                float turb = diskPlasmaTurbulence(rHit, phiCorot, diskCrossings);
 
                 float Tem = 11000.0 * tempScale + 1200.0;
                 float Tobs = Tem * g;
                 vec3 col = blackbody(Tobs);
                 float intensity = 4.2 * fProfile * turb * pow(g, 4.0);
 
-                float alphaDisk = 0.88 * smoothstep(r_out, r_out * 0.72, rHit) * smoothstep(r_isco, r_isco + 0.15, rHit);
-                if (diskCrossings > 1) {
-                    alphaDisk = min(alphaDisk, 0.65);
+                float alphaDisk = 0.88 * smoothstep(r_out, r_out - 1.8, rHit) * smoothstep(r_isco, r_isco + 0.20, rHit);
+                if (diskCrossings == 2) {
+                    alphaDisk = min(alphaDisk, 0.60);
+                } else if (diskCrossings >= 3) {
+                    alphaDisk = min(alphaDisk, 0.45);
                 }
                 emitColor += transmittance * alphaDisk * col * intensity;
                 transmittance *= (1.0 - alphaDisk);
@@ -612,8 +631,8 @@ void main() {
     }
 
     // Screen-space mask fading leftward disc extension on desktop
-    // so streaks never cross or collide with subtitle or formula card
-    float leftFade = (uBhScreenCentre.x > 0.55) ? smoothstep(0.08, 0.44, vUV.x) : 1.0;
+    // so luminous plasma never crosses or collides with subtitle or formula card
+    float leftFade = (uBhScreenCentre.x > 0.55) ? smoothstep(0.30, 0.52, vUV.x) : 1.0;
     emitColor *= leftFade;
 
     float shadowMask = captured ? 1.0 : 0.0;
