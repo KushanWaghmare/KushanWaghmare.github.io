@@ -150,7 +150,7 @@ void main() {
     const VS_STARFIELD = `#version 300 es
 precision highp float;
 
-layout(location = 0) in vec4 aStarPosSeed; // xyz in [-60, 60]^3, w = seed [0, 1]
+layout(location = 0) in vec4 aStarPosSeed; // xyz in [-80, 80]^3, w = magnitude [0, 1]
 layout(location = 1) in vec3 aStarCol;
 
 uniform mat4 uViewProj;
@@ -164,20 +164,22 @@ out vec3 vCol;
 out float vAlpha;
 
 void main() {
-    // Seamless periodic 120-unit cube around camera with 0.30x parallax depth factor
-    vec3 rel = mod(aStarPosSeed.xyz - uCamPos * 0.30 + 60.0, 120.0) - 60.0;
+    // Seamless periodic 160-unit cube around camera with 0.18x parallax depth factor
+    vec3 rel = mod(aStarPosSeed.xyz - uCamPos * 0.18 + 80.0, 160.0) - 80.0;
     float dist = length(rel);
     vec3 worldPos = uCamPos + rel;
 
     gl_Position = uViewProj * vec4(worldPos, 1.0);
 
-    float edgeFade = smoothstep(59.0, 30.0, dist) * smoothstep(2.5, 8.0, dist);
-    float twinkle = 0.60 + 0.40 * sin(uTime * (0.9 + 2.1 * aStarPosSeed.w) + aStarPosSeed.w * 31.4159);
-    float sz = (1.05 + 1.95 * pow(aStarPosSeed.w, 2.6)) * uDpr * clamp(28.0 / (dist + 11.0), 0.50, 1.75);
+    float edgeFade = smoothstep(79.0, 40.0, dist) * smoothstep(1.5, 6.0, dist);
+    float twinkle = 0.72 + 0.28 * sin(uTime * (1.2 + 2.8 * aStarPosSeed.w) + aStarPosSeed.w * 31.4159);
+    
+    // Crisp, needle-sharp pinpricks matching the black hole starfield
+    float sz = (0.75 + 1.25 * aStarPosSeed.w) * uDpr;
 
-    gl_PointSize = sz;
+    gl_PointSize = max(1.0, sz);
     vCol = aStarCol;
-    vAlpha = edgeFade * twinkle * (uIsLight > 0.5 ? 0.14 : 0.68);
+    vAlpha = edgeFade * twinkle * (0.35 + 0.65 * aStarPosSeed.w) * (uIsLight > 0.5 ? 0.08 : 0.95);
 }
 `;
 
@@ -193,11 +195,12 @@ void main() {
     vec2 uv = gl_PointCoord * 2.0 - 1.0;
     float r2 = dot(uv, uv);
     if (r2 > 1.0) discard;
-    float g = exp(-r2 * 4.8) * vAlpha;
+    // Sharp Airy-like core with zero muddy blur
+    float g = exp(-r2 * 6.5) * vAlpha;
     if (uIsLight > 0.5) {
-        fragColor = vec4(vec3(0.18, 0.22, 0.32), g);
+        fragColor = vec4(vec3(0.12, 0.14, 0.20), g * 0.5);
     } else {
-        fragColor = vec4(vCol * g, g);
+        fragColor = vec4(vCol * g * 1.8, g);
     }
 }
 `;
@@ -487,10 +490,8 @@ void main() {
         bloomRgb = texture(uBloomTex, vUV).rgb;
     }
 
-    // Deep-space base + subtle domain nebula horizon + HDR scene + selective bloom
-    vec2 nebUV = vUV - vec2(0.72, 0.38);
-    float nebGlow = exp(-dot(nebUV, nebUV) * 3.2);
-    vec3 spaceBase = vec3(0.0022, 0.0030, 0.0068) + uFogTint * (0.14 * nebGlow + 0.025);
+    // Deep pitch-black space background + HDR scene + selective bloom
+    vec3 spaceBase = vec3(0.0);
 
     vec3 hdr = spaceBase + sceneRgb + bloomRgb * uBloomStrength;
 

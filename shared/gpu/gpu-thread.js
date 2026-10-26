@@ -45,7 +45,7 @@
 
     const INITIAL_N = isMobileDevice() ? 30000 : 90000;
     const MIN_ADAPTIVE_N = isMobileDevice() ? 15000 : 36000;
-    const N_STARS = isMobileDevice() ? 1400 : 2600;
+    const N_STARS = isMobileDevice() ? 3200 : 7000;
     let bufferReallocations = 0;
 
     /* ---------- Single Shared Particle Buffer (Allocated ONCE, Never Reallocated) ---------- */
@@ -87,24 +87,41 @@
         mortonPerm[i] = i;
     }
 
-    // Separate cheap static background starfield/dust layer (not part of the main swarm)
+    // Separate cheap static background starfield/dust layer with blackbody colours (matching black hole sim)
     const starPosSeed = new Float32Array(N_STARS * 4);
     const starCols = new Float32Array(N_STARS * 3);
     const starRand = mulberry32(0x53544152);
+
+    // Tanner Helland blackbody colour approximation (same as shared/blackhole-physics.js)
+    const starBlackbodyCol = (tempK) => {
+        const t = Math.max(1000, Math.min(40000, tempK)) * 0.01;
+        const tA = Math.max(t - 60, 1.0);
+        const tB = Math.max(t - 10, 1.0);
+        const r = t <= 66 ? 1.0 : Math.min(1.0, Math.max(0, 329.698727 * Math.pow(tA, -0.1332047592) / 255.0));
+        let g = t <= 66
+            ? Math.min(1.0, Math.max(0, (99.4708025861 * Math.log(Math.max(t, 1.0)) - 161.1195681661) / 255.0))
+            : Math.min(1.0, Math.max(0, 288.1221695283 * Math.pow(tA, -0.0755148492) / 255.0));
+        const b = t >= 66 ? 1.0 : (t <= 19 ? 0.0 : Math.min(1.0, Math.max(0, (138.5177312231 * Math.log(tB) - 305.0447927307) / 255.0)));
+        return [r, g, b];
+    };
+
     for (let i = 0; i < N_STARS; i++) {
         const i4 = i * 4, i3 = i * 3;
-        starPosSeed[i4]     = (starRand() - 0.5) * 120.0;
-        starPosSeed[i4 + 1] = (starRand() - 0.5) * 120.0;
-        starPosSeed[i4 + 2] = (starRand() - 0.5) * 120.0;
-        starPosSeed[i4 + 3] = starRand();
-        const temp = starRand();
-        if (temp < 0.55) {
-            starCols[i3] = 0.62; starCols[i3 + 1] = 0.78; starCols[i3 + 2] = 1.00;
-        } else if (temp < 0.85) {
-            starCols[i3] = 0.92; starCols[i3 + 1] = 0.94; starCols[i3 + 2] = 0.98;
-        } else {
-            starCols[i3] = 1.00; starCols[i3 + 1] = 0.78; starCols[i3 + 2] = 0.54;
-        }
+        starPosSeed[i4]     = (starRand() - 0.5) * 160.0;
+        starPosSeed[i4 + 1] = (starRand() - 0.5) * 160.0;
+        starPosSeed[i4 + 2] = (starRand() - 0.5) * 160.0;
+        // Pareto power-law magnitude: mostly crisp pinpricks, some luminous anchors
+        const u = Math.max(1e-4, starRand());
+        const mag = Math.min(1.0, 0.18 * Math.pow(u, -0.55));
+        starPosSeed[i4 + 3] = mag;
+
+        // Stellar temperature distribution: O/B blue-white, A/F white, G/K yellow-orange, M red dwarfs
+        const uT = starRand();
+        const tempK = 2600 + (32000 - 2600) * (uT * uT * uT);
+        const [cr, cg, cb] = starBlackbodyCol(tempK);
+        starCols[i3]     = cr;
+        starCols[i3 + 1] = cg;
+        starCols[i3 + 2] = cb;
     }
 
     const sharedBuffer = {
