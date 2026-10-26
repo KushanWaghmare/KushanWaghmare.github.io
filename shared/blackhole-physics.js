@@ -390,6 +390,35 @@
         return { worstDriftH, worstDriftQ, passed };
     };
 
+    /**
+     * Precomputes 1D Blackbody LUT (512 texels) across 1,000 K to 32,000 K.
+     * Artistically scaled: white-hot inner core, warm golden-amber mid, deep burnt orange-brown outer.
+     */
+    const generateBlackbodyLUT = (width = 512) => {
+        const data = new Float32Array(width * 4);
+        for (let i = 0; i < width; i++) {
+            const u = i / (width - 1);
+            const tempK = 1000.0 + u * (32000.0 - 1000.0);
+            const [r, g, b] = blackbodyCol(tempK);
+
+            // Tonal grading: deep rich burnt orange-brown below 3500 K, pristine white-blue at high temp
+            let cr = r, cg = g, cb = b;
+            if (tempK < 3500.0) {
+                const w = (tempK - 1000.0) / 2500.0;
+                cr = 0.55 * (1.0 - w) + r * w;
+                cg = 0.12 * (1.0 - w) + g * w;
+                cb = 0.02 * (1.0 - w) + b * w;
+            }
+
+            const idx = i * 4;
+            data[idx + 0] = cr;
+            data[idx + 1] = cg;
+            data[idx + 2] = cb;
+            data[idx + 3] = 1.0;
+        }
+        return { data, width };
+    };
+
     const api = {
         horizon,
         isco,
@@ -400,7 +429,8 @@
         getDiskLUT,
         bakeStarfieldFaces,
         getStarfieldData,
-        verifyConservationDrift
+        verifyConservationDrift,
+        generateBlackbodyLUT
     };
 
     if (typeof module !== 'undefined' && module.exports) {

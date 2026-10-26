@@ -269,7 +269,7 @@ uniform float uTime;
 uniform float uAuxOpacity;
 uniform float uIsLight;
 
-// Analytical Tanner Helland blackbody spectrum fit
+// Analytical Tanner Helland blackbody spectrum fit with Planckian tonal grading
 vec3 blackbody(float T) {
     float t = clamp(T, 1000.0, 40000.0) * 0.01;
     float tA = max(t - 60.0, 1.0);
@@ -280,6 +280,11 @@ vec3 blackbody(float T) {
         ? clamp((99.4708 * log(t) - 161.1196) / 255.0, 0.0, 1.0)
         : clamp(288.1222 * pow(tA, -0.0755) / 255.0, 0.0, 1.0);
     c.b = t >= 66.0 ? 1.0 : (t <= 19.0 ? 0.0 : clamp((138.5177 * log(tB) - 305.0448) / 255.0, 0.0, 1.0));
+
+    if (T < 3500.0) {
+        float warmRamp = clamp((T - 1000.0) / 2500.0, 0.0, 1.0);
+        c = mix(vec3(0.55, 0.12, 0.02), c, warmRamp);
+    }
     return c;
 }
 
@@ -299,6 +304,28 @@ float noise2D(vec2 p) {
     float c = hash2D(i + vec2(0.0, 1.0));
     float d = hash2D(i + vec2(1.0, 1.0));
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+// Multi-octave continuous plasma turbulence with differential Keplerian shear & advected hot spots
+float diskPlasmaTurbulence(float r, float phiCorot) {
+    float shear = 2.4 * log(max(1.0, r));
+    float spiralAngle = phiCorot + shear;
+    vec2 pDisk = vec2(cos(spiralAngle), sin(spiralAngle)) * (r * 0.55);
+
+    float n1 = noise2D(pDisk * 1.6);
+    float n2 = noise2D(pDisk * 3.6 + vec2(1.7, 3.2));
+    float n3 = noise2D(pDisk * 8.2 + vec2(4.1, 0.9));
+    float n4 = noise2D(pDisk * 17.5 + vec2(2.3, 5.7));
+    float fbm = 0.48 * n1 + 0.28 * n2 + 0.16 * n3 + 0.08 * n4;
+
+    float ripples = 0.82 + 0.18 * sin(r * 4.2 + 2.5 * fbm);
+
+    float spot1 = exp(-pow(length(vec2(cos(phiCorot - 0.4), sin(phiCorot - 0.4)) * r - vec2(2.8, 0.0)), 2.0) * 1.8);
+    float spot2 = exp(-pow(length(vec2(cos(phiCorot - 2.6), sin(phiCorot - 2.6)) * r - vec2(4.2, 0.0)), 2.0) * 1.4);
+    float spot3 = exp(-pow(length(vec2(cos(phiCorot - 4.8), sin(phiCorot - 4.8)) * r - vec2(6.5, 0.0)), 2.0) * 0.9);
+    float hotSpots = 1.0 + 1.4 * spot1 + 0.9 * spot2 + 0.7 * spot3;
+
+    return clamp((0.35 + 1.25 * fbm) * ripples * hotSpots, 0.15, 3.5);
 }
 
 // Canonical equations of motion in Boyer–Lindquist coordinates (r, u = cos θ, pr, pu)
@@ -429,21 +456,22 @@ void main() {
                 float factor = ut * (1.0 - omega * L);
                 float g = factor > 1e-4 ? clamp(1.0 / factor, 0.15, 6.0) : 1.0;
 
-                // Page-Thorne flux approximation & temperature
-                float normF = clamp(sqrt(rHit / r_isco) - 1.0, 0.0, 1.0) * exp(-(rHit - r_isco) * 0.28);
-                float tScale = pow(normF, 0.25);
+                // Zero-torque Novikov-Thorne flux profile F(r)
+                float x = sqrt(rHit);
+                float x0 = sqrt(r_isco);
+                float fProfile = clamp((x - x0) / max(0.12, x), 0.0, 1.0) * exp(-(rHit - r_isco) * 0.22);
+                float tempScale = pow(fProfile, 0.25);
 
                 // Differential rotation shear in coordinates (r, φ - Ω(r)*t)
-                float phiHit = phiCoord + omega * (uTime * 0.85);
-                float turbAngle = phiHit + 1.25 * log(max(1.0, rHit));
-                vec2 pTurb = vec2(cos(turbAngle), sin(turbAngle)) * (rHit * 0.45);
-                float turb = clamp(0.55 * noise2D(pTurb * 2.2) + 0.35 * noise2D(pTurb * 5.5 + vec2(1.7, 3.2)) + 0.25, 0.2, 1.8);
+                float phiCorot = phiCoord + omega * (uTime * 0.85);
+                float turb = diskPlasmaTurbulence(rHit, phiCorot);
 
-                float Tobs = 9500.0 * clamp(tScale, 0.05, 1.0) * g;
+                float Tem = 11000.0 * tempScale + 1200.0;
+                float Tobs = Tem * g;
                 vec3 col = blackbody(Tobs);
-                float intensity = 3.6 * normF * turb * pow(g, 4.0);
+                float intensity = 4.2 * fProfile * turb * pow(g, 4.0);
 
-                float alphaDisk = 0.85 * smoothstep(r_out, r_out * 0.75, rHit);
+                float alphaDisk = 0.88 * smoothstep(r_out, r_out * 0.72, rHit) * smoothstep(r_isco, r_isco + 0.15, rHit);
                 if (diskCrossings > 1) {
                     alphaDisk = min(alphaDisk, 0.65);
                 }

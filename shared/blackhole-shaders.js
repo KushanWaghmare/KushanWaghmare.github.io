@@ -89,21 +89,30 @@ float noise2D(vec2 p) {
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
-// Multi-scale spiral turbulence in corotating coordinates:
-// Evaluated in continuous 2D trigonometric disk coordinates (cos(angle), sin(angle))
-// to guarantee 100% seamless azimuthal continuity around the black hole.
+// Continuous multi-octave plasma turbulence with differential Keplerian shear & advected hot spots
 float diskTurbulence(float r, float phiCorot) {
-    // Shearing in Keplerian flow stretches disturbances into logarithmic spirals
-    float angle = phiCorot + 1.25 * log(max(1.0, r));
-    vec2 pDisk = vec2(cos(angle), sin(angle)) * (r * 0.45);
-    float n1 = noise2D(pDisk * 1.8);
-    float n2 = noise2D(pDisk * 3.8 + vec2(1.7, 3.2));
-    float n3 = noise2D(pDisk * 7.5 + vec2(4.1, 0.9));
-    float turb = 0.55 * n1 + 0.30 * n2 + 0.15 * n3;
+    // 1. Keplerian differential shear stretches disturbances into tightly wound logarithmic spirals
+    float shear = 2.4 * log(max(1.0, r));
+    float spiralAngle = phiCorot + shear;
+    vec2 pDisk = vec2(cos(spiralAngle), sin(spiralAngle)) * (r * 0.55);
 
-    // Density rings and filaments
-    float rings = 0.75 + 0.25 * sin(r * 2.5 + 1.5 * n1);
-    return clamp((0.45 + 1.1 * turb) * rings, 0.15, 2.5);
+    // 2. 4-octave fractal noise
+    float n1 = noise2D(pDisk * 1.6);
+    float n2 = noise2D(pDisk * 3.6 + vec2(1.7, 3.2));
+    float n3 = noise2D(pDisk * 8.2 + vec2(4.1, 0.9));
+    float n4 = noise2D(pDisk * 17.5 + vec2(2.3, 5.7));
+    float fbm = 0.48 * n1 + 0.28 * n2 + 0.16 * n3 + 0.08 * n4;
+
+    // 3. Concentric density ripples
+    float ripples = 0.82 + 0.18 * sin(r * 4.2 + 2.5 * fbm);
+
+    // 4. Lensed & Doppler-boosted advected hot spots orbiting inside the tracer
+    float spot1 = exp(-pow(length(vec2(cos(phiCorot - 0.4), sin(phiCorot - 0.4)) * r - vec2(2.8, 0.0)), 2.0) * 1.8);
+    float spot2 = exp(-pow(length(vec2(cos(phiCorot - 2.6), sin(phiCorot - 2.6)) * r - vec2(4.2, 0.0)), 2.0) * 1.4);
+    float spot3 = exp(-pow(length(vec2(cos(phiCorot - 4.8), sin(phiCorot - 4.8)) * r - vec2(6.5, 0.0)), 2.0) * 0.9);
+    float hotSpots = 1.0 + 1.4 * spot1 + 0.9 * spot2 + 0.7 * spot3;
+
+    return clamp((0.35 + 1.25 * fbm) * ripples * hotSpots, 0.15, 3.5);
 }
 
 // Canonical equations of motion in Boyer–Lindquist coordinates using Carter's
@@ -149,9 +158,9 @@ void sampleDiskEmission(float r, float phi, float t, float L, out vec3 outCol, o
     float gTemp = g;
     if (uMode == 1) {
         // Cinematic mode: scale g toward 1 (as in Interstellar) to preserve visible receding side
-        float gEff = pow(max(1e-4, g), 0.35);
-        gBoost = gEff * gEff;
-        gTemp = pow(max(1e-4, g), 0.5);
+        float gEff = pow(max(1e-4, g), 0.40);
+        gBoost = gEff * gEff * gEff * gEff;
+        gTemp = pow(max(1e-4, g), 0.65);
     }
 
     // Corotating coordinates φ - Ω(r) * t_emit (differential Keplerian rotation + retardation)
@@ -159,11 +168,17 @@ void sampleDiskEmission(float r, float phi, float t, float L, out vec3 outCol, o
     float turb = diskTurbulence(r, phiCorot);
 
     // Temperature: T_em ∝ F^(1/4), T_obs = T_em * g
-    float Tem = uTpeak * tempScale;
+    float Tem = max(1200.0, uTpeak * tempScale);
     float Tobs = Tem * gTemp;
 
-    outCol = blackbody(Tobs);
-    outIntensity = 3.2 * normF * turb * gBoost;
+    vec3 c = blackbody(Tobs);
+    // Artistically scaled Planckian tone: deep rich burnt orange-brown below 3500 K, pristine white-blue at high temp
+    if (Tobs < 3500.0) {
+        float warmRamp = clamp((Tobs - 1000.0) / 2500.0, 0.0, 1.0);
+        c = mix(vec3(0.55, 0.12, 0.02), c, warmRamp);
+    }
+    outCol = c;
+    outIntensity = 3.6 * normF * turb * gBoost;
 }
 
 void main() {
