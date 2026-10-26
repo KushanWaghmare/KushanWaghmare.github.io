@@ -316,36 +316,97 @@ float noise2D(vec2 p) {
 
 // Multi-octave continuous plasma turbulence with differential Keplerian shear & advected hot spots
 // Band-limited across crossing orders n = 1, 2, 3+ to eliminate shimmering and moiré artefacts
-float diskPlasmaTurbulence(float r, float phiCorot, int order) {
+float diskPlasmaTurbulence(float r, float phiCorot, int order, float r_isco) {
     if (order >= 3) {
         // High-order photon rings are sub-pixel: pure smooth flux prevents noise aliasing & moiré
         return 1.0;
     }
 
-    float shear = 2.4 * log(max(1.0, r));
-    float spiralAngle = phiCorot + shear;
-    vec2 pDisk = vec2(cos(spiralAngle), sin(spiralAngle)) * (r * 0.55);
+    // Streamline spiral shear angle: trailing spiral arms
+    float shear = 2.6 * log(max(1.0, r / max(0.5, r_isco)));
+    float psi = phiCorot + shear;
+    
+    // Anisotropic flow-aligned coordinates
+    vec2 pFlow = vec2(psi * 2.8, r * 0.75);
 
-    float n1 = noise2D(pDisk * 1.6);
-    float n2 = noise2D(pDisk * 3.6 + vec2(1.7, 3.2));
+    float n1 = noise2D(pFlow * 1.4);
+    float n2 = noise2D(pFlow * 3.2 + vec2(1.7, 3.2));
 
     if (order == 2) {
         // Secondary lensed arch: radial coordinate is compressed ~20-50x; filter out high octaves
         float fbmSecondary = 0.65 * n1 + 0.35 * n2;
-        return clamp(0.55 + 0.90 * fbmSecondary, 0.25, 2.0);
+        return clamp(0.60 + 0.80 * fbmSecondary, 0.3, 1.8);
     }
 
-    // Primary disc (n = 1): 4-octave sheared turbulence + advected relativistic hot spots
-    float n3 = noise2D(pDisk * 8.2 + vec2(4.1, 0.9));
-    float n4 = noise2D(pDisk * 17.5 + vec2(2.3, 5.7));
-    float fbm = 0.46 * n1 + 0.28 * n2 + 0.16 * n3 + 0.10 * n4;
+    // Primary disc (n = 1): 4-octave sheared turbulence + fine spiral streaks + advected relativistic hot spots
+    float n3 = noise2D(pFlow * 7.5 + vec2(4.1, 0.9));
+    float n4 = noise2D(pFlow * 15.0 + vec2(2.3, 5.7));
+    float fbm = 0.44 * n1 + 0.28 * n2 + 0.18 * n3 + 0.10 * n4;
 
-    float spot1 = exp(-pow(length(vec2(cos(phiCorot - 0.4), sin(phiCorot - 0.4)) * r - vec2(2.8, 0.0)), 2.0) * 1.8);
-    float spot2 = exp(-pow(length(vec2(cos(phiCorot - 2.6), sin(phiCorot - 2.6)) * r - vec2(4.2, 0.0)), 2.0) * 1.4);
-    float spot3 = exp(-pow(length(vec2(cos(phiCorot - 4.8), sin(phiCorot - 4.8)) * r - vec2(6.5, 0.0)), 2.0) * 0.9);
-    float hotSpots = 1.0 + 1.25 * spot1 + 0.85 * spot2 + 0.65 * spot3;
+    // Fine spiral filament streaks
+    float streaks = 0.88 + 0.12 * cos(pFlow.x * 3.5 + 2.5 * fbm);
 
-    return clamp((0.40 + 1.20 * fbm) * hotSpots, 0.2, 3.2);
+    // Relativistic advected hot spots co-rotating with local Keplerian flow
+    float spot1 = exp(-pow(length(vec2(cos(phiCorot - 0.4), sin(phiCorot - 0.4)) * r - vec2(2.7, 0.0)), 2.0) * 1.9);
+    float spot2 = exp(-pow(length(vec2(cos(phiCorot - 2.5), sin(phiCorot - 2.5)) * r - vec2(4.3, 0.0)), 2.0) * 1.3);
+    float spot3 = exp(-pow(length(vec2(cos(phiCorot - 4.7), sin(phiCorot - 4.7)) * r - vec2(6.8, 0.0)), 2.0) * 0.8);
+    float hotSpots = 1.0 + 1.35 * spot1 + 0.90 * spot2 + 0.65 * spot3;
+
+    return clamp((0.40 + 1.20 * fbm) * streaks * hotSpots, 0.18, 3.4);
+}
+
+// Relativistic Novikov-Thorne thin accretion disc flux profile (Page & Thorne 1974)
+// Vanishes at ISCO (zero-torque), peaks at r ~ 1.25-1.5 r_isco, approaches 1/r^3 Newtonian limit
+float novikovThorneFlux(float r, float a, float r_isco) {
+    if (r <= r_isco) return 0.0;
+    float x = sqrt(r);
+    float x0 = sqrt(r_isco);
+    float C = 1.0 - x0 / x;
+    float denom = max(0.04, 1.0 - 3.0 / r + 2.0 * a / (r * x));
+    return max(0.0, C / (r * r * r * denom));
+}
+
+// Procedural celestial sphere: anti-aliased lensed starfield & faint Milky Way band
+vec3 lensedSky(vec3 d) {
+    // 1. Faint procedural Milky Way band (peak luminance ~0.010, near-black space)
+    vec3 galPole = normalize(vec3(-0.35, 0.72, 0.59));
+    float b = dot(d, galPole);
+    float mwMask = exp(-b * b * 18.0);
+    vec3 galU = normalize(cross(galPole, vec3(0.0, 0.0, 1.0)));
+    vec3 galV = cross(galPole, galU);
+    float l = atan(dot(d, galV), dot(d, galU));
+    float mwClouds = 0.60 + 0.40 * sin(l * 2.0 + 1.2) * cos(l * 3.0 - 0.4);
+    vec3 mwCol = vec3(0.007, 0.010, 0.018) * (mwMask * mwClouds * 0.48);
+
+    // 2. Multi-tier anti-aliased point stars with realistic magnitude & temperature distribution
+    vec3 starAcc = vec3(0.0);
+    for (int shell = 0; shell < 2; shell++) {
+        float freq = (shell == 0) ? 36.0 : 68.0;
+        vec3 pCell = d * freq;
+        vec3 id = floor(pCell);
+        vec3 fd = fract(pCell) - 0.5;
+
+        vec3 h = fract(sin(vec3(dot(id, vec3(127.1, 311.7, 74.7)),
+                                dot(id, vec3(269.5, 183.3, 246.1)),
+                                dot(id, vec3(113.5, 271.9, 124.6)))) * 43758.5453);
+        
+        float prob = (shell == 0) ? 0.32 : 0.22;
+        if (h.x < prob) {
+            vec2 starOffset = (h.yz - 0.5) * 0.70;
+            float dist2 = dot(fd.xy - starOffset, fd.xy - starOffset) + fd.z * fd.z;
+            float rad = (shell == 0) ? 0.065 : 0.045;
+            float starProfile = exp(-dist2 / (rad * rad));
+            
+            float magScale = pow(h.x / prob, 3.6);
+            float bright = mix(0.12, 3.5, magScale);
+            float starT = mix(2800.0, 22000.0, pow(h.y, 2.0));
+            vec3 starColor = blackbody(starT);
+            
+            starAcc += starProfile * starColor * bright * 0.42;
+        }
+    }
+
+    return mwCol + starAcc;
 }
 
 // Canonical equations of motion in Boyer–Lindquist coordinates (r, u = cos θ, pr, pu)
@@ -496,39 +557,45 @@ void main() {
                     firstHitR = rHit;
                 }
 
-                // Keplerian angular velocity Ω(r) & four-velocity u^t
+                // Keplerian angular velocity Ω(r) & relativistic four-velocity u^t
                 float omega = 1.0 / (pow(rHit, 1.5) + a);
-                float g_tt = -(1.0 - 2.0 / rHit);
-                float g_tphi = -2.0 * a / rHit;
-                float g_phiphi = rHit * rHit + a * a + 2.0 * a * a / rHit;
-                float denomUt = -(g_tt + 2.0 * g_tphi * omega + g_phiphi * omega * omega);
-                float ut = denomUt > 0.0 ? 1.0 / sqrt(denomUt) : 1.15;
+                float denomUt = max(0.02, 1.0 - 3.0 / rHit + 2.0 * a / pow(rHit, 1.5));
+                float ut = 1.0 / sqrt(denomUt);
 
-                // Relativistic Doppler factor g = 1 / (u^t * (1 - Ω * L))
+                // Relativistic Doppler factor g = nu_obs / nu_em = 1 / (u^t * (1 - Ω * L))
                 float factor = ut * (1.0 - omega * L);
-                float g = factor > 1e-4 ? clamp(1.0 / factor, 0.15, 6.0) : 1.0;
+                float g = factor > 1e-4 ? clamp(1.0 / factor, 0.12, 6.5) : 1.0;
 
-                // Zero-torque Novikov-Thorne flux profile F(r)
-                float x = sqrt(rHit);
-                float x0 = sqrt(r_isco);
-                float fProfile = clamp((x - x0) / max(0.12, x), 0.0, 1.0) * exp(-(rHit - r_isco) * 0.22);
-                float tempScale = pow(fProfile, 0.25);
+                // Novikov-Thorne zero-torque flux profile F(r) & emitted temperature T_em ~ F(r)^(1/4)
+                float fNT = novikovThorneFlux(rHit, a, r_isco);
+                float fNorm = clamp(fNT / 0.02827, 0.0, 1.0);
+                float tempScale = pow(fNorm, 0.25);
+                float radCool = smoothstep(r_out + 1.0, r_isco, rHit);
+                float Tem = 28000.0 * tempScale * (0.35 + 0.65 * radCool) + 1200.0;
+
+                // Relativistic Doppler shift: observed temperature T_obs = g * T_em
+                float Tobs = clamp(Tem * g, 1000.0, 65000.0);
+                vec3 col = blackbody(Tobs);
 
                 // Differential rotation shear in coordinates (r, φ - Ω(r)*t)
-                float phiCorot = phiCoord + omega * (uTime * 0.85);
-                float turb = diskPlasmaTurbulence(rHit, phiCorot, diskCrossings);
+                float phiCorot = phiCoord + omega * (uTime * 0.90);
+                float turb = diskPlasmaTurbulence(rHit, phiCorot, diskCrossings, r_isco);
 
-                float Tem = 11000.0 * tempScale + 1200.0;
-                float Tobs = Tem * g;
-                vec3 col = blackbody(Tobs);
-                float intensity = 4.2 * fProfile * turb * pow(g, 4.0);
+                // Bolometric intensity beaming boost: scales strictly as g^4
+                float beaming = pow(g, 4.0);
+                float intensity = 5.4 * fNorm * turb * beaming;
 
-                float alphaDisk = 0.88 * smoothstep(r_out, r_out - 1.8, rHit) * smoothstep(r_isco, r_isco + 0.20, rHit);
+                // Optical depth & vertical thickness H(r) = 0.035 r
+                float cosIncRay = max(0.06, abs(sHit.w));
+                float pathLen = (2.0 * 0.035 * rHit) / cosIncRay;
+                float density = fNorm * smoothstep(r_out, r_out - 1.8, rHit) * smoothstep(r_isco, r_isco + 0.15, rHit);
+                float alphaDisk = clamp(1.0 - exp(-pathLen * density * 3.4), 0.0, 0.95);
                 if (diskCrossings == 2) {
-                    alphaDisk = min(alphaDisk, 0.60);
+                    alphaDisk = min(alphaDisk, 0.62);
                 } else if (diskCrossings >= 3) {
                     alphaDisk = min(alphaDisk, 0.45);
                 }
+
                 emitColor += transmittance * alphaDisk * col * intensity;
                 transmittance *= (1.0 - alphaDisk);
 
@@ -549,6 +616,20 @@ void main() {
         } else {
             stepLimitReached = true;
         }
+    }
+
+    // Accumulate gravitationally lensed celestial background for escaped rays
+    if (escaped && uDebugMode == 0) {
+        vec3 dSky;
+        if (bImpact > 36.0) {
+            dSky = normalize(vec3(alpha, beta * cosObs + 80.0 * sinObs, -beta * sinObs + 80.0 * cosObs));
+        } else {
+            float sinThetaSky = sqrt(max(0.0, 1.0 - s.y * s.y));
+            dSky = normalize(vec3(sinThetaSky * cos(phiCoord), sinThetaSky * sin(phiCoord), s.y));
+        }
+        vec3 skyColor = lensedSky(dSky);
+        emitColor += transmittance * skyColor;
+        transmittance = 0.0;
     }
 
     // Diagnostics Views (Telemetry Modes 1 to 7)
@@ -633,7 +714,7 @@ void main() {
     // Screen-space mask fading leftward disc extension on desktop
     // so luminous plasma never crosses or collides with subtitle or formula card
     float leftFade = (uBhScreenCentre.x > 0.55) ? smoothstep(0.30, 0.52, vUV.x) : 1.0;
-    emitColor *= leftFade;
+    emitColor = mix(emitColor * leftFade, emitColor, escaped ? 1.0 : 0.0);
 
     float shadowMask = captured ? 1.0 : 0.0;
     float totalAlpha = clamp((1.0 - transmittance * (1.0 - shadowMask)) * uAuxOpacity, 0.0, 1.0);

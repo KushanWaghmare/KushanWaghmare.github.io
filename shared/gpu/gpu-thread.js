@@ -1438,6 +1438,7 @@
         const debugScale = (debugState.scale !== undefined && debugState.scale !== null) ? debugState.scale : null;
 
         if (activeRenderForm && activeRenderForm.kerrOverlay && trans.auxOpacity > 0.005 && kerrProg) {
+            gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
             const ko = activeRenderForm.kerrOverlay;
             gl.useProgram(kerrProg);
             gl.uniform2f(kerrUniforms.uRes, pw, ph);
@@ -1450,6 +1451,7 @@
             gl.uniform1f(kerrUniforms.uIsLight, isLight ? 1.0 : 0.0);
             gl.uniform1i(kerrUniforms.uDebugMode, debugMode);
             drawQuad();
+            if (!isLight) gl.blendFunc(gl.ONE, gl.ONE);
         }
 
         // 2c. Optional same-scene auxiliary line/surface overlay
