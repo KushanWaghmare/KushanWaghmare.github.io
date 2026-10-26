@@ -230,7 +230,7 @@ vec3 lensedSky(vec3 d, float time) {
             float starProfile = exp(-dist2 / (rad * rad));
             
             float magScale = pow(h.x / prob, 3.6);
-            float bright = mix(0.12, 3.5, magScale);
+            float bright = mix(0.12, 1.65, magScale);
             float starT = mix(2800.0, 22000.0, pow(h.y, 2.0));
             vec3 starColor = blackbody(starT);
             
@@ -452,7 +452,7 @@ vec3 lensedSky(vec3 d, float time) {
             float starProfile = exp(-dist2 / (rad * rad));
             
             float magScale = pow(h.x / prob, 3.6);
-            float bright = mix(0.12, 3.5, magScale);
+            float bright = mix(0.12, 1.65, magScale);
             float starT = mix(2800.0, 22000.0, pow(h.y, 2.0));
             vec3 starColor = blackbody(starT);
             
@@ -533,14 +533,14 @@ void main() {
     bool captured = false;
     bool escaped = false;
     float tCoord = 0.0;
-    float phiCoord = 0.0;
+    float phiCoord = 1.57079632679;
     int totalSteps = 0;
     float worstH = 0.0;
     float firstHitR = 0.0;
     bool stepLimitReached = false;
 
     // Fast escape check for distant non-lensed rays
-    if (bImpact > 30.0) {
+    if (bImpact > 26.0) {
         escaped = true;
     }
 
@@ -675,16 +675,14 @@ void main() {
 
     // Accumulate gravitationally lensed celestial background for escaped rays
     if (escaped && uDebugMode == 0) {
-        vec3 dSky;
-        if (bImpact > 30.0) {
-            dSky = normalize(vec3(alpha, beta * cosObs + 35.0 * sinObs, -beta * sinObs + 35.0 * cosObs));
-        } else {
+        float lensBlend = smoothstep(26.0, 18.0, bImpact);
+        if (lensBlend > 0.001) {
             float sinThetaSky = sqrt(max(0.0, 1.0 - s.y * s.y));
-            dSky = normalize(vec3(sinThetaSky * cos(phiCoord), sinThetaSky * sin(phiCoord), s.y));
+            vec3 dSky = normalize(vec3(sinThetaSky * cos(phiCoord), sinThetaSky * sin(phiCoord), s.y));
+            vec3 skyColor = lensedSky(dSky, uTime);
+            emitColor += transmittance * skyColor * lensBlend;
+            transmittance = mix(transmittance, 0.0, lensBlend);
         }
-        vec3 skyColor = lensedSky(dSky, uTime);
-        emitColor += transmittance * skyColor;
-        transmittance = 0.0;
     }
 
     // Diagnostics Views (Telemetry Modes 1 to 7)
