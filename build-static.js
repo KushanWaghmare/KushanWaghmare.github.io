@@ -100,13 +100,6 @@ const tags = (a) => a.map((t) => `<span class="tag">${t}</span>`).join("");
 
 const VEC = ["right", "left", "bottom", "top", "right"];
 const hubPage = () => `
-        <nav class="snap-pager" aria-label="Section navigation">
-            <a href="#intro" class="snap-dot active" data-title="00 Intro" aria-label="Introduction"><span class="dot-disc" style="--a:var(--rgb-hub)"></span><span class="dot-text">00 Intro</span></a>
-            ${keys.map((k, i) => `
-            <a href="#domain-${k}" class="snap-dot" data-d="${k}" data-title="${pad(i)} ${SITE.domains[k].short}" aria-label="${SITE.domains[k].name}"><span class="dot-disc" style="--a:var(--rgb-${k})"></span><span class="dot-text">${pad(i)} ${SITE.domains[k].short}</span></a>`).join("")}
-            <a href="#about-contact" class="snap-dot" data-title="06 Contact" aria-label="About & Contact"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">06 Contact</span></a>
-        </nav>
-
         <section class="snap-section hero" id="intro" data-domain="hub" data-sim="hub:intro" data-enter="zoom" style="--a:var(--rgb-hub)">
             <div class="snap-inner">
                 <h1 data-hero>Kushan<br>Waghmare</h1>
@@ -183,13 +176,6 @@ const domainPage = (key) => {
     const d = SITE.domains[key], ps = list(key);
     const domainIdx = keys.indexOf(key);
     return `
-    <nav class="snap-pager" aria-label="Section navigation">
-        <a href="#domain-intro" class="snap-dot active" data-title="00 Overview" aria-label="${d.name} Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
-        ${ps.map((p, i) => `
-        <a href="#proj-${p.id}" class="snap-dot" data-title="${pad(i)} ${p.title}" aria-label="${p.title}"><span class="dot-disc"></span><span class="dot-text">${pad(i)} ${p.title}</span></a>`).join("")}
-        <a href="#domain-explore" class="snap-dot" data-title="${String(ps.length + 1).padStart(2, "0")} Explore" aria-label="Explore other domains"><span class="dot-disc"></span><span class="dot-text">${String(ps.length + 1).padStart(2, "0")} Explore</span></a>
-    </nav>
-
     <section class="snap-section hero" id="domain-intro" data-domain="${key}" data-sim="domain:${key}:0">
         <div class="snap-inner">
             <h1 data-hero>${d.name}</h1>
@@ -250,12 +236,6 @@ const domainPage = (key) => {
 
 const projectIndexPage = () => {
     return `
-    <nav class="snap-pager" aria-label="Section navigation">
-        <a href="#proj-index-hero" class="snap-dot active" data-title="00 Overview" aria-label="Overview"><span class="dot-disc"></span><span class="dot-text">00 Overview</span></a>
-        ${SITE.projects.map((p, i) => `
-        <a href="#proj-${p.id}" class="snap-dot" data-title="${pad(i)} ${p.title}" aria-label="${p.title}"><span class="dot-disc" style="--a:var(--rgb-${p.domain})"></span><span class="dot-text">${pad(i)} ${p.title}</span></a>`).join("")}
-    </nav>
-
     <section class="snap-section hero" id="proj-index-hero" data-domain="hub" data-sim="project-index:hero">
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Projects</div>
@@ -305,13 +285,6 @@ const projectIndexPage = () => {
 const papersPage = () => {
     const papers = SITE.papers || [];
     return `
-    <nav class="snap-pager" aria-label="Section navigation">
-        <a href="#papers-hero" class="snap-dot active" data-title="00 Overview" aria-label="Papers Overview"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">00 Overview</span></a>
-        ${papers.map((p, i) => `
-        <a href="#paper-${p.id}" class="snap-dot" data-title="${pad(i)} ${p.short || p.title}" aria-label="${p.title}"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">${pad(i)} ${p.short || p.title}</span></a>`).join("")}
-        <a href="#papers-contact" class="snap-dot" data-title="${String(papers.length + 1).padStart(2, "0")} Contact" aria-label="Contact & Collaboration"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">${String(papers.length + 1).padStart(2, "0")} Contact</span></a>
-    </nav>
-
     <section class="snap-section hero" id="papers-hero" data-domain="papers" data-sim="papers-index:hero" style="--a:var(--rgb-papers)">
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Research Papers</div>
@@ -382,12 +355,6 @@ const paperDetailPage = (p) => {
     const prev = i > 0 ? papers[i - 1] : null;
     const next = i >= 0 && i < papers.length - 1 ? papers[i + 1] : null;
     return `
-    <nav class="snap-pager" aria-label="Paper section navigation">
-        <a href="#paper-hero" class="snap-dot active" data-title="00 Overview" aria-label="Paper Overview"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">00 Overview</span></a>
-        <a href="#paper-theory" class="snap-dot" data-title="01 Theory &amp; Proofs" aria-label="Theory and Proofs"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">01 Theory &amp; Proofs</span></a>
-        <a href="#paper-cite" class="snap-dot" data-title="02 Citation &amp; Sibling Papers" aria-label="Citation and Sibling Papers"><span class="dot-disc" style="--a:var(--rgb-papers)"></span><span class="dot-text">02 Citation &amp; Siblings</span></a>
-    </nav>
-
     <section class="snap-section hero" id="paper-hero" data-domain="papers" data-sim="paper:${p.id}:hero" style="--a:var(--rgb-papers)">
         <div class="snap-inner" style="max-width:980px">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / <a href="papers.html">Research Papers</a> / <span>${p.short || p.title}</span></div>
@@ -475,13 +442,6 @@ const paperDetailPage = (p) => {
 const coursesPage = () => {
     const tracks = SITE.courses || [];
     return `
-    <nav class="snap-pager" aria-label="Section navigation">
-        <a href="#courses-hero" class="snap-dot active" data-title="00 Overview" aria-label="Courses Overview"><span class="dot-disc" style="--a:var(--rgb-courses)"></span><span class="dot-text">00 Overview</span></a>
-        ${tracks.map((tr, i) => `
-        <a href="#track-${tr.track}" class="snap-dot" data-title="${pad(i)} ${tr.short || tr.degree}" aria-label="${tr.degree}"><span class="dot-disc" style="--a:var(--rgb-courses)"></span><span class="dot-text">${pad(i)} ${tr.short || tr.degree}</span></a>`).join("")}
-        <a href="#courses-contact" class="snap-dot" data-title="${String(tracks.length + 1).padStart(2, "0")} Contact" aria-label="Academic Enquiries"><span class="dot-disc" style="--a:var(--rgb-contact)"></span><span class="dot-text">${String(tracks.length + 1).padStart(2, "0")} Contact</span></a>
-    </nav>
-
     <section class="snap-section hero" id="courses-hero" data-domain="courses" data-sim="courses-index:hero" style="--a:var(--rgb-courses)">
         <div class="snap-inner">
             <div class="crumbs" data-hero><a href="index.html">Home</a> / Coursework</div>
@@ -560,7 +520,6 @@ const renderNav = (active, pageType) => {
         ? `<a href="index.html" class="nav-back-link"><span class="full">← Hub</span><span class="short">←</span></a>`
         : "";
     return `
-    <div class="progress"></div>
     <header class="nav glass">
         <div class="nav-brand-group">
             <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
