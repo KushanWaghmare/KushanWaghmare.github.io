@@ -1,6 +1,7 @@
-/* Unified Single-Buffer Particle Engine & 3D Transition Stage Controller (shared/gpu/gpu-thread.js).
-   Mounts ONE fixed full-viewport WebGL canvas (#stage-canvas) with ONE THREE.Points and
-   ONE shared particle buffer (N = 60k desktop, 20k mobile). Particle i keeps its identity
+/* Unified Single-Buffer Particle Engine, HDR Post Pipeline & 3D Transition Stage Controller
+   (shared/gpu/gpu-thread.js).
+   Mounts ONE fixed full-viewport WebGL2 canvas (#stage-canvas) with ONE THREE.Points and
+   ONE shared particle buffer (N = 90k desktop, 30k mobile). Particle i keeps its identity
    for the entire session and is never respawned or reallocated. */
 
 (function (root, factory) {
@@ -33,7 +34,6 @@
         evalBezierTangent3D,
         computeArcControls,
         evalWaypointSpline,
-        curlNoise3D,
         computeSpatialMatching
     } = TM;
 
@@ -43,12 +43,14 @@
     const isReducedMotion = () =>
         window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const INITIAL_N = isMobileDevice() ? 20000 : 60000;
-    const MIN_ADAPTIVE_N = isMobileDevice() ? 10000 : 24000;
+    const INITIAL_N = isMobileDevice() ? 30000 : 90000;
+    const MIN_ADAPTIVE_N = isMobileDevice() ? 15000 : 36000;
+    const N_STARS = isMobileDevice() ? 1400 : 2600;
     let bufferReallocations = 0;
 
     /* ---------- Single Shared Particle Buffer (Allocated ONCE, Never Reallocated) ---------- */
     const positions = new Float32Array(INITIAL_N * 3);
+    const prevPositions = new Float32Array(INITIAL_N * 3);
     const colours = new Float32Array(INITIAL_N * 3);
     const sizes = new Float32Array(INITIAL_N);
     const seeds = new Float32Array(INITIAL_N * 4);
@@ -71,7 +73,6 @@
     const scratchDstCodes = new Uint32Array(INITIAL_N);
     const scratchSrcOrder = new Int32Array(INITIAL_N);
     const scratchDstOrder = new Int32Array(INITIAL_N);
-    const rankOrderScratch = new Int32Array(INITIAL_N);
     const rankDistScratch = new Float32Array(INITIAL_N);
 
     // Deterministic per-particle identity seeds (Particle i keeps its identity forever)
@@ -82,14 +83,35 @@
         seeds[i4 + 1] = rand();
         seeds[i4 + 2] = rand();
         seeds[i4 + 3] = rand();
-        sizes[i] = 1.6 + 0.8 * seeds[i4 + 3];
+        sizes[i] = 1.5 + 0.8 * seeds[i4 + 3];
         mortonPerm[i] = i;
+    }
+
+    // Separate cheap static background starfield/dust layer (not part of the main swarm)
+    const starPosSeed = new Float32Array(N_STARS * 4);
+    const starCols = new Float32Array(N_STARS * 3);
+    const starRand = mulberry32(0x53544152);
+    for (let i = 0; i < N_STARS; i++) {
+        const i4 = i * 4, i3 = i * 3;
+        starPosSeed[i4]     = (starRand() - 0.5) * 120.0;
+        starPosSeed[i4 + 1] = (starRand() - 0.5) * 120.0;
+        starPosSeed[i4 + 2] = (starRand() - 0.5) * 120.0;
+        starPosSeed[i4 + 3] = starRand();
+        const temp = starRand();
+        if (temp < 0.55) {
+            starCols[i3] = 0.62; starCols[i3 + 1] = 0.78; starCols[i3 + 2] = 1.00;
+        } else if (temp < 0.85) {
+            starCols[i3] = 0.92; starCols[i3 + 1] = 0.94; starCols[i3 + 2] = 0.98;
+        } else {
+            starCols[i3] = 1.00; starCols[i3 + 1] = 0.78; starCols[i3 + 2] = 0.54;
+        }
     }
 
     const sharedBuffer = {
         maxCount: INITIAL_N,
         count: INITIAL_N,
         positions,
+        prevPositions,
         colours,
         sizes,
         seeds,
@@ -116,12 +138,13 @@
 
     /* ---------- THREE Scene & Points Setup ---------- */
     const scene = new Scene();
-    const camera = new PerspectiveCamera(46, window.innerWidth / Math.max(1, window.innerHeight), 0.1, 600);
+    const camera = new PerspectiveCamera(52, window.innerWidth / Math.max(1, window.innerHeight), 0.1, 600);
     const geometry = new BufferGeometry();
     geometry.setAttribute("position", new BufferAttribute(positions, 3, true));
     geometry.setAttribute("colour", new BufferAttribute(colours, 3, true));
     geometry.setAttribute("size", new BufferAttribute(sizes, 1, true));
     geometry.setAttribute("seed", new BufferAttribute(seeds, 4, false));
+    geometry.setAttribute("prevPosition", new BufferAttribute(prevPositions, 3, true));
     geometry.setDrawRange(0, INITIAL_N);
 
     const points = new Points(geometry, { type: "SharedParticleMaterial", blending: "AdditiveBlending" });
@@ -139,7 +162,7 @@
 
     const gl = stageCanvas.getContext("webgl2", {
         alpha: true,
-        depth: true,
+        depth: false,
         stencil: false,
         antialias: false,
         premultipliedAlpha: true,
@@ -171,7 +194,7 @@
     resizeStage();
     window.addEventListener("resize", resizeStage, { passive: true });
 
-    /* ---------- Shader Compilation & Single Shared VAO/VBO Setup ---------- */
+    /* ---------- Shader Compilation, VAO/VBOs & HDR Render Targets ---------- */
     const compileShader = (type, src) => {
         const s = gl.createShader(type);
         gl.shaderSource(s, src);
@@ -202,49 +225,127 @@
         return p;
     };
 
-    let pointProg = null, auxProg = null, kerrProg = null;
-    let pointUniforms = {}, auxUniforms = {}, kerrUniforms = {};
-    let sharedVAO = null, auxVAO = null, quadVAO = null;
-    let posVBO = null, colVBO = null, sizeVBO = null, seedVBO = null;
+    let pointProg = null, starProg = null, auxProg = null, kerrProg = null;
+    let trailDecayProg = null, blitAddProg = null, brightPassProg = null, blurProg = null, compositeProg = null;
+    let pointUniforms = {}, starUniforms = {}, auxUniforms = {}, kerrUniforms = {};
+    let trailDecayUniforms = {}, blitAddUniforms = {}, brightPassUniforms = {}, blurUniforms = {}, compositeUniforms = {};
+
+    let sharedVAO = null, starVAO = null, auxVAO = null, quadVAO = null;
+    let posVBO = null, prevPosVBO = null, colVBO = null, sizeVBO = null, seedVBO = null;
+    let starPosVBO = null, starColVBO = null;
     let auxPosVBO = null, auxColVBO = null, quadVBO = null;
+
+    let hdrSupported = false;
+    let rtWidth = 0, rtHeight = 0;
+    let trailRT = [null, null];
+    let trailReadIdx = 0;
+    let trailNeedsReset = true;
+    let sceneRT = null, bloomBrightRT = null, bloomPingRT = null, bloomPongRT = null;
+    let postQuality = 2; // 2 = dual-pass wide bloom, 1 = single-pass bloom under load
     let contextLost = false;
 
+    const deleteRenderTarget = (rt) => {
+        if (!rt) return;
+        if (rt.fbo) gl.deleteFramebuffer(rt.fbo);
+        if (rt.tex) gl.deleteTexture(rt.tex);
+    };
+
+    const createRenderTarget = (w, h, useHalfFloat) => {
+        const tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        const fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+
+        let complete = false;
+        if (useHalfFloat) {
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+            complete = (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE);
+        }
+        if (!complete) {
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+        }
+
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        return { fbo, tex, width: w, height: h };
+    };
+
+    const ensurePostTargets = (pw, ph) => {
+        if (rtWidth === pw && rtHeight === ph && sceneRT && trailRT[0]) return;
+        deleteRenderTarget(trailRT[0]);
+        deleteRenderTarget(trailRT[1]);
+        deleteRenderTarget(sceneRT);
+        deleteRenderTarget(bloomBrightRT);
+        deleteRenderTarget(bloomPingRT);
+        deleteRenderTarget(bloomPongRT);
+
+        rtWidth = pw;
+        rtHeight = ph;
+        const hw = Math.max(1, pw >> 1), hh = Math.max(1, ph >> 1);
+        const qw = Math.max(1, pw >> 2), qh = Math.max(1, ph >> 2);
+
+        trailRT[0] = createRenderTarget(pw, ph, hdrSupported);
+        trailRT[1] = createRenderTarget(pw, ph, hdrSupported);
+        sceneRT = createRenderTarget(pw, ph, hdrSupported);
+        bloomBrightRT = createRenderTarget(hw, hh, hdrSupported);
+        bloomPingRT = createRenderTarget(qw, qh, hdrSupported);
+        bloomPongRT = createRenderTarget(qw, qh, hdrSupported);
+        trailNeedsReset = true;
+    };
+
+    const getUniforms = (prog, names) => {
+        const out = {};
+        if (!prog) return out;
+        for (let i = 0; i < names.length; i++) {
+            out[names[i]] = gl.getUniformLocation(prog, names[i]);
+        }
+        return out;
+    };
+
     const initGLResources = () => {
+        hdrSupported = !!gl.getExtension("EXT_color_buffer_float");
+        gl.getExtension("OES_texture_float_linear");
+
         pointProg = createProgram(TS.VS_SHARED_POINTS, TS.FS_SHARED_POINTS);
+        starProg = createProgram(TS.VS_STARFIELD, TS.FS_STARFIELD);
         auxProg = createProgram(TS.VS_AUX_SCENE, TS.FS_AUX_SCENE);
         kerrProg = createProgram(TS.VS_KERR_SCENE, TS.FS_KERR_SCENE);
-        if (!pointProg) return false;
+        trailDecayProg = createProgram(TS.VS_POST_QUAD, TS.FS_TRAIL_DECAY);
+        blitAddProg = createProgram(TS.VS_POST_QUAD, TS.FS_BLIT_ADD);
+        brightPassProg = createProgram(TS.VS_POST_QUAD, TS.FS_BRIGHT_PASS);
+        blurProg = createProgram(TS.VS_POST_QUAD, TS.FS_BLUR_9TAP);
+        compositeProg = createProgram(TS.VS_POST_QUAD, TS.FS_POST_COMPOSITE);
 
-        pointUniforms = {
-            uViewProj: gl.getUniformLocation(pointProg, "uViewProj"),
-            uCamPos: gl.getUniformLocation(pointProg, "uCamPos"),
-            uViewport: gl.getUniformLocation(pointProg, "uViewport"),
-            uDpr: gl.getUniformLocation(pointProg, "uDpr"),
-            uHeroBoost: gl.getUniformLocation(pointProg, "uHeroBoost"),
-            uIsLight: gl.getUniformLocation(pointProg, "uIsLight")
-        };
+        if (!pointProg || !compositeProg) return false;
 
-        if (auxProg) {
-            auxUniforms = {
-                uViewProj: gl.getUniformLocation(auxProg, "uViewProj"),
-                uAuxOpacity: gl.getUniformLocation(auxProg, "uAuxOpacity"),
-                uIsLight: gl.getUniformLocation(auxProg, "uIsLight")
-            };
-        }
+        pointUniforms = getUniforms(pointProg, [
+            "uViewProj", "uCamPos", "uViewport", "uDpr", "uTime",
+            "uHeroBoost", "uIsLight", "uStreakScale", "uMaxStreakPx", "uTrailGain", "uFogTint"
+        ]);
+        starUniforms = getUniforms(starProg, ["uViewProj", "uCamPos", "uViewport", "uDpr", "uTime", "uIsLight"]);
+        auxUniforms = getUniforms(auxProg, ["uViewProj", "uAuxOpacity", "uIsLight"]);
+        kerrUniforms = getUniforms(kerrProg, [
+            "uRes", "uBhScreenCentre", "uBhScale", "uSpin", "uTilt", "uTime", "uAuxOpacity", "uIsLight"
+        ]);
+        trailDecayUniforms = getUniforms(trailDecayProg, ["uPrevTex", "uDecay"]);
+        blitAddUniforms = getUniforms(blitAddProg, ["uTex"]);
+        brightPassUniforms = getUniforms(brightPassProg, ["uSceneTex", "uThreshold"]);
+        blurUniforms = getUniforms(blurProg, ["uTex", "uTexelStep"]);
+        compositeUniforms = getUniforms(compositeProg, [
+            "uSceneTex", "uBloomTex", "uRes", "uTime", "uBloomStrength",
+            "uVignette", "uGrain", "uCaStrength", "uWarpStrength", "uWarpCentre", "uFogTint", "uIsLight"
+        ]);
 
-        if (kerrProg) {
-            kerrUniforms = {
-                uRes: gl.getUniformLocation(kerrProg, "uRes"),
-                uBhScreenCentre: gl.getUniformLocation(kerrProg, "uBhScreenCentre"),
-                uBhScale: gl.getUniformLocation(kerrProg, "uBhScale"),
-                uSpin: gl.getUniformLocation(kerrProg, "uSpin"),
-                uTilt: gl.getUniformLocation(kerrProg, "uTilt"),
-                uTime: gl.getUniformLocation(kerrProg, "uTime"),
-                uAuxOpacity: gl.getUniformLocation(kerrProg, "uAuxOpacity"),
-                uIsLight: gl.getUniformLocation(kerrProg, "uIsLight")
-            };
-        }
-
+        // 1. Single Shared Swarm VAO
         sharedVAO = gl.createVertexArray();
         gl.bindVertexArray(sharedVAO);
 
@@ -275,9 +376,32 @@
         gl.enableVertexAttribArray(3);
         gl.vertexAttribPointer(3, 4, gl.FLOAT, false, 0, 0);
 
+        prevPosVBO = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, prevPosVBO);
+        gl.bufferData(gl.ARRAY_BUFFER, prevPositions.byteLength, gl.DYNAMIC_DRAW);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, prevPositions);
+        gl.enableVertexAttribArray(4);
+        gl.vertexAttribPointer(4, 3, gl.FLOAT, false, 0, 0);
+
         gl.bindVertexArray(null);
 
-        // Auxiliary same-scene geometry VAO
+        // 2. Parallax Background Starfield VAO (static buffer)
+        starVAO = gl.createVertexArray();
+        gl.bindVertexArray(starVAO);
+        starPosVBO = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, starPosVBO);
+        gl.bufferData(gl.ARRAY_BUFFER, starPosSeed, gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
+
+        starColVBO = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, starColVBO);
+        gl.bufferData(gl.ARRAY_BUFFER, starCols, gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(1);
+        gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+        gl.bindVertexArray(null);
+
+        // 3. Auxiliary same-scene geometry VAO
         auxVAO = gl.createVertexArray();
         gl.bindVertexArray(auxVAO);
         auxPosVBO = gl.createBuffer();
@@ -293,7 +417,7 @@
         gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
         gl.bindVertexArray(null);
 
-        // Fullscreen billboard quad VAO for Kerr black hole lensing in same scene
+        // 4. Fullscreen quad VAO for post passes & Kerr lensing
         quadVAO = gl.createVertexArray();
         gl.bindVertexArray(quadVAO);
         quadVBO = gl.createBuffer();
@@ -302,6 +426,10 @@
         gl.enableVertexAttribArray(0);
         gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
         gl.bindVertexArray(null);
+
+        rtWidth = 0;
+        rtHeight = 0;
+        ensurePostTargets(stageCanvas.width, stageCanvas.height);
 
         return true;
     };
@@ -333,7 +461,7 @@
     }, { passive: true });
 
     window.addEventListener("click", (e) => {
-        if (e.target && e.target.closest && e.target.closest("a, button, input, .nav, .snap-pager, .card, .pill")) return;
+        if (e.target && e.target.closest && e.target.closest("a, button, input, .nav, .snap-pager, .card, .pill, .stage-debug-hud")) return;
         const activeForm = formations[currentIndex];
         if (activeForm && typeof activeForm.onClick === "function") {
             activeForm.onClick(e, ctxState);
@@ -353,15 +481,7 @@
     let formations = [];
     let currentIndex = 0;
 
-    /* ---------- 5-Phase Transition State Machine ----------
-       Phases:
-         IDLE
-         DETACH   (0.00 - 0.15)
-         COLLAPSE (0.10 - 0.40)
-         FLIGHT   (0.30 - 0.80)
-         NUCLEATE (0.70 - 1.00)
-         HANDOFF  (last ~0.6 s: u in [0.75, 1.00])
-    */
+    /* ---------- Transition State ---------- */
     const trans = {
         active: false,
         phase: "IDLE",
@@ -380,7 +500,17 @@
         camEndPos: new Vector3(),
         camEndTarget: new Vector3(),
         domScrolledToTarget: false,
-        auxOpacity: 1.0
+        auxOpacity: 1.0,
+        warpStrength: 0.0
+    };
+
+    // Smoothed per-section post parameters
+    const postState = {
+        bloomStrength: 0.92,
+        bloomThreshold: 0.78,
+        trailDecay: 0.82,
+        streakScale: 1.65,
+        fogTint: [0.022, 0.056, 0.145]
     };
 
     const getPhaseName = (u) => {
@@ -407,12 +537,10 @@
                 alpha = (i === currentIndex) ? 1.0 : 0.0;
                 shiftY = 0.0;
             } else if (i === fromIdx) {
-                // Outgoing section content fades & slides out during DETACH/COLLAPSE (0 - 35%)
                 const fadeOut = 1.0 - smoothstep(0.02, 0.32, u);
                 alpha = fadeOut;
                 shiftY = (1.0 - fadeOut) * (toIdx > fromIdx ? -28.0 : 28.0);
             } else if (i === toIdx) {
-                // Arriving section content fades/slides in ONLY during NUCLEATE (70% - 100%), NOT before
                 const fadeIn = smoothstep(0.70, 0.98, u);
                 alpha = fadeIn;
                 shiftY = (1.0 - fadeIn) * (toIdx > fromIdx ? 28.0 : -28.0);
@@ -446,14 +574,9 @@
         document.querySelectorAll(".snap-dot").forEach((dot) => {
             dot.classList.toggle("active", dot.getAttribute("href") === "#" + id);
         });
-        // Reveal elements in the target section
         sec.querySelectorAll("[data-reveal], [data-hero]").forEach((el) => el.classList.add("revealed"));
     };
 
-    /**
-     * Ranks all particles i in [0, N-1] by Euclidean distance from heroStart
-     * so closest particles detach first during COLLAPSE and trail in rank order during FLIGHT.
-     */
     const computeParticleRanks = (srcPos, count, heroStart) => {
         const N = count | 0;
         const hx = heroStart.x, hy = heroStart.y, hz = heroStart.z;
@@ -467,35 +590,25 @@
         const invMax = 1.0 / maxD;
         particleRanks[0] = 0.0;
         for (let i = 1; i < N; i++) {
-            // Blend normalised distance with deterministic seed jitter so ranks are smoothly distributed in [0, 1]
             const dNorm = rankDistScratch[i] * invMax;
             particleRanks[i] = clamp(0.82 * dNorm + 0.18 * seeds[i * 4 + 2], 0.0, 1.0);
         }
     };
 
-    /**
-     * Starts or retargets a transition to targetIdx.
-     * If called mid-flight, captures CURRENT live positions (fromPositions = positions)
-     * and current Hero #0 position without snapping or restarting.
-     */
     const startTransition = (targetIdx) => {
         const maxIdx = Math.max(0, formations.length - 1);
         const clampedTarget = clamp(targetIdx | 0, 0, maxIdx);
 
         if (!trans.active && clampedTarget === currentIndex) return;
-
-        // If already transitioning toward this exact target, ignore duplicate trigger
         if (trans.active && clampedTarget === trans.toIndex) return;
 
         const N = sharedBuffer.count;
         const wasMidFlight = trans.active;
 
-        // Capture live current state into fromPositions / fromColours / fromSizes
         fromPositions.set(positions);
         fromColours.set(colours);
         fromSizes.set(sizes);
 
-        // Hero Particle #0 starts at its EXACT live position from the last rendered frame
         trans.heroStart.set(positions[0], positions[1], positions[2]);
 
         const fromIdx = wasMidFlight ? trans.toIndex : currentIndex;
@@ -504,11 +617,9 @@
             toForm.init(nextScratchBuffer, ctxState);
         }
 
-        // Advance next formation once at current simTime so its target positions are fresh
         toForm.update(0.016, simTime, nextScratchBuffer, ctxState);
         rawTargetPositions.set(nextPositions);
 
-        // Compute 3D Morton space-filling curve matching between live positions and next formation targets
         computeSpatialMatching(
             fromPositions,
             rawTargetPositions,
@@ -521,27 +632,20 @@
             scratchDstOrder
         );
 
-        // Apply Morton permutation to target formation so particle i's state in `toForm` matches slot π(i)
         if (typeof toForm.applyPermutation === "function") {
             toForm.applyPermutation(mortonPerm, N);
             toForm.update(0.001, simTime, nextScratchBuffer, ctxState);
         }
 
-        // Hero #0 landing seed at target formation's particle #0
         trans.heroEnd.set(nextPositions[0], nextPositions[1], nextPositions[2]);
-
-        // Rank particles by distance to Hero #0 for staggered COLLAPSE & comet-tail delay
         computeParticleRanks(fromPositions, N, trans.heroStart);
 
-        // Construct 3D cubic Bézier arc (or multi-origin waypoint spline for multi-section nav jumps)
         const jumpSpan = Math.abs(clampedTarget - (wasMidFlight ? currentIndex : fromIdx));
         if (jumpSpan > 1 && !wasMidFlight) {
             const wps = [trans.heroStart.clone()];
             const step = clampedTarget > fromIdx ? 1 : -1;
             for (let k = fromIdx + step; k !== clampedTarget; k += step) {
-                if (formations[k]) {
-                    wps.push(formations[k].origin.clone());
-                }
+                if (formations[k]) wps.push(formations[k].origin.clone());
             }
             wps.push(trans.heroEnd.clone());
             trans.waypoints = wps;
@@ -551,7 +655,6 @@
             trans.arc = computeArcControls(trans.heroStart, trans.heroEnd, Math.min(fromIdx, clampedTarget));
         }
 
-        // Camera rail endpoints
         trans.camStartPos.copy(camera.position);
         trans.camStartTarget.copy(camera.target);
         const camDist = toForm.cameraDistance || 13.5;
@@ -569,7 +672,7 @@
         trans.auxOpacity = 0.0;
     };
 
-    /* ---------- Gesture Handling (Wheel, Touch Swipe, Keyboard, Nav Clicks) ---------- */
+    /* ---------- Gesture Handling ---------- */
     let lastGestureTime = 0;
     const GESTURE_LOCK_MS = 460;
 
@@ -578,13 +681,11 @@
         if (trans.active) {
             const currentDir = Math.sign(trans.toIndex - trans.fromIndex) || 1;
             if (Math.sign(deltaStep) !== currentDir) {
-                // Immediate reversal mid-flight: retarget from live positions without jump!
                 trans.queuedIndex = -1;
                 startTransition(clamp(trans.toIndex + deltaStep, 0, formations.length - 1));
                 lastGestureTime = now;
                 return;
             }
-            // Same direction mid-flight: allow 1 queued input if past 35% of flight
             if (trans.u > 0.35 && trans.queuedIndex === -1) {
                 trans.queuedIndex = clamp(trans.toIndex + deltaStep, 0, formations.length - 1);
             }
@@ -615,14 +716,10 @@
         if (dir === 0) return;
 
         const activeSec = sections[currentIndex];
-        if (!trans.active && !isAtSectionScrollBoundary(activeSec, dir)) {
-            return; // Allow internal scroll within oversized section
-        }
+        if (!trans.active && !isAtSectionScrollBoundary(activeSec, dir)) return;
 
         e.preventDefault();
-        if (Math.abs(dy) >= 24) {
-            triggerStep(dir);
-        }
+        if (Math.abs(dy) >= 24) triggerStep(dir);
     }, { passive: false });
 
     let touchStartY = null, touchStartX = null, touchConsumed = false;
@@ -657,6 +754,8 @@
         touchConsumed = false;
     }, { passive: true });
 
+    let simTime = 0;
+
     const refreshSections = () => {
         sections = Array.from(document.querySelectorAll(".snap-section"));
         formations.forEach((f) => { if (f && f.dispose) f.dispose(); });
@@ -669,7 +768,6 @@
             formations = [TF.createFormation("hub:intro", 0, {})];
         }
 
-        // Check URL hash on load
         let startIdx = 0;
         if (location.hash) {
             const targetSec = document.querySelector(location.hash);
@@ -682,15 +780,28 @@
         trans.u = 0;
         trans.queuedIndex = -1;
         trans.auxOpacity = 1.0;
+        trans.warpStrength = 0.0;
 
         const active = formations[currentIndex];
         if (active) {
             active.init(sharedBuffer, ctxState);
             active.update(0.016, 0.016, sharedBuffer, ctxState);
+            prevPositions.set(positions);
             const camDist = active.cameraDistance || 13.5;
+            camera.fov = 52.0;
             camera.position.set(active.origin.x, active.origin.y, active.origin.z + camDist);
             camera.target.copy(active.origin);
+            postState.bloomStrength = active.bloomStrength || 0.78;
+            postState.bloomThreshold = active.bloomThreshold || 0.80;
+            postState.trailDecay = active.trailDecay || 0.68;
+            postState.streakScale = active.streakScale || 1.25;
+            if (active.fogTint) {
+                postState.fogTint[0] = active.fogTint[0];
+                postState.fogTint[1] = active.fogTint[1];
+                postState.fogTint[2] = active.fogTint[2];
+            }
         }
+        trailNeedsReset = true;
         applyDomSectionVisibility(currentIndex, currentIndex, 1.0, false);
         updateThemeAndDots(currentIndex);
     };
@@ -702,7 +813,7 @@
     const isDebugEnabled = () => {
         try {
             return new URLSearchParams(location.search).has("debug");
-        } catch (e) {
+        } catch (_e) {
             return false;
         }
     };
@@ -724,16 +835,17 @@
             `formation : ${formName} (#${currentIndex}${trans.active ? " → #" + trans.toIndex : ""})\n` +
             `phase     : ${trans.phase}\n` +
             `progress  : ${(trans.u * 100).toFixed(1)}%\n` +
-            `fps       : ${fps.toFixed(1)}\n` +
+            `fov       : ${camera.fov.toFixed(1)}°\n` +
+            `fps       : ${fps.toFixed(1)} (HDR16F: ${hdrSupported ? "on" : "8b"})\n` +
             `particles : ${sharedBuffer.count} (reallocs: ${bufferReallocations})\n` +
             `hero #0   : (${hx}, ${hy}, ${hz})`;
     };
 
-    /* ---------- Main Simulation & Transition Render Loop ---------- */
+    /* ---------- Main Simulation, Transition & HDR Post-Processing Loop ---------- */
     let lastTime = performance.now();
-    let simTime = 0;
     let fps = 60;
     let slowFrames = 0;
+    let lastThemeLight = document.documentElement.dataset.theme === "light";
 
     const tmpHeroPos = new Vector3();
     const tmpHeroTan = new Vector3();
@@ -764,6 +876,12 @@
         return evalBezierTangent3D(a.p0, a.p1, a.p2, a.p3, s, out);
     };
 
+    const drawQuad = () => {
+        gl.bindVertexArray(quadVAO);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.bindVertexArray(null);
+    };
+
     const tick = (now) => {
         requestAnimationFrame(tick);
         if (contextLost || document.hidden) {
@@ -779,24 +897,36 @@
         const instFps = 1.0 / Math.max(1e-4, rawDt);
         fps = fps * 0.92 + instFps * 0.08;
 
-        // Adaptive particle count if frame time > 20 ms sustained (never reallocates buffer)
-        if (rawDt > 0.021 && sharedBuffer.count > MIN_ADAPTIVE_N) {
+        // Adaptive particle count & post quality if frame time > 20 ms sustained (never reallocates buffer)
+        if (rawDt > 0.0205) {
             slowFrames++;
-            if (slowFrames > 35) {
-                sharedBuffer.count = Math.max(MIN_ADAPTIVE_N, Math.floor(sharedBuffer.count * 0.9));
-                geometry.setDrawRange(0, sharedBuffer.count);
+            if (slowFrames > 30) {
+                if (sharedBuffer.count > MIN_ADAPTIVE_N) {
+                    sharedBuffer.count = Math.max(MIN_ADAPTIVE_N, Math.floor(sharedBuffer.count * 0.88));
+                    geometry.setDrawRange(0, sharedBuffer.count);
+                } else {
+                    postQuality = 1;
+                }
                 slowFrames = 0;
             }
         } else {
             slowFrames = Math.max(0, slowFrames - 1);
+            if (fps > 56 && postQuality < 2) postQuality = 2;
         }
 
         ctxState.isMobile = isMobileDevice();
         ctxState.isLight = document.documentElement.dataset.theme === "light";
+        if (ctxState.isLight !== lastThemeLight) {
+            lastThemeLight = ctxState.isLight;
+            trailNeedsReset = true;
+        }
         ctxState.pointerX += (ctxState.targetPointerX - ctxState.pointerX) * 0.08;
         ctxState.pointerY += (ctxState.targetPointerY - ctxState.pointerY) * 0.08;
 
         const N = sharedBuffer.count;
+        // Snapshot previous frame positions before advancing simulation for velocity-aligned ribbons
+        prevPositions.subarray(0, N * 3).set(positions.subarray(0, N * 3));
+
         let heroBoost = 0.0;
 
         if (!trans.active) {
@@ -805,19 +935,36 @@
             if (active) {
                 active.update(dt, simTime, sharedBuffer, ctxState);
                 const camDist = active.cameraDistance || 13.5;
-                camera.fov = 46.0;
+                camera.fov = 52.0;
+                // Gentle cinematic idle camera orbit + pointer parallax
+                const camOrbitX = Math.sin(simTime * 0.19) * 0.36;
+                const camOrbitY = Math.cos(simTime * 0.14) * 0.24;
+                const camOrbitZ = Math.sin(simTime * 0.11) * 0.28;
                 camera.position.set(
-                    active.origin.x + ctxState.pointerX * 0.55,
-                    active.origin.y - ctxState.pointerY * 0.45,
-                    active.origin.z + camDist
+                    active.origin.x + camOrbitX + ctxState.pointerX * 0.62,
+                    active.origin.y + camOrbitY - ctxState.pointerY * 0.48,
+                    active.origin.z + camDist + camOrbitZ
                 );
                 camera.target.set(
-                    active.origin.x + ctxState.pointerX * 0.15,
-                    active.origin.y - ctxState.pointerY * 0.15,
+                    active.origin.x + ctxState.pointerX * 0.16,
+                    active.origin.y - ctxState.pointerY * 0.16,
                     active.origin.z
                 );
+
+                // Smoothly converge post-processing parameters to active section
+                const pLerp = clamp(dt * 4.0, 0.02, 0.25);
+                postState.bloomStrength += ((active.bloomStrength || 0.78) - postState.bloomStrength) * pLerp;
+                postState.bloomThreshold += ((active.bloomThreshold || 0.80) - postState.bloomThreshold) * pLerp;
+                postState.trailDecay += ((active.trailDecay || 0.68) - postState.trailDecay) * pLerp;
+                postState.streakScale += ((active.streakScale || 1.25) - postState.streakScale) * pLerp;
+                if (active.fogTint) {
+                    postState.fogTint[0] += (active.fogTint[0] - postState.fogTint[0]) * pLerp;
+                    postState.fogTint[1] += (active.fogTint[1] - postState.fogTint[1]) * pLerp;
+                    postState.fogTint[2] += (active.fogTint[2] - postState.fogTint[2]) * pLerp;
+                }
             }
             trans.auxOpacity = Math.min(1.0, trans.auxOpacity + dt * 2.5);
+            trans.warpStrength = 0.0;
         } else {
             /* ---------- 5-PHASE TRANSITION ENGINE ---------- */
             trans.u = clamp(trans.u + dt / trans.duration, 0.0, 1.0);
@@ -827,20 +974,15 @@
             const fromForm = formations[trans.fromIndex];
             const toForm = formations[trans.toIndex];
 
-            // 1. Outgoing simulation keeps running during DETACH (0-15%) and COLLAPSE (10-40%)
-            //    with blend factor ramping 1 -> 0 (if not mid-flight interrupted)
             const fromSimBlend = trans.interrupted ? 0.0 : (1.0 - smoothstep(0.10, 0.40, u));
             if (fromSimBlend > 0.001 && fromForm) {
                 fromForm.update(dt * fromSimBlend, simTime, fromScratchBuffer, ctxState);
             }
 
-            // 2. Arriving simulation runs during NUCLEATE & HANDOFF (u >= 0.55)
-            //    so its live state is ready for smooth handoff
             if (u >= 0.55 && toForm) {
                 toForm.update(dt, simTime, nextScratchBuffer, ctxState);
             }
 
-            // 3. Scroll DOM to target section at start of NUCLEATE (u >= 0.70) so DOM fades in at NUCLEATE
             if (!trans.domScrolledToTarget && u >= 0.70) {
                 trans.domScrolledToTarget = true;
                 const targetSec = sections[trans.toIndex];
@@ -851,17 +993,13 @@
             }
             applyDomSectionVisibility(trans.fromIndex, trans.toIndex, u, true);
 
-            // 4. Hero Particle #0 trajectory along 3D cubic Bézier arc
             const sHero = smootherstep(0.0, 0.86, u);
             evalFlightPath(sHero, tmpHeroPos);
             evalFlightTangent(sHero, tmpHeroTan);
 
-            // HANDOFF blend factor λ = smoothstep(0 -> 1) over the last ~0.6 s (u in [0.75, 1.00])
             const lambda = smoothstep(0.75, 1.00, u);
-            // Nucleation outward expansion factor from Hero seed during NUCLEATE (70-100%)
             const nu = smoothstep(0.66, 0.94, u);
 
-            // Hero #0 position, colour, size (index 0)
             const hEndX = nextPositions[0], hEndY = nextPositions[1], hEndZ = nextPositions[2];
             const hFlightX = tmpHeroPos.x + (hEndX - trans.heroEnd.x) * sHero;
             const hFlightY = tmpHeroPos.y + (hEndY - trans.heroEnd.y) * sHero;
@@ -876,15 +1014,11 @@
             colours[2] = fromColours[2] + (nextColours[2] - fromColours[2]) * smoothstep(0.15, 0.90, u);
             sizes[0] = fromSizes[0] + (nextSizes[0] - fromSizes[0]) * lambda;
 
-            // Hero glow boost: ramps up in DETACH (0-15%), stays bright in FLIGHT, settles in HANDOFF
             heroBoost = smoothstep(0.0, 0.12, u) * (1.0 - smoothstep(0.78, 0.98, u));
 
-            // 5. Swarm Particles (i = 1 .. N-1):
-            //    Staggered release by distance rank -> curl-noise stream collapse -> comet tail -> Morton nucleation -> λ handoff
             const hx0 = trans.heroStart.x, hy0 = trans.heroStart.y, hz0 = trans.heroStart.z;
             const hx1 = trans.heroEnd.x, hy1 = trans.heroEnd.y, hz1 = trans.heroEnd.z;
 
-            // Pre-sample 64 points along the 3D flight curve into pre-allocated LUT for fast O(1) comet-tail lookup
             for (let k = 0; k <= LUT_STEPS; k++) {
                 evalFlightPath(k / LUT_STEPS, tmpStreamPos);
                 curveLutX[k] = tmpStreamPos.x;
@@ -898,16 +1032,10 @@
                 const i3 = i * 3, i4 = i * 4;
                 const rank = particleRanks[i];
 
-                const fx = fromPositions[i3];
-                const fy = fromPositions[i3 + 1];
-                const fz = fromPositions[i3 + 2];
-
-                const tx = nextPositions[i3];
-                const ty = nextPositions[i3 + 1];
-                const tz = nextPositions[i3 + 2];
+                const fx = fromPositions[i3], fy = fromPositions[i3 + 1], fz = fromPositions[i3 + 2];
+                const tx = nextPositions[i3], ty = nextPositions[i3 + 1], tz = nextPositions[i3 + 2];
 
                 if (reduced) {
-                    // Direct morph for prefers-reduced-motion
                     const m = smootherstep(0.0, 1.0, u);
                     positions[i3]     = fx + (tx - fx) * m;
                     positions[i3 + 1] = fy + (ty - fy) * m;
@@ -919,14 +1047,11 @@
                     continue;
                 }
 
-                // Staggered release window by distance rank to Hero #0:
-                // Closest particles release at u = 0.08; farthest release at u = 0.26
                 const uStart = 0.07 + 0.19 * rank;
                 const uEnd = 0.72 + 0.16 * rank;
                 const si = smootherstep(uStart, uEnd, u);
                 const oneMinusS = 1.0 - si;
 
-                // Evaluate B(si) from LUT with linear interpolation
                 const lutCoord = si * LUT_STEPS;
                 const lutIdx = Math.min(LUT_STEPS - 1, lutCoord | 0);
                 const lutFrac = lutCoord - lutIdx;
@@ -934,49 +1059,39 @@
                 const by = curveLutY[lutIdx] + (curveLutY[lutIdx + 1] - curveLutY[lutIdx]) * lutFrac;
                 const bz = curveLutZ[lutIdx] + (curveLutZ[lutIdx + 1] - curveLutZ[lutIdx]) * lutFrac;
 
-                // Outgoing offset from Hero #0 contracts as (1 - si)^2 during COLLAPSE
                 const wSrc = oneMinusS * oneMinusS;
-                const dStartX = fx - hx0;
-                const dStartY = fy - hy0;
-                const dStartZ = fz - hz0;
+                const dStartX = fx - hx0, dStartY = fy - hy0, dStartZ = fz - hz0;
 
-                // Divergence-free curl-noise & helical comet-stream perturbation active during COLLAPSE/FLIGHT
-                const streamEnv = 4.0 * si * oneMinusS; // 0 at si=0 and si=1, peaks at si=0.5
+                const streamEnv = 4.0 * si * oneMinusS;
                 const phase = seeds[i4] * 6.2831853 + si * 9.5 - simTime * 2.4;
                 const tubeRad = (0.35 + 1.45 * rank) * streamEnv;
                 const cx = Math.cos(phase) * tubeRad + Math.sin(seeds[i4 + 1] * 12.0 + si * 5.0) * 0.45 * streamEnv;
                 const cy = Math.sin(phase) * tubeRad + Math.cos(seeds[i4 + 2] * 12.0 - si * 4.5) * 0.45 * streamEnv;
                 const cz = Math.sin(phase * 0.7 + seeds[i4 + 3] * 6.28) * tubeRad * 0.8;
 
-                // Arriving offset from Hero #0 expands outward from the landing seed during NUCLEATE
                 const wDst = si * si * nu;
-                const dEndX = tx - hx1;
-                const dEndY = ty - hy1;
-                const dEndZ = tz - hz1;
+                const dEndX = tx - hx1, dEndY = ty - hy1, dEndZ = tz - hz1;
 
                 const flightX = bx + wSrc * dStartX + cx + wDst * dEndX;
                 const flightY = by + wSrc * dStartY + cy + wDst * dEndY;
                 const flightZ = bz + wSrc * dStartZ + cz + wDst * dEndZ;
 
-                // HANDOFF: pos = mix(flightPos, simPos, λ) over the last ~0.6 s
                 positions[i3]     = flightX + (tx - flightX) * lambda;
                 positions[i3 + 1] = flightY + (ty - flightY) * lambda;
                 positions[i3 + 2] = flightZ + (tz - flightZ) * lambda;
 
                 const colBlend = clamp(si * 0.72 + lambda * 0.28, 0.0, 1.0);
                 const streamGlow = streamEnv * 0.22;
-                colours[i3]     = clamp(fromColours[i3] + (nextColours[i3] - fromColours[i3]) * colBlend + streamGlow * 0.6, 0.0, 1.0);
-                colours[i3 + 1] = clamp(fromColours[i3 + 1] + (nextColours[i3 + 1] - fromColours[i3 + 1]) * colBlend + streamGlow * 0.8, 0.0, 1.0);
-                colours[i3 + 2] = clamp(fromColours[i3 + 2] + (nextColours[i3 + 2] - fromColours[i3 + 2]) * colBlend + streamGlow, 0.0, 1.0);
+                colours[i3]     = fromColours[i3] + (nextColours[i3] - fromColours[i3]) * colBlend + streamGlow * 0.6;
+                colours[i3 + 1] = fromColours[i3 + 1] + (nextColours[i3 + 1] - fromColours[i3 + 1]) * colBlend + streamGlow * 0.8;
+                colours[i3 + 2] = fromColours[i3 + 2] + (nextColours[i3 + 2] - fromColours[i3 + 2]) * colBlend + streamGlow;
 
                 sizes[i] = fromSizes[i] + (nextSizes[i] - fromSizes[i]) * colBlend + streamEnv * 0.45;
             }
 
-            // 6. Camera Rail: rides slightly behind and above the hero during FLIGHT with gentle FOV breath,
-            //    then settles smoothly into the arriving section's camera pose during NUCLEATE/HANDOFF
             if (reduced) {
                 const cm = smootherstep(0.0, 1.0, u);
-                camera.fov = 46.0;
+                camera.fov = 52.0;
                 camera.position.lerpVectors(trans.camStartPos, trans.camEndPos, cm);
                 camera.target.lerpVectors(trans.camStartTarget, trans.camEndTarget, cm);
             } else {
@@ -991,7 +1106,6 @@
                 const baseTgtY = trans.camStartTarget.y + (trans.camEndTarget.y - trans.camStartTarget.y) * baseLerp;
                 const baseTgtZ = trans.camStartTarget.z + (trans.camEndTarget.z - trans.camStartTarget.z) * baseLerp;
 
-                // Camera rail offset behind & above the Hero particle along the 3D arc
                 const railCamX = tmpHeroPos.x - tmpHeroTan.x * 6.5;
                 const railCamY = tmpHeroPos.y - tmpHeroTan.y * 4.0 + 2.8;
                 const railCamZ = tmpHeroPos.z + 14.5;
@@ -1007,15 +1121,27 @@
                     baseTgtZ + (tmpHeroPos.z - baseTgtZ) * railWeight * 0.72
                 );
 
-                // Gentle FOV breath peaking mid-flight
                 const breath = Math.sin(Math.PI * smoothstep(0.10, 0.90, u));
-                camera.fov = 46.0 + 8.5 * breath;
+                camera.fov = 52.0 + 8.5 * breath;
             }
 
-            // Auxiliary scene shaders (e.g. Kerr black hole lensing, wireframe overlays) fade in only at the very end of HANDOFF
+            if (toForm) {
+                const m = smoothstep(0.15, 0.85, u);
+                const fB = (fromForm && fromForm.bloomStrength) || 0.78;
+                const tB = toForm.bloomStrength || 0.78;
+                postState.bloomStrength = fB + (tB - fB) * m;
+                const fD = (fromForm && fromForm.trailDecay) || 0.68;
+                const tD = toForm.trailDecay || 0.68;
+                postState.trailDecay = (fD + (tD - fD) * m) * 0.72;
+                if (toForm.fogTint && fromForm && fromForm.fogTint) {
+                    postState.fogTint[0] = fromForm.fogTint[0] + (toForm.fogTint[0] - fromForm.fogTint[0]) * m;
+                    postState.fogTint[1] = fromForm.fogTint[1] + (toForm.fogTint[1] - fromForm.fogTint[1]) * m;
+                    postState.fogTint[2] = fromForm.fogTint[2] + (toForm.fogTint[2] - fromForm.fogTint[2]) * m;
+                }
+            }
+
             trans.auxOpacity = smoothstep(0.88, 1.00, u);
 
-            // 7. Complete Transition at u = 1.0
             if (u >= 1.0) {
                 currentIndex = trans.toIndex;
                 trans.active = false;
@@ -1023,10 +1149,10 @@
                 trans.u = 0.0;
                 trans.interrupted = false;
                 trans.auxOpacity = 1.0;
+                trans.warpStrength = 0.0;
                 applyDomSectionVisibility(currentIndex, currentIndex, 1.0, false);
                 updateThemeAndDots(currentIndex);
 
-                // If one input was queued during flight, start it now
                 if (trans.queuedIndex !== -1 && trans.queuedIndex !== currentIndex) {
                     const nextQ = trans.queuedIndex;
                     trans.queuedIndex = -1;
@@ -1040,45 +1166,121 @@
         camera.updateMatrices();
         updateDebugHud();
 
-        /* ---------- WebGL Render Pass on Single #stage-canvas ---------- */
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.viewport(0, 0, stageCanvas.width, stageCanvas.height);
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        /* ---------- HDR Multi-Pass Render Graph on Single #stage-canvas ---------- */
+        const pw = stageCanvas.width;
+        const ph = stageCanvas.height;
+        ensurePostTargets(pw, ph);
+
+        gl.disable(gl.DEPTH_TEST);
+        const isLight = ctxState.isLight;
+        const activeRenderForm = formations[trans.active ? trans.toIndex : currentIndex];
+
+        // Pass 1: Persistent Motion-Trail Decay + Single Shared Swarm Draw into trailRT[writeIdx]
+        const trailWriteIdx = 1 - trailReadIdx;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, trailRT[trailWriteIdx].fbo);
+        gl.viewport(0, 0, pw, ph);
+
+        const effDecay = (trailNeedsReset || isLight || isReducedMotion()) ? 0.0 : clamp(postState.trailDecay, 0.0, 0.93);
+        trailNeedsReset = false;
+
+        gl.disable(gl.BLEND);
+        gl.useProgram(trailDecayProg);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, trailRT[trailReadIdx].tex);
+        gl.uniform1i(trailDecayUniforms.uPrevTex, 0);
+        gl.uniform1f(trailDecayUniforms.uDecay, effDecay);
+        drawQuad();
 
         gl.enable(gl.BLEND);
-        if (ctxState.isLight) {
+        if (isLight) {
             gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         } else {
             gl.blendFunc(gl.ONE, gl.ONE);
         }
-        gl.disable(gl.DEPTH_TEST);
 
-        const activeRenderForm = formations[trans.active ? trans.toIndex : currentIndex];
+        const trailGain = isLight ? 0.85 : clamp(1.0 - effDecay * 0.56, 0.36, 1.0);
+        const maxStreakPx = trans.active ? 48.0 : 20.0;
 
-        // 1. Optional same-scene Kerr Black Hole lensing & photon ring shader (fades in via uAuxOpacity only after particles settle)
+        gl.useProgram(pointProg);
+        gl.uniformMatrix4fv(pointUniforms.uViewProj, false, camera.viewProjectionMatrix.elements);
+        gl.uniform3f(pointUniforms.uCamPos, camera.position.x, camera.position.y, camera.position.z);
+        gl.uniform2f(pointUniforms.uViewport, width, height);
+        gl.uniform1f(pointUniforms.uDpr, dpr);
+        gl.uniform1f(pointUniforms.uTime, simTime);
+        gl.uniform1f(pointUniforms.uHeroBoost, heroBoost);
+        gl.uniform1f(pointUniforms.uIsLight, isLight ? 1.0 : 0.0);
+        gl.uniform1f(pointUniforms.uStreakScale, isReducedMotion() ? 0.0 : postState.streakScale);
+        gl.uniform1f(pointUniforms.uMaxStreakPx, maxStreakPx);
+        gl.uniform1f(pointUniforms.uTrailGain, trailGain);
+        gl.uniform3f(pointUniforms.uFogTint, postState.fogTint[0], postState.fogTint[1], postState.fogTint[2]);
+
+        gl.bindVertexArray(sharedVAO);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, posVBO);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, positions.subarray(0, N * 3));
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, prevPosVBO);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, prevPositions.subarray(0, N * 3));
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, colVBO);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, colours.subarray(0, N * 3));
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, sizeVBO);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, sizes.subarray(0, N));
+
+        gl.drawArrays(gl.POINTS, 0, N);
+        gl.bindVertexArray(null);
+
+        trailReadIdx = trailWriteIdx;
+
+        // Pass 2: Assemble Linear HDR Scene in sceneRT (Parallax Starfield + Same-Scene Aux + Trailed Swarm)
+        gl.bindFramebuffer(gl.FRAMEBUFFER, sceneRT.fbo);
+        gl.viewport(0, 0, pw, ph);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.enable(gl.BLEND);
+        if (isLight) {
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        } else {
+            gl.blendFunc(gl.ONE, gl.ONE);
+        }
+
+        // 2a. Parallax background dust/starfield layer
+        if (starProg) {
+            gl.useProgram(starProg);
+            gl.uniformMatrix4fv(starUniforms.uViewProj, false, camera.viewProjectionMatrix.elements);
+            gl.uniform3f(starUniforms.uCamPos, camera.position.x, camera.position.y, camera.position.z);
+            gl.uniform2f(starUniforms.uViewport, width, height);
+            gl.uniform1f(starUniforms.uDpr, dpr);
+            gl.uniform1f(starUniforms.uTime, simTime);
+            gl.uniform1f(starUniforms.uIsLight, isLight ? 1.0 : 0.0);
+            gl.bindVertexArray(starVAO);
+            gl.drawArrays(gl.POINTS, 0, N_STARS);
+            gl.bindVertexArray(null);
+        }
+
+        // 2b. Optional same-scene Kerr Black Hole lensing & photon ring shader
         if (activeRenderForm && activeRenderForm.kerrOverlay && trans.auxOpacity > 0.005 && kerrProg) {
             const ko = activeRenderForm.kerrOverlay;
             gl.useProgram(kerrProg);
-            gl.uniform2f(kerrUniforms.uRes, stageCanvas.width, stageCanvas.height);
+            gl.uniform2f(kerrUniforms.uRes, pw, ph);
             gl.uniform2f(kerrUniforms.uBhScreenCentre, ko.screenX, ko.screenY);
             gl.uniform1f(kerrUniforms.uBhScale, ko.scale);
             gl.uniform1f(kerrUniforms.uSpin, ko.spin);
             gl.uniform1f(kerrUniforms.uTilt, ko.tilt);
             gl.uniform1f(kerrUniforms.uTime, simTime);
             gl.uniform1f(kerrUniforms.uAuxOpacity, trans.auxOpacity);
-            gl.uniform1f(kerrUniforms.uIsLight, ctxState.isLight ? 1.0 : 0.0);
-            gl.bindVertexArray(quadVAO);
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-            gl.bindVertexArray(null);
+            gl.uniform1f(kerrUniforms.uIsLight, isLight ? 1.0 : 0.0);
+            drawQuad();
         }
 
-        // 2. Optional same-scene auxiliary line/surface overlay (fades in via uAuxOpacity only after particles settle)
+        // 2c. Optional same-scene auxiliary line/surface overlay
         if (activeRenderForm && activeRenderForm.auxLineCount > 0 && trans.auxOpacity > 0.005 && auxProg) {
             gl.useProgram(auxProg);
             gl.uniformMatrix4fv(auxUniforms.uViewProj, false, camera.viewProjectionMatrix.elements);
             gl.uniform1f(auxUniforms.uAuxOpacity, trans.auxOpacity);
-            gl.uniform1f(auxUniforms.uIsLight, ctxState.isLight ? 1.0 : 0.0);
+            gl.uniform1f(auxUniforms.uIsLight, isLight ? 1.0 : 0.0);
 
             gl.bindVertexArray(auxVAO);
             const vCount = Math.min(8192, activeRenderForm.auxLineCount);
@@ -1090,28 +1292,95 @@
             gl.bindVertexArray(null);
         }
 
-        // 3. Single Shared THREE.Points Particle Draw Call
-        gl.useProgram(pointProg);
-        gl.uniformMatrix4fv(pointUniforms.uViewProj, false, camera.viewProjectionMatrix.elements);
-        gl.uniform3f(pointUniforms.uCamPos, camera.position.x, camera.position.y, camera.position.z);
-        gl.uniform2f(pointUniforms.uViewport, width, height);
-        gl.uniform1f(pointUniforms.uDpr, dpr);
-        gl.uniform1f(pointUniforms.uHeroBoost, heroBoost);
-        gl.uniform1f(pointUniforms.uIsLight, ctxState.isLight ? 1.0 : 0.0);
+        // 2d. Composite persistent trailed particle swarm into sceneRT
+        if (isLight) {
+            gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        } else {
+            gl.blendFunc(gl.ONE, gl.ONE);
+        }
+        gl.useProgram(blitAddProg);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, trailRT[trailReadIdx].tex);
+        gl.uniform1i(blitAddUniforms.uTex, 0);
+        drawQuad();
 
-        gl.bindVertexArray(sharedVAO);
+        // Pass 3: Selective HDR Bloom (Bright-Pass + Separable 9-Tap Gaussian Blur)
+        gl.disable(gl.BLEND);
+        if (!isLight && brightPassProg && blurProg) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, bloomBrightRT.fbo);
+            gl.viewport(0, 0, bloomBrightRT.width, bloomBrightRT.height);
+            gl.useProgram(brightPassProg);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, sceneRT.tex);
+            gl.uniform1i(brightPassUniforms.uSceneTex, 0);
+            gl.uniform1f(brightPassUniforms.uThreshold, postState.bloomThreshold);
+            drawQuad();
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, posVBO);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, positions.subarray(0, N * 3));
+            const bw = bloomPingRT.width, bh = bloomPingRT.height;
+            gl.viewport(0, 0, bw, bh);
+            gl.useProgram(blurProg);
+            gl.uniform1i(blurUniforms.uTex, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, colVBO);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, colours.subarray(0, N * 3));
+            // Iteration 1: tight core bloom
+            gl.bindFramebuffer(gl.FRAMEBUFFER, bloomPingRT.fbo);
+            gl.bindTexture(gl.TEXTURE_2D, bloomBrightRT.tex);
+            gl.uniform2f(blurUniforms.uTexelStep, 1.0 / bw, 0.0);
+            drawQuad();
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, sizeVBO);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, sizes.subarray(0, N));
+            gl.bindFramebuffer(gl.FRAMEBUFFER, bloomPongRT.fbo);
+            gl.bindTexture(gl.TEXTURE_2D, bloomPingRT.tex);
+            gl.uniform2f(blurUniforms.uTexelStep, 0.0, 1.0 / bh);
+            drawQuad();
 
-        gl.drawArrays(gl.POINTS, 0, N);
-        gl.bindVertexArray(null);
+            // Iteration 2: wide atmospheric halo (adaptive)
+            if (postQuality >= 2) {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, bloomPingRT.fbo);
+                gl.bindTexture(gl.TEXTURE_2D, bloomPongRT.tex);
+                gl.uniform2f(blurUniforms.uTexelStep, 2.1 / bw, 0.0);
+                drawQuad();
+
+                gl.bindFramebuffer(gl.FRAMEBUFFER, bloomPongRT.fbo);
+                gl.bindTexture(gl.TEXTURE_2D, bloomPingRT.tex);
+                gl.uniform2f(blurUniforms.uTexelStep, 0.0, 2.1 / bh);
+                drawQuad();
+            }
+        }
+
+        // Pass 4: Final ACES Filmic Tone-Mapped Composite onto #stage-canvas
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, pw, ph);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        if (isLight) {
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        } else {
+            gl.disable(gl.BLEND);
+        }
+
+        gl.useProgram(compositeProg);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, sceneRT.tex);
+        gl.uniform1i(compositeUniforms.uSceneTex, 0);
+
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, bloomPongRT.tex);
+        gl.uniform1i(compositeUniforms.uBloomTex, 1);
+
+        gl.uniform2f(compositeUniforms.uRes, pw, ph);
+        gl.uniform1f(compositeUniforms.uTime, simTime);
+        gl.uniform1f(compositeUniforms.uBloomStrength, postState.bloomStrength);
+        gl.uniform1f(compositeUniforms.uVignette, 0.36);
+        gl.uniform1f(compositeUniforms.uGrain, 0.020);
+        gl.uniform1f(compositeUniforms.uCaStrength, isReducedMotion() ? 0.0 : 0.0018);
+        gl.uniform1f(compositeUniforms.uWarpStrength, isReducedMotion() ? 0.0 : trans.warpStrength);
+        gl.uniform2f(compositeUniforms.uWarpCentre, 0.5, 0.5);
+        gl.uniform3f(compositeUniforms.uFogTint, postState.fogTint[0], postState.fogTint[1], postState.fogTint[2]);
+        gl.uniform1f(compositeUniforms.uIsLight, isLight ? 1.0 : 0.0);
+
+        drawQuad();
+        gl.activeTexture(gl.TEXTURE0);
     };
 
     requestAnimationFrame(tick);
@@ -1137,6 +1406,7 @@
         get fps() { return fps; },
         get heroPosition() { return new Vector3(positions[0], positions[1], positions[2]); },
         get formations() { return formations; },
+        get trans() { return trans; },
         refreshSections,
         goToSection: startTransition,
         triggerStep

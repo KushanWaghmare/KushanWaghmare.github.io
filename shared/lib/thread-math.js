@@ -310,6 +310,11 @@
             this.origin = origin instanceof Vector3 ? origin : new Vector3(origin.x || 0, origin.y || 0, origin.z || 0);
             this.id = id;
             this.initialized = false;
+            this.bloomStrength = 0.78;
+            this.bloomThreshold = 0.80;
+            this.trailDecay = 0.68;
+            this.streakScale = 1.25;
+            this.fogTint = [0.025, 0.045, 0.11];
         }
         init(_buffer, _ctx) {
             this.initialized = true;
@@ -485,7 +490,7 @@
      * Hero Particle #0 is always pinned to slot 0 so its identity and seed role are preserved.
      */
     const radixBuckets = new Int32Array(1024);
-    let radixTmp = new Int32Array(60000);
+    let radixTmp = new Int32Array(90000);
 
     const computeSpatialMatching = (
         srcPositions,

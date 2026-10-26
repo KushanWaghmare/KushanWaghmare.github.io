@@ -425,11 +425,12 @@ pre.glass {
     inset: 0;
     z-index: 1;
     pointer-events: none;
-    background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.72) 0%, rgba(var(--bg-rgb), 0.40) 42%, rgba(var(--bg-rgb), 0.0) 76%);
+    opacity: var(--ui-veil, 1);
+    background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.68) 0%, rgba(var(--bg-rgb), 0.34) 38%, rgba(var(--bg-rgb), 0.0) 68%);
 }
 
 .snap-inner {
-    max-width: min(840px, 70ch);
+    max-width: min(760px, 64ch);
     position: relative;
     z-index: 5 !important;
     display: flex;
@@ -440,10 +441,8 @@ pre.glass {
 .snap-inner::before {
     content: "";
     position: absolute;
-    inset: -24px -36px;
-    background: radial-gradient(ellipse at 25% 45%, rgba(var(--bg-rgb), 0.78) 0%, rgba(var(--bg-rgb), 0.48) 55%, transparent 100%);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    inset: -28px -48px;
+    background: radial-gradient(ellipse 62% 70% at 26% 50%, rgba(var(--bg-rgb), 0.76) 0%, rgba(var(--bg-rgb), 0.36) 52%, transparent 95%);
     border-radius: 28px;
     z-index: -1;
     pointer-events: none;
