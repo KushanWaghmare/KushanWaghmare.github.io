@@ -475,13 +475,16 @@ pre.glass {
     max-width: min(100%, 720px);
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 6px 0;
-    margin-top: 14px;
+    padding: 10px 22px;
+    margin-top: 18px;
     font-size: clamp(0.72rem, 1.8vw, 0.98rem);
     color: var(--fg);
-    background: transparent;
-    border: none;
-    box-shadow: none;
+    background: rgba(0, 0, 0, 0.88);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--glass-line);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 30px -10px rgba(var(--a), 0.22);
 }
 .hero-eq .eq-body {
     max-width: 100%;
@@ -493,7 +496,7 @@ pre.glass {
 .hero-eq .eq-caption {
     margin-top: 6px;
     padding-top: 6px;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     font-size: clamp(0.68rem, 1.35vw, 0.82rem);
     opacity: 0.82;
     max-width: 100%;
@@ -515,11 +518,12 @@ pre.glass {
     overflow-x: auto;
     overflow-y: hidden;
     color: var(--fg);
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+    background: rgba(0, 0, 0, 0.88);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--glass-line);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 30px -10px rgba(var(--a), 0.22);
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
 }
@@ -603,11 +607,8 @@ pre.glass {
 
 .snap-eq {
     align-self: flex-start;
-    padding: 6px 0;
+    padding: 10px 22px;
     margin: 8px 0;
-    background: transparent;
-    border: none;
-    box-shadow: none;
 }
 
 .snap-projects {
@@ -1570,13 +1571,13 @@ a.contact-value:hover {
     .snap-title { font-size: clamp(1.75rem, 7.5vw, 3rem); }
     .snap-lead, .lead { font-size: 15px; line-height: 1.6; }
     .hero-eq, .snap-eq {
-        padding: 4px 0;
+        padding: 8px 12px;
         margin-top: 6px;
         font-size: clamp(0.66rem, 3.2vw, 0.84rem);
         max-width: calc(100vw - 36px);
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
+        background: rgba(0, 0, 0, 0.88);
+        border: 1px solid var(--glass-line);
+        border-radius: 12px;
     }
     .snap-cta-btn { padding: 10px 18px; font-size: 12px; width: 100%; justify-content: center; }
     .snap-actions { width: 100%; gap: 8px; }
