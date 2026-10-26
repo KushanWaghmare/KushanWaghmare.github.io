@@ -462,7 +462,7 @@ void main() {
     float r_isco = iscoRadius(a);
     float r_out = 18.0;
 
-    float rObs = 80.0;
+    float rObs = 35.0;
     float delObs = rObs * rObs - 2.0 * rObs + a2;
     float pObs = rObs * rObs + a2 - a * L;
     float rad = max(0.0, (pObs * pObs) / delObs - (Q + (L - a) * (L - a)));
@@ -485,13 +485,13 @@ void main() {
     bool stepLimitReached = false;
 
     // Fast escape check for distant non-lensed rays
-    if (bImpact > 36.0) {
+    if (bImpact > 30.0) {
         escaped = true;
     }
 
-    // Numerical integration of Kerr null geodesics with adaptive RK4
+    // Numerical integration of Kerr null geodesics with adaptive RK4 (96 steps)
     if (!escaped) {
-    for (int step = 0; step < 180; step++) {
+    for (int step = 0; step < 96; step++) {
         totalSteps = step + 1;
         float r = s.x;
         float u = s.y;
@@ -513,7 +513,7 @@ void main() {
         }
 
         // Outward escape check
-        if ((r >= 25.0 && s.z > 0.0 && step > 2) || (r >= rObs + 2.0 && s.z > 0.0)) {
+        if ((r >= 22.0 && s.z > 0.0 && step > 2) || (r >= rObs + 1.0 && s.z > 0.0)) {
             escaped = true;
             break;
         }
@@ -521,7 +521,7 @@ void main() {
         // Strictly continuous adaptive integration step proportional to horizon distance
         // Monotonic rational profile with zero derivative discontinuities
         float distH = max(0.005, r - r_plus);
-        float dl = clamp(0.024 + 0.12 * (distH / (1.0 + distH * 0.28)) + 0.035 * max(0.0, r - 12.0), 0.024, 1.4);
+        float dl = clamp(0.032 + 0.16 * (distH / (1.0 + distH * 0.25)) + 0.06 * max(0.0, r - 10.0), 0.032, 1.8);
 
         // RK4 stage evaluations
         vec4 k1s, k2s, k3s, k4s;
@@ -599,7 +599,7 @@ void main() {
                 emitColor += transmittance * alphaDisk * col * intensity;
                 transmittance *= (1.0 - alphaDisk);
 
-                if (transmittance < 0.005) break;
+                if (transmittance < 0.015) break;
             }
         }
 
@@ -608,7 +608,7 @@ void main() {
     }
     }
 
-    if (!captured && !escaped && totalSteps >= 180) {
+    if (!captured && !escaped && totalSteps >= 96) {
         if (s.z < 0.0 && s.x < 3.0) {
             captured = true;
         } else if (s.z > 0.0 && s.x > 3.0) {
@@ -621,8 +621,8 @@ void main() {
     // Accumulate gravitationally lensed celestial background for escaped rays
     if (escaped && uDebugMode == 0) {
         vec3 dSky;
-        if (bImpact > 36.0) {
-            dSky = normalize(vec3(alpha, beta * cosObs + 80.0 * sinObs, -beta * sinObs + 80.0 * cosObs));
+        if (bImpact > 30.0) {
+            dSky = normalize(vec3(alpha, beta * cosObs + 35.0 * sinObs, -beta * sinObs + 35.0 * cosObs));
         } else {
             float sinThetaSky = sqrt(max(0.0, 1.0 - s.y * s.y));
             dSky = normalize(vec3(sinThetaSky * cos(phiCoord), sinThetaSky * sin(phiCoord), s.y));
@@ -645,7 +645,7 @@ void main() {
     }
     if (uDebugMode == 2) {
         // Mode 2 (c): Number of steps used per pixel (heatmap)
-        float tStep = float(totalSteps) / 180.0;
+        float tStep = float(totalSteps) / 96.0;
         vec3 colHeat;
         if (tStep < 0.33) colHeat = mix(vec3(0.05, 0.10, 0.65), vec3(0.0, 0.75, 0.80), tStep * 3.0);
         else if (tStep < 0.66) colHeat = mix(vec3(0.0, 0.75, 0.80), vec3(0.95, 0.85, 0.10), (tStep - 0.33) * 3.0);

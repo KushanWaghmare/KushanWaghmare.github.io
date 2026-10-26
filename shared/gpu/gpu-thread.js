@@ -257,7 +257,7 @@
     let trailRT = [null, null];
     let trailReadIdx = 0;
     let trailNeedsReset = true;
-    let sceneRT = null, bloomBrightRT = null, bloomPingRT = null, bloomPongRT = null;
+    let sceneRT = null, kerrRT = null, bloomBrightRT = null, bloomPingRT = null, bloomPongRT = null;
     let postQuality = 2; // 2 = dual-pass wide bloom, 1 = single-pass bloom under load
     let contextLost = false;
 
@@ -301,6 +301,7 @@
         deleteRenderTarget(trailRT[0]);
         deleteRenderTarget(trailRT[1]);
         deleteRenderTarget(sceneRT);
+        deleteRenderTarget(kerrRT);
         deleteRenderTarget(bloomBrightRT);
         deleteRenderTarget(bloomPingRT);
         deleteRenderTarget(bloomPongRT);
@@ -310,9 +311,16 @@
         const hw = Math.max(1, pw >> 1), hh = Math.max(1, ph >> 1);
         const qw = Math.max(1, pw >> 2), qh = Math.max(1, ph >> 2);
 
+        // Optimal ray tracer resolution: 1.0x CSS resolution on desktop, 0.85x on mobile
+        const isMob = isMobileDevice();
+        const kerrScale = isMob ? 0.85 : Math.min(1.0, dpr);
+        const kw = Math.max(1, Math.round(width * kerrScale));
+        const kh = Math.max(1, Math.round(height * kerrScale));
+
         trailRT[0] = createRenderTarget(pw, ph, hdrSupported);
         trailRT[1] = createRenderTarget(pw, ph, hdrSupported);
         sceneRT = createRenderTarget(pw, ph, hdrSupported);
+        kerrRT = createRenderTarget(kw, kh, hdrSupported);
         bloomBrightRT = createRenderTarget(hw, hh, hdrSupported);
         bloomPingRT = createRenderTarget(qw, qh, hdrSupported);
         bloomPongRT = createRenderTarget(qw, qh, hdrSupported);
@@ -1437,11 +1445,16 @@
         const debugSpin = (debugState.spin !== undefined && debugState.spin !== null) ? debugState.spin : null;
         const debugScale = (debugState.scale !== undefined && debugState.scale !== null) ? debugState.scale : null;
 
-        if (activeRenderForm && activeRenderForm.kerrOverlay && trans.auxOpacity > 0.005 && kerrProg) {
-            gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        if (activeRenderForm && activeRenderForm.kerrOverlay && trans.auxOpacity > 0.005 && kerrProg && kerrRT) {
+            // Render Kerr Black Hole ray tracer into kerrRT at optimal resolution
+            gl.bindFramebuffer(gl.FRAMEBUFFER, kerrRT.fbo);
+            gl.viewport(0, 0, kerrRT.width, kerrRT.height);
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
             const ko = activeRenderForm.kerrOverlay;
             gl.useProgram(kerrProg);
-            gl.uniform2f(kerrUniforms.uRes, pw, ph);
+            gl.uniform2f(kerrUniforms.uRes, kerrRT.width, kerrRT.height);
             gl.uniform2f(kerrUniforms.uBhScreenCentre, ko.screenX, ko.screenY);
             gl.uniform1f(kerrUniforms.uBhScale, debugScale !== null ? debugScale : ko.scale);
             gl.uniform1f(kerrUniforms.uSpin, debugSpin !== null ? debugSpin : ko.spin);
@@ -1450,6 +1463,16 @@
             gl.uniform1f(kerrUniforms.uAuxOpacity, trans.auxOpacity);
             gl.uniform1f(kerrUniforms.uIsLight, isLight ? 1.0 : 0.0);
             gl.uniform1i(kerrUniforms.uDebugMode, debugMode);
+            drawQuad();
+
+            // Blit kerrRT into sceneRT with linear hardware filtering and premultiplied alpha masking
+            gl.bindFramebuffer(gl.FRAMEBUFFER, sceneRT.fbo);
+            gl.viewport(0, 0, pw, ph);
+            gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+            gl.useProgram(blitAddProg);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, kerrRT.tex);
+            gl.uniform1i(blitAddUniforms.uTex, 0);
             drawQuad();
             if (!isLight) gl.blendFunc(gl.ONE, gl.ONE);
         }
