@@ -729,14 +729,7 @@ pre.glass {
 
 /* Fixed side-pager dots */
 .snap-pager {
-    position: fixed;
-    right: 24px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 55;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    display: none !important;
 }
 
 .snap-dot {
