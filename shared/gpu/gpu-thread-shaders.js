@@ -153,62 +153,107 @@ void main() {
 }
 `;
 
-    /* 3. Parallax Background Dust / Starfield Layer (separate static buffer, not part of main swarm) */
+    /* 3. Celestial Starfield & Milky Way Background Layer (matches Black Hole celestial sphere) */
     const VS_STARFIELD = `#version 300 es
 precision highp float;
 
-layout(location = 0) in vec4 aStarPosSeed; // xyz in [-80, 80]^3, w = magnitude [0, 1]
-layout(location = 1) in vec3 aStarCol;
-
-uniform mat4 uViewProj;
-uniform vec3 uCamPos;
-uniform vec2 uViewport;
-uniform float uDpr;
-uniform float uTime;
-uniform float uIsLight;
-
-out vec3 vCol;
-out float vAlpha;
+layout(location = 0) in vec2 aQuad;
+out vec2 vUV;
 
 void main() {
-    // Seamless periodic 160-unit cube around camera with 0.18x parallax depth factor
-    vec3 rel = mod(aStarPosSeed.xyz - uCamPos * 0.18 + 80.0, 160.0) - 80.0;
-    float dist = length(rel);
-    vec3 worldPos = uCamPos + rel;
-
-    gl_Position = uViewProj * vec4(worldPos, 1.0);
-
-    float edgeFade = smoothstep(79.0, 40.0, dist) * smoothstep(1.5, 6.0, dist);
-    float twinkle = 0.72 + 0.28 * sin(uTime * (1.2 + 2.8 * aStarPosSeed.w) + aStarPosSeed.w * 31.4159);
-    
-    // Crisp, needle-sharp pinpricks matching the black hole starfield
-    float sz = (0.75 + 1.25 * aStarPosSeed.w) * uDpr;
-
-    gl_PointSize = max(1.0, sz);
-    vCol = aStarCol;
-    vAlpha = edgeFade * twinkle * (0.35 + 0.65 * aStarPosSeed.w) * (uIsLight > 0.5 ? 0.08 : 0.95);
+    vUV = aQuad * 0.5 + 0.5;
+    gl_Position = vec4(aQuad, 0.9999, 1.0);
 }
 `;
 
     const FS_STARFIELD = `#version 300 es
 precision highp float;
 
-in vec3 vCol;
-in float vAlpha;
-uniform float uIsLight;
+in vec2 vUV;
 out vec4 fragColor;
 
-void main() {
-    vec2 uv = gl_PointCoord * 2.0 - 1.0;
-    float r2 = dot(uv, uv);
-    if (r2 > 1.0) discard;
-    // Sharp Airy-like core with zero muddy blur
-    float g = exp(-r2 * 6.5) * vAlpha;
-    if (uIsLight > 0.5) {
-        fragColor = vec4(vec3(0.12, 0.14, 0.20), g * 0.5);
-    } else {
-        fragColor = vec4(vCol * g * 1.8, g);
+uniform vec3 uCamPos;
+uniform vec3 uCamForward;
+uniform vec3 uCamRight;
+uniform vec3 uCamUp;
+uniform float uTanHalfFov;
+uniform float uAspect;
+uniform float uTime;
+uniform float uIsLight;
+
+// Analytical Tanner Helland blackbody spectrum fit with Planckian tonal grading (matches Black Hole sim)
+vec3 starBlackbody(float T) {
+    float t = clamp(T, 1000.0, 40000.0) * 0.01;
+    float tA = max(t - 60.0, 1.0);
+    float tB = max(t - 10.0, 1.0);
+    vec3 c;
+    c.r = t <= 66.0 ? 1.0 : clamp(329.6987 * pow(tA, -0.1332) / 255.0, 0.0, 1.0);
+    c.g = t <= 66.0
+        ? clamp((99.4708 * log(max(t, 1.0)) - 161.1196) / 255.0, 0.0, 1.0)
+        : clamp((288.1222 * pow(tA, -0.0755)) / 255.0, 0.0, 1.0);
+    c.b = t >= 66.0 ? 1.0 : (t <= 19.0 ? 0.0 : clamp((138.5177 * log(tB) - 305.0448) / 255.0, 0.0, 1.0));
+    return c;
+}
+
+// Procedural celestial sphere: anti-aliased starfield & faint Milky Way band (identical to Black Hole sky)
+vec3 celestialSky(vec3 d, float time) {
+    // 1. Faint procedural Milky Way band (peak luminance ~0.010, near-black space)
+    vec3 galPole = normalize(vec3(-0.35, 0.72, 0.59));
+    float b = dot(d, galPole);
+    float mwMask = exp(-b * b * 18.0);
+    vec3 galU = normalize(cross(galPole, vec3(0.0, 0.0, 1.0)));
+    vec3 galV = cross(galPole, galU);
+    float l = atan(dot(d, galV), dot(d, galU));
+    float mwClouds = 0.60 + 0.40 * sin(l * 2.0 + 1.2) * cos(l * 3.0 - 0.4);
+    vec3 mwCol = vec3(0.007, 0.010, 0.018) * (mwMask * mwClouds * 0.48);
+
+    // 2. Multi-tier anti-aliased point stars with realistic magnitude & temperature distribution
+    vec3 starAcc = vec3(0.0);
+    for (int shell = 0; shell < 2; shell++) {
+        float freq = (shell == 0) ? 36.0 : 68.0;
+        vec3 pCell = d * freq;
+        vec3 id = floor(pCell);
+        vec3 fd = fract(pCell) - 0.5;
+
+        vec3 h = fract(sin(vec3(dot(id, vec3(127.1, 311.7, 74.7)),
+                                dot(id, vec3(269.5, 183.3, 246.1)),
+                                dot(id, vec3(113.5, 271.9, 124.6)))) * 43758.5453);
+        
+        float prob = (shell == 0) ? 0.32 : 0.22;
+        if (h.x < prob) {
+            vec2 starOffset = (h.yz - 0.5) * 0.70;
+            float dist2 = dot(fd.xy - starOffset, fd.xy - starOffset) + fd.z * fd.z;
+            float rad = (shell == 0) ? 0.065 : 0.045;
+            float starProfile = exp(-dist2 / (rad * rad));
+            
+            float magScale = pow(h.x / prob, 3.6);
+            float bright = mix(0.12, 3.5, magScale);
+            float starT = mix(2800.0, 22000.0, pow(h.y, 2.0));
+            vec3 starColor = starBlackbody(starT);
+            
+            float twinkle = 0.88 + 0.12 * sin(time * (1.6 + 2.4 * h.z) + h.x * 40.0);
+            starAcc += starProfile * starColor * (bright * twinkle) * 0.42;
+        }
     }
+
+    return mwCol + starAcc;
+}
+
+void main() {
+    vec2 pScreen = (vUV - 0.5) * vec2(uAspect, 1.0) * (2.0 * uTanHalfFov);
+    // Subtle translation parallax gives deep 3D sensation as camera navigates between sections
+    vec3 baseDir = uCamForward + uCamRight * pScreen.x + uCamUp * pScreen.y;
+    vec3 d = normalize(baseDir - uCamPos * 0.0015);
+
+    if (uIsLight > 0.5) {
+        vec3 sky = celestialSky(d, uTime);
+        float lum = dot(sky, vec3(0.299, 0.587, 0.114));
+        fragColor = vec4(vec3(0.08, 0.10, 0.16) * lum, clamp(lum * 0.25, 0.0, 0.08));
+        return;
+    }
+
+    vec3 sky = celestialSky(d, uTime);
+    fragColor = vec4(sky, 1.0);
 }
 `;
 
@@ -367,7 +412,7 @@ float novikovThorneFlux(float r, float a, float r_isco) {
 }
 
 // Procedural celestial sphere: anti-aliased lensed starfield & faint Milky Way band
-vec3 lensedSky(vec3 d) {
+vec3 lensedSky(vec3 d, float time) {
     // 1. Faint procedural Milky Way band (peak luminance ~0.010, near-black space)
     vec3 galPole = normalize(vec3(-0.35, 0.72, 0.59));
     float b = dot(d, galPole);
@@ -402,7 +447,8 @@ vec3 lensedSky(vec3 d) {
             float starT = mix(2800.0, 22000.0, pow(h.y, 2.0));
             vec3 starColor = blackbody(starT);
             
-            starAcc += starProfile * starColor * bright * 0.42;
+            float twinkle = 0.88 + 0.12 * sin(time * (1.6 + 2.4 * h.z) + h.x * 40.0);
+            starAcc += starProfile * starColor * (bright * twinkle) * 0.42;
         }
     }
 
@@ -627,7 +673,7 @@ void main() {
             float sinThetaSky = sqrt(max(0.0, 1.0 - s.y * s.y));
             dSky = normalize(vec3(sinThetaSky * cos(phiCoord), sinThetaSky * sin(phiCoord), s.y));
         }
-        vec3 skyColor = lensedSky(dSky);
+        vec3 skyColor = lensedSky(dSky, uTime);
         emitColor += transmittance * skyColor;
         transmittance = 0.0;
     }

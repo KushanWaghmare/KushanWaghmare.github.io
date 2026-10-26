@@ -45,7 +45,7 @@
 
     const INITIAL_N = isMobileDevice() ? 30000 : 90000;
     const MIN_ADAPTIVE_N = isMobileDevice() ? 15000 : 36000;
-    const N_STARS = isMobileDevice() ? 3200 : 7000;
+
     let bufferReallocations = 0;
 
     /* ---------- Single Shared Particle Buffer (Allocated ONCE, Never Reallocated) ---------- */
@@ -85,43 +85,6 @@
         seeds[i4 + 3] = rand();
         sizes[i] = 1.5 + 0.8 * seeds[i4 + 3];
         mortonPerm[i] = i;
-    }
-
-    // Separate cheap static background starfield/dust layer with blackbody colours (matching black hole sim)
-    const starPosSeed = new Float32Array(N_STARS * 4);
-    const starCols = new Float32Array(N_STARS * 3);
-    const starRand = mulberry32(0x53544152);
-
-    // Tanner Helland blackbody colour approximation (same as shared/blackhole-physics.js)
-    const starBlackbodyCol = (tempK) => {
-        const t = Math.max(1000, Math.min(40000, tempK)) * 0.01;
-        const tA = Math.max(t - 60, 1.0);
-        const tB = Math.max(t - 10, 1.0);
-        const r = t <= 66 ? 1.0 : Math.min(1.0, Math.max(0, 329.698727 * Math.pow(tA, -0.1332047592) / 255.0));
-        let g = t <= 66
-            ? Math.min(1.0, Math.max(0, (99.4708025861 * Math.log(Math.max(t, 1.0)) - 161.1195681661) / 255.0))
-            : Math.min(1.0, Math.max(0, 288.1221695283 * Math.pow(tA, -0.0755148492) / 255.0));
-        const b = t >= 66 ? 1.0 : (t <= 19 ? 0.0 : Math.min(1.0, Math.max(0, (138.5177312231 * Math.log(tB) - 305.0447927307) / 255.0)));
-        return [r, g, b];
-    };
-
-    for (let i = 0; i < N_STARS; i++) {
-        const i4 = i * 4, i3 = i * 3;
-        starPosSeed[i4]     = (starRand() - 0.5) * 160.0;
-        starPosSeed[i4 + 1] = (starRand() - 0.5) * 160.0;
-        starPosSeed[i4 + 2] = (starRand() - 0.5) * 160.0;
-        // Pareto power-law magnitude: mostly crisp pinpricks, some luminous anchors
-        const u = Math.max(1e-4, starRand());
-        const mag = Math.min(1.0, 0.18 * Math.pow(u, -0.55));
-        starPosSeed[i4 + 3] = mag;
-
-        // Stellar temperature distribution: O/B blue-white, A/F white, G/K yellow-orange, M red dwarfs
-        const uT = starRand();
-        const tempK = 2600 + (32000 - 2600) * (uT * uT * uT);
-        const [cr, cg, cb] = starBlackbodyCol(tempK);
-        starCols[i3]     = cr;
-        starCols[i3 + 1] = cg;
-        starCols[i3 + 2] = cb;
     }
 
     const sharedBuffer = {
@@ -247,9 +210,8 @@
     let pointUniforms = {}, starUniforms = {}, auxUniforms = {}, kerrUniforms = {};
     let trailDecayUniforms = {}, blitAddUniforms = {}, brightPassUniforms = {}, blurUniforms = {}, compositeUniforms = {};
 
-    let sharedVAO = null, starVAO = null, auxVAO = null, quadVAO = null;
+    let sharedVAO = null, auxVAO = null, quadVAO = null;
     let posVBO = null, prevPosVBO = null, colVBO = null, sizeVBO = null, seedVBO = null;
-    let starPosVBO = null, starColVBO = null;
     let auxPosVBO = null, auxColVBO = null, quadVBO = null;
 
     let hdrSupported = false;
@@ -356,7 +318,9 @@
             "uViewProj", "uCamPos", "uViewport", "uDpr", "uTime",
             "uHeroBoost", "uIsLight", "uStreakScale", "uMaxStreakPx", "uTrailGain", "uFogTint"
         ]);
-        starUniforms = getUniforms(starProg, ["uViewProj", "uCamPos", "uViewport", "uDpr", "uTime", "uIsLight"]);
+        starUniforms = getUniforms(starProg, [
+            "uCamPos", "uCamForward", "uCamRight", "uCamUp", "uTanHalfFov", "uAspect", "uTime", "uIsLight"
+        ]);
         auxUniforms = getUniforms(auxProg, ["uViewProj", "uAuxOpacity", "uIsLight"]);
         kerrUniforms = getUniforms(kerrProg, [
             "uRes", "uBhScreenCentre", "uBhScale", "uSpin", "uTilt", "uTime", "uAuxOpacity", "uIsLight", "uDebugMode"
@@ -410,23 +374,7 @@
 
         gl.bindVertexArray(null);
 
-        // 2. Parallax Background Starfield VAO (static buffer)
-        starVAO = gl.createVertexArray();
-        gl.bindVertexArray(starVAO);
-        starPosVBO = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, starPosVBO);
-        gl.bufferData(gl.ARRAY_BUFFER, starPosSeed, gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(0);
-        gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
-
-        starColVBO = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, starColVBO);
-        gl.bufferData(gl.ARRAY_BUFFER, starCols, gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(1);
-        gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
-        gl.bindVertexArray(null);
-
-        // 3. Auxiliary same-scene geometry VAO
+        // 2. Auxiliary same-scene geometry VAO
         auxVAO = gl.createVertexArray();
         gl.bindVertexArray(auxVAO);
         auxPosVBO = gl.createBuffer();
@@ -1424,18 +1372,49 @@
             gl.blendFunc(gl.ONE, gl.ONE);
         }
 
-        // 2a. Parallax background dust/starfield layer
+        // 2a. Celestial background starfield & Milky Way layer (matches Black Hole celestial sphere)
         if (starProg) {
+            const camFwdX = camera.target.x - camera.position.x;
+            const camFwdY = camera.target.y - camera.position.y;
+            const camFwdZ = camera.target.z - camera.position.z;
+            const camFwdLen = Math.hypot(camFwdX, camFwdY, camFwdZ) || 1.0;
+            const fwdX = camFwdX / camFwdLen;
+            const fwdY = camFwdY / camFwdLen;
+            const fwdZ = camFwdZ / camFwdLen;
+
+            const rX = fwdY * camera.up.z - fwdZ * camera.up.y;
+            const rY = fwdZ * camera.up.x - fwdX * camera.up.z;
+            const rZ = fwdX * camera.up.y - fwdY * camera.up.x;
+            const rLen = Math.hypot(rX, rY, rZ) || 1.0;
+            const rightX = rX / rLen;
+            const rightY = rY / rLen;
+            const rightZ = rZ / rLen;
+
+            const upX = rightY * fwdZ - rightZ * fwdY;
+            const upY = rightZ * fwdX - rightX * fwdZ;
+            const upZ = rightX * fwdY - rightY * fwdX;
+
+            const halfFovRad = (camera.fov * Math.PI) / 360.0;
+            const tanHalfFov = Math.tan(halfFovRad);
+
+            gl.disable(gl.BLEND);
             gl.useProgram(starProg);
-            gl.uniformMatrix4fv(starUniforms.uViewProj, false, camera.viewProjectionMatrix.elements);
             gl.uniform3f(starUniforms.uCamPos, camera.position.x, camera.position.y, camera.position.z);
-            gl.uniform2f(starUniforms.uViewport, width, height);
-            gl.uniform1f(starUniforms.uDpr, dpr);
+            gl.uniform3f(starUniforms.uCamForward, fwdX, fwdY, fwdZ);
+            gl.uniform3f(starUniforms.uCamRight, rightX, rightY, rightZ);
+            gl.uniform3f(starUniforms.uCamUp, upX, upY, upZ);
+            gl.uniform1f(starUniforms.uTanHalfFov, tanHalfFov);
+            gl.uniform1f(starUniforms.uAspect, camera.aspect);
             gl.uniform1f(starUniforms.uTime, simTime);
             gl.uniform1f(starUniforms.uIsLight, isLight ? 1.0 : 0.0);
-            gl.bindVertexArray(starVAO);
-            gl.drawArrays(gl.POINTS, 0, N_STARS);
-            gl.bindVertexArray(null);
+            drawQuad();
+
+            gl.enable(gl.BLEND);
+            if (isLight) {
+                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+            } else {
+                gl.blendFunc(gl.ONE, gl.ONE);
+            }
         }
 
         // 2b. Optional same-scene Kerr Black Hole lensing & photon ring shader
