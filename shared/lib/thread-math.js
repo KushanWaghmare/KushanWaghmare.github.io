@@ -325,6 +325,9 @@
         targetFor(i, out = new Vector3()) {
             return out.copy(this.origin);
         }
+        applyPreset(preset) {
+            this.localePreset = preset;
+        }
         dispose() {
             this.initialized = false;
         }
@@ -413,6 +416,49 @@
         return forward
             ? { p0: startPos.clone(), p1: c1Canon, p2: c2Canon, p3: endPos.clone() }
             : { p0: startPos.clone(), p1: c2Canon, p2: c1Canon, p3: endPos.clone() };
+    };
+
+    /**
+     * Computes a low-altitude 3D cubic Bézier arc for intra-dimensional hops
+     * between local anchors within a section. Starts from live hero particle
+     * position with a gentle arc and smooth tangent continuity.
+     */
+    const computeHopArcControls = (startPos, endPos, initialVel) => {
+        const dx = endPos.x - startPos.x;
+        const dy = endPos.y - startPos.y;
+        const dz = endPos.z - startPos.z;
+        const chordLen = Math.max(0.1, Math.hypot(dx, dy, dz));
+        const lift = Math.min(1.2, 0.22 * chordLen + 0.30);
+
+        let c1;
+        if (initialVel && (Math.abs(initialVel.x) > 0.01 || Math.abs(initialVel.y) > 0.01 || Math.abs(initialVel.z) > 0.01)) {
+            const vLen = Math.max(0.01, Math.hypot(initialVel.x, initialVel.y, initialVel.z));
+            const tangentScale = Math.min(chordLen * 0.35, vLen * 0.15);
+            c1 = new Vector3(
+                startPos.x + (initialVel.x / vLen) * tangentScale,
+                startPos.y + (initialVel.y / vLen) * tangentScale + lift * 0.6,
+                startPos.z + (initialVel.z / vLen) * tangentScale
+            );
+        } else {
+            c1 = new Vector3(
+                startPos.x + dx * 0.30,
+                startPos.y + dy * 0.30 + lift,
+                startPos.z + dz * 0.30 + lift * 0.3
+            );
+        }
+
+        const c2 = new Vector3(
+            startPos.x + dx * 0.70,
+            startPos.y + dy * 0.70 + lift * 0.85,
+            startPos.z + dz * 0.70 + lift * 0.2
+        );
+
+        return {
+            p0: startPos.clone(),
+            p1: c1,
+            p2: c2,
+            p3: endPos.clone()
+        };
     };
 
     /**
@@ -623,6 +669,7 @@
         evalBezier3D,
         evalBezierTangent3D,
         computeArcControls,
+        computeHopArcControls,
         evalWaypointSpline,
         curlNoise3D,
         mortonCode3D,

@@ -33,6 +33,7 @@
         evalBezier3D,
         evalBezierTangent3D,
         computeArcControls,
+        computeHopArcControls,
         evalWaypointSpline,
         computeSpatialMatching
     } = TM;
@@ -730,8 +731,21 @@
             dimAnchor[2] + locOffset[2]
         );
 
-        // Low altitude Bézier hop
-        intraHop.arc = computeArcControls(intraHop.fromPos, intraHop.toPos, targetLocaleIdx);
+        const chordLen = Math.hypot(
+            intraHop.toPos.x - intraHop.fromPos.x,
+            intraHop.toPos.y - intraHop.fromPos.y,
+            intraHop.toPos.z - intraHop.fromPos.z
+        );
+
+        // Live particle velocity for smooth tangent continuity
+        const liveVel = {
+            x: positions[0] - prevPositions[0],
+            y: positions[1] - prevPositions[1],
+            z: positions[2] - prevPositions[2]
+        };
+
+        // Low altitude Bézier hop with gentle arc
+        intraHop.arc = computeHopArcControls(intraHop.fromPos, intraHop.toPos, liveVel);
         intraHop.camStartPos.copy(camera.position);
         intraHop.camStartTarget.copy(camera.target);
 
@@ -752,9 +766,14 @@
         }
 
         intraHop.u = 0.0;
-        intraHop.duration = isReducedMotion() ? 0.40 : 1.15;
+        intraHop.duration = isReducedMotion() ? 0.40 : clamp(0.95 + chordLen * 0.08, 0.95, 1.35);
         intraHop.active = true;
         navState = "INTRA_HOP";
+
+        // Shift simulation parameters to locale preset without popping or time reset
+        if (destLocale.simPreset && formations[currentDimIndex] && typeof formations[currentDimIndex].applyPreset === "function") {
+            formations[currentDimIndex].applyPreset(destLocale.simPreset);
+        }
 
         updateIntraIndicator(currentDimIndex, currentLocaleIndex);
         updateLocaleContent(currentDimIndex, currentLocaleIndex);
@@ -1348,7 +1367,8 @@
             if (active) {
                 active.update(dt, simTime, sharedBuffer, ctxState);
                 const camDist = active.cameraDistance || 13.5;
-                camera.fov = 52.0;
+                const curProf = getProfile(currentIndex);
+                const pLerp = clamp(dt * 4.0, 0.02, 0.25);
 
                 if (intraHop.active) {
                     intraHop.u = clamp(intraHop.u + dt / intraHop.duration, 0.0, 1.0);
@@ -1362,9 +1382,14 @@
                     camera.position.lerpVectors(intraHop.camStartPos, intraHop.camEndPos, hu);
                     camera.target.lerpVectors(intraHop.camStartTarget, intraHop.camEndTarget, hu);
 
+                    // Subtle FOV breathing during hop (<= 6 degrees, gentle)
+                    const fovBreathing = Math.sin(hu * Math.PI) * 2.6;
+                    camera.fov = curProf.fov + (isReducedMotion() ? 0.0 : fovBreathing);
+
                     if (intraHop.u >= 1.0) {
                         intraHop.active = false;
                         navState = "IDLE";
+                        camera.fov = curProf.fov;
                         if (intraHop.queuedLocaleIndex !== -1 && intraHop.queuedLocaleIndex !== currentLocaleIndex) {
                             const nextLoc = intraHop.queuedLocaleIndex;
                             intraHop.queuedLocaleIndex = -1;
@@ -1388,12 +1413,10 @@
                         active.origin.y - ctxState.pointerY * 0.16,
                         active.origin.z
                     );
+                    camera.fov += (curProf.fov - camera.fov) * pLerp;
                 }
 
-                // Smoothly converge post-processing parameters and FOV to active section profile
-                const curProf = getProfile(currentIndex);
-                const pLerp = clamp(dt * 4.0, 0.02, 0.25);
-                camera.fov += (curProf.fov - camera.fov) * pLerp;
+                // Smoothly converge post-processing parameters to active section profile
                 postState.bloomStrength += (curProf.bloomStrength - postState.bloomStrength) * pLerp;
                 postState.bloomThreshold += (curProf.bloomThreshold - postState.bloomThreshold) * pLerp;
                 postState.bloomTint[0] += (curProf.bloomTint[0] - postState.bloomTint[0]) * pLerp;
@@ -1644,6 +1667,17 @@
                 trans.warpStrength = 0.0;
                 applyDomSectionVisibility(currentIndex, currentIndex, 1.0, false);
                 updateThemeAndDots(currentIndex);
+                updateIntraIndicator(currentDimIndex, currentLocaleIndex);
+                updateLocaleContent(currentDimIndex, currentLocaleIndex);
+
+                const dims = getDimensions();
+                const curDim = dims[currentDimIndex];
+                if (curDim && curDim.locales && curDim.locales[currentLocaleIndex]) {
+                    const destLoc = curDim.locales[currentLocaleIndex];
+                    if (destLoc.simPreset && formations[currentDimIndex] && typeof formations[currentDimIndex].applyPreset === "function") {
+                        formations[currentDimIndex].applyPreset(destLoc.simPreset);
+                    }
+                }
 
                 if (trans.queuedIndex !== -1 && trans.queuedIndex !== currentIndex) {
                     const nextQ = trans.queuedIndex;

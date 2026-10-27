@@ -48,6 +48,15 @@
             this.fogTint = [0.022, 0.056, 0.145];
         }
 
+        applyPreset(preset) {
+            this.localePreset = preset;
+            if (preset) {
+                if (typeof preset.sigma === "number") this.sigma = preset.sigma;
+                if (typeof preset.rho === "number") this.rho = preset.rho;
+                if (typeof preset.beta === "number") this.beta = preset.beta;
+            }
+        }
+
         _rk4Lorenz(x, y, z, h, s = this.sigma, r = this.rho, b = this.beta) {
             const dx1 = s * (y - x);
             const dy1 = x * (r - z) - y;
@@ -329,6 +338,22 @@
             this.cameraDistance = 13.5;
         }
 
+        applyPreset(preset) {
+            this.localePreset = preset;
+            if (preset && typeof preset.power === "number") {
+                const targetN = clamp(preset.power | 0, 3, 8);
+                if (this.n !== targetN) {
+                    this.n = targetN;
+                    if (Array.isArray(this.degrees)) {
+                        this.degIdx = Math.max(0, this.degrees.indexOf(targetN));
+                    }
+                    if (this._lastBuffer) {
+                        this._rebuildSurfaceSamples(this._lastBuffer.maxCount, this._lastBuffer.seeds);
+                    }
+                }
+            }
+        }
+
         _rebuildSurfaceSamples(N, seeds) {
             const CY = root.CYMath || (typeof require === "function" ? require("../lib/cy-math.js") : null);
             if (!this.coords4D || this.coords4D.length !== N * 4) {
@@ -413,6 +438,7 @@
         }
 
         init(buffer, _ctx) {
+            this._lastBuffer = buffer;
             this._rebuildSurfaceSamples(buffer.maxCount, buffer.seeds);
             this.initialized = true;
         }
@@ -576,6 +602,22 @@
                 spin: 0.95,
                 tilt: 1.41
             };
+            this.presetTilt = null;
+            this.presetSpin = null;
+        }
+
+        applyPreset(preset) {
+            this.localePreset = preset;
+            if (preset) {
+                if (typeof preset.inclination === "number") {
+                    this.presetTilt = (preset.inclination * Math.PI) / 180.0;
+                }
+                if (typeof preset.spin === "number") {
+                    this.presetSpin = preset.spin;
+                    this.spin = preset.spin;
+                    this.kerrOverlay.spin = preset.spin;
+                }
+            }
         }
 
         _blackbodyRGB(T, out, i3) {
@@ -734,9 +776,10 @@
                 // Neutral sits at ~75° (1.31 rad) with subtle autonomous idle drift
                 const idleDrift = 0.045 * Math.sin(t * 0.35);
                 const hasPointer = Math.abs(ptrY) > 0.005 || Math.abs(ptrX) > 0.005;
+                const neutralTilt = (typeof this.presetTilt === "number") ? this.presetTilt : 1.31;
                 const baseInclination = hasPointer
-                    ? (1.31 - ptrY * 0.65)
-                    : (1.31 + idleDrift);
+                    ? (neutralTilt - ptrY * 0.50)
+                    : (neutralTilt + idleDrift * 0.6);
                 const targetTilt = clamp(baseInclination, 0.087266, 1.48353);
 
                 // Exponential damping (1 - exp(-k * dt)) ensures fluid motion with zero shadow popping
@@ -823,6 +866,13 @@
             this.cycleTime = 3.2;     // Start mid-annealing so structure is actively forming on arrival
             this.cycleDuration = 12.0;
             this.cameraDistance = 13.5;
+        }
+
+        applyPreset(preset) {
+            this.localePreset = preset;
+            if (preset && typeof preset.shape === "number") {
+                this.shapeIdx = (preset.shape | 0) % 3;
+            }
         }
 
         init(buffer, _ctx) {
@@ -1053,6 +1103,27 @@
             this.cameraDistance = 13.5;
         }
 
+        applyPreset(preset) {
+            this.localePreset = preset;
+            if (preset) {
+                let changed = false;
+                if (typeof preset.rho === "number" && this.rho !== preset.rho) {
+                    this.rho = preset.rho;
+                    changed = true;
+                }
+                if (typeof preset.steps === "number") {
+                    const idx = this.stepsList.indexOf(preset.steps);
+                    if (idx !== -1 && this.stepIdx !== idx) {
+                        this.stepIdx = idx;
+                        changed = true;
+                    }
+                }
+                if (changed && this._lastBuffer) {
+                    this._rebuildLattice(this._lastBuffer.maxCount, this._lastBuffer.seeds);
+                }
+            }
+        }
+
         _rebuildLattice(N, seeds) {
             const LM = root.LatticeMath || (typeof require === "function" ? require("../lib/lattice-math.js") : null);
             const n = this.stepsList[this.stepIdx];
@@ -1126,6 +1197,7 @@
         }
 
         init(buffer, _ctx) {
+            this._lastBuffer = buffer;
             this._rebuildLattice(buffer.maxCount, buffer.seeds);
             this.initialized = true;
         }
@@ -1298,6 +1370,14 @@
             this.markedTarget = 173;
             this.mode = "shor";
             this.cameraDistance = 13.5;
+            this.presetMode = null;
+        }
+
+        applyPreset(preset) {
+            this.localePreset = preset;
+            if (preset && typeof preset.mode === "string") {
+                this.presetMode = preset.mode;
+            }
         }
 
         _phaseToRGB(re, im, out, j3) {
@@ -1325,7 +1405,9 @@
             const cycle = t % 16.0;
             const a = this.coprimes[this.coprimeIdx];
 
-            if (cycle < 8.0) {
+            const isGrover = this.presetMode ? (this.presetMode === "grover") : (cycle < 8.0);
+
+            if (isGrover) {
                 this.mode = "grover";
                 const kIter = Math.min(6, Math.floor((cycle / 8.0) * 7));
                 QM.resetBasis(this.st8, 0);
@@ -1543,6 +1625,14 @@
             this.orbitLut = null; // Float32Array(1024 * 3) pre-integrated figure-8 RK4 trajectory
             this.slotMap = null;
             this.cameraDistance = 13.5;
+            this.choreography = "figure8";
+        }
+
+        applyPreset(preset) {
+            this.localePreset = preset;
+            if (preset && typeof preset.choreography === "string") {
+                this.choreography = preset.choreography;
+            }
         }
 
         init(buffer, _ctx) {
