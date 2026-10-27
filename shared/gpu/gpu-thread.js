@@ -575,6 +575,10 @@
     const poseAnchor = new Vector3();
     const diveTan = new Vector3(0, 0, -1);
     const diveTmpTan = new Vector3();
+    const diveChasePos = new Vector3();
+    const diveChaseTarget = new Vector3();
+    const diveBaseCamPos = new Vector3();
+    const diveBaseCamTarget = new Vector3();
     const idleVec = new Vector3();
 
     const easeDive = (u) => {
@@ -1625,7 +1629,14 @@
         navState = "IDLE";
         inside.value = h.insT;
         inside.isInside = !h.exiting;
+        inside.shift = 0.0;
+        inside.localScale = 1.0;
+        inside.heroScale = 1.0;
+        inside.worldGrow = 1.0;
         camera.fov = curProf.fov;
+        camera.up.set(0, 1, 0);
+        camera.near = inside.isInside ? 0.05 : 0.1;
+        camera.far = inside.isInside ? 450.0 : 600.0;
         if (h.queuedLocaleIndex !== -1 && h.queuedLocaleIndex !== currentLocaleIndex) {
             const nextLoc = h.queuedLocaleIndex;
             h.queuedLocaleIndex = -1;
@@ -1671,7 +1682,14 @@
         positions[1] = tmpHeroPos.y;
         positions[2] = tmpHeroPos.z;
 
-        // [[DIVE_SCALE]]
+        // [[DIVE_SCALE]]: Dynamic scale shift and plane adaptation
+        const bell = Math.sin(Math.PI * u);
+        inside.shift = bell * h.scaleAmp;
+        inside.localScale = 1.0 - 0.85 * inside.shift;
+        inside.heroScale = 1.0 - 0.65 * inside.shift;
+        inside.worldGrow = 1.0 + 2.8 * inside.shift * (1.0 - 0.35 * u);
+        camera.near = inside.isInside ? 0.05 : (0.1 - 0.05 * inside.value);
+        camera.far = inside.isInside ? 450.0 : (600.0 - 150.0 * inside.value);
 
         // Shell crossing: thin membrane ahead on the path, hero ripple, brief star softening
         if (h.crossing && !reduced) {
@@ -1696,11 +1714,41 @@
         }
         diveBoost = inside.shell * 0.9;
 
-        // [[DIVE_CAMERA]]
+        // [[DIVE_CAMERA]]: Dolly dive along path tangent, dynamic parallax, banking & FOV breath
         idlePose(dimIdx, h.toLocaleIndex, inside.value, poseA, poseB);
-        camera.position.lerpVectors(h.camStartPos, poseA, hu);
-        camera.target.lerpVectors(h.camStartTarget, poseB, hu);
-        camera.fov = curProf.fov;
+        diveBaseCamPos.lerpVectors(h.camStartPos, poseA, hu);
+        diveBaseCamTarget.lerpVectors(h.camStartTarget, poseB, hu);
+
+        if (!reduced) {
+            // Dolly dive: camera pushes forward along tangent, hero stays 6-10 units ahead
+            const chaseDist = 7.5 + (1.0 - hu) * 3.0;
+            diveChasePos.set(
+                tmpHeroPos.x - diveTan.x * chaseDist,
+                tmpHeroPos.y - diveTan.y * chaseDist * 0.7 + 0.8,
+                tmpHeroPos.z - diveTan.z * chaseDist
+            );
+            diveChaseTarget.set(
+                tmpHeroPos.x + diveTan.x * 2.5,
+                tmpHeroPos.y + diveTan.y * 1.2,
+                tmpHeroPos.z + diveTan.z * 2.5
+            );
+            const cruiseW = Math.sin(Math.PI * u) * 0.72;
+            camera.position.lerpVectors(diveBaseCamPos, diveChasePos, cruiseW);
+            camera.target.lerpVectors(diveBaseCamTarget, diveChaseTarget, cruiseW * 0.85);
+
+            // Gentle banking along curve (no roll jerk)
+            const bankAngle = h.bankSign * Math.sin(Math.PI * u) * 0.08;
+            camera.up.set(Math.sin(bankAngle), Math.cos(bankAngle), 0.0);
+
+            // FOV breathing: widens by 8-12 degrees during dive then settles cleanly
+            const fovBoost = Math.sin(Math.PI * u) * h.fovAmp;
+            camera.fov = curProf.fov + fovBoost;
+        } else {
+            camera.position.copy(diveBaseCamPos);
+            camera.target.copy(diveBaseCamTarget);
+            camera.up.set(0, 1, 0);
+            camera.fov = curProf.fov;
+        }
 
         if (u >= 1.0) finishDive(curProf);
     };
@@ -1709,7 +1757,14 @@
         idlePose(currentIndex, currentLocaleIndex, inside.value, poseA, poseB);
         camera.position.copy(poseA);
         camera.target.copy(poseB);
+        camera.up.set(0, 1, 0);
         camera.fov += (curProf.fov - camera.fov) * pLerp;
+        camera.near = inside.isInside ? 0.05 : 0.1;
+        camera.far = inside.isInside ? 450.0 : 600.0;
+        inside.shift = 0.0;
+        inside.localScale = 1.0;
+        inside.heroScale = 1.0;
+        inside.worldGrow = 1.0;
         inside.shell = 0.0;
         inside.starBright = 1.0;
         postState.shockwave = 0.0;
