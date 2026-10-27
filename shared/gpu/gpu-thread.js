@@ -505,12 +505,37 @@
     }, { passive: true });
 
     window.addEventListener("click", (e) => {
-        const subItem = e.target && e.target.closest && e.target.closest("[data-locale], [data-locale-index], [data-locale-id], a[href*='/']");
+        const ctaBtn = e.target && e.target.closest && e.target.closest(".snap-cta-btn");
+        if (ctaBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const sec = ctaBtn.closest(".snap-section");
+            if (sec && sections) {
+                const sIdx = sections.indexOf(sec);
+                if (sIdx !== -1) {
+                    currentDimIndex = sIdx;
+                    currentIndex = sIdx;
+                }
+            }
+            enterSimulation();
+            return;
+        }
+
+        const backBtn = e.target && e.target.closest && e.target.closest("#sim-back-btn");
+        if (backBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            exitSimulation();
+            return;
+        }
+
+        const subItem = e.target && e.target.closest && e.target.closest("[data-sim], [data-sim-index], [data-sim-id], [data-locale], [data-locale-index], [data-locale-id], a[href*='/']");
         if (subItem) {
-            const locVal = subItem.dataset.localeIndex || subItem.dataset.localeId || subItem.dataset.locale;
-            if (locVal !== undefined) {
+            const simVal = subItem.dataset.simIndex || subItem.dataset.simId || subItem.dataset.sim ||
+                           subItem.dataset.localeIndex || subItem.dataset.localeId || subItem.dataset.locale;
+            if (simVal !== undefined) {
                 e.preventDefault();
-                goToLocale(locVal);
+                goToSim(simVal);
                 return;
             }
             const href = subItem.getAttribute("href");
@@ -519,9 +544,12 @@
                 if (parsed) {
                     e.preventDefault();
                     if (parsed.dimIndex !== currentDimIndex) {
-                        goToDimension(parsed.dimIndex, parsed.localeIndex, parsed.inside);
-                    } else if (parsed.inside) {
-                        goToLocale(parsed.localeIndex);
+                        goToDimension(parsed.dimIndex, parsed.simIndex, parsed.inside);
+                    } else if (parsed.inside && appMode !== "INSIDE") {
+                        if (parsed.simIndex !== currentSimIndex) goToSim(parsed.simIndex);
+                        enterSimulation();
+                    } else {
+                        goToSim(parsed.simIndex);
                     }
                     return;
                 }
@@ -532,21 +560,21 @@
         if (activeForm && typeof activeForm.onClick === "function") {
             activeForm.onClick(e, ctxState);
         }
-    });
+    }, { capture: true });
 
     window.addEventListener("keydown", (e) => {
         if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
         if (e.key === "ArrowRight") {
             e.preventDefault();
-            stepLocale(1);
+            stepSim(1);
             return;
         } else if (e.key === "ArrowLeft") {
             e.preventDefault();
-            stepLocale(-1);
+            stepSim(-1);
             return;
-        } else if (e.key === "Escape" && inside.isInside) {
+        } else if (e.key === "Escape" && appMode === "INSIDE") {
             e.preventDefault();
-            exitToOverview();
+            exitSimulation();
             return;
         }
         const activeForm = formations[currentIndex];
@@ -1057,9 +1085,160 @@
 
     const stepLocale = stepSim;
 
-    const exitToOverview = () => {
-        if (typeof exitSimulation === "function") exitSimulation();
+    const ensureInsideHud = () => {
+        if (typeof document === "undefined") return null;
+        let hud = document.getElementById("sim-inside-hud");
+        if (!hud) {
+            hud = document.createElement("div");
+            hud.id = "sim-inside-hud";
+            hud.className = "sim-inside-hud";
+            hud.setAttribute("aria-label", "Simulation View HUD");
+            hud.innerHTML = `
+                <button id="sim-back-btn" class="sim-back-btn glass" aria-label="Exit simulation (Esc)">
+                    <span class="arr">←</span> <span>Back</span>
+                </button>
+                <div class="sim-hud-meta">
+                    <span class="sim-hud-name"></span>
+                    <span class="sim-hud-params"></span>
+                </div>
+            `;
+            document.body.appendChild(hud);
+            const btn = hud.querySelector("#sim-back-btn");
+            if (btn) {
+                btn.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    exitSimulation();
+                });
+            }
+        }
+        return hud;
     };
+
+    const updateInsideHud = (dimIdx, simIdx) => {
+        const hud = ensureInsideHud();
+        if (!hud) return;
+        const dims = getDimensions();
+        const dim = dims[dimIdx];
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        const sim = sims[simIdx] || sims[0];
+        if (!sim) return;
+
+        const nameEl = hud.querySelector(".sim-hud-name");
+        if (nameEl) nameEl.textContent = `${dim.name} · ${sim.label || sim.short}`;
+
+        const paramsEl = hud.querySelector(".sim-hud-params");
+        if (paramsEl && sim.content && sim.content.tag) {
+            paramsEl.textContent = sim.content.tag;
+        }
+    };
+
+    const enterSimulation = () => {
+        if (trans.active) return;
+        if (appMode === "INSIDE" && !intraHop.active) return;
+
+        const dims = getDimensions();
+        const dim = dims[currentDimIndex];
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        const sim = sims[currentSimIndex] || sims[0];
+        if (!sim) return;
+
+        const h = intraHop;
+        const reduced = isReducedMotion();
+
+        h.isDive = true;
+        h.exiting = false;
+        h.fromSimIndex = currentSimIndex;
+        h.toSimIndex = currentSimIndex;
+        h.fromPos.set(positions[0], positions[1], positions[2]);
+        h.vel.copy(heroVel);
+
+        anchorWorld(currentDimIndex, currentSimIndex, "INSIDE", h.toPos);
+
+        const cx = h.toPos.x - h.fromPos.x, cy = h.toPos.y - h.fromPos.y, cz = h.toPos.z - h.fromPos.z;
+        const len = Math.max(0.05, Math.hypot(cx, cy, cz));
+        h.bankSign = 1.0;
+
+        h.bend.set(0.0, 0.15, 0.0);
+        h.bend2.set(0.0, 0.08, 0.0);
+        h.ph = simTime * 0.4;
+
+        h.arc.p0.copy(h.fromPos);
+        h.arc.p3.copy(h.toPos);
+        updateDiveControls(h);
+
+        diveTan.set(cx / len, cy / len, cz / len);
+        h.camStartPos.copy(camera.position);
+        h.camStartTarget.copy(camera.target);
+
+        h.duration = reduced ? 0.6 : 2.4; // 2.4s forward dive into simulation
+        h.u = 0.0;
+        h.active = true;
+        navState = "INTRA_HOP";
+        appMode = "INSIDE";
+
+        if (typeof document !== "undefined") {
+            document.body.classList.add("is-inside");
+            const sec = sections[currentDimIndex];
+            if (sec) sec.classList.add("is-inside");
+        }
+        updateInsideHud(currentDimIndex, currentSimIndex);
+        updateUrlHash(currentDimIndex, currentSimIndex);
+    };
+
+    const exitSimulation = () => {
+        if (trans.active) return;
+        if (appMode !== "INSIDE" && !intraHop.active) return;
+
+        const dims = getDimensions();
+        const dim = dims[currentDimIndex];
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        const sim = sims[currentSimIndex] || sims[0];
+        if (!sim) return;
+
+        const h = intraHop;
+        const reduced = isReducedMotion();
+
+        h.isDive = true;
+        h.exiting = true;
+        h.fromSimIndex = currentSimIndex;
+        h.toSimIndex = currentSimIndex;
+        h.fromPos.set(positions[0], positions[1], positions[2]);
+        h.vel.copy(heroVel);
+
+        anchorWorld(currentDimIndex, currentSimIndex, "VIEW", h.toPos);
+
+        const cx = h.toPos.x - h.fromPos.x, cy = h.toPos.y - h.fromPos.y, cz = h.toPos.z - h.fromPos.z;
+        const len = Math.max(0.05, Math.hypot(cx, cy, cz));
+        h.bankSign = -1.0;
+
+        h.bend.set(0.0, -0.10, 0.0);
+        h.bend2.set(0.0, -0.05, 0.0);
+        h.ph = simTime * 0.4;
+
+        h.arc.p0.copy(h.fromPos);
+        h.arc.p3.copy(h.toPos);
+        updateDiveControls(h);
+
+        diveTan.set(cx / len, cy / len, cz / len);
+        h.camStartPos.copy(camera.position);
+        h.camStartTarget.copy(camera.target);
+
+        h.duration = reduced ? 0.6 : 1.8; // 1.8s exit back to VIEW
+        h.u = 0.0;
+        h.active = true;
+        navState = "INTRA_HOP";
+        appMode = "VIEW";
+
+        if (typeof document !== "undefined") {
+            document.body.classList.remove("is-inside");
+            const sec = sections[currentDimIndex];
+            if (sec) sec.classList.remove("is-inside");
+        }
+        updateUrlHash(currentDimIndex, currentSimIndex);
+    };
+
+    const exitToOverview = exitSimulation;
 
     const parseHash = (hashStr) => {
         if (!hashStr || typeof hashStr !== "string") return null;
@@ -1945,13 +2124,21 @@
     };
 
     const idleFrame = (curProf, dt, pLerp) => {
-        idlePose(currentIndex, currentLocaleIndex, inside.value, poseA, poseB);
+        const isInside = (appMode === "INSIDE" || inside.isInside);
+        const dims = getDimensions();
+        const dim = dims[currentIndex];
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        const curSim = sims[currentSimIndex] || sims[0];
+
+        idlePose(currentIndex, currentSimIndex, isInside ? "INSIDE" : "VIEW", poseA, poseB);
         camera.position.copy(poseA);
         camera.target.copy(poseB);
         camera.up.set(0, 1, 0);
-        camera.fov += (curProf.fov - camera.fov) * pLerp;
-        camera.near = inside.isInside ? 0.05 : 0.1;
-        camera.far = inside.isInside ? 450.0 : 600.0;
+
+        const targetFov = (isInside && curSim && curSim.immersiveCamera) ? curSim.immersiveCamera.fov : curProf.fov;
+        camera.fov += (targetFov - camera.fov) * pLerp;
+        camera.near = isInside ? 0.05 : 0.1;
+        camera.far = isInside ? 450.0 : 600.0;
         inside.shift = 0.0;
         inside.localScale = 1.0;
         inside.heroScale = 1.0;
@@ -1961,10 +2148,10 @@
         postState.shockwave = 0.0;
         postState.shockwaveRadius = 0.0;
         diveBoost = 0.0;
-        if (inside.isInside) {
-            // Inside: the hero rests at its locale anchor and eases through the locale's own idle()
-            anchorWorld(currentIndex, currentLocaleIndex, inside.value, poseAnchor);
-            sampleIdle(currentIndex, currentLocaleIndex, idleVec);
+        if (isInside) {
+            // Inside: the hero rests near the sim anchor and eases through its idle sway
+            anchorWorld(currentIndex, currentSimIndex, "INSIDE", poseAnchor);
+            sampleIdle(currentIndex, currentSimIndex, idleVec);
             positions[0] = poseAnchor.x + idleVec.x;
             positions[1] = poseAnchor.y + idleVec.y;
             positions[2] = poseAnchor.z + idleVec.z;
@@ -2773,6 +2960,10 @@
         get postState() { return postState; },
         get camVelocity() { return camVel; },
         exitToOverview,
+        enterSimulation,
+        exitSimulation,
+        goToSim,
+        stepSim,
         get heroPosition() { return new Vector3(positions[0], positions[1], positions[2]); },
         get formations() { return formations; },
         get trans() { return trans; },

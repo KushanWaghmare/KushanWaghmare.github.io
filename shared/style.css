@@ -1788,6 +1788,88 @@ a.contact-value:hover {
 @keyframes vt-out { to { opacity: 0; transform: scale(0.985); } }
 @keyframes vt-in { from { opacity: 0; transform: translateY(10px); filter: blur(6px); } }
 
+/* ---------- Simulation Immersive View (INSIDE Mode) UI Transitions ---------- */
+.snap-section .snap-head,
+.snap-section .snap-eq,
+.snap-section .snap-actions {
+    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.is-inside .snap-section.is-active .snap-head,
+body.is-inside .snap-section.is-active .snap-eq,
+body.is-inside .snap-section.is-active .snap-actions,
+.snap-section.is-inside .snap-head,
+.snap-section.is-inside .snap-eq,
+.snap-section.is-inside .snap-actions {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.96);
+    pointer-events: none;
+}
+
+.sim-inside-hud {
+    position: fixed;
+    top: 24px;
+    left: 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 120;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.is-inside .sim-inside-hud {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.sim-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: rgba(12, 18, 32, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #e2e8f0;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.sim-back-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.35);
+    color: #ffffff;
+    transform: translateX(-2px);
+}
+
+.sim-hud-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.75rem;
+}
+
+.sim-hud-name {
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.sim-hud-params {
+    color: rgba(255, 255, 255, 0.58);
+}
+
 @media (prefers-reduced-motion: reduce) {
     [data-reveal] { animation: none !important; }
     [data-reveal]:not(.revealed) .katex { filter: none; opacity: 1; }
