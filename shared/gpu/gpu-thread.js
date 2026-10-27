@@ -330,7 +330,7 @@
         brightPassUniforms = getUniforms(brightPassProg, ["uSceneTex", "uThreshold"]);
         blurUniforms = getUniforms(blurProg, ["uTex", "uTexelStep"]);
         compositeUniforms = getUniforms(compositeProg, [
-            "uSceneTex", "uBloomTex", "uRes", "uTime", "uBloomStrength",
+            "uSceneTex", "uBloomTex", "uRes", "uTime", "uBloomStrength", "uBloomTint",
             "uVignette", "uGrain", "uCaStrength", "uWarpStrength", "uWarpCentre", "uFogTint", "uIsLight", "uDebugMode"
         ]);
 
@@ -495,6 +495,7 @@
         toIndex: 0,
         interrupted: false,
         dimBlend: 0.0,
+        initialBlend: 0.0,
         queuedIndex: -1,
         heroStart: new Vector3(),
         heroEnd: new Vector3(),
@@ -513,9 +514,11 @@
     const postState = {
         bloomStrength: 0.92,
         bloomThreshold: 0.78,
+        bloomTint: [1.0, 1.0, 1.0],
+        fogTint: [0.022, 0.056, 0.145],
+        fogDensity: 0.0035,
         trailDecay: 0.82,
-        streakScale: 1.65,
-        fogTint: [0.022, 0.056, 0.145]
+        streakScale: 1.65
     };
 
     const getPhaseName = (u) => {
@@ -586,6 +589,36 @@
     /* ---------- Intra-Dimensional Navigation & Indicator ---------- */
     const getSite = () => (typeof window !== "undefined" && window.SITE ? window.SITE : (typeof SITE !== "undefined" ? SITE : null));
     const getDimensions = () => { const s = getSite(); return (s && s.dimensions) || []; };
+
+    const hexToRgb01 = (hex) => {
+        let c = String(hex || "").replace("#", "");
+        if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+        const num = parseInt(c, 16);
+        if (isNaN(num)) return [1.0, 1.0, 1.0];
+        return [(num >> 16 & 255) / 255.0, (num >> 8 & 255) / 255.0, (num & 255) / 255.0];
+    };
+
+    const parsedProfiles = [];
+    const getProfile = (dimIdx) => {
+        if (parsedProfiles[dimIdx]) return parsedProfiles[dimIdx];
+        const dims = getDimensions();
+        const dim = dims[dimIdx];
+        const p = (dim && dim.profile) || {};
+        const parsed = {
+            palette: (p.palette || []).map(hexToRgb01),
+            bloomStrength: (p.bloom && typeof p.bloom.strength === "number") ? p.bloom.strength : 0.88,
+            bloomThreshold: (p.bloom && typeof p.bloom.threshold === "number") ? p.bloom.threshold : 0.78,
+            bloomTint: (p.bloom && Array.isArray(p.bloom.tint)) ? p.bloom.tint.slice() : [1.0, 1.0, 1.0],
+            fogColour: (p.fog && Array.isArray(p.fog.colour)) ? p.fog.colour.slice() : [0.022, 0.056, 0.145],
+            fogDensity: (p.fog && typeof p.fog.density === "number") ? p.fog.density : 0.0035,
+            fov: (typeof p.fov === "number") ? p.fov : 52.0,
+            cameraDamping: (typeof p.cameraDamping === "number") ? p.cameraDamping : 0.08,
+            heroColour: (p.hero && Array.isArray(p.hero.colour)) ? p.hero.colour.slice() : [0.45, 0.75, 1.0],
+            heroSize: (p.hero && typeof p.hero.size === "number") ? p.hero.size : 5.5
+        };
+        parsedProfiles[dimIdx] = parsed;
+        return parsed;
+    };
 
     const ensureIntraIndicator = () => {
         if (typeof document === "undefined") return null;
@@ -831,7 +864,15 @@
         trans.camEndPos.set(toForm.origin.x, toForm.origin.y, toForm.origin.z + camDist);
         trans.camEndTarget.copy(toForm.origin);
 
-        trans.fromIndex = wasMidFlight ? trans.fromIndex : currentIndex;
+        if (wasMidFlight) {
+            // Continuing or reversing: blend smoothly from live value without a pop
+            trans.initialBlend = (clampedTarget === trans.fromIndex) ? clamp(1.0 - trans.dimBlend, 0.0, 1.0) : trans.dimBlend;
+            trans.fromIndex = trans.toIndex;
+        } else {
+            trans.initialBlend = 0.0;
+            trans.dimBlend = 0.0;
+            trans.fromIndex = currentIndex;
+        }
         trans.toIndex = clampedTarget;
         trans.interrupted = wasMidFlight;
         trans.u = 0.0;
@@ -972,18 +1013,25 @@
             active.update(0.016, 0.016, sharedBuffer, ctxState);
             prevPositions.set(positions);
             const camDist = active.cameraDistance || 13.5;
-            camera.fov = 52.0;
+            const prof = getProfile(currentIndex);
+            camera.fov = prof.fov;
             camera.position.set(active.origin.x, active.origin.y, active.origin.z + camDist);
             camera.target.copy(active.origin);
-            postState.bloomStrength = active.bloomStrength || 0.78;
-            postState.bloomThreshold = active.bloomThreshold || 0.80;
+            postState.bloomStrength = prof.bloomStrength;
+            postState.bloomThreshold = prof.bloomThreshold;
+            postState.bloomTint[0] = prof.bloomTint[0];
+            postState.bloomTint[1] = prof.bloomTint[1];
+            postState.bloomTint[2] = prof.bloomTint[2];
+            postState.fogTint[0] = prof.fogColour[0];
+            postState.fogTint[1] = prof.fogColour[1];
+            postState.fogTint[2] = prof.fogColour[2];
+            postState.fogDensity = prof.fogDensity;
             postState.trailDecay = active.trailDecay || 0.68;
             postState.streakScale = active.streakScale || 1.25;
-            if (active.fogTint) {
-                postState.fogTint[0] = active.fogTint[0];
-                postState.fogTint[1] = active.fogTint[1];
-                postState.fogTint[2] = active.fogTint[2];
-            }
+            colours[0] = prof.heroColour[0];
+            colours[1] = prof.heroColour[1];
+            colours[2] = prof.heroColour[2];
+            sizes[0] = prof.heroSize;
         }
         trailNeedsReset = true;
         applyDomSectionVisibility(currentIndex, currentIndex, 1.0, false);
@@ -1310,17 +1358,21 @@
                     );
                 }
 
-                // Smoothly converge post-processing parameters to active section
+                // Smoothly converge post-processing parameters and FOV to active section profile
+                const curProf = getProfile(currentIndex);
                 const pLerp = clamp(dt * 4.0, 0.02, 0.25);
-                postState.bloomStrength += ((active.bloomStrength || 0.78) - postState.bloomStrength) * pLerp;
-                postState.bloomThreshold += ((active.bloomThreshold || 0.80) - postState.bloomThreshold) * pLerp;
+                camera.fov += (curProf.fov - camera.fov) * pLerp;
+                postState.bloomStrength += (curProf.bloomStrength - postState.bloomStrength) * pLerp;
+                postState.bloomThreshold += (curProf.bloomThreshold - postState.bloomThreshold) * pLerp;
+                postState.bloomTint[0] += (curProf.bloomTint[0] - postState.bloomTint[0]) * pLerp;
+                postState.bloomTint[1] += (curProf.bloomTint[1] - postState.bloomTint[1]) * pLerp;
+                postState.bloomTint[2] += (curProf.bloomTint[2] - postState.bloomTint[2]) * pLerp;
+                postState.fogTint[0] += (curProf.fogColour[0] - postState.fogTint[0]) * pLerp;
+                postState.fogTint[1] += (curProf.fogColour[1] - postState.fogTint[1]) * pLerp;
+                postState.fogTint[2] += (curProf.fogColour[2] - postState.fogTint[2]) * pLerp;
+                postState.fogDensity += (curProf.fogDensity - postState.fogDensity) * pLerp;
                 postState.trailDecay += ((active.trailDecay || 0.68) - postState.trailDecay) * pLerp;
                 postState.streakScale += ((active.streakScale || 1.25) - postState.streakScale) * pLerp;
-                if (active.fogTint) {
-                    postState.fogTint[0] += (active.fogTint[0] - postState.fogTint[0]) * pLerp;
-                    postState.fogTint[1] += (active.fogTint[1] - postState.fogTint[1]) * pLerp;
-                    postState.fogTint[2] += (active.fogTint[2] - postState.fogTint[2]) * pLerp;
-                }
             }
             trans.auxOpacity = Math.min(1.0, trans.auxOpacity + dt * 2.5);
             trans.warpStrength = 0.0;
@@ -1330,16 +1382,26 @@
             const u = trans.u;
             trans.phase = getPhaseName(u);
 
+            // TRANSFORM (50-80%): dimBlend ramps 0 -> 1 smoothly, tracking live value on interrupt/reverse
+            const blendFactor = smoothstep(0.50, 0.80, u);
+            trans.dimBlend = clamp(trans.initialBlend + (1.0 - trans.initialBlend) * blendFactor, 0.0, 1.0);
+            const dimBlend = trans.dimBlend;
+
             const fromForm = formations[trans.fromIndex];
             const toForm = formations[trans.toIndex];
 
-            const fromSimBlend = trans.interrupted ? 0.0 : (1.0 - smoothstep(0.10, 0.40, u));
-            if (fromSimBlend > 0.001 && fromForm) {
-                fromForm.update(dt * fromSimBlend, simTime, fromScratchBuffer, ctxState);
+            // Simulation rule blending: origin sim ramps to 0.15 behind, destination ramps from neutral
+            const fromSimIntensity = clamp(1.0 - (1.0 - 0.15) * dimBlend, 0.15, 1.0);
+            if (fromForm) {
+                if (typeof fromForm.setIntensity === "function") fromForm.setIntensity(fromSimIntensity);
+                fromForm.update(dt * fromSimIntensity, simTime, fromScratchBuffer, ctxState);
             }
 
-            if (u >= 0.55 && toForm) {
-                toForm.update(dt, simTime, nextScratchBuffer, ctxState);
+            if (u >= 0.50 && toForm) {
+                const toSimIntensity = clamp(dimBlend, 0.0, 1.0);
+                if (typeof toForm.setIntensity === "function") toForm.setIntensity(toSimIntensity);
+                if (typeof toForm.setReveal === "function") toForm.setReveal(toSimIntensity);
+                toForm.update(dt * Math.max(0.15, toSimIntensity), simTime, nextScratchBuffer, ctxState);
             }
 
             if (!trans.domScrolledToTarget && u >= 0.70) {
@@ -1368,10 +1430,14 @@
             positions[1] = hFlightY + (hEndY - hFlightY) * lambda;
             positions[2] = hFlightZ + (hEndZ - hFlightZ) * lambda;
 
-            colours[0] = fromColours[0] + (nextColours[0] - fromColours[0]) * smoothstep(0.15, 0.90, u);
-            colours[1] = fromColours[1] + (nextColours[1] - fromColours[1]) * smoothstep(0.15, 0.90, u);
-            colours[2] = fromColours[2] + (nextColours[2] - fromColours[2]) * smoothstep(0.15, 0.90, u);
-            sizes[0] = fromSizes[0] + (nextSizes[0] - fromSizes[0]) * lambda;
+            const fromProf = getProfile(trans.fromIndex);
+            const toProf = getProfile(trans.toIndex);
+
+            // Hero particle chromatic & size morph driven by dimBlend
+            colours[0] = fromProf.heroColour[0] + (toProf.heroColour[0] - fromProf.heroColour[0]) * dimBlend;
+            colours[1] = fromProf.heroColour[1] + (toProf.heroColour[1] - fromProf.heroColour[1]) * dimBlend;
+            colours[2] = fromProf.heroColour[2] + (toProf.heroColour[2] - fromProf.heroColour[2]) * dimBlend;
+            sizes[0] = fromProf.heroSize + (toProf.heroSize - fromProf.heroSize) * dimBlend;
 
             heroBoost = smoothstep(0.0, 0.12, u) * (1.0 - smoothstep(0.78, 0.98, u));
 
@@ -1481,31 +1547,37 @@
                 );
 
                 const breath = Math.sin(Math.PI * smoothstep(0.10, 0.90, u));
-                camera.fov = 52.0 + 8.5 * breath;
+                const baseFov = fromProf.fov + (toProf.fov - fromProf.fov) * dimBlend;
+                camera.fov = baseFov + 8.5 * breath;
             }
 
-            if (toForm) {
-                const m = smoothstep(0.15, 0.85, u);
-                const fB = (fromForm && fromForm.bloomStrength) || 0.78;
-                const tB = toForm.bloomStrength || 0.78;
-                postState.bloomStrength = fB + (tB - fB) * m;
-                const fD = (fromForm && fromForm.trailDecay) || 0.68;
-                const tD = toForm.trailDecay || 0.68;
-                postState.trailDecay = (fD + (tD - fD) * m) * 0.72;
-                if (toForm.fogTint && fromForm && fromForm.fogTint) {
-                    postState.fogTint[0] = fromForm.fogTint[0] + (toForm.fogTint[0] - fromForm.fogTint[0]) * m;
-                    postState.fogTint[1] = fromForm.fogTint[1] + (toForm.fogTint[1] - fromForm.fogTint[1]) * m;
-                    postState.fogTint[2] = fromForm.fogTint[2] + (toForm.fogTint[2] - fromForm.fogTint[2]) * m;
-                }
-            }
+            // DimensionProfile continuous blend driven by dimBlend
+            postState.bloomStrength = fromProf.bloomStrength + (toProf.bloomStrength - fromProf.bloomStrength) * dimBlend;
+            postState.bloomThreshold = fromProf.bloomThreshold + (toProf.bloomThreshold - fromProf.bloomThreshold) * dimBlend;
+            postState.bloomTint[0] = fromProf.bloomTint[0] + (toProf.bloomTint[0] - fromProf.bloomTint[0]) * dimBlend;
+            postState.bloomTint[1] = fromProf.bloomTint[1] + (toProf.bloomTint[1] - fromProf.bloomTint[1]) * dimBlend;
+            postState.bloomTint[2] = fromProf.bloomTint[2] + (toProf.bloomTint[2] - fromProf.bloomTint[2]) * dimBlend;
+
+            postState.fogTint[0] = fromProf.fogColour[0] + (toProf.fogColour[0] - fromProf.fogColour[0]) * dimBlend;
+            postState.fogTint[1] = fromProf.fogColour[1] + (toProf.fogColour[1] - fromProf.fogColour[1]) * dimBlend;
+            postState.fogTint[2] = fromProf.fogColour[2] + (toProf.fogColour[2] - fromProf.fogColour[2]) * dimBlend;
+            postState.fogDensity = fromProf.fogDensity + (toProf.fogDensity - fromProf.fogDensity) * dimBlend;
+
+            const fD = (fromForm && fromForm.trailDecay) || 0.68;
+            const tD = (toForm && toForm.trailDecay) || 0.68;
+            postState.trailDecay = (fD + (tD - fD) * dimBlend) * 0.72;
 
             trans.auxOpacity = smoothstep(0.88, 1.00, u);
 
             if (u >= 1.0) {
                 currentIndex = trans.toIndex;
+                currentDimIndex = currentIndex;
                 trans.active = false;
                 trans.phase = "IDLE";
+                navState = "IDLE";
                 trans.u = 0.0;
+                trans.dimBlend = 0.0;
+                trans.initialBlend = 0.0;
                 trans.interrupted = false;
                 trans.auxOpacity = 1.0;
                 trans.warpStrength = 0.0;
@@ -1775,6 +1847,7 @@
         gl.uniform2f(compositeUniforms.uRes, pw, ph);
         gl.uniform1f(compositeUniforms.uTime, simTime);
         gl.uniform1f(compositeUniforms.uBloomStrength, postState.bloomStrength);
+        gl.uniform3f(compositeUniforms.uBloomTint, postState.bloomTint[0], postState.bloomTint[1], postState.bloomTint[2]);
         gl.uniform1f(compositeUniforms.uVignette, 0.36);
         gl.uniform1f(compositeUniforms.uGrain, 0.020);
         gl.uniform1f(compositeUniforms.uCaStrength, isReducedMotion() ? 0.0 : 0.0018);

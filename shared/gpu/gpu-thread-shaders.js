@@ -825,6 +825,7 @@ uniform float uCaStrength;
 uniform float uWarpStrength;
 uniform vec2 uWarpCentre;
 uniform vec3 uFogTint;
+uniform vec3 uBloomTint;
 uniform float uIsLight;
 uniform int uDebugMode;
 out vec4 fragColor;
@@ -905,7 +906,7 @@ void main() {
     // Deep pitch-black space background + HDR scene + selective bloom
     vec3 spaceBase = vec3(0.0);
 
-    vec3 hdr = spaceBase + sceneRgb + bloomRgb * uBloomStrength;
+    vec3 hdr = spaceBase + sceneRgb + bloomRgb * uBloomTint * uBloomStrength;
 
     // ACES Filmic Tone Mapping + sRGB gamma encoding
     vec3 mapped = acesFilm(hdr);
