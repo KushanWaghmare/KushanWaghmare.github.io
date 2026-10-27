@@ -589,7 +589,7 @@ const SITE = {
 };
 
 /* =========================================================================
-   DIMENSIONS & LOCALES DATA MODEL (Inter- & Intra-Dimensional Navigation)
+   DIMENSIONS & SIMULATIONS DATA MODEL (Inter- & Intra-Dimensional Navigation)
    ========================================================================= */
 SITE.dimensions = [
     {
@@ -608,11 +608,12 @@ SITE.dimensions = [
             sim: { sigma: 10, rho: 28, beta: 2.6667 },
             audio: { rootFreq: 110.0, harmonicRatios: [1.0, 1.5, 2.0, 2.5], filterCutoff: 480, q: 3.2 }
         },
-        locales: [
+        sims: [
             {
                 id: "canonical",
-                name: "Canonical Lorenz",
+                label: "Lorenz Strange Attractor",
                 short: "Lorenz",
+                get name() { return this.label; },
                 localAnchor: [0.0, 0.0, 0.0],
                 content: {
                     title: "Lorenz Strange Attractor",
@@ -620,38 +621,44 @@ SITE.dimensions = [
                     tag: "σ=10, ρ=28, β=8/3 · RK4 integration · sensitive dependence on initial conditions"
                 },
                 cameraPose: { offset: [0.0, 0.0, 13.5], target: [0.0, 0.0, 0.0] },
+                immersiveCamera: { offset: [0.0, 0.6, 3.8], target: [0.0, 0.0, 0.0], fov: 62.0 },
                 simPreset: { sigma: 10, rho: 28, beta: 2.6667 },
                 idle: (t) => [Math.sin(t * 0.8) * 0.5, Math.cos(t * 0.6) * 0.3, Math.sin(t * 0.4) * 0.4]
             },
             {
                 id: "aizawa",
-                name: "Aizawa Attractor",
+                label: "Aizawa Attractor",
                 short: "Aizawa",
-                localAnchor: [2.2, 0.8, -1.5],
+                get name() { return this.label; },
+                localAnchor: [32.0, 3.0, -8.0],
                 content: {
                     title: "Aizawa Vortex Sphere",
                     summary: "Toroidal spherical structure featuring inverted funnel vortex dynamics.",
                     tag: "Rotating core flow · dynamical 3D topological manifold"
                 },
-                cameraPose: { offset: [2.2, 0.8, 12.0], target: [2.2, 0.8, -1.5] },
+                cameraPose: { offset: [32.0, 3.0, 5.5], target: [32.0, 3.0, -8.0] },
+                immersiveCamera: { offset: [0.0, 0.5, 3.4], target: [0.0, 0.0, 0.0], fov: 64.0 },
                 simPreset: { sigma: 12, rho: 34, beta: 2.4 },
                 idle: (t) => [Math.cos(t * 1.1) * 0.4, Math.sin(t * 0.9) * 0.5, Math.cos(t * 0.5) * 0.3]
             },
             {
                 id: "turbulence",
-                name: "Convective Turbulence",
+                label: "Convective Turbulence",
                 short: "Plume",
-                localAnchor: [-2.0, -1.2, 1.8],
+                get name() { return this.label; },
+                localAnchor: [64.0, -3.5, -16.0],
                 content: {
                     title: "High-Rayleigh Convection",
                     summary: "High convective Rayleigh instability producing asymmetric chaotic plume turbulence.",
                     tag: "ρ=48 · violent convective bifurcation regime"
                 },
-                cameraPose: { offset: [-2.0, -1.2, 15.0], target: [-2.0, -1.2, 1.8] },
+                cameraPose: { offset: [64.0, -3.5, -2.5], target: [64.0, -3.5, -16.0] },
+                immersiveCamera: { offset: [0.0, 0.8, 4.0], target: [0.0, 0.0, 0.0], fov: 65.0 },
                 simPreset: { sigma: 16, rho: 48, beta: 2.8 },
                 idle: (t) => [Math.sin(t * 1.4) * 0.6, Math.cos(t * 1.2) * 0.4, Math.sin(t * 0.7) * 0.5]
             }
-        ]
+        ],
+        get locales() { return this.sims; }
     },
     {
         id: "domain-math",
@@ -669,11 +676,12 @@ SITE.dimensions = [
             sim: { power: 5, patches: 25 },
             audio: { rootFreq: 130.81, harmonicRatios: [1.0, 1.25, 1.5, 1.875], filterCutoff: 550, q: 4.0 }
         },
-        locales: [
+        sims: [
             {
                 id: "quintic",
-                name: "Quintic Calabi–Yau",
+                label: "Quintic Calabi–Yau",
                 short: "Quintic",
+                get name() { return this.label; },
                 localAnchor: [0.0, 0.0, 0.0],
                 content: {
                     title: "Fermat Curve & Calabi–Yau Cross-Section",
@@ -681,52 +689,60 @@ SITE.dimensions = [
                     tag: "Genus 6 (χ = −10) · 25 coordinate patches · Gauss–Bonnet curvature"
                 },
                 cameraPose: { offset: [18.0, -14.0, -8.5], target: [18.0, -14.0, -22.0] },
+                immersiveCamera: { offset: [0.0, 0.5, 3.2], target: [0.0, 0.0, 0.0], fov: 64.0 },
                 simPreset: { power: 5 },
                 idle: (t) => [Math.cos(t * 0.7) * 0.4, Math.sin(t * 0.5) * 0.4, Math.cos(t * 0.9) * 0.3]
             },
             {
                 id: "mobius",
-                name: "Möbius Holonomy",
+                label: "Möbius Holonomy",
                 short: "Möbius",
-                localAnchor: [-2.6, 1.4, 1.2],
+                get name() { return this.label; },
+                localAnchor: [32.0, 4.0, -8.0],
                 content: {
                     title: "Möbius Strip & Normal Transport",
                     summary: "Non-orientable manifold showing normal vector inversion n(2π, v) = −n(0, −v).",
                     tag: "First fundamental form · χ = 0 intrinsic curvature · boundary holonomy"
                 },
-                cameraPose: { offset: [15.4, -12.6, -9.0], target: [15.4, -12.6, -20.8] },
+                cameraPose: { offset: [50.0, -10.0, -16.5], target: [50.0, -10.0, -30.0] },
+                immersiveCamera: { offset: [0.0, 0.8, 3.6], target: [0.0, 0.0, 0.0], fov: 62.0 },
                 simPreset: { power: 2 },
                 idle: (t) => [Math.sin(t * 0.9) * 0.5, Math.cos(t * 0.8) * 0.3, Math.sin(t * 0.6) * 0.4]
             },
             {
                 id: "fourier",
-                name: "Fourier Spectral",
+                label: "Fourier Spectral",
                 short: "Fourier",
-                localAnchor: [2.8, -1.1, -1.6],
+                get name() { return this.label; },
+                localAnchor: [64.0, -4.0, -16.0],
                 content: {
                     title: "Cooley–Tukey Radix-2 FFT",
                     summary: "Bit-reversal permutation and complex exponential twiddle factor butterflies.",
                     tag: "O(N log N) flow · Parseval energy conservation · circular convolution"
                 },
-                cameraPose: { offset: [20.8, -15.1, -10.0], target: [20.8, -15.1, -23.6] },
+                cameraPose: { offset: [82.0, -18.0, -24.5], target: [82.0, -18.0, -38.0] },
+                immersiveCamera: { offset: [0.0, 0.4, 3.8], target: [0.0, 0.0, 0.0], fov: 65.0 },
                 simPreset: { power: 4 },
                 idle: (t) => [Math.cos(t * 1.2) * 0.4, Math.sin(t * 1.0) * 0.3, Math.cos(t * 0.7) * 0.5]
             },
             {
                 id: "septic",
-                name: "Septic Manifold",
+                label: "Septic Manifold",
                 short: "Septic",
-                localAnchor: [0.8, 2.2, -2.4],
+                get name() { return this.label; },
+                localAnchor: [96.0, 3.0, -24.0],
                 content: {
                     title: "Septic Fermat Surface",
                     summary: "High-degree projective algebraic surface z₁⁷ + z₂⁷ = 1.",
                     tag: "High-genus compact Riemannian manifold · branched cover"
                 },
-                cameraPose: { offset: [18.8, -11.8, -11.0], target: [18.8, -11.8, -24.4] },
+                cameraPose: { offset: [114.0, -11.0, -32.5], target: [114.0, -11.0, -46.0] },
+                immersiveCamera: { offset: [0.0, 0.6, 3.4], target: [0.0, 0.0, 0.0], fov: 64.0 },
                 simPreset: { power: 7 },
                 idle: (t) => [Math.sin(t * 0.6) * 0.5, Math.cos(t * 0.7) * 0.5, Math.sin(t * 1.1) * 0.4]
             }
-        ]
+        ],
+        get locales() { return this.sims; }
     },
     {
         id: "domain-physics",
@@ -744,11 +760,12 @@ SITE.dimensions = [
             sim: { spin: 0.95, inclination: 78, mode: "physical", disk: "thin" },
             audio: { rootFreq: 98.0, harmonicRatios: [1.0, 1.333, 1.5, 2.0], filterCutoff: 420, q: 3.5 }
         },
-        locales: [
+        sims: [
             {
-                id: "equatorial",
-                name: "Equatorial Accretion Disc",
-                short: "Equatorial",
+                id: "kerr",
+                label: "Kerr Accretion Disc",
+                short: "Kerr",
+                get name() { return this.label; },
                 localAnchor: [0.0, 0.0, 0.0],
                 content: {
                     title: "Kerr Black Hole & Accretion Disc",
@@ -756,52 +773,60 @@ SITE.dimensions = [
                     tag: "Kerr metric (a = 0.95) · Boyer–Lindquist RK4 null geodesics"
                 },
                 cameraPose: { offset: [-16.0, -28.0, -32.5], target: [-16.0, -28.0, -46.0] },
+                immersiveCamera: { offset: [0.0, 1.2, 4.2], target: [0.0, 0.0, 0.0], fov: 66.0 },
                 simPreset: { spin: 0.95, inclination: 78 },
                 idle: (t) => [Math.cos(t * 0.6) * 0.5, Math.sin(t * 0.8) * 0.3, Math.sin(t * 0.5) * 0.4]
             },
             {
                 id: "photon-ring",
-                name: "Photon Orbit Ring",
+                label: "Photon Orbit Ring",
                 short: "Photon Ring",
-                localAnchor: [1.8, 2.0, -1.8],
+                get name() { return this.label; },
+                localAnchor: [32.0, 3.5, -8.0],
                 content: {
                     title: "Critical Photon Orbit Boundary",
                     summary: "High-inclination view of unstable circular photon orbits and relativistic frame dragging.",
                     tag: "Asymptotic light deflection · ergosphere frame dragging"
                 },
-                cameraPose: { offset: [-14.2, -26.0, -34.0], target: [-14.2, -26.0, -47.8] },
+                cameraPose: { offset: [16.0, -24.5, -40.5], target: [16.0, -24.5, -54.0] },
+                immersiveCamera: { offset: [0.0, 0.5, 2.8], target: [0.0, 0.0, 0.0], fov: 68.0 },
                 simPreset: { spin: 0.98, inclination: 86 },
                 idle: (t) => [Math.sin(t * 1.0) * 0.4, Math.cos(t * 0.7) * 0.4, Math.sin(t * 0.9) * 0.3]
             },
             {
                 id: "nbody",
-                name: "Symplectic N-Body Disc",
+                label: "Symplectic N-Body Disc",
                 short: "N-Body",
-                localAnchor: [-2.4, -1.5, 2.0],
+                get name() { return this.label; },
+                localAnchor: [64.0, -3.5, -16.0],
                 content: {
                     title: "Self-Gravitating Accretion Flow",
                     summary: "Symplectic leapfrog integration of Keplerian multi-particle disc orbits.",
                     tag: "Hamiltonian energy preservation · collisionless orbital dynamics"
                 },
-                cameraPose: { offset: [-18.4, -29.5, -31.0], target: [-18.4, -29.5, -44.0] },
+                cameraPose: { offset: [48.0, -31.5, -48.5], target: [48.0, -31.5, -62.0] },
+                immersiveCamera: { offset: [0.0, 1.4, 4.0], target: [0.0, 0.0, 0.0], fov: 64.0 },
                 simPreset: { spin: 0.70, inclination: 62 },
                 idle: (t) => [Math.cos(t * 0.8) * 0.5, Math.sin(t * 1.1) * 0.4, Math.cos(t * 0.6) * 0.4]
             },
             {
                 id: "tdse",
-                name: "Split-Step TDSE",
+                label: "Split-Step TDSE Wavepacket",
                 short: "Quantum Wave",
-                localAnchor: [2.2, -1.8, -1.2],
+                get name() { return this.label; },
+                localAnchor: [96.0, 4.0, -24.0],
                 content: {
                     title: "Time-Dependent Schrödinger Wavepacket",
                     summary: "Unitary wavepacket propagation and quantum barrier tunnelling via Strang operator splitting.",
                     tag: "i∂ψ/∂t = (-∇²/2m + V)ψ · unitary spectral evolution"
                 },
-                cameraPose: { offset: [-13.8, -29.8, -33.5], target: [-13.8, -29.8, -47.2] },
+                cameraPose: { offset: [80.0, -24.0, -56.5], target: [80.0, -24.0, -70.0] },
+                immersiveCamera: { offset: [0.0, 0.8, 3.6], target: [0.0, 0.0, 0.0], fov: 62.0 },
                 simPreset: { spin: 0.88, inclination: 70 },
                 idle: (t) => [Math.sin(t * 1.2) * 0.4, Math.cos(t * 0.9) * 0.4, Math.sin(t * 0.7) * 0.3]
             }
-        ]
+        ],
+        get locales() { return this.sims; }
     },
     {
         id: "domain-datascience",
@@ -819,11 +844,12 @@ SITE.dimensions = [
             sim: { model: "reynolds-hk", n: 64, rVis: 68 },
             audio: { rootFreq: 146.83, harmonicRatios: [1.0, 1.2, 1.5, 1.8], filterCutoff: 520, q: 3.6 }
         },
-        locales: [
+        sims: [
             {
                 id: "spiral",
-                name: "Logarithmic Spiral",
+                label: "Logarithmic Spiral Galaxy",
                 short: "Spiral",
+                get name() { return this.label; },
                 localAnchor: [0.0, 0.0, 0.0],
                 content: {
                     title: "Spiral Galaxy Score Field",
@@ -831,52 +857,60 @@ SITE.dimensions = [
                     tag: "65k GPU particles · Langevin drift · score matching gradient"
                 },
                 cameraPose: { offset: [20.0, -42.0, -54.5], target: [20.0, -42.0, -68.0] },
+                immersiveCamera: { offset: [0.0, 0.6, 3.5], target: [0.0, 0.0, 0.0], fov: 64.0 },
                 simPreset: { shape: 0 },
                 idle: (t) => [Math.cos(t * 0.7) * 0.5, Math.sin(t * 0.6) * 0.4, Math.sin(t * 0.8) * 0.3]
             },
             {
                 id: "trefoil",
-                name: "Trefoil Knot Manifold",
+                label: "Trefoil Knot Manifold",
                 short: "Trefoil",
-                localAnchor: [-2.2, 1.5, -1.4],
+                get name() { return this.label; },
+                localAnchor: [32.0, 4.0, -8.0],
                 content: {
                     title: "Chiral 3D Knot Denoising",
                     summary: "Score-based diffusion mapping Gaussian noise to a continuous topological 3D trefoil knot.",
                     tag: "Topological knot invariant · score gradient field"
                 },
-                cameraPose: { offset: [17.8, -40.5, -56.0], target: [17.8, -40.5, -69.4] },
+                cameraPose: { offset: [52.0, -38.0, -62.5], target: [52.0, -38.0, -76.0] },
+                immersiveCamera: { offset: [0.0, 0.5, 3.2], target: [0.0, 0.0, 0.0], fov: 63.0 },
                 simPreset: { shape: 1 },
                 idle: (t) => [Math.sin(t * 0.9) * 0.4, Math.cos(t * 1.1) * 0.4, Math.sin(t * 0.5) * 0.4]
             },
             {
                 id: "torus",
-                name: "Clifford Torus Projection",
+                label: "Clifford Torus Projection",
                 short: "Torus",
-                localAnchor: [2.4, -1.3, 1.6],
+                get name() { return this.label; },
+                localAnchor: [64.0, -3.5, -16.0],
                 content: {
                     title: "Flat 4D Torus Projection",
                     summary: "Conformal stereographic projection of a flat Clifford torus in 4-space into 3D.",
                     tag: "S³ embedding · conformal coordinate transformation"
                 },
-                cameraPose: { offset: [22.4, -43.3, -53.0], target: [22.4, -43.3, -66.4] },
+                cameraPose: { offset: [84.0, -45.5, -70.5], target: [84.0, -45.5, -84.0] },
+                immersiveCamera: { offset: [0.0, 0.7, 3.6], target: [0.0, 0.0, 0.0], fov: 65.0 },
                 simPreset: { shape: 2 },
                 idle: (t) => [Math.cos(t * 1.0) * 0.5, Math.sin(t * 0.8) * 0.3, Math.cos(t * 0.6) * 0.5]
             },
             {
                 id: "landscape",
-                name: "Non-Convex Saddle Escape",
+                label: "Non-Convex Loss Surface",
                 short: "Landscape",
-                localAnchor: [-1.4, -2.0, -1.8],
+                get name() { return this.label; },
+                localAnchor: [96.0, 3.0, -24.0],
                 content: {
                     title: "High-Dimensional Loss Surface",
                     summary: "Escaping strict saddle points via stochastic gradient noise perturbations.",
                     tag: "Hessian eigenspectrum · non-equilibrium optimization"
                 },
-                cameraPose: { offset: [18.6, -44.0, -56.5], target: [18.6, -44.0, -69.8] },
+                cameraPose: { offset: [116.0, -39.0, -78.5], target: [116.0, -39.0, -92.0] },
+                immersiveCamera: { offset: [0.0, 0.8, 3.8], target: [0.0, 0.0, 0.0], fov: 64.0 },
                 simPreset: { shape: 3 },
                 idle: (t) => [Math.sin(t * 0.8) * 0.4, Math.cos(t * 0.7) * 0.5, Math.sin(t * 1.2) * 0.3]
             }
-        ]
+        ],
+        get locales() { return this.sims; }
     },
     {
         id: "domain-quant",
@@ -894,11 +928,12 @@ SITE.dimensions = [
             sim: { rho: 0.30, steps: 32 },
             audio: { rootFreq: 123.47, harmonicRatios: [1.0, 1.333, 1.5, 1.777], filterCutoff: 460, q: 3.8 }
         },
-        locales: [
+        sims: [
             {
                 id: "crystal",
-                name: "Bivariate Option Crystal",
+                label: "Bivariate Option Crystal",
                 short: "Margrabe",
+                get name() { return this.label; },
                 localAnchor: [0.0, 0.0, 0.0],
                 content: {
                     title: "Bivariate Binomial Option Lattice",
@@ -906,52 +941,60 @@ SITE.dimensions = [
                     tag: "Margrabe exact closed form · error 0.00% · lattice n=32"
                 },
                 cameraPose: { offset: [-18.0, -56.0, -78.5], target: [-18.0, -56.0, -92.0] },
+                immersiveCamera: { offset: [0.0, 0.7, 3.6], target: [0.0, 0.0, 0.0], fov: 64.0 },
                 simPreset: { rho: 0.30, steps: 32 },
                 idle: (t) => [Math.cos(t * 0.7) * 0.4, Math.sin(t * 0.9) * 0.4, Math.sin(t * 0.6) * 0.3]
             },
             {
                 id: "stress-crash",
-                name: "Tail-Dependence Stress Regime",
+                label: "Tail-Dependence Stress Regime",
                 short: "Crash",
-                localAnchor: [2.5, 1.2, -1.5],
+                get name() { return this.label; },
+                localAnchor: [32.0, 3.5, -8.0],
                 content: {
                     title: "Negative Correlation Stress Regime",
                     summary: "Market dislocation stress test pricing with strongly diverging asset dynamics.",
                     tag: "Tail-dependence copula · ρ = -0.60 · volatility skew"
                 },
-                cameraPose: { offset: [-15.5, -54.8, -80.0], target: [-15.5, -54.8, -93.5] },
+                cameraPose: { offset: [14.0, -52.5, -86.5], target: [14.0, -52.5, -100.0] },
+                immersiveCamera: { offset: [0.0, 0.6, 3.4], target: [0.0, 0.0, 0.0], fov: 63.0 },
                 simPreset: { rho: -0.60, steps: 32 },
                 idle: (t) => [Math.sin(t * 1.1) * 0.5, Math.cos(t * 0.8) * 0.3, Math.sin(t * 0.7) * 0.4]
             },
             {
                 id: "payoff-hinge",
-                name: "Terminal Payoff Hinge",
+                label: "Terminal Payoff Hinge",
                 short: "Payoff",
-                localAnchor: [-2.0, -1.6, 1.8],
+                get name() { return this.label; },
+                localAnchor: [64.0, -3.5, -16.0],
                 content: {
                     title: "Exercise Boundary & Greeks",
                     summary: "High-resolution terminal exercise boundary max(S₁ - S₂, 0) and Greeks surface.",
                     tag: "Delta / Gamma risk surface · boundary value solution"
                 },
-                cameraPose: { offset: [-20.0, -57.6, -77.0], target: [-20.0, -57.6, -90.2] },
+                cameraPose: { offset: [46.0, -59.5, -94.5], target: [46.0, -59.5, -108.0] },
+                immersiveCamera: { offset: [0.0, 0.8, 3.5], target: [0.0, 0.0, 0.0], fov: 64.0 },
                 simPreset: { rho: 0.65, steps: 48 },
                 idle: (t) => [Math.cos(t * 0.9) * 0.5, Math.sin(t * 0.6) * 0.4, Math.cos(t * 1.2) * 0.3]
             },
             {
                 id: "stat-arb",
-                name: "Ornstein–Uhlenbeck Spread",
+                label: "Ornstein–Uhlenbeck Spread",
                 short: "StatArb",
-                localAnchor: [1.6, -1.8, -2.0],
+                get name() { return this.label; },
+                localAnchor: [96.0, 4.0, -24.0],
                 content: {
                     title: "Mean-Reverting Pairs Co-Integration",
                     summary: "High-frequency pairs trading spread tracking stationary mean reversion.",
                     tag: "Engle–Granger co-integration · rolling z-score · Sharpe optimization"
                 },
-                cameraPose: { offset: [-16.4, -57.8, -80.5], target: [-16.4, -57.8, -94.0] },
+                cameraPose: { offset: [78.0, -52.0, -102.5], target: [78.0, -52.0, -116.0] },
+                immersiveCamera: { offset: [0.0, 0.5, 3.2], target: [0.0, 0.0, 0.0], fov: 62.0 },
                 simPreset: { rho: 0.85, steps: 32 },
                 idle: (t) => [Math.sin(t * 0.8) * 0.4, Math.cos(t * 1.0) * 0.4, Math.sin(t * 0.5) * 0.5]
             }
-        ]
+        ],
+        get locales() { return this.sims; }
     },
     {
         id: "domain-cs",
@@ -969,11 +1012,12 @@ SITE.dimensions = [
             sim: { qubits: 8, optimalK: 12 },
             audio: { rootFreq: 164.81, harmonicRatios: [1.0, 1.25, 1.5, 2.0], filterCutoff: 580, q: 4.2 }
         },
-        locales: [
+        sims: [
             {
                 id: "grover",
-                name: "Grover Quantum Search",
+                label: "Grover Quantum Search",
                 short: "Grover",
+                get name() { return this.label; },
                 localAnchor: [0.0, 0.0, 0.0],
                 content: {
                     title: "Grover Search Algorithm",
@@ -981,52 +1025,60 @@ SITE.dimensions = [
                     tag: "256 states · quadratic speedup · optimal k = 12 iterations"
                 },
                 cameraPose: { offset: [16.0, -70.0, -102.5], target: [16.0, -70.0, -116.0] },
+                immersiveCamera: { offset: [0.0, 0.5, 3.4], target: [0.0, 0.0, 0.0], fov: 64.0 },
                 simPreset: { mode: "grover" },
                 idle: (t) => [Math.cos(t * 0.8) * 0.4, Math.sin(t * 0.7) * 0.4, Math.cos(t * 1.0) * 0.3]
             },
             {
                 id: "shor",
-                name: "Shor Period Finding",
+                label: "Shor Period Finding",
                 short: "Shor",
-                localAnchor: [-2.4, 1.4, -1.6],
+                get name() { return this.label; },
+                localAnchor: [32.0, 4.0, -8.0],
                 content: {
                     title: "Shor Modular Exponentiation",
                     summary: "Quantum phase estimation finding the period of modular exponentiation aˣ mod N.",
                     tag: "N = 15, a = 7 · quantum Fourier transform · polynomial order-finding"
                 },
-                cameraPose: { offset: [13.6, -68.6, -104.0], target: [13.6, -68.6, -117.6] },
+                cameraPose: { offset: [48.0, -66.0, -110.5], target: [48.0, -66.0, -124.0] },
+                immersiveCamera: { offset: [0.0, 0.6, 3.5], target: [0.0, 0.0, 0.0], fov: 65.0 },
                 simPreset: { mode: "shor" },
                 idle: (t) => [Math.sin(t * 1.0) * 0.5, Math.cos(t * 0.9) * 0.3, Math.sin(t * 0.6) * 0.4]
             },
             {
                 id: "ssa-cfg",
-                name: "Ku-Lang SSA Form",
+                label: "Ku-Lang SSA Form",
                 short: "SSA IR",
-                localAnchor: [2.2, -1.3, 1.4],
+                get name() { return this.label; },
+                localAnchor: [64.0, -3.5, -16.0],
                 content: {
                     title: "Static Single Assignment Graph",
                     summary: "Dominance frontiers and phi-node placement in custom compiler pipeline.",
                     tag: "LLVM IR backend lowering · control flow dominance"
                 },
-                cameraPose: { offset: [18.2, -71.3, -101.0], target: [18.2, -71.3, -114.6] },
+                cameraPose: { offset: [80.0, -73.5, -118.5], target: [80.0, -73.5, -132.0] },
+                immersiveCamera: { offset: [0.0, 0.7, 3.6], target: [0.0, 0.0, 0.0], fov: 63.0 },
                 simPreset: { mode: "ssa" },
                 idle: (t) => [Math.cos(t * 1.1) * 0.4, Math.sin(t * 0.8) * 0.5, Math.cos(t * 0.5) * 0.3]
             },
             {
                 id: "ttl-bus",
-                name: "8-Bit TTL Computer",
+                label: "8-Bit TTL Computer",
                 short: "TTL Bus",
-                localAnchor: [-1.6, -1.8, -2.0],
+                get name() { return this.label; },
+                localAnchor: [96.0, 3.0, -24.0],
                 content: {
                     title: "Discrete TTL Machine Architecture",
                     summary: "8-bit microcoded CPU architecture featuring tri-state W-bus gating.",
                     tag: "Ripple-carry ALU · logic analyser timing validation"
                 },
-                cameraPose: { offset: [14.4, -71.8, -104.5], target: [14.4, -71.8, -118.0] },
+                cameraPose: { offset: [112.0, -67.0, -126.5], target: [112.0, -67.0, -140.0] },
+                immersiveCamera: { offset: [0.0, 0.5, 3.3], target: [0.0, 0.0, 0.0], fov: 62.0 },
                 simPreset: { mode: "ttl" },
                 idle: (t) => [Math.sin(t * 0.7) * 0.4, Math.cos(t * 1.2) * 0.4, Math.sin(t * 0.8) * 0.4]
             }
-        ]
+        ],
+        get locales() { return this.sims; }
     },
     {
         id: "about-contact",
@@ -1044,11 +1096,12 @@ SITE.dimensions = [
             sim: { mode: "figure8-choreography", n: 3 },
             audio: { rootFreq: 82.41, harmonicRatios: [1.0, 1.5, 2.0, 2.667], filterCutoff: 400, q: 3.4 }
         },
-        locales: [
+        sims: [
             {
                 id: "figure8",
-                name: "Three-Body Choreography",
+                label: "Three-Body Choreography",
                 short: "Three-Body",
+                get name() { return this.label; },
                 localAnchor: [0.0, 0.0, 0.0],
                 content: {
                     title: "Figure-8 Gravitational Choreography",
@@ -1056,52 +1109,60 @@ SITE.dimensions = [
                     tag: "Chenciner–Montgomery choreography · symplectic RK4"
                 },
                 cameraPose: { offset: [0.0, -84.0, -126.5], target: [0.0, -84.0, -140.0] },
+                immersiveCamera: { offset: [0.0, 0.6, 3.6], target: [0.0, 0.0, 0.0], fov: 64.0 },
                 simPreset: { choreography: "figure8" },
                 idle: (t) => [Math.cos(t * 0.6) * 0.4, Math.sin(t * 0.8) * 0.4, Math.sin(t * 0.5) * 0.3]
             },
             {
                 id: "academic",
-                name: "Academic Curricula",
+                label: "Academic Curricula",
                 short: "Academia",
-                localAnchor: [2.4, 1.2, -1.5],
+                get name() { return this.label; },
+                localAnchor: [32.0, 3.5, -8.0],
                 content: {
                     title: "IIT Madras & Vidya Bharati",
                     summary: "Rigorous coursework across Data Science, Physics, Mathematics, and Systems.",
                     tag: "Honours coursework · continuous academic record"
                 },
-                cameraPose: { offset: [2.4, -82.8, -128.0], target: [2.4, -82.8, -141.5] },
+                cameraPose: { offset: [32.0, -80.5, -134.5], target: [32.0, -80.5, -148.0] },
+                immersiveCamera: { offset: [0.0, 0.5, 3.4], target: [0.0, 0.0, 0.0], fov: 62.0 },
                 simPreset: { choreography: "lagrange" },
                 idle: (t) => [Math.sin(t * 0.9) * 0.5, Math.cos(t * 0.7) * 0.3, Math.sin(t * 0.6) * 0.4]
             },
             {
                 id: "archive",
-                name: "Research Archive",
+                label: "Research Archive",
                 short: "Papers",
-                localAnchor: [-2.2, -1.4, 1.6],
+                get name() { return this.label; },
+                localAnchor: [64.0, -3.5, -16.0],
                 content: {
                     title: "Technical Papers & Preprints",
                     summary: "Original preprints spanning differential geometry, quant finance, and compilers.",
                     tag: "Analytical proofs · reproducible computational notebooks"
                 },
-                cameraPose: { offset: [-2.2, -85.4, -125.0], target: [-2.2, -85.4, -138.4] },
+                cameraPose: { offset: [64.0, -87.5, -142.5], target: [64.0, -87.5, -156.0] },
+                immersiveCamera: { offset: [0.0, 0.6, 3.5], target: [0.0, 0.0, 0.0], fov: 63.0 },
                 simPreset: { choreography: "broucke" },
                 idle: (t) => [Math.cos(t * 1.0) * 0.4, Math.sin(t * 0.9) * 0.4, Math.cos(t * 0.7) * 0.3]
             },
             {
                 id: "channels",
-                name: "Direct Transmission",
+                label: "Direct Transmission",
                 short: "Contact",
-                localAnchor: [1.4, -2.0, -1.8],
+                get name() { return this.label; },
+                localAnchor: [96.0, 4.0, -24.0],
                 content: {
                     title: "Communications & Cryptography",
                     summary: "Direct communication channels, GitHub repositories and cryptographic keys.",
                     tag: "PGP verified · research collaboration enquiries"
                 },
-                cameraPose: { offset: [1.4, -86.0, -128.5], target: [1.4, -86.0, -141.8] },
+                cameraPose: { offset: [96.0, -80.0, -150.5], target: [96.0, -80.0, -164.0] },
+                immersiveCamera: { offset: [0.0, 0.5, 3.2], target: [0.0, 0.0, 0.0], fov: 62.0 },
                 simPreset: { choreography: "figure8" },
                 idle: (t) => [Math.sin(t * 0.8) * 0.4, Math.cos(t * 1.1) * 0.4, Math.sin(t * 0.5) * 0.4]
             }
-        ]
+        ],
+        get locales() { return this.sims; }
     }
 ];
 

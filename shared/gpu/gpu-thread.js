@@ -564,7 +564,9 @@
     // States: "IDLE" | "INTRA_HOP" | "INTER_FLIGHT" | "ARRIVING"
     let navState = "IDLE";
     let currentDimIndex = 0;
+    let currentSimIndex = 0;
     let currentLocaleIndex = 0;
+    let appMode = "VIEW"; // "VIEW" | "INSIDE"
 
     const intraHop = {
         active: false,
@@ -572,6 +574,8 @@
         duration: 1.15,
         fromLocaleIndex: 0,
         toLocaleIndex: 0,
+        fromSimIndex: 0,
+        toSimIndex: 0,
         fromPos: new Vector3(),
         toPos: new Vector3(),
         arc: { p0: new Vector3(), p1: new Vector3(), p2: new Vector3(), p3: new Vector3() },
@@ -847,60 +851,73 @@
         }
     };
 
-    /* World-space rest anchor of a locale (hero position excluding its idle sway).
-       The viewing frame re-centres as insideness rises (formations read `insideness`). */
-    const anchorWorld = (dimIdx, locIdx, ins, out) => {
+    /* World-space rest anchor of a simulation (hero position excluding its idle sway).
+       Offset from the dimension anchor by sim.localAnchor (spaced ~25-40 units apart). */
+    const anchorWorld = (dimIdx, simIdx, insOrMode, out) => {
         const f = formations[dimIdx];
         const dim = getDimensions()[dimIdx];
-        const loc = dim && dim.locales && dim.locales[locIdx];
-        const la = (loc && loc.localAnchor) || [0, 0, 0];
-        const cx = (ctxState.isMobile ? 0.0 : interiorCfg(dimIdx).cx) * (1.0 - 0.85 * ins);
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        const sim = sims[simIdx] || sims[0];
+        const la = (sim && sim.localAnchor) || [0, 0, 0];
         const o = f ? f.origin : { x: 0, y: 0, z: 0 };
-        return out.set(o.x + cx + la[0] * 2.0, o.y + la[1] * 2.0, o.z + la[2] * 2.0);
+        return out.set(o.x + la[0], o.y + la[1], o.z + la[2]);
     };
 
-    const sampleIdle = (dimIdx, locIdx, out) => {
+    const sampleIdle = (dimIdx, simIdx, out) => {
         const dim = getDimensions()[dimIdx];
-        const loc = dim && dim.locales && dim.locales[locIdx];
-        if (loc && typeof loc.idle === "function") {
-            const v = loc.idle(simTime);
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        const sim = sims[simIdx] || sims[0];
+        if (sim && typeof sim.idle === "function") {
+            const v = sim.idle(simTime);
             return out.set(v[0], v[1], v[2]);
         }
         return out.set(0, 0, 0);
     };
 
-    /* Idle camera pose as a pure function of (dimension, locale, insideness, time).
+    /* Idle camera pose as a pure function of (dimension, simulation, mode/insideness, time).
        Hops end on exactly this pose, so there is no discontinuity at arrival. */
-    const idlePose = (dimIdx, locIdx, ins, outPos, outTgt) => {
+    const idlePose = (dimIdx, simIdx, modeOrIns, outPos, outTgt) => {
         const f = formations[dimIdx];
         if (!f) return;
+        const dim = getDimensions()[dimIdx];
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        const sim = sims[simIdx] || sims[0];
+        anchorWorld(dimIdx, simIdx, modeOrIns, poseAnchor);
+
         const camDist = f.cameraDistance || 13.5;
         const ox = Math.sin(simTime * 0.19) * 0.36;
         const oy = Math.cos(simTime * 0.14) * 0.24;
         const oz = Math.sin(simTime * 0.11) * 0.28;
         const px = ctxState.pointerX, py = ctxState.pointerY;
-        const oPx = f.origin.x + ox + px * 0.62;
-        const oPy = f.origin.y + oy - py * 0.48;
-        const oPz = f.origin.z + camDist + oz;
-        const oTx = f.origin.x + px * 0.16;
-        const oTy = f.origin.y - py * 0.16;
-        const oTz = f.origin.z;
-        if (ins <= 0.0005) {
-            outPos.set(oPx, oPy, oPz);
-            outTgt.set(oTx, oTy, oTz);
-            return;
+
+        const vPx = poseAnchor.x + ox + px * 0.62;
+        const vPy = poseAnchor.y + oy - py * 0.48;
+        const vPz = poseAnchor.z + camDist + oz;
+        const vTx = poseAnchor.x + px * 0.16;
+        const vTy = poseAnchor.y - py * 0.16;
+        const vTz = poseAnchor.z;
+
+        const imm = (sim && sim.immersiveCamera) || { offset: [0, 0.6, 3.5], target: [0, 0, 0], fov: 64 };
+        const io = imm.offset || [0, 0.6, 3.5];
+        const it = imm.target || [0, 0, 0];
+        const iPx = poseAnchor.x + io[0] + ox * 0.2 + px * 0.2;
+        const iPy = poseAnchor.y + io[1] + oy * 0.2 - py * 0.15;
+        const iPz = poseAnchor.z + io[2] + oz * 0.2;
+        const iTx = poseAnchor.x + it[0] + px * 0.1;
+        const iTy = poseAnchor.y + it[1] - py * 0.08;
+        const iTz = poseAnchor.z + it[2];
+
+        if (modeOrIns === "INSIDE" || modeOrIns === 1.0) {
+            outPos.set(iPx, iPy, iPz);
+            outTgt.set(iTx, iTy, iTz);
+        } else if (modeOrIns === "VIEW" || modeOrIns === 0.0 || modeOrIns === undefined || modeOrIns === null) {
+            outPos.set(vPx, vPy, vPz);
+            outTgt.set(vTx, vTy, vTz);
+        } else {
+            const ins = clamp(Number(modeOrIns) || 0.0, 0.0, 1.0);
+            outPos.set(vPx + (iPx - vPx) * ins, vPy + (iPy - vPy) * ins, vPz + (iPz - vPz) * ins);
+            outTgt.set(vTx + (iTx - vTx) * ins, vTy + (iTy - vTy) * ins, vTz + (iTz - vTz) * ins);
         }
-        const cfg = interiorCfg(dimIdx);
-        anchorWorld(dimIdx, locIdx, ins, poseAnchor);
-        const ang = locIdx * 0.9 + 0.35;
-        const iPx = poseAnchor.x + Math.sin(ang) * cfg.dist + cfg.side + ox * 0.4 + px * 0.3;
-        const iPy = poseAnchor.y + cfg.lift + oy * 0.4 - py * 0.2;
-        const iPz = poseAnchor.z + Math.cos(ang) * cfg.dist + oz * 0.4;
-        const iTx = poseAnchor.x + px * 0.1;
-        const iTy = poseAnchor.y - py * 0.08;
-        const iTz = poseAnchor.z;
-        outPos.set(oPx + (iPx - oPx) * ins, oPy + (iPy - oPy) * ins, oPz + (iPz - oPz) * ins);
-        outTgt.set(oTx + (iTx - oTx) * ins, oTy + (iTy - oTy) * ins, oTz + (iTz - oTz) * ins);
     };
 
     const updateDiveControls = (h) => {
@@ -1137,8 +1154,11 @@
 
     const getNavState = () => ({
         state: navState,
+        dimensionIndex: currentDimIndex,
         dimIndex: currentDimIndex,
-        localeIndex: currentLocaleIndex,
+        simIndex: currentSimIndex,
+        localeIndex: currentSimIndex,
+        mode: appMode,
         dimBlend: trans.dimBlend !== undefined ? trans.dimBlend : 0.0,
         flightProgress: trans.active ? trans.u : (intraHop.active ? intraHop.u : 0.0),
         isTransitioning: trans.active || intraHop.active,
@@ -2650,7 +2670,11 @@
         get bufferReallocations() { return bufferReallocations; },
         get currentIndex() { return currentIndex; },
         get currentDimIndex() { return currentDimIndex; },
+        get dimensionIndex() { return currentDimIndex; },
         get currentLocaleIndex() { return currentLocaleIndex; },
+        get currentSimIndex() { return currentSimIndex; },
+        get simIndex() { return currentSimIndex; },
+        get mode() { return appMode; },
         get navState() { return navState; },
         get dimBlend() { return trans.dimBlend || 0.0; },
         get currentFormation() {
