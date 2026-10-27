@@ -505,6 +505,28 @@
     }, { passive: true });
 
     window.addEventListener("click", (e) => {
+        const subItem = e.target && e.target.closest && e.target.closest("[data-locale], [data-locale-index], [data-locale-id], a[href*='/']");
+        if (subItem) {
+            const locVal = subItem.dataset.localeIndex || subItem.dataset.localeId || subItem.dataset.locale;
+            if (locVal !== undefined) {
+                e.preventDefault();
+                goToLocale(locVal);
+                return;
+            }
+            const href = subItem.getAttribute("href");
+            if (href && href.startsWith("#") && href.includes("/")) {
+                const parsed = parseHash(href);
+                if (parsed) {
+                    e.preventDefault();
+                    if (parsed.dimIndex !== currentDimIndex) {
+                        goToDimension(parsed.dimIndex, parsed.localeIndex, parsed.inside);
+                    } else if (parsed.inside) {
+                        goToLocale(parsed.localeIndex);
+                    }
+                    return;
+                }
+            }
+        }
         if (e.target && e.target.closest && e.target.closest("a, button, input, .nav, .snap-pager, .card, .pill, .stage-debug-hud")) return;
         const activeForm = formations[currentIndex];
         if (activeForm && typeof activeForm.onClick === "function") {
@@ -972,7 +994,19 @@
         const dims = getDimensions();
         const dim = dims[currentDimIndex];
         if (!dim || !dim.locales || dim.locales.length === 0) return;
-        const target = clamp(localeIdx | 0, 0, dim.locales.length - 1);
+        let target = 0;
+        if (typeof localeIdx === "string") {
+            const clean = localeIdx.toLowerCase().trim();
+            const idx = dim.locales.findIndex(l =>
+                (l.id && l.id.toLowerCase() === clean) ||
+                (l.short && l.short.toLowerCase() === clean) ||
+                (l.name && l.name.toLowerCase() === clean)
+            );
+            target = idx !== -1 ? idx : (parseInt(clean, 10) || 0);
+        } else {
+            target = clamp(localeIdx | 0, 0, dim.locales.length - 1);
+        }
+        target = clamp(target, 0, dim.locales.length - 1);
 
         if (trans.active) {
             currentLocaleIndex = target;
@@ -1371,11 +1405,26 @@
             }
             active.update(0.016, 0.016, sharedBuffer, ctxState);
             prevPositions.set(positions);
-            const camDist = active.cameraDistance || 13.5;
             const prof = getProfile(currentIndex);
             camera.fov = prof.fov;
-            camera.position.set(active.origin.x, active.origin.y, active.origin.z + camDist);
-            camera.target.copy(active.origin);
+            if (startInside) {
+                idlePose(currentIndex, currentLocaleIndex, 1.0, poseA, poseB);
+                camera.position.copy(poseA);
+                camera.target.copy(poseB);
+                anchorWorld(currentIndex, currentLocaleIndex, 1.0, poseAnchor);
+                sampleIdle(currentIndex, currentLocaleIndex, idleVec);
+                positions[0] = poseAnchor.x + idleVec.x;
+                positions[1] = poseAnchor.y + idleVec.y;
+                positions[2] = poseAnchor.z + idleVec.z;
+                camera.near = 0.05;
+                camera.far = 450.0;
+            } else {
+                const camDist = active.cameraDistance || 13.5;
+                camera.position.set(active.origin.x, active.origin.y, active.origin.z + camDist);
+                camera.target.copy(active.origin);
+                camera.near = 0.1;
+                camera.far = 600.0;
+            }
             postState.bloomStrength = prof.bloomStrength;
             postState.bloomThreshold = prof.bloomThreshold;
             postState.bloomTint[0] = prof.bloomTint[0];
