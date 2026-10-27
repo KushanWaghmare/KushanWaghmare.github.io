@@ -443,6 +443,15 @@
 
     window.addEventListener("keydown", (e) => {
         if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+        if (e.key === "ArrowRight") {
+            e.preventDefault();
+            stepLocale(1);
+            return;
+        } else if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            stepLocale(-1);
+            return;
+        }
         const activeForm = formations[currentIndex];
         if (activeForm && typeof activeForm.onKeyDown === "function") {
             activeForm.onKeyDown(e, ctxState);
@@ -454,7 +463,29 @@
     let formations = [];
     let currentIndex = 0;
 
-    /* ---------- Transition State ---------- */
+    /* ---------- Navigation State Machine (Inter & Intra) ---------- */
+    // States: "IDLE" | "INTRA_HOP" | "INTER_FLIGHT" | "ARRIVING"
+    let navState = "IDLE";
+    let currentDimIndex = 0;
+    let currentLocaleIndex = 0;
+
+    const intraHop = {
+        active: false,
+        u: 0.0,
+        duration: 1.15,
+        fromLocaleIndex: 0,
+        toLocaleIndex: 0,
+        fromPos: new Vector3(),
+        toPos: new Vector3(),
+        arc: null,
+        camStartPos: new Vector3(),
+        camStartTarget: new Vector3(),
+        camEndPos: new Vector3(),
+        camEndTarget: new Vector3(),
+        queuedLocaleIndex: -1
+    };
+
+    /* ---------- Transition State (Inter-Dimensional) ---------- */
     const trans = {
         active: false,
         phase: "IDLE",
@@ -463,6 +494,7 @@
         fromIndex: 0,
         toIndex: 0,
         interrupted: false,
+        dimBlend: 0.0,
         queuedIndex: -1,
         heroStart: new Vector3(),
         heroEnd: new Vector3(),
@@ -548,7 +580,172 @@
             dot.classList.toggle("active", dot.getAttribute("href") === "#" + id);
         });
         sec.querySelectorAll("[data-reveal], [data-hero]").forEach((el) => el.classList.add("revealed"));
+        updateIntraIndicator(idx, currentLocaleIndex);
     };
+
+    /* ---------- Intra-Dimensional Navigation & Indicator ---------- */
+    const getSite = () => (typeof window !== "undefined" && window.SITE ? window.SITE : (typeof SITE !== "undefined" ? SITE : null));
+    const getDimensions = () => { const s = getSite(); return (s && s.dimensions) || []; };
+
+    const ensureIntraIndicator = () => {
+        if (typeof document === "undefined") return null;
+        let el = document.getElementById("intra-indicator");
+        if (!el) {
+            el = document.createElement("nav");
+            el.id = "intra-indicator";
+            el.className = "intra-indicator";
+            el.setAttribute("aria-label", "Locales navigation");
+            document.body.appendChild(el);
+        }
+        return el;
+    };
+
+    const updateIntraIndicator = (dimIdx, locIdx) => {
+        const ind = ensureIntraIndicator();
+        if (!ind) return;
+        const dims = getDimensions();
+        const dim = dims[dimIdx];
+        if (!dim || !dim.locales || dim.locales.length <= 1) {
+            ind.style.display = "none";
+            return;
+        }
+        ind.style.display = "inline-flex";
+
+        ind.innerHTML = dim.locales.map((loc, idx) => {
+            const isActive = idx === locIdx;
+            return `<button class="intra-locale-btn${isActive ? " active" : ""}" data-locale-index="${idx}" aria-label="${loc.name}">` +
+                   `<span class="intra-dot"></span>` +
+                   `<span class="intra-label">${loc.short}</span>` +
+                   `</button>`;
+        }).join("");
+
+        ind.querySelectorAll(".intra-locale-btn").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const idx = parseInt(btn.dataset.localeIndex, 10);
+                if (!isNaN(idx)) {
+                    goToLocale(idx);
+                }
+            });
+        });
+    };
+
+    const updateLocaleContent = (dimIdx, locIdx) => {
+        const dims = getDimensions();
+        const dim = dims[dimIdx];
+        if (!dim || !dim.locales || !dim.locales[locIdx]) return;
+        const loc = dim.locales[locIdx];
+        const sec = sections[dimIdx];
+        if (!sec || !loc.content) return;
+        const tag = sec.querySelector(".sim-tag");
+        if (tag && loc.content.tag) {
+            tag.textContent = loc.content.tag;
+        }
+    };
+
+    const startIntraHop = (targetLocaleIdx) => {
+        const dims = getDimensions();
+        const dim = dims[currentDimIndex];
+        if (!dim || !dim.locales || !dim.locales[targetLocaleIdx]) return;
+
+        intraHop.fromLocaleIndex = currentLocaleIndex;
+        intraHop.toLocaleIndex = targetLocaleIdx;
+        currentLocaleIndex = targetLocaleIdx;
+
+        // Start from exact live hero particle position
+        intraHop.fromPos.set(positions[0], positions[1], positions[2]);
+
+        const destLocale = dim.locales[targetLocaleIdx];
+        const dimAnchor = dim.anchor || [0, 0, 0];
+        const locOffset = destLocale.localAnchor || [0, 0, 0];
+        intraHop.toPos.set(
+            dimAnchor[0] + locOffset[0],
+            dimAnchor[1] + locOffset[1],
+            dimAnchor[2] + locOffset[2]
+        );
+
+        // Low altitude Bézier hop
+        intraHop.arc = computeArcControls(intraHop.fromPos, intraHop.toPos, targetLocaleIdx);
+        intraHop.camStartPos.copy(camera.position);
+        intraHop.camStartTarget.copy(camera.target);
+
+        if (destLocale.cameraPose) {
+            intraHop.camEndPos.set(
+                destLocale.cameraPose.offset[0],
+                destLocale.cameraPose.offset[1],
+                destLocale.cameraPose.offset[2]
+            );
+            intraHop.camEndTarget.set(
+                destLocale.cameraPose.target[0],
+                destLocale.cameraPose.target[1],
+                destLocale.cameraPose.target[2]
+            );
+        } else {
+            intraHop.camEndPos.set(intraHop.toPos.x, intraHop.toPos.y, intraHop.toPos.z + 13.5);
+            intraHop.camEndTarget.copy(intraHop.toPos);
+        }
+
+        intraHop.u = 0.0;
+        intraHop.duration = isReducedMotion() ? 0.40 : 1.15;
+        intraHop.active = true;
+        navState = "INTRA_HOP";
+
+        updateIntraIndicator(currentDimIndex, currentLocaleIndex);
+        updateLocaleContent(currentDimIndex, currentLocaleIndex);
+    };
+
+    const goToLocale = (localeIdx) => {
+        const dims = getDimensions();
+        const dim = dims[currentDimIndex];
+        if (!dim || !dim.locales || dim.locales.length === 0) return;
+        const target = clamp(localeIdx | 0, 0, dim.locales.length - 1);
+        if (target === currentLocaleIndex && !intraHop.active) return;
+
+        if (trans.active) {
+            currentLocaleIndex = target;
+            return;
+        }
+
+        if (intraHop.active) {
+            intraHop.queuedLocaleIndex = target;
+            return;
+        }
+
+        startIntraHop(target);
+    };
+
+    const stepLocale = (delta) => {
+        const dims = getDimensions();
+        const dim = dims[currentDimIndex];
+        if (!dim || !dim.locales || dim.locales.length <= 1) return;
+        const target = clamp(currentLocaleIndex + delta, 0, dim.locales.length - 1);
+        if (target !== currentLocaleIndex) {
+            goToLocale(target);
+        }
+    };
+
+    const goToDimension = (targetIdx, targetLocaleIdx = 0) => {
+        const maxIdx = Math.max(0, formations.length - 1);
+        const clampedTarget = clamp(targetIdx | 0, 0, maxIdx);
+        if (clampedTarget === currentDimIndex && !trans.active) {
+            if (targetLocaleIdx !== currentLocaleIndex) {
+                goToLocale(targetLocaleIdx);
+            }
+            return;
+        }
+        currentLocaleIndex = targetLocaleIdx | 0;
+        startTransition(clampedTarget);
+    };
+
+    const getNavState = () => ({
+        state: navState,
+        dimIndex: currentDimIndex,
+        localeIndex: currentLocaleIndex,
+        dimBlend: trans.dimBlend !== undefined ? trans.dimBlend : 0.0,
+        flightProgress: trans.active ? trans.u : (intraHop.active ? intraHop.u : 0.0),
+        isTransitioning: trans.active || intraHop.active
+    });
 
     const computeParticleRanks = (srcPos, count, heroStart) => {
         const N = count | 0;
@@ -641,6 +838,7 @@
         trans.duration = isReducedMotion() ? 0.45 : (jumpSpan > 1 ? 2.65 : 2.40);
         trans.active = true;
         trans.phase = "DETACH";
+        navState = "INTER_FLIGHT";
         trans.domScrolledToTarget = false;
         trans.auxOpacity = 0.0;
     };
@@ -707,7 +905,14 @@
         if (touchStartY === null || e.touches.length !== 1) return;
         const dy = touchStartY - e.touches[0].clientY;
         const dx = touchStartX - e.touches[0].clientX;
-        if (Math.abs(dx) > Math.abs(dy) * 1.2) return;
+        if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+            if (!touchConsumed && Math.abs(dx) >= 38) {
+                touchConsumed = true;
+                e.preventDefault();
+                stepLocale(Math.sign(dx));
+            }
+            return;
+        }
         const dir = Math.sign(dy);
         if (dir === 0) return;
 
@@ -748,6 +953,12 @@
             if (found !== -1) startIdx = found;
         }
         currentIndex = startIdx;
+        currentDimIndex = currentIndex;
+        currentLocaleIndex = 0;
+        navState = "IDLE";
+        intraHop.active = false;
+        intraHop.u = 0.0;
+        intraHop.queuedLocaleIndex = -1;
         trans.active = false;
         trans.phase = "IDLE";
         trans.u = 0;
@@ -1058,20 +1269,46 @@
                 active.update(dt, simTime, sharedBuffer, ctxState);
                 const camDist = active.cameraDistance || 13.5;
                 camera.fov = 52.0;
-                // Gentle cinematic idle camera orbit + pointer parallax
-                const camOrbitX = Math.sin(simTime * 0.19) * 0.36;
-                const camOrbitY = Math.cos(simTime * 0.14) * 0.24;
-                const camOrbitZ = Math.sin(simTime * 0.11) * 0.28;
-                camera.position.set(
-                    active.origin.x + camOrbitX + ctxState.pointerX * 0.62,
-                    active.origin.y + camOrbitY - ctxState.pointerY * 0.48,
-                    active.origin.z + camDist + camOrbitZ
-                );
-                camera.target.set(
-                    active.origin.x + ctxState.pointerX * 0.16,
-                    active.origin.y - ctxState.pointerY * 0.16,
-                    active.origin.z
-                );
+
+                if (intraHop.active) {
+                    intraHop.u = clamp(intraHop.u + dt / intraHop.duration, 0.0, 1.0);
+                    const hu = smootherstep(0.0, 1.0, intraHop.u);
+                    if (intraHop.arc) {
+                        evalBezier3D(intraHop.arc.p0, intraHop.arc.p1, intraHop.arc.p2, intraHop.arc.p3, hu, tmpHeroPos);
+                        positions[0] = tmpHeroPos.x;
+                        positions[1] = tmpHeroPos.y;
+                        positions[2] = tmpHeroPos.z;
+                    }
+                    camera.position.lerpVectors(intraHop.camStartPos, intraHop.camEndPos, hu);
+                    camera.target.lerpVectors(intraHop.camStartTarget, intraHop.camEndTarget, hu);
+
+                    if (intraHop.u >= 1.0) {
+                        intraHop.active = false;
+                        navState = "IDLE";
+                        if (intraHop.queuedLocaleIndex !== -1 && intraHop.queuedLocaleIndex !== currentLocaleIndex) {
+                            const nextLoc = intraHop.queuedLocaleIndex;
+                            intraHop.queuedLocaleIndex = -1;
+                            startIntraHop(nextLoc);
+                        } else {
+                            intraHop.queuedLocaleIndex = -1;
+                        }
+                    }
+                } else {
+                    // Gentle cinematic idle camera orbit + pointer parallax
+                    const camOrbitX = Math.sin(simTime * 0.19) * 0.36;
+                    const camOrbitY = Math.cos(simTime * 0.14) * 0.24;
+                    const camOrbitZ = Math.sin(simTime * 0.11) * 0.28;
+                    camera.position.set(
+                        active.origin.x + camOrbitX + ctxState.pointerX * 0.62,
+                        active.origin.y + camOrbitY - ctxState.pointerY * 0.48,
+                        active.origin.z + camDist + camOrbitZ
+                    );
+                    camera.target.set(
+                        active.origin.x + ctxState.pointerX * 0.16,
+                        active.origin.y - ctxState.pointerY * 0.16,
+                        active.origin.z
+                    );
+                }
 
                 // Smoothly converge post-processing parameters to active section
                 const pLerp = clamp(dt * 4.0, 0.02, 0.25);
@@ -1564,19 +1801,27 @@
         buffer: sharedBuffer,
         get bufferReallocations() { return bufferReallocations; },
         get currentIndex() { return currentIndex; },
+        get currentDimIndex() { return currentDimIndex; },
+        get currentLocaleIndex() { return currentLocaleIndex; },
+        get navState() { return navState; },
+        get dimBlend() { return trans.dimBlend || 0.0; },
         get currentFormation() {
             const f = formations[trans.active ? trans.toIndex : currentIndex];
             return f ? f.id : "hub:intro";
         },
         get phase() { return trans.phase; },
         get progress() { return trans.u; },
-        get isTransitioning() { return trans.active; },
+        get isTransitioning() { return trans.active || intraHop.active; },
         get fps() { return fps; },
         get heroPosition() { return new Vector3(positions[0], positions[1], positions[2]); },
         get formations() { return formations; },
         get trans() { return trans; },
+        getNavState,
+        goToDimension,
+        goToLocale,
+        stepLocale,
         refreshSections,
-        goToSection: startTransition,
+        goToSection: goToDimension,
         triggerStep
     };
 }));

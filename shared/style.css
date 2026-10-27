@@ -858,6 +858,88 @@ pre.glass {
     box-shadow: 0 0 10px var(--a-text);
 }
 
+/* Intra-Dimension Navigation Indicator */
+.intra-indicator {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 70;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--glass-solid);
+    border: 1px solid var(--glass-line);
+    border-radius: 9999px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    user-select: none;
+    pointer-events: auto;
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.intra-locale-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--fg-muted);
+    font: 500 11px var(--mono);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+}
+
+.intra-locale-btn:hover {
+    color: var(--fg);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.intra-locale-btn .intra-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--fg-faint);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.intra-locale-btn.active {
+    color: var(--fg);
+    background: rgba(var(--a), 0.15);
+    border-color: rgba(var(--a), 0.40);
+}
+
+.intra-locale-btn.active .intra-dot {
+    background: rgb(var(--a));
+    box-shadow: 0 0 8px rgba(var(--a), 0.75);
+    transform: scale(1.25);
+}
+
+@media (max-width: 640px) {
+    .intra-indicator {
+        bottom: 16px;
+        padding: 4px 8px;
+        gap: 4px;
+        max-width: calc(100vw - 32px);
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .intra-indicator::-webkit-scrollbar {
+        display: none;
+    }
+    .intra-locale-btn {
+        padding: 4px 8px;
+        font-size: 10px;
+    }
+}
+
 .about-contact-section {
     padding-top: clamp(52px, 7vh, 76px);
     padding-bottom: clamp(16px, 2.5vh, 28px);
