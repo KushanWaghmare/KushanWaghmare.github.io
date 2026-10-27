@@ -172,75 +172,14 @@ precision highp float;
 in vec2 vUV;
 out vec4 fragColor;
 
+uniform samplerCube uSkyCube;
+uniform samplerCube uSkyCube;
 uniform vec2 uRes;
 uniform vec2 uBhScreenCentre;
 uniform float uBhScale;
 uniform float uTilt;
 uniform float uTime;
 uniform float uIsLight;
-
-// Analytical Tanner Helland blackbody spectrum fit with Planckian tonal grading (identical to Black Hole sim)
-vec3 blackbody(float T) {
-    float t = clamp(T, 1000.0, 40000.0) * 0.01;
-    float tA = max(t - 60.0, 1.0);
-    float tB = max(t - 10.0, 1.0);
-    vec3 c;
-    c.r = t <= 66.0 ? 1.0 : clamp(329.6987 * pow(tA, -0.1332) / 255.0, 0.0, 1.0);
-    c.g = t <= 66.0
-        ? clamp((99.4708 * log(max(t, 1.0)) - 161.1196) / 255.0, 0.0, 1.0)
-        : clamp((288.1222 * pow(tA, -0.0755)) / 255.0, 0.0, 1.0);
-    c.b = t >= 66.0 ? 1.0 : (t <= 19.0 ? 0.0 : clamp((138.5177 * log(tB) - 305.0448) / 255.0, 0.0, 1.0));
-
-    if (T < 3500.0) {
-        float warmRamp = clamp((T - 1000.0) / 2500.0, 0.0, 1.0);
-        c = mix(vec3(0.55, 0.12, 0.02), c, warmRamp);
-    }
-    return c;
-}
-
-// Procedural celestial sphere: anti-aliased starfield & faint Milky Way band (identical to Black Hole sky)
-vec3 lensedSky(vec3 d, float time) {
-    // 1. Faint procedural Milky Way band (peak luminance ~0.010, near-black space)
-    vec3 galPole = normalize(vec3(-0.35, 0.72, 0.59));
-    float b = dot(d, galPole);
-    float mwMask = exp(-b * b * 18.0);
-    vec3 galU = normalize(cross(galPole, vec3(0.0, 0.0, 1.0)));
-    vec3 galV = cross(galPole, galU);
-    float l = atan(dot(d, galV), dot(d, galU));
-    float mwClouds = 0.60 + 0.40 * sin(l * 2.0 + 1.2) * cos(l * 3.0 - 0.4);
-    vec3 mwCol = vec3(0.007, 0.010, 0.018) * (mwMask * mwClouds * 0.48);
-
-    // 2. Multi-tier anti-aliased point stars with realistic magnitude & temperature distribution
-    vec3 starAcc = vec3(0.0);
-    for (int shell = 0; shell < 2; shell++) {
-        float freq = (shell == 0) ? 36.0 : 68.0;
-        vec3 pCell = d * freq;
-        vec3 id = floor(pCell);
-        vec3 fd = fract(pCell) - 0.5;
-
-        vec3 h = fract(sin(vec3(dot(id, vec3(127.1, 311.7, 74.7)),
-                                dot(id, vec3(269.5, 183.3, 246.1)),
-                                dot(id, vec3(113.5, 271.9, 124.6)))) * 43758.5453);
-        
-        float prob = (shell == 0) ? 0.32 : 0.22;
-        if (h.x < prob) {
-            vec2 starOffset = (h.yz - 0.5) * 0.70;
-            float dist2 = dot(fd.xy - starOffset, fd.xy - starOffset) + fd.z * fd.z;
-            float rad = (shell == 0) ? 0.065 : 0.045;
-            float starProfile = exp(-dist2 / (rad * rad));
-            
-            float magScale = pow(h.x / prob, 3.6);
-            float bright = mix(0.12, 1.65, magScale);
-            float starT = mix(2800.0, 22000.0, pow(h.y, 2.0));
-            vec3 starColor = blackbody(starT);
-            
-            float twinkle = 0.88 + 0.12 * sin(time * (1.6 + 2.4 * h.z) + h.x * 40.0);
-            starAcc += starProfile * starColor * (bright * twinkle) * 0.42;
-        }
-    }
-
-    return mwCol + starAcc;
-}
 
 void main() {
     // Screen coordinates mapped to celestial impact parameters (alpha, beta)
@@ -254,7 +193,11 @@ void main() {
     float cosObs = cos(thetaObs);
 
     vec3 dSky = normalize(vec3(alpha, beta * cosObs + 35.0 * sinObs, -beta * sinObs + 35.0 * cosObs));
-    vec3 sky = lensedSky(dSky, uTime);
+    vec3 sky = texture(uSkyCube, dSky).rgb;
+
+    // Gentle seeded twinkle <= 8%
+    float twinkle = 0.94 + 0.06 * sin(uTime * 1.5 + dot(dSky, vec3(12.7, 19.3, 31.1)));
+    sky *= twinkle;
 
     if (uIsLight > 0.5) {
         float lum = dot(sky, vec3(0.299, 0.587, 0.114));
@@ -263,6 +206,8 @@ void main() {
     }
 
     fragColor = vec4(sky, 1.0);
+}
+`;
 }
 `;
 
@@ -321,6 +266,7 @@ precision highp int;
 in vec2 vUV;
 out vec4 fragColor;
 
+uniform samplerCube uSkyCube;
 uniform vec2 uRes;
 uniform vec2 uBhScreenCentre;
 uniform float uBhScale;
@@ -418,50 +364,6 @@ float novikovThorneFlux(float r, float a, float r_isco) {
     float C = 1.0 - x0 / x;
     float denom = max(0.04, 1.0 - 3.0 / r + 2.0 * a / (r * x));
     return max(0.0, C / (r * r * r * denom));
-}
-
-// Procedural celestial sphere: anti-aliased lensed starfield & faint Milky Way band
-vec3 lensedSky(vec3 d, float time) {
-    // 1. Faint procedural Milky Way band (peak luminance ~0.010, near-black space)
-    vec3 galPole = normalize(vec3(-0.35, 0.72, 0.59));
-    float b = dot(d, galPole);
-    float mwMask = exp(-b * b * 18.0);
-    vec3 galU = normalize(cross(galPole, vec3(0.0, 0.0, 1.0)));
-    vec3 galV = cross(galPole, galU);
-    float l = atan(dot(d, galV), dot(d, galU));
-    float mwClouds = 0.60 + 0.40 * sin(l * 2.0 + 1.2) * cos(l * 3.0 - 0.4);
-    vec3 mwCol = vec3(0.007, 0.010, 0.018) * (mwMask * mwClouds * 0.48);
-
-    // 2. Multi-tier anti-aliased point stars with realistic magnitude & temperature distribution
-    vec3 starAcc = vec3(0.0);
-    for (int shell = 0; shell < 2; shell++) {
-        float freq = (shell == 0) ? 36.0 : 68.0;
-        vec3 pCell = d * freq;
-        vec3 id = floor(pCell);
-        vec3 fd = fract(pCell) - 0.5;
-
-        vec3 h = fract(sin(vec3(dot(id, vec3(127.1, 311.7, 74.7)),
-                                dot(id, vec3(269.5, 183.3, 246.1)),
-                                dot(id, vec3(113.5, 271.9, 124.6)))) * 43758.5453);
-        
-        float prob = (shell == 0) ? 0.32 : 0.22;
-        if (h.x < prob) {
-            vec2 starOffset = (h.yz - 0.5) * 0.70;
-            float dist2 = dot(fd.xy - starOffset, fd.xy - starOffset) + fd.z * fd.z;
-            float rad = (shell == 0) ? 0.065 : 0.045;
-            float starProfile = exp(-dist2 / (rad * rad));
-            
-            float magScale = pow(h.x / prob, 3.6);
-            float bright = mix(0.12, 1.65, magScale);
-            float starT = mix(2800.0, 22000.0, pow(h.y, 2.0));
-            vec3 starColor = blackbody(starT);
-            
-            float twinkle = 0.88 + 0.12 * sin(time * (1.6 + 2.4 * h.z) + h.x * 40.0);
-            starAcc += starProfile * starColor * (bright * twinkle) * 0.42;
-        }
-    }
-
-    return mwCol + starAcc;
 }
 
 // Canonical equations of motion in Boyer–Lindquist coordinates (r, u = cos θ, pr, pu)
@@ -675,14 +577,21 @@ void main() {
 
     // Accumulate gravitationally lensed celestial background for escaped rays
     if (escaped && uDebugMode == 0) {
-        float lensBlend = smoothstep(26.0, 18.0, bImpact);
-        if (lensBlend > 0.001) {
+        vec3 dSky;
+        if (bImpact > 26.0) {
+            dSky = normalize(vec3(alpha, beta * cosObs + 35.0 * sinObs, -beta * sinObs + 35.0 * cosObs));
+        } else {
             float sinThetaSky = sqrt(max(0.0, 1.0 - s.y * s.y));
-            vec3 dSky = normalize(vec3(sinThetaSky * cos(phiCoord), sinThetaSky * sin(phiCoord), s.y));
-            vec3 skyColor = lensedSky(dSky, uTime);
-            emitColor += transmittance * skyColor * lensBlend;
-            transmittance = mix(transmittance, 0.0, lensBlend);
+            vec3 dLensed = normalize(vec3(sinThetaSky * cos(phiCoord), sinThetaSky * sin(phiCoord), s.y));
+            vec3 dUnlensed = normalize(vec3(alpha, beta * cosObs + 35.0 * sinObs, -beta * sinObs + 35.0 * cosObs));
+            float lensBlend = smoothstep(26.0, 23.5, bImpact);
+            dSky = normalize(mix(dUnlensed, dLensed, lensBlend));
         }
+        vec3 skyColor = texture(uSkyCube, dSky).rgb;
+        float twinkle = 0.94 + 0.06 * sin(uTime * 1.5 + dot(dSky, vec3(12.7, 19.3, 31.1)));
+        skyColor *= twinkle;
+        emitColor += transmittance * skyColor;
+        transmittance = 0.0;
     }
 
     // Diagnostics Views (Telemetry Modes 1 to 7)
@@ -969,9 +878,12 @@ void main() {
     float vig = 1.0 - uVignette * smoothstep(0.18, 0.92, edgeR2 * 1.85);
     srgb *= vig;
 
-    // Fine animated film grain (<= 3%)
-    float grainNoise = hash12(gl_FragCoord.xy + fract(uTime * 17.31) * 413.0) - 0.5;
-    srgb = clamp(srgb + grainNoise * uGrain, 0.0, 1.0);
+    // Fine animated film grain (<= 3%) strictly on luminous content so deep space remains pure black #000000
+    float maxLum = max(srgb.r, max(srgb.g, srgb.b));
+    if (maxLum > 0.0008) {
+        float grainNoise = hash12(gl_FragCoord.xy + fract(uTime * 17.31) * 413.0) - 0.5;
+        srgb = clamp(srgb + grainNoise * (uGrain * smoothstep(0.0008, 0.06, maxLum)), 0.0, 1.0);
+    }
 
     fragColor = vec4(srgb, 1.0);
 }
