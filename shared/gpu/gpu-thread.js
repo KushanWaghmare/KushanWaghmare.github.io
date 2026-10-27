@@ -499,10 +499,41 @@
         isLight: false
     };
 
+    const insideOrbit = {
+        yaw: 0.0,
+        pitch: 0.0,
+        zoom: 1.0,
+        targetYaw: 0.0,
+        targetPitch: 0.0,
+        targetZoom: 1.0
+    };
+
+    let isPointerDragging = false;
+    let lastDragX = 0, lastDragY = 0;
+
+    window.addEventListener("pointerdown", (e) => {
+        if (e.target && e.target.closest && e.target.closest("a, button, input, .nav, .snap-pager, .card, .pill, .stage-debug-hud")) return;
+        isPointerDragging = true;
+        lastDragX = e.clientX;
+        lastDragY = e.clientY;
+    });
+
     window.addEventListener("pointermove", (e) => {
         ctxState.targetPointerX = ((e.clientX / Math.max(1, width)) - 0.5) * 2.0;
         ctxState.targetPointerY = ((e.clientY / Math.max(1, height)) - 0.5) * 2.0;
+
+        if (isPointerDragging && appMode === "INSIDE") {
+            const dx = e.clientX - lastDragX;
+            const dy = e.clientY - lastDragY;
+            lastDragX = e.clientX;
+            lastDragY = e.clientY;
+            insideOrbit.targetYaw += dx * 0.005;
+            insideOrbit.targetPitch = clamp(insideOrbit.targetPitch - dy * 0.005, -0.65, 0.65);
+        }
     }, { passive: true });
+
+    window.addEventListener("pointerup", () => { isPointerDragging = false; });
+    window.addEventListener("pointercancel", () => { isPointerDragging = false; });
 
     window.addEventListener("click", (e) => {
         const ctaBtn = e.target && e.target.closest && e.target.closest(".snap-cta-btn");
@@ -556,6 +587,10 @@
             }
         }
         if (e.target && e.target.closest && e.target.closest("a, button, input, .nav, .snap-pager, .card, .pill, .stage-debug-hud")) return;
+        if (appMode === "INSIDE") {
+            postState.shockwave = 0.02;
+            postState.shockwaveRadius = 0.0;
+        }
         const activeForm = formations[currentIndex];
         if (activeForm && typeof activeForm.onClick === "function") {
             activeForm.onClick(e, ctxState);
@@ -925,12 +960,26 @@
         const vTy = poseAnchor.y - py * 0.16;
         const vTz = poseAnchor.z;
 
+        insideOrbit.yaw += (insideOrbit.targetYaw - insideOrbit.yaw) * 0.12;
+        insideOrbit.pitch += (insideOrbit.targetPitch - insideOrbit.pitch) * 0.12;
+        insideOrbit.zoom += (insideOrbit.targetZoom - insideOrbit.zoom) * 0.12;
+
         const imm = (sim && sim.immersiveCamera) || { offset: [0, 0.6, 3.5], target: [0, 0, 0], fov: 64 };
         const io = imm.offset || [0, 0.6, 3.5];
         const it = imm.target || [0, 0, 0];
-        const iPx = poseAnchor.x + io[0] + ox * 0.2 + px * 0.2;
-        const iPy = poseAnchor.y + io[1] + oy * 0.2 - py * 0.15;
-        const iPz = poseAnchor.z + io[2] + oz * 0.2;
+        const zm = insideOrbit.zoom;
+
+        const cyaw = Math.cos(insideOrbit.yaw), syaw = Math.sin(insideOrbit.yaw);
+        const cpitch = Math.cos(insideOrbit.pitch), spitch = Math.sin(insideOrbit.pitch);
+
+        const oxCam = (io[0] * cyaw - io[2] * syaw) * zm;
+        const ozCam = (io[0] * syaw + io[2] * cyaw) * zm;
+        const oyCam = (io[1] * cpitch - ozCam * spitch) * zm;
+        const finalZ = (io[1] * spitch + ozCam * cpitch);
+
+        const iPx = poseAnchor.x + oxCam + ox * 0.2 + px * 0.2;
+        const iPy = poseAnchor.y + oyCam + oy * 0.2 - py * 0.15;
+        const iPz = poseAnchor.z + finalZ + oz * 0.2;
         const iTx = poseAnchor.x + it[0] + px * 0.1;
         const iTy = poseAnchor.y + it[1] - py * 0.08;
         const iTz = poseAnchor.z + it[2];
@@ -1025,6 +1074,7 @@
         // Active pill highlights immediately at departure!
         updateIntraIndicator(currentDimIndex, currentSimIndex);
         updateLocaleContent(currentDimIndex, currentSimIndex);
+        if (appMode === "INSIDE") updateInsideHud(currentDimIndex, currentSimIndex);
         updateUrlHash(currentDimIndex, currentSimIndex);
     };
 
@@ -1229,6 +1279,9 @@
         h.active = true;
         navState = "INTRA_HOP";
         appMode = "VIEW";
+        insideOrbit.targetYaw = 0.0;
+        insideOrbit.targetPitch = 0.0;
+        insideOrbit.targetZoom = 1.0;
 
         if (typeof document !== "undefined") {
             document.body.classList.remove("is-inside");
@@ -1499,6 +1552,11 @@
     };
 
     window.addEventListener("wheel", (e) => {
+        if (appMode === "INSIDE") {
+            e.preventDefault();
+            insideOrbit.targetZoom = clamp(insideOrbit.targetZoom + e.deltaY * 0.002, 0.6, 2.0);
+            return;
+        }
         if (!sections.length) return;
         if (e.ctrlKey || e.metaKey) return;
         const dy = e.deltaY;
