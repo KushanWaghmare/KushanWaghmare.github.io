@@ -214,7 +214,7 @@
         if (!gl) return null;
         const size = isMobile ? Math.min(1024, targetSize) : targetSize;
 
-        if (cachedCubeTex && cachedCubeSize === size) {
+        if (cachedCubeTex && cachedCubeSize === size && gl.isTexture(cachedCubeTex)) {
             return cachedCubeTex;
         }
 
