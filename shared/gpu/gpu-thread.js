@@ -1184,7 +1184,10 @@
     };
 
     const enterSimulation = () => {
-        if (trans.active) return;
+        if (trans.active) {
+            pendingEnter = currentSimIndex;
+            return;
+        }
         if (appMode === "INSIDE" && !intraHop.active) return;
 
         const dims = getDimensions();
@@ -1640,14 +1643,16 @@
         }
         currentIndex = startIdx;
         currentDimIndex = currentIndex;
+        currentSimIndex = startLocIdx;
         currentLocaleIndex = startLocIdx;
-        // Deep link #dimension/locale restores the "inside" state directly, shell already crossed
+        appMode = startInside ? "INSIDE" : "VIEW";
         inside.isInside = startInside;
         inside.value = startInside ? 1.0 : 0.0;
         inside.shift = 0.0;
         navState = "IDLE";
         intraHop.active = false;
         intraHop.u = 0.0;
+        intraHop.queuedSimIndex = -1;
         intraHop.queuedLocaleIndex = -1;
         trans.active = false;
         trans.phase = "IDLE";
@@ -1656,37 +1661,52 @@
         trans.auxOpacity = 1.0;
         trans.warpStrength = 0.0;
 
+        if (startInside && typeof document !== "undefined") {
+            document.body.classList.add("is-inside");
+            const sec = sections[currentIndex];
+            if (sec) sec.classList.add("is-inside");
+            updateInsideHud(currentIndex, currentSimIndex);
+        }
+
         const active = formations[currentIndex];
         if (active) {
             active.insideness = inside.value;
             active.init(sharedBuffer, ctxState);
             const dims = getDimensions();
             const curDim = dims[currentDimIndex];
-            if (curDim && curDim.locales && curDim.locales[currentLocaleIndex]) {
-                const loc = curDim.locales[currentLocaleIndex];
-                if (loc.simPreset && typeof active.applyPreset === "function") {
-                    active.applyPreset(loc.simPreset);
-                }
+            const sims = (curDim && (curDim.sims || curDim.locales)) || [];
+            const curSim = sims[currentSimIndex] || sims[0];
+            if (curSim && curSim.simPreset && typeof active.applyPreset === "function") {
+                active.applyPreset(curSim.simPreset);
+            }
+            if (curSim && curSim.localAnchor && curDim && curDim.anchor) {
+                active.origin.set(
+                    curDim.anchor[0] + curSim.localAnchor[0],
+                    curDim.anchor[1] + curSim.localAnchor[1],
+                    curDim.anchor[2] + curSim.localAnchor[2]
+                );
             }
             active.update(0.016, 0.016, sharedBuffer, ctxState);
             prevPositions.set(positions);
             const prof = getProfile(currentIndex);
-            camera.fov = prof.fov;
             if (startInside) {
-                idlePose(currentIndex, currentLocaleIndex, 1.0, poseA, poseB);
+                idlePose(currentIndex, currentSimIndex, "INSIDE", poseA, poseB);
                 camera.position.copy(poseA);
                 camera.target.copy(poseB);
-                anchorWorld(currentIndex, currentLocaleIndex, 1.0, poseAnchor);
-                sampleIdle(currentIndex, currentLocaleIndex, idleVec);
+                if (curSim && curSim.immersiveCamera) camera.fov = curSim.immersiveCamera.fov;
+                else camera.fov = prof.fov;
+                anchorWorld(currentIndex, currentSimIndex, "INSIDE", poseAnchor);
+                sampleIdle(currentIndex, currentSimIndex, idleVec);
                 positions[0] = poseAnchor.x + idleVec.x;
                 positions[1] = poseAnchor.y + idleVec.y;
                 positions[2] = poseAnchor.z + idleVec.z;
                 camera.near = 0.05;
                 camera.far = 450.0;
             } else {
-                const camDist = active.cameraDistance || 13.5;
-                camera.position.set(active.origin.x, active.origin.y, active.origin.z + camDist);
-                camera.target.copy(active.origin);
+                idlePose(currentIndex, currentSimIndex, "VIEW", poseA, poseB);
+                camera.position.copy(poseA);
+                camera.target.copy(poseB);
+                camera.fov = prof.fov;
                 camera.near = 0.1;
                 camera.far = 600.0;
             }
@@ -1711,7 +1731,7 @@
         updateThemeAndDots(currentIndex);
         updateIntraIndicator(currentDimIndex, currentLocaleIndex);
         updateLocaleContent(currentDimIndex, currentLocaleIndex);
-        if (location.hash) updateUrlHash(currentDimIndex, startInside ? currentLocaleIndex : null, true);
+        if (location.hash) updateUrlHash(currentDimIndex, currentSimIndex, true);
     };
 
     refreshSections();
@@ -1722,12 +1742,15 @@
             if (parsed) {
                 isHandlingHistoryEvent = true;
                 try {
+                    const targetSim = parsed.simIndex !== undefined ? parsed.simIndex : parsed.localeIndex;
                     if (parsed.dimIndex !== currentDimIndex) {
-                        goToDimension(parsed.dimIndex, parsed.localeIndex, parsed.inside);
+                        goToDimension(parsed.dimIndex, targetSim, parsed.inside);
                     } else if (parsed.inside) {
-                        goToLocale(parsed.localeIndex);
+                        if (targetSim !== currentSimIndex) goToSim(targetSim);
+                        if (appMode !== "INSIDE") enterSimulation();
                     } else {
-                        exitToOverview();
+                        if (targetSim !== currentSimIndex) goToSim(targetSim);
+                        if (appMode === "INSIDE") exitSimulation();
                     }
                 } finally {
                     isHandlingHistoryEvent = false;
@@ -1916,10 +1939,10 @@
         const flightU = trans.active ? trans.u : (intraHop.active ? intraHop.u : 0.0);
         const curBlend = trans.active ? trans.dimBlend : 0.0;
         const dims = getDimensions();
-        const dimSlug = (dims[currentDimIndex] && dims[currentDimIndex].slug) || "intro";
-        const locId = (dims[currentDimIndex] && dims[currentDimIndex].locales && dims[currentDimIndex].locales[currentLocaleIndex])
-            ? dims[currentDimIndex].locales[currentLocaleIndex].id
-            : "0";
+        const dim = dims[currentDimIndex];
+        const dimSlug = (dim && dim.slug) || "intro";
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        const simId = (sims[currentSimIndex] && sims[currentSimIndex].id) || "0";
 
         const scrubber = debugEl.querySelector("#dbg-scrubber");
         const uValEl = debugEl.querySelector("#dbg-u-val");
@@ -1952,8 +1975,9 @@
         if (statsEl) {
             statsEl.textContent =
                 `state      : ${navState}\n` +
-                `dimIndex   : #${currentDimIndex} (${dimSlug})\n` +
-                `localeIndex: #${currentLocaleIndex} (${locId})\n` +
+                `mode       : ${appMode}\n` +
+                `dimension  : #${currentDimIndex} (${dimSlug})\n` +
+                `simulation : #${currentSimIndex} (${simId})\n` +
                 `dimBlend   : ${curBlend.toFixed(3)}\n` +
                 `flight u   : ${flightU.toFixed(3)}\n` +
                 `speed      : ${heroSpeed.toFixed(2)} u/s\n` +
@@ -2638,7 +2662,10 @@
                     if (pendingEnter >= 0) {
                         const pe = pendingEnter;
                         pendingEnter = -1;
-                        startIntraHop(pe);
+                        if (pe !== currentSimIndex) {
+                            goToSim(pe);
+                        }
+                        enterSimulation();
                     }
                 }
             }
