@@ -167,7 +167,7 @@
             const ry = uy * cosP - rz * sinP;
             const rz2 = uy * sinP + rz * cosP;
 
-            const scale = 0.186;
+            const scale = 0.186 * (1.0 + 0.85 * (this.insideness || 0));
             out[i3]     = this.origin.x + offsetX + rx * scale;
             out[i3 + 1] = this.origin.y + ry * scale;
             out[i3 + 2] = this.origin.z + rz2 * scale;
@@ -492,7 +492,7 @@
             const ry = ly * cosP - rz * sinP;
             const rz2 = ly * sinP + rz * cosP;
 
-            const scale = 2.55;
+            const scale = 2.55 * (1.0 + 0.95 * (this.insideness || 0));
             out[i3]     = this.origin.x + offsetX + rx * scale;
             out[i3 + 1] = this.origin.y + ry * scale;
             out[i3 + 2] = this.origin.z + rz2 * scale;
@@ -727,7 +727,7 @@
             const denom = ut * (1.0 - om * L);
             const g = denom > 1e-4 ? clamp(1.0 / denom, 0.25, 2.65) : 1.0;
 
-            const scale = 0.42;
+            const scale = 0.42 * (1.0 + 0.65 * (this.insideness || 0));
             let lx, ly, lz;
 
             // Physical equatorial accretion disc tilted by θ_obs
@@ -797,15 +797,18 @@
             if (dbg && dbg.spin !== null && dbg.spin !== undefined) {
                 this.kerrOverlay.spin = dbg.spin;
             }
+            const ins = this.insideness || 0;
             const sinObs = Math.sin(this.tilt);
             const cosObs = Math.cos(this.tilt);
-            const offsetX = ((ctx && ctx.isMobile) ? 0.0 : 2.35) * (1.0 - 0.85 * (this.insideness || 0));
+            const offsetX = ((ctx && ctx.isMobile) ? 0.0 : 2.35) * (1.0 - 0.85 * ins);
 
             const isMob = (ctx && ctx.isMobile) || (typeof window !== "undefined" && window.innerWidth <= 768);
-            this.kerrOverlay.tilt = this.tilt;
-            this.kerrOverlay.screenX = isMob ? 0.50 : (0.66 - ptrX * 0.015);
+            const targetScreenX = isMob ? 0.50 : (0.66 - ptrX * 0.015);
+            this.kerrOverlay.screenX = targetScreenX * (1.0 - 0.65 * ins) + 0.50 * (0.65 * ins);
             this.kerrOverlay.screenY = isMob ? 0.68 : (0.50 + ptrY * 0.02);
-            this.kerrOverlay.scale = (dbg && dbg.scale !== undefined && dbg.scale !== null) ? dbg.scale : (isMob ? 44.0 : 34.0);
+            const baseScale = isMob ? 44.0 : 34.0;
+            this.kerrOverlay.scale = (dbg && dbg.scale !== undefined && dbg.scale !== null) ? dbg.scale : (baseScale * (1.0 + 0.55 * ins));
+            this.kerrOverlay.tilt = this.tilt * (1.0 - 0.40 * ins) + 1.50 * (0.40 * ins);
             if (dbg && dbg.spin !== null && dbg.spin !== undefined) {
                 this.kerrOverlay.spin = dbg.spin;
             } else {
@@ -998,9 +1001,10 @@
             const ry = ly * cosP - rz * sinP;
             const rz2 = ly * sinP + rz * cosP;
 
-            outPos[outOffset]     = this.origin.x + offsetX + rx * 1.15;
-            outPos[outOffset + 1] = this.origin.y + ry * 1.15;
-            outPos[outOffset + 2] = this.origin.z + rz2 * 1.15;
+            const scale = 1.15 * (1.0 + 0.85 * (this.insideness || 0));
+            outPos[outOffset]     = this.origin.x + offsetX + rx * scale;
+            outPos[outOffset + 1] = this.origin.y + ry * scale;
+            outPos[outOffset + 2] = this.origin.z + rz2 * scale;
 
             if (outCol) {
                 // Score magnitude ||∇_x log p_t(x)|| = ||(x_t - α(t) x_0) / σ²(t)||
@@ -1282,7 +1286,7 @@
             const ry = ly * cosP - rz * sinP;
             const rz2 = ly * sinP + rz * cosP;
 
-            const scale = 2.15;
+            const scale = 2.15 * (1.0 + 0.85 * (this.insideness || 0));
             outPos[i3]     = this.origin.x + offsetX + rx * scale;
             outPos[i3 + 1] = this.origin.y + ry * scale;
             outPos[i3 + 2] = this.origin.z + rz2 * scale;
@@ -1566,9 +1570,10 @@
             const ry = ly * cosP - rz * sinP;
             const rz2 = ly * sinP + rz * cosP;
 
-            outPos[i3]     = this.origin.x + offsetX + rx;
-            outPos[i3 + 1] = this.origin.y + ry;
-            outPos[i3 + 2] = this.origin.z + rz2;
+            const scale = 1.0 + 0.85 * (this.insideness || 0);
+            outPos[i3]     = this.origin.x + offsetX + rx * scale;
+            outPos[i3 + 1] = this.origin.y + ry * scale;
+            outPos[i3 + 2] = this.origin.z + rz2 * scale;
 
             if (outCol) {
                 outCol[i3]     = clamp(rC, 0.06, 1.0);
@@ -1716,9 +1721,10 @@
             const ry = ly * cosP - rz * sinP;
             const rz2 = ly * sinP + rz * cosP;
 
-            outPos[i3]     = this.origin.x + offsetX + rx;
-            outPos[i3 + 1] = this.origin.y + ry;
-            outPos[i3 + 2] = this.origin.z + rz2;
+            const scale = 1.0 + 0.85 * (this.insideness || 0);
+            outPos[i3]     = this.origin.x + offsetX + rx * scale;
+            outPos[i3 + 1] = this.origin.y + ry * scale;
+            outPos[i3 + 2] = this.origin.z + rz2 * scale;
 
             if (outCol) {
                 const palettes = [
