@@ -797,6 +797,74 @@
         }
 
         startIntraHop(target);
+        updateUrlHash(currentDimIndex, target);
+    };
+
+    const parseHash = (hashStr) => {
+        if (!hashStr || typeof hashStr !== "string") return null;
+        const clean = hashStr.replace(/^#\/?/, "").trim().toLowerCase();
+        if (!clean) return null;
+        const parts = clean.split("/");
+        const dimPart = parts[0];
+        const locPart = parts[1] || null;
+
+        const dims = getDimensions();
+        let targetDimIdx = -1;
+        let targetLocIdx = 0;
+
+        for (let i = 0; i < dims.length; i++) {
+            const d = dims[i];
+            const dSlug = (d.slug || "").toLowerCase();
+            const dId = (d.id || "").toLowerCase();
+            const dIdTrimmed = dId.replace(/^domain-/, "");
+            if (dSlug === dimPart || dId === dimPart || dIdTrimmed === dimPart) {
+                targetDimIdx = i;
+                break;
+            }
+        }
+
+        if (targetDimIdx === -1 && typeof document !== "undefined") {
+            const sec = document.querySelector("#" + dimPart) || document.querySelector("#domain-" + dimPart);
+            if (sec && sections) {
+                targetDimIdx = sections.indexOf(sec);
+            }
+        }
+
+        if (targetDimIdx === -1) return null;
+
+        const targetDim = dims[targetDimIdx];
+        if (locPart && targetDim && targetDim.locales) {
+            for (let j = 0; j < targetDim.locales.length; j++) {
+                const loc = targetDim.locales[j];
+                const locId = (loc.id || "").toLowerCase();
+                const locName = (loc.name || "").toLowerCase();
+                const locShort = (loc.short || "").toLowerCase();
+                if (locId === locPart || locName === locPart || locShort === locPart) {
+                    targetLocIdx = j;
+                    break;
+                }
+            }
+        }
+
+        return { dimIndex: targetDimIdx, localeIndex: targetLocIdx };
+    };
+
+    let isHandlingHistoryEvent = false;
+    const updateUrlHash = (dimIdx, locIdx, replace = false) => {
+        if (isHandlingHistoryEvent) return;
+        if (typeof window === "undefined" || !window.history) return;
+        const dims = getDimensions();
+        const dim = dims[dimIdx];
+        if (!dim) return;
+        const loc = (dim.locales && dim.locales[locIdx]) ? dim.locales[locIdx] : null;
+        const hash = loc ? `#${dim.slug}/${loc.id}` : `#${dim.slug}`;
+        if (window.location.hash !== hash) {
+            if (replace) {
+                window.history.replaceState(null, "", hash);
+            } else {
+                window.history.pushState(null, "", hash);
+            }
+        }
     };
 
     const stepLocale = (delta) => {
@@ -820,6 +888,7 @@
         }
         currentLocaleIndex = targetLocaleIdx | 0;
         startTransition(clampedTarget);
+        updateUrlHash(clampedTarget, currentLocaleIndex);
     };
 
     const getNavState = () => ({
@@ -828,7 +897,8 @@
         localeIndex: currentLocaleIndex,
         dimBlend: trans.dimBlend !== undefined ? trans.dimBlend : 0.0,
         flightProgress: trans.active ? trans.u : (intraHop.active ? intraHop.u : 0.0),
-        isTransitioning: trans.active || intraHop.active
+        isTransitioning: trans.active || intraHop.active,
+        simTime: simTime
     });
 
     const computeParticleRanks = (srcPos, count, heroStart) => {
@@ -927,7 +997,7 @@
         trans.toIndex = clampedTarget;
         trans.interrupted = wasMidFlight;
         trans.u = 0.0;
-        trans.duration = isReducedMotion() ? 0.45 : (jumpSpan > 1 ? 2.65 : 2.40);
+        trans.duration = isReducedMotion() ? 0.80 : (jumpSpan > 1 ? 2.65 : 2.40);
         trans.active = true;
         trans.phase = "DETACH";
         navState = "INTER_FLIGHT";
@@ -1039,14 +1109,21 @@
         }
 
         let startIdx = 0;
-        if (location.hash) {
-            const targetSec = document.querySelector(location.hash);
-            const found = sections.indexOf(targetSec);
-            if (found !== -1) startIdx = found;
+        let startLocIdx = 0;
+        if (typeof location !== "undefined" && location.hash) {
+            const parsed = parseHash(location.hash);
+            if (parsed) {
+                startIdx = parsed.dimIndex;
+                startLocIdx = parsed.localeIndex;
+            } else {
+                const targetSec = document.querySelector(location.hash);
+                const found = sections.indexOf(targetSec);
+                if (found !== -1) startIdx = found;
+            }
         }
         currentIndex = startIdx;
         currentDimIndex = currentIndex;
-        currentLocaleIndex = 0;
+        currentLocaleIndex = startLocIdx;
         navState = "IDLE";
         intraHop.active = false;
         intraHop.u = 0.0;
@@ -1061,6 +1138,14 @@
         const active = formations[currentIndex];
         if (active) {
             active.init(sharedBuffer, ctxState);
+            const dims = getDimensions();
+            const curDim = dims[currentDimIndex];
+            if (curDim && curDim.locales && curDim.locales[currentLocaleIndex]) {
+                const loc = curDim.locales[currentLocaleIndex];
+                if (loc.simPreset && typeof active.applyPreset === "function") {
+                    active.applyPreset(loc.simPreset);
+                }
+            }
             active.update(0.016, 0.016, sharedBuffer, ctxState);
             prevPositions.set(positions);
             const camDist = active.cameraDistance || 13.5;
@@ -1087,9 +1172,32 @@
         trailNeedsReset = true;
         applyDomSectionVisibility(currentIndex, currentIndex, 1.0, false);
         updateThemeAndDots(currentIndex);
+        updateIntraIndicator(currentDimIndex, currentLocaleIndex);
+        updateLocaleContent(currentDimIndex, currentLocaleIndex);
+        updateUrlHash(currentDimIndex, currentLocaleIndex, true);
     };
 
     refreshSections();
+
+    if (typeof window !== "undefined") {
+        const handleHashOrHistory = () => {
+            const parsed = parseHash(window.location.hash);
+            if (parsed) {
+                isHandlingHistoryEvent = true;
+                try {
+                    if (parsed.dimIndex !== currentDimIndex) {
+                        goToDimension(parsed.dimIndex, parsed.localeIndex);
+                    } else if (parsed.localeIndex !== currentLocaleIndex) {
+                        goToLocale(parsed.localeIndex);
+                    }
+                } finally {
+                    isHandlingHistoryEvent = false;
+                }
+            }
+        };
+        window.addEventListener("popstate", handleHashOrHistory);
+        window.addEventListener("hashchange", handleHashOrHistory);
+    }
 
     /* ---------- ?debug Telemetry HUD & Kerr Geodesic Diagnostics ---------- */
     window.__KERR_DEBUG__ = window.__KERR_DEBUG__ || {
@@ -1134,6 +1242,7 @@
     parseUrlDebug();
 
     let debugEl = null;
+    let lastFrameDt = 0.016;
     const isDebugEnabled = () => {
         try {
             return new URLSearchParams(location.search).has("debug") || (window.__KERR_DEBUG__ && window.__KERR_DEBUG__.active);
@@ -1164,8 +1273,15 @@
             debugEl.style.cssText = "position:fixed;top:68px;right:16px;z-index:9999;padding:12px 14px;border-radius:10px;background:rgba(8,12,20,0.92);border:1px solid rgba(124,184,255,0.32);color:#e6eefc;font:500 11px/1.5 var(--mono,monospace);pointer-events:auto;backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,0.5);width:340px;user-select:none;";
             debugEl.innerHTML = `
                 <div style="font-weight:700;letter-spacing:0.06em;color:#7cb8ff;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-                    <span>KERR GEODESIC TELEMETRY</span>
+                    <span>DIMENSION TELEMETRY</span>
                     <span id="dbg-fps-tag" style="color:#8af;">60 FPS</span>
+                </div>
+                <div style="margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid rgba(255,255,255,0.08);">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:10px;color:#8aa2c2;">
+                        <span>Flight Scrubber:</span>
+                        <span id="dbg-u-val" style="color:#fff;font-family:monospace;">0.000</span>
+                    </div>
+                    <input id="dbg-scrubber" type="range" min="0" max="1" step="0.002" value="0" style="width:100%;cursor:pointer;">
                 </div>
                 <div style="margin-bottom:6px;font-size:10px;color:#8aa2c2;text-transform:uppercase;letter-spacing:0.04em;">Telemetry Mode:</div>
                 <div id="dbg-modes" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px;"></div>
@@ -1176,6 +1292,18 @@
                 <pre id="dbg-stats" style="margin:0;font:inherit;color:#a8c4ea;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;font-size:10.5px;"></pre>
             `;
             document.body.appendChild(debugEl);
+
+            const scrubber = debugEl.querySelector("#dbg-scrubber");
+            if (scrubber) {
+                scrubber.addEventListener("input", (e) => {
+                    const val = parseFloat(e.target.value);
+                    if (trans.active) {
+                        trans.u = val;
+                    } else if (intraHop.active) {
+                        intraHop.u = val;
+                    }
+                });
+            }
 
             const modesContainer = debugEl.querySelector("#dbg-modes");
             DEBUG_MODES_INFO.forEach((m) => {
@@ -1242,6 +1370,27 @@
         const curInc = (window.__KERR_DEBUG__ && window.__KERR_DEBUG__.inc !== null) ? `${window.__KERR_DEBUG__.inc}° (override)` : "Auto (tilt pointer)";
         const curSpin = (window.__KERR_DEBUG__ && window.__KERR_DEBUG__.spin !== null) ? window.__KERR_DEBUG__.spin : 0.95;
 
+        const liveVelX = positions[0] - prevPositions[0];
+        const liveVelY = positions[1] - prevPositions[1];
+        const liveVelZ = positions[2] - prevPositions[2];
+        const heroSpeed = (lastFrameDt > 1e-4) ? (Math.hypot(liveVelX, liveVelY, liveVelZ) / lastFrameDt) : 0.0;
+        const flightU = trans.active ? trans.u : (intraHop.active ? intraHop.u : 0.0);
+        const curBlend = trans.active ? trans.dimBlend : 0.0;
+        const dims = getDimensions();
+        const dimSlug = (dims[currentDimIndex] && dims[currentDimIndex].slug) || "intro";
+        const locId = (dims[currentDimIndex] && dims[currentDimIndex].locales && dims[currentDimIndex].locales[currentLocaleIndex])
+            ? dims[currentDimIndex].locales[currentLocaleIndex].id
+            : "0";
+
+        const scrubber = debugEl.querySelector("#dbg-scrubber");
+        const uValEl = debugEl.querySelector("#dbg-u-val");
+        if (scrubber && !scrubber.matches(":active")) {
+            scrubber.value = flightU;
+        }
+        if (uValEl) {
+            uValEl.textContent = `${flightU.toFixed(3)} (${(flightU * 100).toFixed(1)}%)`;
+        }
+
         // Update button highlights
         debugEl.querySelectorAll("#dbg-modes button").forEach((b) => {
             const isActive = parseInt(b.dataset.mode, 10) === curMode;
@@ -1263,11 +1412,16 @@
         const statsEl = debugEl.querySelector("#dbg-stats");
         if (statsEl) {
             statsEl.textContent =
-                `formation : ${formName} (#${currentIndex})\n` +
-                `active mode: [${DEBUG_MODES_INFO[curMode].key}] ${DEBUG_MODES_INFO[curMode].label}\n` +
+                `state      : ${navState}\n` +
+                `dimIndex   : #${currentDimIndex} (${dimSlug})\n` +
+                `localeIndex: #${currentLocaleIndex} (${locId})\n` +
+                `dimBlend   : ${curBlend.toFixed(3)}\n` +
+                `flight u   : ${flightU.toFixed(3)}\n` +
+                `speed      : ${heroSpeed.toFixed(2)} u/s\n` +
+                `FOV        : ${camera.fov.toFixed(1)}°\n` +
+                `formation  : ${formName}\n` +
                 `inclination: ${curInc}\n` +
-                `spin a     : ${curSpin} (ISCO ~1.94M)\n` +
-                `progress   : ${(trans.u * 100).toFixed(1)}% | fov: ${camera.fov.toFixed(1)}°\n` +
+                `spin a     : ${curSpin}\n` +
                 `particles  : ${sharedBuffer.count} (reallocs: ${bufferReallocations})\n` +
                 `hero #0    : (${hx}, ${hy}, ${hz})`;
         }
@@ -1324,6 +1478,7 @@
         const rawDt = (now - lastTime) * 0.001;
         lastTime = now;
         const dt = clamp(rawDt, 0.001, 0.05);
+        lastFrameDt = dt;
         simTime += dt;
 
         const instFps = 1.0 / Math.max(1e-4, rawDt);
@@ -1428,6 +1583,10 @@
                 postState.fogDensity += (curProf.fogDensity - postState.fogDensity) * pLerp;
                 postState.trailDecay += ((active.trailDecay || 0.68) - postState.trailDecay) * pLerp;
                 postState.streakScale += ((active.streakScale || 1.25) - postState.streakScale) * pLerp;
+
+                if (typeof window !== "undefined" && window.SOUND && typeof window.SOUND.setDimensionAmbient === "function") {
+                    window.SOUND.setDimensionAmbient(curProf.audio, curProf.audio, 1.0);
+                }
             }
             trans.auxOpacity = Math.min(1.0, trans.auxOpacity + dt * 2.5);
             trans.warpStrength = 0.0;
@@ -1437,10 +1596,17 @@
             const u = trans.u;
             trans.phase = getPhaseName(u);
 
+            const fromProf = getProfile(trans.fromIndex);
+            const toProf = getProfile(trans.toIndex);
+
             // TRANSFORM (50-80%): dimBlend ramps 0 -> 1 smoothly, tracking live value on interrupt/reverse
-            const blendFactor = smoothstep(0.50, 0.80, u);
+            const blendFactor = isReducedMotion() ? smootherstep(0.0, 1.0, u) : smoothstep(0.50, 0.80, u);
             trans.dimBlend = clamp(trans.initialBlend + (1.0 - trans.initialBlend) * blendFactor, 0.0, 1.0);
             const dimBlend = trans.dimBlend;
+
+            if (typeof window !== "undefined" && window.SOUND && typeof window.SOUND.setDimensionAmbient === "function") {
+                window.SOUND.setDimensionAmbient(fromProf.audio, toProf.audio, dimBlend);
+            }
 
             const fromForm = formations[trans.fromIndex];
             const toForm = formations[trans.toIndex];
@@ -1484,9 +1650,6 @@
             positions[0] = hFlightX + (hEndX - hFlightX) * lambda;
             positions[1] = hFlightY + (hEndY - hFlightY) * lambda;
             positions[2] = hFlightZ + (hEndZ - hFlightZ) * lambda;
-
-            const fromProf = getProfile(trans.fromIndex);
-            const toProf = getProfile(trans.toIndex);
 
             // Hero particle chromatic & size morph driven by dimBlend
             colours[0] = fromProf.heroColour[0] + (toProf.heroColour[0] - fromProf.heroColour[0]) * dimBlend;
@@ -2000,6 +2163,8 @@
         get progress() { return trans.u; },
         get isTransitioning() { return trans.active || intraHop.active; },
         get fps() { return fps; },
+        get simTime() { return simTime; },
+        get intraHop() { return intraHop; },
         get heroPosition() { return new Vector3(positions[0], positions[1], positions[2]); },
         get formations() { return formations; },
         get trans() { return trans; },

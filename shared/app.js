@@ -169,6 +169,58 @@
             }
         };
 
+        let ambient = null;
+        const ensureAmbient = () => {
+            if (ambient || !ctx) return;
+            try {
+                const createBank = () => {
+                    const oscs = [];
+                    const filter = ctx.createBiquadFilter();
+                    filter.type = "lowpass";
+                    const gain = ctx.createGain();
+                    gain.gain.value = 0.0;
+                    filter.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    for (let h = 0; h < 3; h++) {
+                        const o = ctx.createOscillator();
+                        o.type = h === 0 ? "sine" : "triangle";
+                        const og = ctx.createGain();
+                        og.gain.value = 0.07 / (h + 1);
+                        o.connect(og);
+                        og.connect(filter);
+                        o.start();
+                        oscs.push({ osc: o, gain: og });
+                    }
+                    return { oscs, filter, gain };
+                };
+
+                const bankA = createBank();
+                const bankB = createBank();
+                ambient = { bankA, bankB, active: false };
+            } catch (e) {
+                ambient = null;
+            }
+        };
+
+        const updateBankAudio = (bank, audioCfg, targetGain, t0) => {
+            if (!bank || !audioCfg) return;
+            const root = audioCfg.rootFreq || 110.0;
+            const ratios = audioCfg.harmonicRatios || [1.0, 1.5, 2.0];
+            const cutoff = audioCfg.filterCutoff || 480;
+            const q = audioCfg.q || 3.0;
+
+            for (let h = 0; h < bank.oscs.length; h++) {
+                const ratio = ratios[h] || (h + 1);
+                const freq = Math.max(30, Math.min(3000, root * ratio));
+                bank.oscs[h].osc.frequency.setTargetAtTime(freq, t0, 0.06);
+            }
+            bank.filter.frequency.setTargetAtTime(cutoff, t0, 0.08);
+            bank.filter.Q.setTargetAtTime(q, t0, 0.08);
+            const masterVol = enabled ? targetGain * 0.035 : 0.0;
+            bank.gain.gain.setTargetAtTime(masterVol, t0, 0.08);
+        };
+
         const playTone = (freqStart, freqEnd, type, duration, volume) => {
             withContext((t0) => {
                 const osc = ctx.createOscillator();
@@ -266,9 +318,28 @@
                     o.start(t0);
                     o.stop(t0 + 0.75);
                 });
+            },
+            setDimensionAmbient: (fromAudio, toAudio, blend) => {
+                if (!enabled) {
+                    if (ambient) {
+                        const t0 = (ctx && ctx.currentTime) || 0;
+                        ambient.bankA.gain.gain.setTargetAtTime(0.0, t0, 0.04);
+                        ambient.bankB.gain.gain.setTargetAtTime(0.0, t0, 0.04);
+                    }
+                    return;
+                }
+                withContext((t0) => {
+                    ensureAmbient();
+                    if (!ambient) return;
+                    const b = Math.max(0.0, Math.min(1.0, blend || 0.0));
+                    updateBankAudio(ambient.bankA, fromAudio, 1.0 - b, t0);
+                    updateBankAudio(ambient.bankB, toAudio, b, t0);
+                });
             }
         };
     })();
+
+    window.SOUND = KW.SOUND = SOUND;
 
     const tags = (a) => a.map((t) => `<span class="tag">${t}</span>`).join("");
     const pad = (n) => String(n + 1).padStart(2, "0");
@@ -1610,8 +1681,12 @@ const initNavSim = (c) => {
         loadPage(u.href, true);
     });
 
+    let lastNavPathname = location.pathname;
     window.addEventListener("popstate", () => {
-        loadPage(location.href, false);
+        if (location.pathname !== lastNavPathname) {
+            lastNavPathname = location.pathname;
+            loadPage(location.href, false);
+        }
     });
 
     document.addEventListener("pointermove", (e) => {
