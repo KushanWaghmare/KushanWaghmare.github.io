@@ -937,49 +937,46 @@
         );
     };
 
-    /* Overview -> interior (ENTER, crosses the shell), interior -> interior (INTER),
-       interior -> overview (EXIT, reverse dive). targetLocaleIdx < 0 means EXIT. */
-    const startIntraHop = (targetLocaleIdx) => {
+    /* Intra-dimensional hop between simulations within the active section.
+       Detaches hero from live position, flies curved 3D Bezier arc (1.0-1.6s) to destination sim anchor.
+       Previous sim recedes (1 -> 0.15), new sim blossoms (0 -> 1 over 1.2s). Active pill highlights immediately. */
+    const startIntraHop = (targetSimIdx) => {
         const dims = getDimensions();
         const dim = dims[currentDimIndex];
         const active = formations[currentDimIndex];
-        if (!dim || !dim.locales || !active) return;
-        const exiting = targetLocaleIdx < 0;
-        if (!exiting && !dim.locales[targetLocaleIdx]) return;
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        if (!dim || sims.length === 0 || !active) return;
+        const target = clamp(targetSimIdx | 0, 0, sims.length - 1);
+        if (target === currentSimIndex && !intraHop.active) return;
 
         const h = intraHop;
         const reduced = isReducedMotion();
-        const cfg = interiorCfg(currentDimIndex);
 
-        h.fromLocaleIndex = currentLocaleIndex;
-        if (!exiting) currentLocaleIndex = targetLocaleIdx;
-        h.toLocaleIndex = currentLocaleIndex;
-        h.exiting = exiting;
+        h.fromSimIndex = currentSimIndex;
+        h.toSimIndex = target;
+        currentSimIndex = target;
+        currentLocaleIndex = target;
+        h.isDive = false;
+        h.presetApplied = false;
 
-        h.ins0 = inside.value;
-        h.insT = exiting ? 0.0 : 1.0;
-        h.crossing = (h.ins0 < 0.5) !== (h.insT < 0.5);
-        inside.isInside = !exiting;
-
-        // Exact live start state: position, velocity, camera, insideness.
+        // Exact live start state: hero position and velocity
         h.fromPos.set(positions[0], positions[1], positions[2]);
         h.vel.copy(heroVel);
         const vl = h.vel.length();
         if (vl > 6.0) h.vel.multiplyScalar(6.0 / vl);
 
-        if (exiting) h.toPos.copy(formHero);
-        else anchorWorld(currentDimIndex, h.toLocaleIndex, 1.0, h.toPos);
+        anchorWorld(currentDimIndex, h.toSimIndex, appMode, h.toPos);
 
         const cx = h.toPos.x - h.fromPos.x, cy = h.toPos.y - h.fromPos.y, cz = h.toPos.z - h.fromPos.z;
         const len = Math.max(0.05, Math.hypot(cx, cy, cz));
-        h.bankSign = ((exiting ? 1 : targetLocaleIdx) % 2 === 0) ? 1.0 : -1.0;
-        // Curvature around structures: sideways bend plus a gentle rise (fractions of chord length).
+        h.bankSign = (target % 2 === 0) ? 1.0 : -1.0;
+
         const sx = cz / len, sz = -cx / len;
         const sl = Math.max(1e-3, Math.hypot(sx, sz));
-        const bs = 0.26 * h.bankSign;
-        h.bend.set((sx / sl) * bs, 0.10, (sz / sl) * bs);
-        h.bend2.set((sx / sl) * bs * 0.8, 0.06, (sz / sl) * bs * 0.8);
-        h.ph = h.toLocaleIndex * 1.7 + simTime * 0.37;
+        const bs = 0.22 * h.bankSign;
+        h.bend.set((sx / sl) * bs, 0.12, (sz / sl) * bs);
+        h.bend2.set((sx / sl) * bs * 0.8, 0.08, (sz / sl) * bs * 0.8);
+        h.ph = h.toSimIndex * 1.7 + simTime * 0.37;
 
         h.arc.p0.copy(h.fromPos);
         h.arc.p3.copy(h.toPos);
@@ -991,66 +988,77 @@
         h.camStartPos.copy(camera.position);
         h.camStartTarget.copy(camera.target);
 
-        h.duration = reduced ? 0.5 : (h.crossing ? (exiting ? 2.2 : 2.5) : 1.6);
-        h.scaleAmp = reduced ? 0.0 : (h.crossing ? 1.0 : 0.4);
-        h.fovAmp = reduced ? 0.0 : (h.crossing ? cfg.fov : 5.0);
+        // 1.0 - 1.6s duration; 0.4s for reduced motion; 1.6s if already inside
+        h.duration = reduced ? 0.4 : (appMode === "INSIDE" ? 1.6 : 1.25);
         h.u = 0.0;
         h.active = true;
         navState = "INTRA_HOP";
 
-        const destLocale = dim.locales[currentLocaleIndex];
-        if (!exiting && destLocale && destLocale.simPreset && typeof active.applyPreset === "function") {
-            active.applyPreset(destLocale.simPreset);
-        }
-
-        updateIntraIndicator(currentDimIndex, currentLocaleIndex);
-        updateLocaleContent(currentDimIndex, currentLocaleIndex);
+        // Active pill highlights immediately at departure!
+        updateIntraIndicator(currentDimIndex, currentSimIndex);
+        updateLocaleContent(currentDimIndex, currentSimIndex);
+        updateUrlHash(currentDimIndex, currentSimIndex);
     };
 
-    const goToLocale = (localeIdx) => {
+    const goToSim = (simIdx) => {
         const dims = getDimensions();
         const dim = dims[currentDimIndex];
-        if (!dim || !dim.locales || dim.locales.length === 0) return;
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        if (!dim || sims.length === 0) return;
         let target = 0;
-        if (typeof localeIdx === "string") {
-            const clean = localeIdx.toLowerCase().trim();
-            const idx = dim.locales.findIndex(l =>
-                (l.id && l.id.toLowerCase() === clean) ||
-                (l.short && l.short.toLowerCase() === clean) ||
-                (l.name && l.name.toLowerCase() === clean)
+        if (typeof simIdx === "string") {
+            const clean = simIdx.toLowerCase().trim();
+            const idx = sims.findIndex(s =>
+                (s.id && s.id.toLowerCase() === clean) ||
+                (s.short && s.short.toLowerCase() === clean) ||
+                (s.label && s.label.toLowerCase() === clean) ||
+                (s.name && s.name.toLowerCase() === clean)
             );
             target = idx !== -1 ? idx : (parseInt(clean, 10) || 0);
         } else {
-            target = clamp(localeIdx | 0, 0, dim.locales.length - 1);
+            target = clamp(simIdx | 0, 0, sims.length - 1);
         }
-        target = clamp(target, 0, dim.locales.length - 1);
+        target = clamp(target, 0, sims.length - 1);
 
         if (trans.active) {
+            currentSimIndex = target;
             currentLocaleIndex = target;
-            pendingEnter = target;
             return;
         }
 
         if (intraHop.active) {
-            if (!intraHop.exiting && target === intraHop.toLocaleIndex) return;
+            if (target === intraHop.toSimIndex) return;
             if (intraHop.u < 0.12) {
+                intraHop.queuedSimIndex = target;
                 intraHop.queuedLocaleIndex = target;
                 return;
             }
-            startIntraHop(target); // retarget from the live state mid-dive
-            updateUrlHash(currentDimIndex, target);
+            startIntraHop(target); // retarget from the live state mid-flight
             return;
         }
 
-        if (inside.isInside && target === currentLocaleIndex) return;
+        if (target === currentSimIndex) return;
         startIntraHop(target);
-        updateUrlHash(currentDimIndex, target);
     };
 
+    const goToLocale = goToSim;
+
+    const stepSim = (delta) => {
+        const dims = getDimensions();
+        const dim = dims[currentDimIndex];
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        if (!dim || sims.length <= 1) return;
+        const base = intraHop.active ? intraHop.toSimIndex : currentSimIndex;
+        const target = clamp(base + delta, 0, sims.length - 1);
+        if (target !== base) {
+            goToSim(target);
+        }
+    };
+
+    const stepLocale = stepSim;
+
     const exitToOverview = () => {
-        if (trans.active || !inside.isInside) return;
-        startIntraHop(-1);
-        updateUrlHash(currentDimIndex, null);
+        if (typeof exitSimulation === "function") exitSimulation();
     };
 
     const parseHash = (hashStr) => {
@@ -1059,11 +1067,12 @@
         if (!clean) return null;
         const parts = clean.split("/");
         const dimPart = parts[0];
-        const locPart = parts[1] || null;
+        const simPart = parts[1] || null;
+        const insidePart = parts[2] || (parts[1] === "inside" ? "inside" : null);
 
         const dims = getDimensions();
         let targetDimIdx = -1;
-        let targetLocIdx = 0;
+        let targetSimIdx = 0;
 
         for (let i = 0; i < dims.length; i++) {
             const d = dims[i];
@@ -1086,54 +1095,53 @@
         if (targetDimIdx === -1) return null;
 
         const targetDim = dims[targetDimIdx];
-        let foundLocale = false;
-        if (locPart && targetDim && targetDim.locales) {
-            for (let j = 0; j < targetDim.locales.length; j++) {
-                const loc = targetDim.locales[j];
-                const locId = (loc.id || "").toLowerCase();
-                const locName = (loc.name || "").toLowerCase();
-                const locShort = (loc.short || "").toLowerCase();
-                if (locId === locPart || locName === locPart || locShort === locPart) {
-                    targetLocIdx = j;
-                    foundLocale = true;
+        let foundSim = false;
+        const sims = (targetDim && (targetDim.sims || targetDim.locales)) || [];
+        if (simPart && simPart !== "inside" && sims.length > 0) {
+            for (let j = 0; j < sims.length; j++) {
+                const s = sims[j];
+                const sId = (s.id || "").toLowerCase();
+                const sLabel = (s.label || s.name || "").toLowerCase();
+                const sShort = (s.short || "").toLowerCase();
+                if (sId === simPart || sLabel === simPart || sShort === simPart) {
+                    targetSimIdx = j;
+                    foundSim = true;
                     break;
                 }
             }
         }
 
-        return { dimIndex: targetDimIdx, localeIndex: targetLocIdx, inside: foundLocale };
+        const isInside = insidePart === "inside" || parts[1] === "inside";
+        return {
+            dimIndex: targetDimIdx,
+            simIndex: targetSimIdx,
+            localeIndex: targetSimIdx,
+            inside: isInside
+        };
     };
 
     let isHandlingHistoryEvent = false;
-    const updateUrlHash = (dimIdx, locIdx, replace = false) => {
+    const updateUrlHash = (dimIdx, simIdx, replace = false) => {
         if (isHandlingHistoryEvent) return;
         if (typeof window === "undefined" || !window.history) return;
         const dims = getDimensions();
         const dim = dims[dimIdx];
         if (!dim) return;
-        const loc = (locIdx !== null && locIdx !== undefined && dim.locales && dim.locales[locIdx]) ? dim.locales[locIdx] : null;
-        const hash = loc ? `#${dim.slug}/${loc.id}` : `#${dim.slug}`;
+        const sims = dim.sims || dim.locales || [];
+        const sim = (simIdx !== null && simIdx !== undefined && sims[simIdx]) ? sims[simIdx] : null;
+        let hash = `#${dim.slug}`;
+        if (sim) {
+            hash += `/${sim.id}`;
+            if (appMode === "INSIDE") hash += `/inside`;
+        } else if (appMode === "INSIDE") {
+            hash += `/inside`;
+        }
         if (window.location.hash !== hash) {
             if (replace) {
                 window.history.replaceState(null, "", hash);
             } else {
                 window.history.pushState(null, "", hash);
             }
-        }
-    };
-
-    const stepLocale = (delta) => {
-        const dims = getDimensions();
-        const dim = dims[currentDimIndex];
-        if (!dim || !dim.locales || dim.locales.length <= 1) return;
-        if (!inside.isInside || (intraHop.active && intraHop.exiting)) {
-            goToLocale(currentLocaleIndex); // from the overview any horizontal step dives in
-            return;
-        }
-        const base = intraHop.active ? intraHop.toLocaleIndex : currentLocaleIndex;
-        const target = clamp(base + delta, 0, dim.locales.length - 1);
-        if (target !== base) {
-            goToLocale(target);
         }
     };
 
@@ -1736,127 +1744,201 @@
         const h = intraHop;
         h.active = false;
         navState = "IDLE";
-        inside.value = h.insT;
-        inside.isInside = !h.exiting;
+        const dims = getDimensions();
+        const dim = dims[currentDimIndex];
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        const curSim = sims[currentSimIndex] || sims[0];
+
+        if (h.isDive) {
+            inside.value = h.insT;
+            inside.isInside = !h.exiting;
+            appMode = h.exiting ? "VIEW" : "INSIDE";
+        }
         inside.shift = 0.0;
         inside.localScale = 1.0;
         inside.heroScale = 1.0;
         inside.worldGrow = 1.0;
-        camera.fov = curProf.fov;
+        inside.shell = 0.0;
+        inside.starBright = 1.0;
+        postState.shockwave = 0.0;
+        postState.shockwaveRadius = 0.0;
+
+        camera.fov = (appMode === "INSIDE" && curSim && curSim.immersiveCamera) ? curSim.immersiveCamera.fov : curProf.fov;
         camera.up.set(0, 1, 0);
-        camera.near = inside.isInside ? 0.05 : 0.1;
-        camera.far = inside.isInside ? 450.0 : 600.0;
-        if (h.queuedLocaleIndex !== -1 && h.queuedLocaleIndex !== currentLocaleIndex) {
-            const nextLoc = h.queuedLocaleIndex;
-            h.queuedLocaleIndex = -1;
-            startIntraHop(nextLoc);
-        } else {
-            h.queuedLocaleIndex = -1;
+        camera.near = (appMode === "INSIDE") ? 0.05 : 0.1;
+        camera.far = (appMode === "INSIDE") ? 450.0 : 600.0;
+
+        const active = formations[currentDimIndex];
+        if (active) {
+            active.setIntensity(1.0);
+            active.setReveal(1.0);
+        }
+
+        const nextTarget = h.queuedSimIndex !== -1 ? h.queuedSimIndex : h.queuedLocaleIndex;
+        h.queuedSimIndex = -1;
+        h.queuedLocaleIndex = -1;
+        if (nextTarget !== -1 && nextTarget !== currentSimIndex) {
+            startIntraHop(nextTarget);
         }
     };
 
     const diveFrame = (curProf, dt) => {
         const h = intraHop;
         const u = h.u;
-        const hu = easeDive(u);
+        const hu = smoothstep(0.0, 1.0, u);
         const reduced = isReducedMotion();
         const dimIdx = currentDimIndex;
+        const active = formations[dimIdx];
+        const dim = getDimensions()[dimIdx];
+        const sims = (dim && (dim.sims || dim.locales)) || [];
+        const destSim = sims[h.toSimIndex] || sims[0];
 
-        // Hero path: live start -> locale anchor (or back to the formation hero on exit)
-        if (h.exiting) h.arc.p3.copy(formHero);
-        else anchorWorld(dimIdx, h.toLocaleIndex, inside.value, h.arc.p3);
-        updateDiveControls(h);
-        evalBezier3D(h.arc.p0, h.arc.p1, h.arc.p2, h.arc.p3, hu, tmpHeroPos);
-        evalBezierTangent3D(h.arc.p0, h.arc.p1, h.arc.p2, h.arc.p3, hu, diveTmpTan);
-        const tk = 1.0 - Math.exp(-8.0 * dt);
-        diveTan.x += (diveTmpTan.x - diveTan.x) * tk;
-        diveTan.y += (diveTmpTan.y - diveTan.y) * tk;
-        diveTan.z += (diveTmpTan.z - diveTan.z) * tk;
-        diveTan.normalize();
+        if (!h.isDive) {
+            /* ===== INTRA-DIMENSIONAL HOP (between simulations within active section) ===== */
+            anchorWorld(dimIdx, h.toSimIndex, appMode, h.arc.p3);
+            updateDiveControls(h);
+            evalBezier3D(h.arc.p0, h.arc.p1, h.arc.p2, h.arc.p3, hu, tmpHeroPos);
+            evalBezierTangent3D(h.arc.p0, h.arc.p1, h.arc.p2, h.arc.p3, hu, diveTmpTan);
 
-        // Weave around structures: small noise offset that vanishes at both ends
-        const wv = reduced ? 0.0 : Math.sin(Math.PI * u) * Math.min(1.0, h.chord * 0.12);
-        tmpHeroPos.x += Math.sin(u * 9.1 + h.ph) * 0.55 * wv;
-        tmpHeroPos.y += Math.cos(u * 7.3 + h.ph * 1.7) * 0.40 * wv;
-        tmpHeroPos.z += Math.sin(u * 6.2 + h.ph * 0.6) * 0.50 * wv;
+            const tk = 1.0 - Math.exp(-8.0 * dt);
+            diveTan.x += (diveTmpTan.x - diveTan.x) * tk;
+            diveTan.y += (diveTmpTan.y - diveTan.y) * tk;
+            diveTan.z += (diveTmpTan.z - diveTan.z) * tk;
+            diveTan.normalize();
 
-        if (!h.exiting) {
-            sampleIdle(dimIdx, h.toLocaleIndex, idleVec);
-            const w = smoothstep(0.55, 1.0, u);
-            tmpHeroPos.x += idleVec.x * w;
-            tmpHeroPos.y += idleVec.y * w;
-            tmpHeroPos.z += idleVec.z * w;
-        }
-        positions[0] = tmpHeroPos.x;
-        positions[1] = tmpHeroPos.y;
-        positions[2] = tmpHeroPos.z;
-
-        // [[DIVE_SCALE]]: Dynamic scale shift and plane adaptation
-        const bell = Math.sin(Math.PI * u);
-        inside.shift = bell * h.scaleAmp;
-        inside.localScale = 1.0 - 0.85 * inside.shift;
-        inside.heroScale = 1.0 - 0.65 * inside.shift;
-        inside.worldGrow = 1.0 + 2.8 * inside.shift * (1.0 - 0.35 * u);
-        camera.near = inside.isInside ? 0.05 : (0.1 - 0.05 * inside.value);
-        camera.far = inside.isInside ? 450.0 : (600.0 - 150.0 * inside.value);
-
-        // Shell crossing: thin membrane ahead on the path, hero ripple, brief star softening
-        if (h.crossing && !reduced) {
-            inside.shell = Math.exp(-Math.pow((u - 0.5) / 0.10, 2.0));
-            ringOpacity = smoothstep(0.18, 0.38, u) * (1.0 - smoothstep(0.58, 0.74, u)) * 0.85;
-            if (ringOpacity > 0.002) {
-                const hs = easeDive(0.5);
-                evalBezier3D(h.arc.p0, h.arc.p1, h.arc.p2, h.arc.p3, hs, tmpThresholdPos);
-                evalBezierTangent3D(h.arc.p0, h.arc.p1, h.arc.p2, h.arc.p3, hs, tmpThresholdTan);
-                ringRadiusDraw = 6.5;
-                ringNoiseDraw = 0.3;
-                innerTint(dimIdx, tmpRingColour);
+            // Blend into destination idle motion near landing
+            if (destSim && typeof destSim.idle === "function") {
+                const idl = destSim.idle(simTime);
+                const blendW = smoothstep(0.70, 1.0, u);
+                tmpHeroPos.x += idl[0] * blendW;
+                tmpHeroPos.y += idl[1] * blendW;
+                tmpHeroPos.z += idl[2] * blendW;
             }
-            postState.shockwave = 0.016 * Math.exp(-Math.pow((u - 0.56) / 0.07, 2.0));
-            postState.shockwaveRadius = clamp((u - 0.46) / 0.36, 0.0, 1.0) * 0.6;
-            inside.starBright = 1.0 - 0.45 * smoothstep(0.25, 0.5, u) * (1.0 - smoothstep(0.5, 0.85, u));
-        } else {
+
+            positions[0] = tmpHeroPos.x;
+            positions[1] = tmpHeroPos.y;
+            positions[2] = tmpHeroPos.z;
+
+            // Previous sim recedes (1 -> 0.15), new sim blossoms outward from landing point (0 -> 1 over 1.2s)
+            if (active) {
+                if (u < 0.45) {
+                    active.setIntensity(1.0 - 0.85 * (u / 0.45));
+                } else {
+                    if (!h.presetApplied) {
+                        if (destSim && destSim.simPreset && typeof active.applyPreset === "function") {
+                            active.applyPreset(destSim.simPreset);
+                        }
+                        if (destSim && destSim.localAnchor && dim && dim.anchor) {
+                            active.origin.set(
+                                dim.anchor[0] + destSim.localAnchor[0],
+                                dim.anchor[1] + destSim.localAnchor[1],
+                                dim.anchor[2] + destSim.localAnchor[2]
+                            );
+                        }
+                        h.presetApplied = true;
+                    }
+                    const revProgress = smoothstep(0.45, 1.0, u);
+                    active.setReveal(revProgress);
+                    active.setIntensity(0.15 + 0.85 * smoothstep(0.75, 1.0, u));
+                }
+            }
+
+            // No threshold ring, no shockwave ripple, background starfield identical
             inside.shell = 0.0;
             inside.starBright = 1.0;
             postState.shockwave = 0.0;
             postState.shockwaveRadius = 0.0;
-        }
-        diveBoost = inside.shell * 0.9;
+            diveBoost = 0.0;
 
-        // [[DIVE_CAMERA]]: Dolly dive along path tangent, dynamic parallax, banking & FOV breath
-        idlePose(dimIdx, h.toLocaleIndex, inside.value, poseA, poseB);
-        diveBaseCamPos.lerpVectors(h.camStartPos, poseA, hu);
-        diveBaseCamTarget.lerpVectors(h.camStartTarget, poseB, hu);
+            // Tangent-frame chase camera
+            idlePose(dimIdx, h.toSimIndex, appMode, poseA, poseB);
+            diveBaseCamPos.lerpVectors(h.camStartPos, poseA, hu);
+            diveBaseCamTarget.lerpVectors(h.camStartTarget, poseB, hu);
 
-        if (!reduced) {
-            // Dolly dive: camera pushes forward along tangent, hero stays 6-10 units ahead
-            const chaseDist = 7.5 + (1.0 - hu) * 3.0;
-            diveChasePos.set(
-                tmpHeroPos.x - diveTan.x * chaseDist,
-                tmpHeroPos.y - diveTan.y * chaseDist * 0.7 + 0.8,
-                tmpHeroPos.z - diveTan.z * chaseDist
-            );
-            diveChaseTarget.set(
-                tmpHeroPos.x + diveTan.x * 2.5,
-                tmpHeroPos.y + diveTan.y * 1.2,
-                tmpHeroPos.z + diveTan.z * 2.5
-            );
-            const cruiseW = Math.sin(Math.PI * u) * 0.72;
-            camera.position.lerpVectors(diveBaseCamPos, diveChasePos, cruiseW);
-            camera.target.lerpVectors(diveBaseCamTarget, diveChaseTarget, cruiseW * 0.85);
+            if (!reduced) {
+                const chaseDist = (appMode === "INSIDE" ? 3.2 : 9.0) + (1.0 - hu) * 2.5;
+                diveChasePos.set(
+                    tmpHeroPos.x - diveTan.x * chaseDist,
+                    tmpHeroPos.y - diveTan.y * chaseDist * 0.7 + (appMode === "INSIDE" ? 0.3 : 0.8),
+                    tmpHeroPos.z - diveTan.z * chaseDist
+                );
+                diveChaseTarget.set(
+                    tmpHeroPos.x + diveTan.x * 2.0,
+                    tmpHeroPos.y + diveTan.y * 1.0,
+                    tmpHeroPos.z + diveTan.z * 2.0
+                );
+                const cruiseW = Math.sin(Math.PI * u) * 0.65;
+                camera.position.lerpVectors(diveBaseCamPos, diveChasePos, cruiseW);
+                camera.target.lerpVectors(diveBaseCamTarget, diveChaseTarget, cruiseW * 0.8);
 
-            // Gentle banking along curve (no roll jerk)
-            const bankAngle = h.bankSign * Math.sin(Math.PI * u) * 0.08;
-            camera.up.set(Math.sin(bankAngle), Math.cos(bankAngle), 0.0);
+                const bankAngle = h.bankSign * Math.sin(Math.PI * u) * 0.06;
+                camera.up.set(Math.sin(bankAngle), Math.cos(bankAngle), 0.0);
 
-            // FOV breathing: widens by 8-12 degrees during dive then settles cleanly
-            const fovBoost = Math.sin(Math.PI * u) * h.fovAmp;
-            camera.fov = curProf.fov + fovBoost;
+                const fovTarget = (appMode === "INSIDE" && destSim && destSim.immersiveCamera) ? destSim.immersiveCamera.fov : curProf.fov;
+                const fovBreath = Math.sin(Math.PI * u) * (appMode === "INSIDE" ? 3.0 : 6.0);
+                camera.fov = fovTarget + fovBreath;
+            } else {
+                camera.position.copy(diveBaseCamPos);
+                camera.target.copy(diveBaseCamTarget);
+                camera.up.set(0, 1, 0);
+                camera.fov = (appMode === "INSIDE" && destSim && destSim.immersiveCamera) ? destSim.immersiveCamera.fov : curProf.fov;
+            }
         } else {
-            camera.position.copy(diveBaseCamPos);
-            camera.target.copy(diveBaseCamTarget);
-            camera.up.set(0, 1, 0);
-            camera.fov = curProf.fov;
+            /* ===== DIVE / EXIT (Explore button enters active simulation) ===== */
+            if (h.exiting) h.arc.p3.copy(formHero);
+            else anchorWorld(dimIdx, h.toSimIndex, 1.0, h.arc.p3);
+            updateDiveControls(h);
+            evalBezier3D(h.arc.p0, h.arc.p1, h.arc.p2, h.arc.p3, hu, tmpHeroPos);
+            evalBezierTangent3D(h.arc.p0, h.arc.p1, h.arc.p2, h.arc.p3, hu, diveTmpTan);
+            const tk = 1.0 - Math.exp(-8.0 * dt);
+            diveTan.x += (diveTmpTan.x - diveTan.x) * tk;
+            diveTan.y += (diveTmpTan.y - diveTan.y) * tk;
+            diveTan.z += (diveTmpTan.z - diveTan.z) * tk;
+            diveTan.normalize();
+
+            if (!h.exiting && destSim && typeof destSim.idle === "function") {
+                const idl = destSim.idle(simTime);
+                const w = smoothstep(0.60, 1.0, u);
+                tmpHeroPos.x += idl[0] * w;
+                tmpHeroPos.y += idl[1] * w;
+                tmpHeroPos.z += idl[2] * w;
+            }
+            positions[0] = tmpHeroPos.x;
+            positions[1] = tmpHeroPos.y;
+            positions[2] = tmpHeroPos.z;
+
+            idlePose(dimIdx, h.toSimIndex, h.exiting ? (1.0 - hu) : hu, poseA, poseB);
+            diveBaseCamPos.lerpVectors(h.camStartPos, poseA, hu);
+            diveBaseCamTarget.lerpVectors(h.camStartTarget, poseB, hu);
+
+            if (!reduced) {
+                const chaseDist = (h.exiting ? 7.5 : 4.5) + (1.0 - hu) * 3.0;
+                diveChasePos.set(
+                    tmpHeroPos.x - diveTan.x * chaseDist,
+                    tmpHeroPos.y - diveTan.y * chaseDist * 0.7 + 0.6,
+                    tmpHeroPos.z - diveTan.z * chaseDist
+                );
+                diveChaseTarget.set(
+                    tmpHeroPos.x + diveTan.x * 2.5,
+                    tmpHeroPos.y + diveTan.y * 1.0,
+                    tmpHeroPos.z + diveTan.z * 2.5
+                );
+                const cruiseW = Math.sin(Math.PI * u) * 0.70;
+                camera.position.lerpVectors(diveBaseCamPos, diveChasePos, cruiseW);
+                camera.target.lerpVectors(diveBaseCamTarget, diveChaseTarget, cruiseW * 0.85);
+
+                const bankAngle = h.bankSign * Math.sin(Math.PI * u) * 0.08;
+                camera.up.set(Math.sin(bankAngle), Math.cos(bankAngle), 0.0);
+
+                const baseFov = h.exiting ? (curProf.fov) : ((destSim.immersiveCamera && destSim.immersiveCamera.fov) || 64.0);
+                const fovBoost = Math.sin(Math.PI * u) * 10.0;
+                camera.fov = baseFov + fovBoost;
+            } else {
+                camera.position.copy(diveBaseCamPos);
+                camera.target.copy(diveBaseCamTarget);
+                camera.up.set(0, 1, 0);
+                camera.fov = curProf.fov;
+            }
         }
 
         if (u >= 1.0) finishDive(curProf);

@@ -315,6 +315,14 @@
             this.trailDecay = 0.68;
             this.streakScale = 1.25;
             this.fogTint = [0.025, 0.045, 0.11];
+            this.intensity = 1.0;
+            this.reveal = 1.0;
+        }
+        setIntensity(val) {
+            this.intensity = Math.max(0.0, Math.min(1.0, val));
+        }
+        setReveal(val) {
+            this.reveal = Math.max(0.0, Math.min(1.0, val));
         }
         init(_buffer, _ctx) {
             this.initialized = true;
