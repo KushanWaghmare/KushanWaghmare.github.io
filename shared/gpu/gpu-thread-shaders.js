@@ -28,6 +28,9 @@ uniform float uStreakScale;
 uniform float uMaxStreakPx;
 uniform float uTrailGain;
 uniform vec3 uFogTint;
+uniform float uInside;     // insideness: 0 = outside the dimension, 1 = deep inside
+uniform float uHeroScale;  // hero screen-size multiplier (shrinks as local world scale grows)
+uniform float uWorldGrow;  // swarm size multiplier (structures look huge when passed)
 
 out vec3 vColour;
 out float vAlpha;
@@ -44,7 +47,7 @@ void main() {
     float perspectiveScale = (uViewport.y * 0.0108) / dist;
 
     bool isHero = (gl_VertexID == 0);
-    float heroScale = isHero ? (1.0 + uHeroBoost * 3.0) : 1.0;
+    float heroScale = isHero ? (1.0 + uHeroBoost * 3.0) * uHeroScale : uWorldGrow;
     float seedVar = 0.80 + 0.42 * aSeed.x;
 
     if (aSize <= 0.0001 || aPosition.z < -500.0) {
@@ -84,7 +87,7 @@ void main() {
     vCapRad = 0.5 * baseSize / max(1.0, ptSize);
 
     // Atmospheric distance fog + seed-driven temporal twinkle
-    float fogFactor = clamp((dist - 11.0) / 42.0, 0.0, 0.72);
+    float fogFactor = clamp((dist - 11.0 * (1.0 - 0.5 * uInside)) / (42.0 * (1.0 - 0.4 * uInside)), 0.0, 0.72);
     vec3 col = mix(aColour, uFogTint * 2.8, fogFactor * 0.55);
 
     if (isHero && uHeroBoost > 0.001) {
@@ -242,6 +245,8 @@ vec3 lensedSky(vec3 d, float time) {
     return mwCol + starAcc;
 }
 
+uniform float uBrightness; // starfield brightness only (positions never change)
+
 void main() {
     // Screen coordinates mapped to celestial impact parameters (alpha, beta)
     // Exactly matches the Kerr Black Hole ray tracer celestial projection
@@ -262,7 +267,7 @@ void main() {
         return;
     }
 
-    fragColor = vec4(sky, 1.0);
+    fragColor = vec4(sky * uBrightness, 1.0);
 }
 `;
 
@@ -828,6 +833,8 @@ uniform vec3 uFogTint;
 uniform vec3 uBloomTint;
 uniform float uShockwave;
 uniform float uShockwaveRadius;
+uniform float uInside;
+uniform vec3 uInnerTint;
 uniform float uIsLight;
 uniform int uDebugMode;
 out vec4 fragColor;
@@ -918,6 +925,10 @@ void main() {
     vec3 spaceBase = vec3(0.0);
 
     vec3 hdr = spaceBase + sceneRgb + bloomRgb * uBloomTint * uBloomStrength;
+
+    // Interior atmosphere: soft inner-palette haze towards the screen edges
+    float innerHaze = uInside * smoothstep(0.05, 0.85, edgeR2 * 1.9);
+    hdr += uInnerTint * innerHaze * 0.045;
 
     // ACES Filmic Tone Mapping + sRGB gamma encoding
     vec3 mapped = acesFilm(hdr);

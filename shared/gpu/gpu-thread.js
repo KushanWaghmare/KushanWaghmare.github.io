@@ -326,10 +326,11 @@
 
         pointUniforms = getUniforms(pointProg, [
             "uViewProj", "uCamPos", "uViewport", "uDpr", "uTime",
-            "uHeroBoost", "uIsLight", "uStreakScale", "uMaxStreakPx", "uTrailGain", "uFogTint"
+            "uHeroBoost", "uIsLight", "uStreakScale", "uMaxStreakPx", "uTrailGain", "uFogTint",
+            "uInside", "uHeroScale", "uWorldGrow"
         ]);
         starUniforms = getUniforms(starProg, [
-            "uRes", "uBhScreenCentre", "uBhScale", "uTilt", "uTime", "uIsLight"
+            "uRes", "uBhScreenCentre", "uBhScale", "uTilt", "uTime", "uIsLight", "uBrightness"
         ]);
         auxUniforms = getUniforms(auxProg, ["uViewProj", "uAuxOpacity", "uIsLight"]);
         kerrUniforms = getUniforms(kerrProg, [
@@ -347,7 +348,7 @@
         compositeUniforms = getUniforms(compositeProg, [
             "uSceneTex", "uBloomTex", "uRes", "uTime", "uBloomStrength", "uBloomTint",
             "uVignette", "uGrain", "uCaStrength", "uWarpStrength", "uWarpCentre", "uFogTint",
-            "uShockwave", "uShockwaveRadius", "uIsLight", "uDebugMode"
+            "uShockwave", "uShockwaveRadius", "uIsLight", "uDebugMode", "uInside", "uInnerTint"
         ]);
 
         // 1. Single Shared Swarm VAO
@@ -481,6 +482,10 @@
             e.preventDefault();
             stepLocale(-1);
             return;
+        } else if (e.key === "Escape" && inside.isInside) {
+            e.preventDefault();
+            exitToOverview();
+            return;
         }
         const activeForm = formations[currentIndex];
         if (activeForm && typeof activeForm.onKeyDown === "function") {
@@ -507,12 +512,77 @@
         toLocaleIndex: 0,
         fromPos: new Vector3(),
         toPos: new Vector3(),
-        arc: null,
+        arc: { p0: new Vector3(), p1: new Vector3(), p2: new Vector3(), p3: new Vector3() },
+        exiting: false,
+        crossing: false,
+        ins0: 0.0,
+        insT: 0.0,
+        chord: 1.0,
+        ph: 0.0,
+        scaleAmp: 1.0,
+        fovAmp: 10.0,
+        vel: new Vector3(),
+        bend: new Vector3(),
+        bend2: new Vector3(),
+        bankSign: 1.0,
         camStartPos: new Vector3(),
         camStartTarget: new Vector3(),
         camEndPos: new Vector3(),
         camEndTarget: new Vector3(),
         queuedLocaleIndex: -1
+    };
+
+    /* ---------- Interior ("entering the dimension") State ----------
+       Depth layers: OUTER (overview) -> SHELL (membrane) -> INTERIOR (locale).
+       `value` is the insideness uniform: 0 = outside, 1 = deep inside. */
+    const inside = {
+        isInside: false,
+        value: 0.0,
+        shift: 0.0,          // 0..1 world-scale shift amount (peaks mid-dive)
+        localScale: 1.0,     // 1 -> 0.15 -> 1
+        heroScale: 1.0,
+        worldGrow: 1.0,
+        shell: 0.0,
+        starBright: 1.0,
+        streakMul: 1.0,
+        speedN: 0.0,
+        tint: [0.5, 0.7, 1.0]
+    };
+    let pendingEnter = -1;
+    let ringRadiusDraw = 3.2;
+    let ringNoiseDraw = 1.0;
+
+    // Per-dimension interior camera rig and ambient behaviour.
+    // dust: 0 drifting motes, 1 orbital swirl, 2 downward score-flow, 3 lattice slabs, 4 breathing rings
+    const INTERIOR = [
+        { cx: 3.22, dist: 7.8, lift: 0.4,  side: 0.0,  fov: 9.0,  dust: 0 },   // Introduction (Lorenz)
+        { cx: 2.15, dist: 6.8, lift: 0.2,  side: 1.1,  fov: 11.0, dust: 0 },   // Mathematics (Calabi-Yau folds)
+        { cx: 2.35, dist: 8.6, lift: 0.7,  side: 0.0,  fov: 10.0, dust: 1 },   // Physics (Kerr disc)
+        { cx: 2.15, dist: 6.6, lift: -0.3, side: -0.6, fov: 10.0, dust: 2 },   // Data science (score flow)
+        { cx: 2.15, dist: 7.2, lift: 0.1,  side: 0.5,  fov: 8.0,  dust: 3 },   // Quant (lattice layers)
+        { cx: 2.15, dist: 7.0, lift: 0.0,  side: 0.0,  fov: 12.0, dust: 4 },   // Computer science (amplitude rings)
+        { cx: 1.85, dist: 8.0, lift: 0.3,  side: 0.0,  fov: 9.0,  dust: 0 }    // Contact (three-body)
+    ];
+    const interiorCfg = (i) => INTERIOR[i] || INTERIOR[0];
+
+    const heroVel = new Vector3();
+    const lastHeroPos = new Vector3();
+    const formHero = new Vector3();
+    const camVel = new Vector3();
+    const lastCamPos = new Vector3();
+    const poseA = new Vector3();
+    const poseB = new Vector3();
+    const poseAnchor = new Vector3();
+    const diveTan = new Vector3(0, 0, -1);
+    const diveTmpTan = new Vector3();
+    const idleVec = new Vector3();
+
+    const easeDive = (u) => {
+        // Smoothest ramp-up / cruise / brake, with a small non-zero launch speed so
+        // the hero leaves its live velocity instead of starting from a dead stop.
+        const sm = u * u * u * (u * (u * 6.0 - 15.0) + 10.0);
+        const k = 0.3 * Math.pow(1.0 - u, 4.0);
+        return sm * (1.0 - k) + u * k;
     };
 
     /* ---------- Transition State (Inter-Dimensional) ---------- */
@@ -647,7 +717,8 @@
             fov: (typeof p.fov === "number") ? p.fov : 52.0,
             cameraDamping: (typeof p.cameraDamping === "number") ? p.cameraDamping : 0.08,
             heroColour: (p.hero && Array.isArray(p.hero.colour)) ? p.hero.colour.slice() : [0.45, 0.75, 1.0],
-            heroSize: (p.hero && typeof p.hero.size === "number") ? p.hero.size : 5.5
+            heroSize: (p.hero && typeof p.hero.size === "number") ? p.hero.size : 5.5,
+            audio: p.audio || null
         };
         parsedProfiles[dimIdx] = parsed;
         return parsed;
@@ -710,69 +781,143 @@
         }
     };
 
+    /* World-space rest anchor of a locale (hero position excluding its idle sway).
+       The viewing frame re-centres as insideness rises (formations read `insideness`). */
+    const anchorWorld = (dimIdx, locIdx, ins, out) => {
+        const f = formations[dimIdx];
+        const dim = getDimensions()[dimIdx];
+        const loc = dim && dim.locales && dim.locales[locIdx];
+        const la = (loc && loc.localAnchor) || [0, 0, 0];
+        const cx = (ctxState.isMobile ? 0.0 : interiorCfg(dimIdx).cx) * (1.0 - 0.85 * ins);
+        const o = f ? f.origin : { x: 0, y: 0, z: 0 };
+        return out.set(o.x + cx + la[0] * 2.0, o.y + la[1] * 2.0, o.z + la[2] * 2.0);
+    };
+
+    const sampleIdle = (dimIdx, locIdx, out) => {
+        const dim = getDimensions()[dimIdx];
+        const loc = dim && dim.locales && dim.locales[locIdx];
+        if (loc && typeof loc.idle === "function") {
+            const v = loc.idle(simTime);
+            return out.set(v[0], v[1], v[2]);
+        }
+        return out.set(0, 0, 0);
+    };
+
+    /* Idle camera pose as a pure function of (dimension, locale, insideness, time).
+       Hops end on exactly this pose, so there is no discontinuity at arrival. */
+    const idlePose = (dimIdx, locIdx, ins, outPos, outTgt) => {
+        const f = formations[dimIdx];
+        if (!f) return;
+        const camDist = f.cameraDistance || 13.5;
+        const ox = Math.sin(simTime * 0.19) * 0.36;
+        const oy = Math.cos(simTime * 0.14) * 0.24;
+        const oz = Math.sin(simTime * 0.11) * 0.28;
+        const px = ctxState.pointerX, py = ctxState.pointerY;
+        const oPx = f.origin.x + ox + px * 0.62;
+        const oPy = f.origin.y + oy - py * 0.48;
+        const oPz = f.origin.z + camDist + oz;
+        const oTx = f.origin.x + px * 0.16;
+        const oTy = f.origin.y - py * 0.16;
+        const oTz = f.origin.z;
+        if (ins <= 0.0005) {
+            outPos.set(oPx, oPy, oPz);
+            outTgt.set(oTx, oTy, oTz);
+            return;
+        }
+        const cfg = interiorCfg(dimIdx);
+        anchorWorld(dimIdx, locIdx, ins, poseAnchor);
+        const ang = locIdx * 0.9 + 0.35;
+        const iPx = poseAnchor.x + Math.sin(ang) * cfg.dist + cfg.side + ox * 0.4 + px * 0.3;
+        const iPy = poseAnchor.y + cfg.lift + oy * 0.4 - py * 0.2;
+        const iPz = poseAnchor.z + Math.cos(ang) * cfg.dist + oz * 0.4;
+        const iTx = poseAnchor.x + px * 0.1;
+        const iTy = poseAnchor.y - py * 0.08;
+        const iTz = poseAnchor.z;
+        outPos.set(oPx + (iPx - oPx) * ins, oPy + (iPy - oPy) * ins, oPz + (iPz - oPz) * ins);
+        outTgt.set(oTx + (iTx - oTx) * ins, oTy + (iTy - oTy) * ins, oTz + (iTz - oTz) * ins);
+    };
+
+    const updateDiveControls = (h) => {
+        const p0 = h.arc.p0, p1 = h.arc.p1, p2 = h.arc.p2, p3 = h.arc.p3;
+        const cx = p3.x - p0.x, cy = p3.y - p0.y, cz = p3.z - p0.z;
+        const len = Math.max(0.05, Math.hypot(cx, cy, cz));
+        h.chord = len;
+        p1.set(
+            p0.x + cx * 0.33 + h.bend.x * len + h.vel.x * 0.08,
+            p0.y + cy * 0.33 + h.bend.y * len + h.vel.y * 0.08,
+            p0.z + cz * 0.33 + h.bend.z * len + h.vel.z * 0.08
+        );
+        p2.set(
+            p0.x + cx * 0.70 + h.bend2.x * len,
+            p0.y + cy * 0.70 + h.bend2.y * len,
+            p0.z + cz * 0.70 + h.bend2.z * len
+        );
+    };
+
+    /* Overview -> interior (ENTER, crosses the shell), interior -> interior (INTER),
+       interior -> overview (EXIT, reverse dive). targetLocaleIdx < 0 means EXIT. */
     const startIntraHop = (targetLocaleIdx) => {
         const dims = getDimensions();
         const dim = dims[currentDimIndex];
-        if (!dim || !dim.locales || !dim.locales[targetLocaleIdx]) return;
+        const active = formations[currentDimIndex];
+        if (!dim || !dim.locales || !active) return;
+        const exiting = targetLocaleIdx < 0;
+        if (!exiting && !dim.locales[targetLocaleIdx]) return;
 
-        intraHop.fromLocaleIndex = currentLocaleIndex;
-        intraHop.toLocaleIndex = targetLocaleIdx;
-        currentLocaleIndex = targetLocaleIdx;
+        const h = intraHop;
+        const reduced = isReducedMotion();
+        const cfg = interiorCfg(currentDimIndex);
 
-        // Start from exact live hero particle position
-        intraHop.fromPos.set(positions[0], positions[1], positions[2]);
+        h.fromLocaleIndex = currentLocaleIndex;
+        if (!exiting) currentLocaleIndex = targetLocaleIdx;
+        h.toLocaleIndex = currentLocaleIndex;
+        h.exiting = exiting;
 
-        const destLocale = dim.locales[targetLocaleIdx];
-        const dimAnchor = dim.anchor || [0, 0, 0];
-        const locOffset = destLocale.localAnchor || [0, 0, 0];
-        intraHop.toPos.set(
-            dimAnchor[0] + locOffset[0],
-            dimAnchor[1] + locOffset[1],
-            dimAnchor[2] + locOffset[2]
-        );
+        h.ins0 = inside.value;
+        h.insT = exiting ? 0.0 : 1.0;
+        h.crossing = (h.ins0 < 0.5) !== (h.insT < 0.5);
+        inside.isInside = !exiting;
 
-        const chordLen = Math.hypot(
-            intraHop.toPos.x - intraHop.fromPos.x,
-            intraHop.toPos.y - intraHop.fromPos.y,
-            intraHop.toPos.z - intraHop.fromPos.z
-        );
+        // Exact live start state: position, velocity, camera, insideness.
+        h.fromPos.set(positions[0], positions[1], positions[2]);
+        h.vel.copy(heroVel);
+        const vl = h.vel.length();
+        if (vl > 6.0) h.vel.multiplyScalar(6.0 / vl);
 
-        // Live particle velocity for smooth tangent continuity
-        const liveVel = {
-            x: positions[0] - prevPositions[0],
-            y: positions[1] - prevPositions[1],
-            z: positions[2] - prevPositions[2]
-        };
+        if (exiting) h.toPos.copy(formHero);
+        else anchorWorld(currentDimIndex, h.toLocaleIndex, 1.0, h.toPos);
 
-        // Low altitude Bézier hop with gentle arc
-        intraHop.arc = computeHopArcControls(intraHop.fromPos, intraHop.toPos, liveVel);
-        intraHop.camStartPos.copy(camera.position);
-        intraHop.camStartTarget.copy(camera.target);
+        const cx = h.toPos.x - h.fromPos.x, cy = h.toPos.y - h.fromPos.y, cz = h.toPos.z - h.fromPos.z;
+        const len = Math.max(0.05, Math.hypot(cx, cy, cz));
+        h.bankSign = ((exiting ? 1 : targetLocaleIdx) % 2 === 0) ? 1.0 : -1.0;
+        // Curvature around structures: sideways bend plus a gentle rise (fractions of chord length).
+        const sx = cz / len, sz = -cx / len;
+        const sl = Math.max(1e-3, Math.hypot(sx, sz));
+        const bs = 0.26 * h.bankSign;
+        h.bend.set((sx / sl) * bs, 0.10, (sz / sl) * bs);
+        h.bend2.set((sx / sl) * bs * 0.8, 0.06, (sz / sl) * bs * 0.8);
+        h.ph = h.toLocaleIndex * 1.7 + simTime * 0.37;
 
-        if (destLocale.cameraPose) {
-            intraHop.camEndPos.set(
-                destLocale.cameraPose.offset[0],
-                destLocale.cameraPose.offset[1],
-                destLocale.cameraPose.offset[2]
-            );
-            intraHop.camEndTarget.set(
-                destLocale.cameraPose.target[0],
-                destLocale.cameraPose.target[1],
-                destLocale.cameraPose.target[2]
-            );
-        } else {
-            intraHop.camEndPos.set(intraHop.toPos.x, intraHop.toPos.y, intraHop.toPos.z + 13.5);
-            intraHop.camEndTarget.copy(intraHop.toPos);
-        }
+        h.arc.p0.copy(h.fromPos);
+        h.arc.p3.copy(h.toPos);
+        updateDiveControls(h);
 
-        intraHop.u = 0.0;
-        intraHop.duration = isReducedMotion() ? 0.40 : clamp(0.95 + chordLen * 0.08, 0.95, 1.35);
-        intraHop.active = true;
+        if (h.vel.length() > 0.05) diveTan.copy(h.vel).normalize();
+        else diveTan.set(cx / len, cy / len, cz / len);
+
+        h.camStartPos.copy(camera.position);
+        h.camStartTarget.copy(camera.target);
+
+        h.duration = reduced ? 0.5 : (h.crossing ? (exiting ? 2.2 : 2.5) : 1.6);
+        h.scaleAmp = reduced ? 0.0 : (h.crossing ? 1.0 : 0.4);
+        h.fovAmp = reduced ? 0.0 : (h.crossing ? cfg.fov : 5.0);
+        h.u = 0.0;
+        h.active = true;
         navState = "INTRA_HOP";
 
-        // Shift simulation parameters to locale preset without popping or time reset
-        if (destLocale.simPreset && formations[currentDimIndex] && typeof formations[currentDimIndex].applyPreset === "function") {
-            formations[currentDimIndex].applyPreset(destLocale.simPreset);
+        const destLocale = dim.locales[currentLocaleIndex];
+        if (!exiting && destLocale && destLocale.simPreset && typeof active.applyPreset === "function") {
+            active.applyPreset(destLocale.simPreset);
         }
 
         updateIntraIndicator(currentDimIndex, currentLocaleIndex);
@@ -784,20 +929,33 @@
         const dim = dims[currentDimIndex];
         if (!dim || !dim.locales || dim.locales.length === 0) return;
         const target = clamp(localeIdx | 0, 0, dim.locales.length - 1);
-        if (target === currentLocaleIndex && !intraHop.active) return;
 
         if (trans.active) {
             currentLocaleIndex = target;
+            pendingEnter = target;
             return;
         }
 
         if (intraHop.active) {
-            intraHop.queuedLocaleIndex = target;
+            if (!intraHop.exiting && target === intraHop.toLocaleIndex) return;
+            if (intraHop.u < 0.12) {
+                intraHop.queuedLocaleIndex = target;
+                return;
+            }
+            startIntraHop(target); // retarget from the live state mid-dive
+            updateUrlHash(currentDimIndex, target);
             return;
         }
 
+        if (inside.isInside && target === currentLocaleIndex) return;
         startIntraHop(target);
         updateUrlHash(currentDimIndex, target);
+    };
+
+    const exitToOverview = () => {
+        if (trans.active || !inside.isInside) return;
+        startIntraHop(-1);
+        updateUrlHash(currentDimIndex, null);
     };
 
     const parseHash = (hashStr) => {
@@ -833,6 +991,7 @@
         if (targetDimIdx === -1) return null;
 
         const targetDim = dims[targetDimIdx];
+        let foundLocale = false;
         if (locPart && targetDim && targetDim.locales) {
             for (let j = 0; j < targetDim.locales.length; j++) {
                 const loc = targetDim.locales[j];
@@ -841,12 +1000,13 @@
                 const locShort = (loc.short || "").toLowerCase();
                 if (locId === locPart || locName === locPart || locShort === locPart) {
                     targetLocIdx = j;
+                    foundLocale = true;
                     break;
                 }
             }
         }
 
-        return { dimIndex: targetDimIdx, localeIndex: targetLocIdx };
+        return { dimIndex: targetDimIdx, localeIndex: targetLocIdx, inside: foundLocale };
     };
 
     let isHandlingHistoryEvent = false;
@@ -856,7 +1016,7 @@
         const dims = getDimensions();
         const dim = dims[dimIdx];
         if (!dim) return;
-        const loc = (dim.locales && dim.locales[locIdx]) ? dim.locales[locIdx] : null;
+        const loc = (locIdx !== null && locIdx !== undefined && dim.locales && dim.locales[locIdx]) ? dim.locales[locIdx] : null;
         const hash = loc ? `#${dim.slug}/${loc.id}` : `#${dim.slug}`;
         if (window.location.hash !== hash) {
             if (replace) {
@@ -871,13 +1031,18 @@
         const dims = getDimensions();
         const dim = dims[currentDimIndex];
         if (!dim || !dim.locales || dim.locales.length <= 1) return;
-        const target = clamp(currentLocaleIndex + delta, 0, dim.locales.length - 1);
-        if (target !== currentLocaleIndex) {
+        if (!inside.isInside || (intraHop.active && intraHop.exiting)) {
+            goToLocale(currentLocaleIndex); // from the overview any horizontal step dives in
+            return;
+        }
+        const base = intraHop.active ? intraHop.toLocaleIndex : currentLocaleIndex;
+        const target = clamp(base + delta, 0, dim.locales.length - 1);
+        if (target !== base) {
             goToLocale(target);
         }
     };
 
-    const goToDimension = (targetIdx, targetLocaleIdx = 0) => {
+    const goToDimension = (targetIdx, targetLocaleIdx = 0, enterInside = false) => {
         const maxIdx = Math.max(0, formations.length - 1);
         const clampedTarget = clamp(targetIdx | 0, 0, maxIdx);
         if (clampedTarget === currentDimIndex && !trans.active) {
@@ -888,7 +1053,8 @@
         }
         currentLocaleIndex = targetLocaleIdx | 0;
         startTransition(clampedTarget);
-        updateUrlHash(clampedTarget, currentLocaleIndex);
+        pendingEnter = enterInside ? currentLocaleIndex : -1;
+        updateUrlHash(clampedTarget, enterInside ? currentLocaleIndex : null);
     };
 
     const getNavState = () => ({
@@ -925,6 +1091,12 @@
 
         if (!trans.active && clampedTarget === currentIndex) return;
         if (trans.active && clampedTarget === trans.toIndex) return;
+        if (intraHop.active) {
+            intraHop.active = false;
+            intraHop.queuedLocaleIndex = -1;
+        }
+        inside.isInside = false; // insideness then decays smoothly while crossing dimensions
+        pendingEnter = -1;
 
         const N = sharedBuffer.count;
         const wasMidFlight = trans.active;
@@ -1110,11 +1282,13 @@
 
         let startIdx = 0;
         let startLocIdx = 0;
+        let startInside = false;
         if (typeof location !== "undefined" && location.hash) {
             const parsed = parseHash(location.hash);
             if (parsed) {
                 startIdx = parsed.dimIndex;
                 startLocIdx = parsed.localeIndex;
+                startInside = !!parsed.inside;
             } else {
                 const targetSec = document.querySelector(location.hash);
                 const found = sections.indexOf(targetSec);
@@ -1124,6 +1298,10 @@
         currentIndex = startIdx;
         currentDimIndex = currentIndex;
         currentLocaleIndex = startLocIdx;
+        // Deep link #dimension/locale restores the "inside" state directly, shell already crossed
+        inside.isInside = startInside;
+        inside.value = startInside ? 1.0 : 0.0;
+        inside.shift = 0.0;
         navState = "IDLE";
         intraHop.active = false;
         intraHop.u = 0.0;
@@ -1137,6 +1315,7 @@
 
         const active = formations[currentIndex];
         if (active) {
+            active.insideness = inside.value;
             active.init(sharedBuffer, ctxState);
             const dims = getDimensions();
             const curDim = dims[currentDimIndex];
@@ -1174,7 +1353,7 @@
         updateThemeAndDots(currentIndex);
         updateIntraIndicator(currentDimIndex, currentLocaleIndex);
         updateLocaleContent(currentDimIndex, currentLocaleIndex);
-        updateUrlHash(currentDimIndex, currentLocaleIndex, true);
+        if (location.hash) updateUrlHash(currentDimIndex, startInside ? currentLocaleIndex : null, true);
     };
 
     refreshSections();
@@ -1186,9 +1365,11 @@
                 isHandlingHistoryEvent = true;
                 try {
                     if (parsed.dimIndex !== currentDimIndex) {
-                        goToDimension(parsed.dimIndex, parsed.localeIndex);
-                    } else if (parsed.localeIndex !== currentLocaleIndex) {
+                        goToDimension(parsed.dimIndex, parsed.localeIndex, parsed.inside);
+                    } else if (parsed.inside) {
                         goToLocale(parsed.localeIndex);
+                    } else {
+                        exitToOverview();
                     }
                 } finally {
                     isHandlingHistoryEvent = false;
@@ -1427,6 +1608,132 @@
         }
     };
 
+    /* ---------- Interior frame logic ---------- */
+    let diveBoost = 0.0;
+
+    const innerTint = (dimIdx, out) => {
+        const p = getProfile(dimIdx);
+        const c = p.palette[1] || p.palette[0] || p.heroColour;
+        out[0] = c[0] * 0.7 + 0.3;
+        out[1] = c[1] * 0.7 + 0.3;
+        out[2] = c[2] * 0.7 + 0.3;
+    };
+
+    const finishDive = (curProf) => {
+        const h = intraHop;
+        h.active = false;
+        navState = "IDLE";
+        inside.value = h.insT;
+        inside.isInside = !h.exiting;
+        camera.fov = curProf.fov;
+        if (h.queuedLocaleIndex !== -1 && h.queuedLocaleIndex !== currentLocaleIndex) {
+            const nextLoc = h.queuedLocaleIndex;
+            h.queuedLocaleIndex = -1;
+            startIntraHop(nextLoc);
+        } else {
+            h.queuedLocaleIndex = -1;
+        }
+    };
+
+    const diveFrame = (curProf, dt) => {
+        const h = intraHop;
+        const u = h.u;
+        const hu = easeDive(u);
+        const reduced = isReducedMotion();
+        const dimIdx = currentDimIndex;
+
+        // Hero path: live start -> locale anchor (or back to the formation hero on exit)
+        if (h.exiting) h.arc.p3.copy(formHero);
+        else anchorWorld(dimIdx, h.toLocaleIndex, inside.value, h.arc.p3);
+        updateDiveControls(h);
+        evalBezier3D(h.arc.p0, h.arc.p1, h.arc.p2, h.arc.p3, hu, tmpHeroPos);
+        evalBezierTangent3D(h.arc.p0, h.arc.p1, h.arc.p2, h.arc.p3, hu, diveTmpTan);
+        const tk = 1.0 - Math.exp(-8.0 * dt);
+        diveTan.x += (diveTmpTan.x - diveTan.x) * tk;
+        diveTan.y += (diveTmpTan.y - diveTan.y) * tk;
+        diveTan.z += (diveTmpTan.z - diveTan.z) * tk;
+        diveTan.normalize();
+
+        // Weave around structures: small noise offset that vanishes at both ends
+        const wv = reduced ? 0.0 : Math.sin(Math.PI * u) * Math.min(1.0, h.chord * 0.12);
+        tmpHeroPos.x += Math.sin(u * 9.1 + h.ph) * 0.55 * wv;
+        tmpHeroPos.y += Math.cos(u * 7.3 + h.ph * 1.7) * 0.40 * wv;
+        tmpHeroPos.z += Math.sin(u * 6.2 + h.ph * 0.6) * 0.50 * wv;
+
+        if (!h.exiting) {
+            sampleIdle(dimIdx, h.toLocaleIndex, idleVec);
+            const w = smoothstep(0.55, 1.0, u);
+            tmpHeroPos.x += idleVec.x * w;
+            tmpHeroPos.y += idleVec.y * w;
+            tmpHeroPos.z += idleVec.z * w;
+        }
+        positions[0] = tmpHeroPos.x;
+        positions[1] = tmpHeroPos.y;
+        positions[2] = tmpHeroPos.z;
+
+        // [[DIVE_SCALE]]
+
+        // Shell crossing: thin membrane ahead on the path, hero ripple, brief star softening
+        if (h.crossing && !reduced) {
+            inside.shell = Math.exp(-Math.pow((u - 0.5) / 0.10, 2.0));
+            ringOpacity = smoothstep(0.18, 0.38, u) * (1.0 - smoothstep(0.58, 0.74, u)) * 0.85;
+            if (ringOpacity > 0.002) {
+                const hs = easeDive(0.5);
+                evalBezier3D(h.arc.p0, h.arc.p1, h.arc.p2, h.arc.p3, hs, tmpThresholdPos);
+                evalBezierTangent3D(h.arc.p0, h.arc.p1, h.arc.p2, h.arc.p3, hs, tmpThresholdTan);
+                ringRadiusDraw = 6.5;
+                ringNoiseDraw = 0.3;
+                innerTint(dimIdx, tmpRingColour);
+            }
+            postState.shockwave = 0.016 * Math.exp(-Math.pow((u - 0.56) / 0.07, 2.0));
+            postState.shockwaveRadius = clamp((u - 0.46) / 0.36, 0.0, 1.0) * 0.6;
+            inside.starBright = 1.0 - 0.45 * smoothstep(0.25, 0.5, u) * (1.0 - smoothstep(0.5, 0.85, u));
+        } else {
+            inside.shell = 0.0;
+            inside.starBright = 1.0;
+            postState.shockwave = 0.0;
+            postState.shockwaveRadius = 0.0;
+        }
+        diveBoost = inside.shell * 0.9;
+
+        // [[DIVE_CAMERA]]
+        idlePose(dimIdx, h.toLocaleIndex, inside.value, poseA, poseB);
+        camera.position.lerpVectors(h.camStartPos, poseA, hu);
+        camera.target.lerpVectors(h.camStartTarget, poseB, hu);
+        camera.fov = curProf.fov;
+
+        if (u >= 1.0) finishDive(curProf);
+    };
+
+    const idleFrame = (curProf, dt, pLerp) => {
+        idlePose(currentIndex, currentLocaleIndex, inside.value, poseA, poseB);
+        camera.position.copy(poseA);
+        camera.target.copy(poseB);
+        camera.fov += (curProf.fov - camera.fov) * pLerp;
+        inside.shell = 0.0;
+        inside.starBright = 1.0;
+        postState.shockwave = 0.0;
+        postState.shockwaveRadius = 0.0;
+        diveBoost = 0.0;
+        if (inside.isInside) {
+            // Inside: the hero rests at its locale anchor and eases through the locale's own idle()
+            anchorWorld(currentIndex, currentLocaleIndex, inside.value, poseAnchor);
+            sampleIdle(currentIndex, currentLocaleIndex, idleVec);
+            positions[0] = poseAnchor.x + idleVec.x;
+            positions[1] = poseAnchor.y + idleVec.y;
+            positions[2] = poseAnchor.z + idleVec.z;
+        }
+    };
+
+    const applyHeroLocalPalette = (curProf) => {
+        // The dimension's own light becomes the hero's lighting as insideness rises
+        const c = curProf.palette[1] || curProf.heroColour;
+        const k = 0.6 * inside.value;
+        colours[0] = curProf.heroColour[0] * (1.0 - k) + (c[0] * 0.6 + 0.4) * k;
+        colours[1] = curProf.heroColour[1] * (1.0 - k) + (c[1] * 0.6 + 0.4) * k;
+        colours[2] = curProf.heroColour[2] * (1.0 - k) + (c[2] * 0.6 + 0.4) * k;
+    };
+
     /* ---------- Main Simulation, Transition & HDR Post-Processing Loop ---------- */
     let lastTime = performance.now();
     let fps = 60;
@@ -1520,56 +1827,29 @@
             /* ---------- STEADY STATE: Only current formation's update() runs ---------- */
             const active = formations[currentIndex];
             if (active) {
+                ringOpacity = 0.0;
+                ringRadiusDraw = 3.2;
+                ringNoiseDraw = 1.0;
+
+                // Advance dive progress and insideness BEFORE the formation updates, so its frame matches
+                if (intraHop.active) {
+                    intraHop.u = clamp(intraHop.u + dt / intraHop.duration, 0.0, 1.0);
+                    inside.value = intraHop.ins0 + (intraHop.insT - intraHop.ins0) * smoothstep(0.30, 0.70, intraHop.u);
+                }
+                active.insideness = inside.value;
                 active.update(dt, simTime, sharedBuffer, ctxState);
-                const camDist = active.cameraDistance || 13.5;
+                formHero.set(positions[0], positions[1], positions[2]);
+
                 const curProf = getProfile(currentIndex);
                 const pLerp = clamp(dt * 4.0, 0.02, 0.25);
 
                 if (intraHop.active) {
-                    intraHop.u = clamp(intraHop.u + dt / intraHop.duration, 0.0, 1.0);
-                    const hu = smootherstep(0.0, 1.0, intraHop.u);
-                    if (intraHop.arc) {
-                        evalBezier3D(intraHop.arc.p0, intraHop.arc.p1, intraHop.arc.p2, intraHop.arc.p3, hu, tmpHeroPos);
-                        positions[0] = tmpHeroPos.x;
-                        positions[1] = tmpHeroPos.y;
-                        positions[2] = tmpHeroPos.z;
-                    }
-                    camera.position.lerpVectors(intraHop.camStartPos, intraHop.camEndPos, hu);
-                    camera.target.lerpVectors(intraHop.camStartTarget, intraHop.camEndTarget, hu);
-
-                    // Subtle FOV breathing during hop (<= 6 degrees, gentle)
-                    const fovBreathing = Math.sin(hu * Math.PI) * 2.6;
-                    camera.fov = curProf.fov + (isReducedMotion() ? 0.0 : fovBreathing);
-
-                    if (intraHop.u >= 1.0) {
-                        intraHop.active = false;
-                        navState = "IDLE";
-                        camera.fov = curProf.fov;
-                        if (intraHop.queuedLocaleIndex !== -1 && intraHop.queuedLocaleIndex !== currentLocaleIndex) {
-                            const nextLoc = intraHop.queuedLocaleIndex;
-                            intraHop.queuedLocaleIndex = -1;
-                            startIntraHop(nextLoc);
-                        } else {
-                            intraHop.queuedLocaleIndex = -1;
-                        }
-                    }
+                    diveFrame(curProf, dt);
                 } else {
-                    // Gentle cinematic idle camera orbit + pointer parallax
-                    const camOrbitX = Math.sin(simTime * 0.19) * 0.36;
-                    const camOrbitY = Math.cos(simTime * 0.14) * 0.24;
-                    const camOrbitZ = Math.sin(simTime * 0.11) * 0.28;
-                    camera.position.set(
-                        active.origin.x + camOrbitX + ctxState.pointerX * 0.62,
-                        active.origin.y + camOrbitY - ctxState.pointerY * 0.48,
-                        active.origin.z + camDist + camOrbitZ
-                    );
-                    camera.target.set(
-                        active.origin.x + ctxState.pointerX * 0.16,
-                        active.origin.y - ctxState.pointerY * 0.16,
-                        active.origin.z
-                    );
-                    camera.fov += (curProf.fov - camera.fov) * pLerp;
+                    idleFrame(curProf, dt, pLerp);
                 }
+                if (inside.value > 0.002) applyHeroLocalPalette(curProf);
+                innerTint(currentIndex, inside.tint);
 
                 // Smoothly converge post-processing parameters to active section profile
                 postState.bloomStrength += (curProf.bloomStrength - postState.bloomStrength) * pLerp;
@@ -1590,11 +1870,22 @@
             }
             trans.auxOpacity = Math.min(1.0, trans.auxOpacity + dt * 2.5);
             trans.warpStrength = 0.0;
+            heroBoost = Math.max(heroBoost, diveBoost);
         } else {
             /* ---------- 5-PHASE TRANSITION ENGINE ---------- */
             trans.u = clamp(trans.u + dt / trans.duration, 0.0, 1.0);
             const u = trans.u;
             trans.phase = getPhaseName(u);
+
+            // The interior fades out smoothly while crossing dimensions (never snaps)
+            ringRadiusDraw = 3.2;
+            ringNoiseDraw = 1.0;
+            inside.value = Math.max(0.0, inside.value - dt / Math.min(0.9, trans.duration * 0.6));
+            inside.shift = Math.max(0.0, inside.shift - dt * 3.0);
+            inside.shell = 0.0;
+            inside.starBright += (1.0 - inside.starBright) * Math.min(1.0, dt * 6.0);
+            inside.streakMul += (1.0 - inside.streakMul) * Math.min(1.0, dt * 3.0);
+            diveBoost = 0.0;
 
             const fromProf = getProfile(trans.fromIndex);
             const toProf = getProfile(trans.toIndex);
@@ -1610,6 +1901,8 @@
 
             const fromForm = formations[trans.fromIndex];
             const toForm = formations[trans.toIndex];
+            if (fromForm) fromForm.insideness = inside.value;
+            if (toForm) toForm.insideness = 0.0;
 
             // Simulation rule blending: origin sim ramps to 0.15 behind, destination ramps from neutral
             const fromSimIntensity = clamp(1.0 - (1.0 - 0.15) * dimBlend, 0.15, 1.0);
@@ -1830,6 +2123,9 @@
                 trans.warpStrength = 0.0;
                 applyDomSectionVisibility(currentIndex, currentIndex, 1.0, false);
                 updateThemeAndDots(currentIndex);
+                inside.value = 0.0;
+                inside.isInside = false;
+                inside.shift = 0.0;
                 updateIntraIndicator(currentDimIndex, currentLocaleIndex);
                 updateLocaleContent(currentDimIndex, currentLocaleIndex);
 
@@ -1848,8 +2144,27 @@
                     startTransition(nextQ);
                 } else {
                     trans.queuedIndex = -1;
+                    if (pendingEnter >= 0) {
+                        const pe = pendingEnter;
+                        pendingEnter = -1;
+                        startIntraHop(pe);
+                    }
                 }
             }
+        }
+
+        // Live hero and camera velocities (smoothed) for hop continuity and speed-driven streaks
+        {
+            const inv = 1.0 / Math.max(dt, 1e-3);
+            heroVel.x += ((positions[0] - lastHeroPos.x) * inv - heroVel.x) * 0.5;
+            heroVel.y += ((positions[1] - lastHeroPos.y) * inv - heroVel.y) * 0.5;
+            heroVel.z += ((positions[2] - lastHeroPos.z) * inv - heroVel.z) * 0.5;
+            lastHeroPos.set(positions[0], positions[1], positions[2]);
+            camVel.x += ((camera.position.x - lastCamPos.x) * inv - camVel.x) * 0.35;
+            camVel.y += ((camera.position.y - lastCamPos.y) * inv - camVel.y) * 0.35;
+            camVel.z += ((camera.position.z - lastCamPos.z) * inv - camVel.z) * 0.35;
+            lastCamPos.copy(camera.position);
+            inside.speedN += (clamp(camVel.length() / 14.0, 0.0, 1.0) - inside.speedN) * 0.25;
         }
 
         camera.updateMatrices();
@@ -1906,6 +2221,9 @@
         gl.uniform1f(pointUniforms.uMaxStreakPx, maxStreakPx);
         gl.uniform1f(pointUniforms.uTrailGain, trailGain);
         gl.uniform3f(pointUniforms.uFogTint, postState.fogTint[0], postState.fogTint[1], postState.fogTint[2]);
+        gl.uniform1f(pointUniforms.uInside, inside.value);
+        gl.uniform1f(pointUniforms.uHeroScale, inside.heroScale);
+        gl.uniform1f(pointUniforms.uWorldGrow, inside.worldGrow);
 
         gl.bindVertexArray(sharedVAO);
 
@@ -1958,6 +2276,7 @@
             gl.uniform1f(starUniforms.uTilt, currentTilt);
             gl.uniform1f(starUniforms.uTime, simTime);
             gl.uniform1f(starUniforms.uIsLight, isLight ? 1.0 : 0.0);
+            gl.uniform1f(starUniforms.uBrightness, inside.starBright);
             drawQuad();
 
             gl.enable(gl.BLEND);
@@ -2030,11 +2349,11 @@
             gl.uniformMatrix4fv(ringUniforms.uViewProj, false, camera.viewProjectionMatrix.elements);
             gl.uniform3f(ringUniforms.uRingPos, tmpThresholdPos.x, tmpThresholdPos.y, tmpThresholdPos.z);
             gl.uniform3f(ringUniforms.uRingNormal, tmpThresholdTan.x, tmpThresholdTan.y, tmpThresholdTan.z);
-            gl.uniform1f(ringUniforms.uRingRadius, 3.2);
+            gl.uniform1f(ringUniforms.uRingRadius, ringRadiusDraw);
             gl.uniform1f(ringUniforms.uTime, simTime);
             gl.uniform1f(ringUniforms.uOpacity, ringOpacity);
             gl.uniform3f(ringUniforms.uColour, tmpRingColour[0], tmpRingColour[1], tmpRingColour[2]);
-            gl.uniform1f(ringUniforms.uRiftNoise, 1.0);
+            gl.uniform1f(ringUniforms.uRiftNoise, ringNoiseDraw);
 
             gl.bindVertexArray(ringVAO);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -2122,8 +2441,19 @@
         gl.uniform2f(compositeUniforms.uRes, pw, ph);
         gl.uniform1f(compositeUniforms.uTime, simTime);
         gl.uniform1f(compositeUniforms.uBloomStrength, postState.bloomStrength);
-        gl.uniform3f(compositeUniforms.uBloomTint, postState.bloomTint[0], postState.bloomTint[1], postState.bloomTint[2]);
-        gl.uniform1f(compositeUniforms.uVignette, 0.36);
+        {
+            // Insideness shifts the bloom tint towards the dimension's inner palette and deepens the vignette
+            const kb = 0.4 * inside.value;
+            gl.uniform3f(
+                compositeUniforms.uBloomTint,
+                postState.bloomTint[0] * (1.0 - kb) + inside.tint[0] * kb,
+                postState.bloomTint[1] * (1.0 - kb) + inside.tint[1] * kb,
+                postState.bloomTint[2] * (1.0 - kb) + inside.tint[2] * kb
+            );
+        }
+        gl.uniform1f(compositeUniforms.uInside, inside.value);
+        gl.uniform3f(compositeUniforms.uInnerTint, inside.tint[0], inside.tint[1], inside.tint[2]);
+        gl.uniform1f(compositeUniforms.uVignette, 0.36 + 0.26 * inside.value);
         gl.uniform1f(compositeUniforms.uGrain, 0.020);
         gl.uniform1f(compositeUniforms.uCaStrength, isReducedMotion() ? 0.0 : (0.0018 + postState.caExtra));
         gl.uniform1f(compositeUniforms.uShockwave, isReducedMotion() ? 0.0 : postState.shockwave);
@@ -2165,6 +2495,10 @@
         get fps() { return fps; },
         get simTime() { return simTime; },
         get intraHop() { return intraHop; },
+        get inside() { return inside; },
+        get postState() { return postState; },
+        get camVelocity() { return camVel; },
+        exitToOverview,
         get heroPosition() { return new Vector3(positions[0], positions[1], positions[2]); },
         get formations() { return formations; },
         get trans() { return trans; },

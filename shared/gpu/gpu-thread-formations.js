@@ -215,7 +215,7 @@
 
             const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
             const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
-            const offsetX = (ctx && ctx.isMobile) ? 0.0 : 3.22;
+            const offsetX = ((ctx && ctx.isMobile) ? 0.0 : 3.22) * (1.0 - 0.85 * (this.insideness || 0));
 
             for (let i = 0; i < N; i++) {
                 const i3 = i * 3, i4 = i * 4;
@@ -522,7 +522,7 @@
             const cosA = Math.cos(this.alpha), sinA = Math.sin(this.alpha);
             const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
             const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
-            const offsetX = (ctx && ctx.isMobile) ? 0.0 : 2.15;
+            const offsetX = ((ctx && ctx.isMobile) ? 0.0 : 2.15) * (1.0 - 0.85 * (this.insideness || 0));
 
             for (let i = 0; i < N; i++) {
                 const i3 = i * 3, i4 = i * 4;
@@ -799,7 +799,7 @@
             }
             const sinObs = Math.sin(this.tilt);
             const cosObs = Math.cos(this.tilt);
-            const offsetX = (ctx && ctx.isMobile) ? 0.0 : 2.35;
+            const offsetX = ((ctx && ctx.isMobile) ? 0.0 : 2.35) * (1.0 - 0.85 * (this.insideness || 0));
 
             const isMob = (ctx && ctx.isMobile) || (typeof window !== "undefined" && window.innerWidth <= 768);
             this.kerrOverlay.tilt = this.tilt;
@@ -1053,7 +1053,7 @@
             const pitch = -0.28 + ptrY * 0.28;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = (ctx && ctx.isMobile) ? 0.0 : 2.15;
+            const offsetX = ((ctx && ctx.isMobile) ? 0.0 : 2.15) * (1.0 - 0.85 * (this.insideness || 0));
 
             const N = buffer.count;
             const pos = buffer.positions;
@@ -1326,7 +1326,7 @@
             const pitch = 0.28 + ptrY * 0.24;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = (ctx && ctx.isMobile) ? 0.0 : 2.15;
+            const offsetX = ((ctx && ctx.isMobile) ? 0.0 : 2.15) * (1.0 - 0.85 * (this.insideness || 0));
 
             const N = buffer.count;
             const pos = buffer.positions;
@@ -1590,7 +1590,7 @@
             const pitch = 0.42 + ptrY * 0.24;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = (ctx && ctx.isMobile) ? 0.0 : 2.15;
+            const offsetX = ((ctx && ctx.isMobile) ? 0.0 : 2.15) * (1.0 - 0.85 * (this.insideness || 0));
 
             const N = buffer.count;
             this._lastCount = N;
@@ -1745,7 +1745,7 @@
             const pitch = 0.22 + ptrY * 0.24;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = (ctx && ctx.isMobile) ? 0.0 : 1.85;
+            const offsetX = ((ctx && ctx.isMobile) ? 0.0 : 1.85) * (1.0 - 0.85 * (this.insideness || 0));
 
             const N = buffer.count;
             const pos = buffer.positions;
