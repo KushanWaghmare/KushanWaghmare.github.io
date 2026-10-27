@@ -142,8 +142,10 @@
 
     /**
      * Procedural starfield cubemap generator.
-     * Connected to shared deterministic STARFIELD module for 100% portfolio continuity.
-     * Guaranteed pure black background (#000000, 0.0 luminance, zero haze).
+     * Bakes 6 faces (RGBA16F Float32Array) at initialisation with:
+     *   - Poisson-distributed stars with power-law magnitude distribution and blackbody colours
+     *   - Inclined Milky Way galactic band with central bulge and dark dust lanes
+     *   - Faint diffuse emission nebula tinted with KW.col.a accent colour
      */
     const bakeStarfieldFaces = (size = 1024, accent = [0.22, 0.74, 0.97]) => {
         const faces = [];
@@ -151,73 +153,21 @@
             faces.push(new Float32Array(size * size * 4));
         }
 
-        // Use shared STARFIELD catalog if available
-        let catalog = null;
-        if (typeof root !== "undefined" && root.STARFIELD) {
-            catalog = root.STARFIELD.getStarfieldData(size <= 1024);
-        }
-
-        if (catalog) {
-            const { count, directions, colours, sizes: starSizes, seeds } = catalog;
-            for (let i = 0; i < count; i++) {
-                const i3 = i * 3, i4 = i * 4;
-                const dx = directions[i3], dy = directions[i3 + 1], dz = directions[i3 + 2];
-                const cr = colours[i3], cg = colours[i3 + 1], cb = colours[i3 + 2];
-                const starSizePx = starSizes[i];
-                const mag = seeds[i4 + 3];
-                const starLuminance = 0.35 + 2.85 * Math.pow(mag, 2.2);
-
-                const ax = Math.abs(dx), ay = Math.abs(dy), az = Math.abs(dz);
-                let face = 0, sc = 0, tc = 0, ma = 1;
-                if (ax >= ay && ax >= az) {
-                    if (dx > 0) { face = 0; sc = -dz; tc = -dy; ma = ax; }
-                    else        { face = 1; sc =  dz; tc = -dy; ma = ax; }
-                } else if (ay >= ax && ay >= az) {
-                    if (dy > 0) { face = 2; sc =  dx; tc =  dz; ma = ay; }
-                    else        { face = 3; sc =  dx; tc = -dz; ma = ay; }
-                } else {
-                    if (dz > 0) { face = 4; sc =  dx; tc = -dy; ma = az; }
-                    else        { face = 5; sc = -dx; tc = -dy; ma = az; }
-                }
-
-                const px = 0.5 * (sc / ma + 1.0) * size - 0.5;
-                const py = 0.5 * (tc / ma + 1.0) * size - 0.5;
-                const sigmaPx = Math.max(0.75, starSizePx * (size / 1024.0) * 0.45);
-                const rBound = Math.ceil(sigmaPx * 3.0);
-                const ix = Math.round(px), iy = Math.round(py);
-
-                for (let dyOff = -rBound; dyOff <= rBound; dyOff++) {
-                    const targetY = iy + dyOff;
-                    if (targetY < 0 || targetY >= size) continue;
-                    for (let dxOff = -rBound; dxOff <= rBound; dxOff++) {
-                        const targetX = ix + dxOff;
-                        if (targetX < 0 || targetX >= size) continue;
-                        const distSqPx = dxOff * dxOff + dyOff * dyOff;
-                        const gaussWeight = Math.exp(-distSqPx / (2.0 * sigmaPx * sigmaPx));
-                        if (gaussWeight < 0.002) continue;
-
-                        const pIdx = (targetY * size + targetX) * 4;
-                        const faceData = faces[face];
-                        const lum = starLuminance * gaussWeight;
-                        faceData[pIdx]     += cr * lum;
-                        faceData[pIdx + 1] += cg * lum;
-                        faceData[pIdx + 2] += cb * lum;
-                        faceData[pIdx + 3] += lum;
-                    }
-                }
-            }
-            return { faces, size };
-        }
-
-        // Fallback deterministic generator if STARFIELD module not yet loaded
-        let seed = 0x53544152;
+        // Seeded deterministic pseudo-random number generator (Mulberry32)
+        let seed = 133742;
         const rand = () => {
-            seed = (seed + 0x6D2B79F5) >>> 0;
-            let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            let t = (seed += 0x6d2b79f5);
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
             return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
         };
 
+        const smoothstep = (e0, e1, x) => {
+            const t = Math.max(0.0, Math.min(1.0, (x - e0) / Math.max(1e-5, e1 - e0)));
+            return t * t * (3.0 - 2.0 * t);
+        };
+
+        // Tanner Helland blackbody colour approximation
         const blackbodyCol = (tempK) => {
             const t = Math.max(1000, Math.min(40000, tempK)) * 0.01;
             const tA = Math.max(t - 60, 1.0);
@@ -230,32 +180,80 @@
             return [r, g, b];
         };
 
-        const numStars = size <= 1024 ? 1000 : 1800;
+        // Galactic coordinate vectors (tilted relative to black hole spin axis)
+        const nGal = [0.35, 0.82, 0.45];
+        const nGalLen = Math.hypot(...nGal);
+        nGal[0] /= nGalLen; nGal[1] /= nGalLen; nGal[2] /= nGalLen;
+
+        const gc = [-0.85, 0.25, 0.45];
+        const gcLen = Math.hypot(...gc);
+        gc[0] /= gcLen; gc[1] /= gcLen; gc[2] /= gcLen;
+
+        const n0 = nGal[0], n1 = nGal[1], n2 = nGal[2];
+
+        // Orthonormal basis (e1, nGal, e2) for galactic plane star placement
+        const e1Len = Math.hypot(n2, 0.0, -n0);
+        const e1x = n2 / e1Len, e1y = 0.0, e1z = -n0 / e1Len;
+        const e2x = n1 * e1z - n2 * e1y;
+        const e2y = n2 * e1x - n0 * e1z;
+        const e2z = n0 * e1y - n1 * e1x;
+
+        // Denser Poisson-distributed stars with power-law magnitude and blackbody colours
+        // Includes faint procedural Milky Way galactic band with central bulge and dark dust lanes
+        const numStars = 14000;
         for (let i = 0; i < numStars; i++) {
-            const z = rand() * 2.0 - 1.0;
-            const phi = rand() * 2.0 * Math.PI;
-            const rxy = Math.sqrt(Math.max(0, 1.0 - z * z));
-            const dx = rxy * Math.cos(phi), dy = z, dz = rxy * Math.sin(phi);
+            let dx, dy, dz;
+            let isGalactic = false;
+            // 55% isotropic distribution across the sphere, 45% concentrated along galactic plane
+            if (rand() < 0.55) {
+                const z = rand() * 2.0 - 1.0;
+                const phi = rand() * 2.0 * Math.PI;
+                const rxy = Math.sqrt(Math.max(0, 1.0 - z * z));
+                dx = rxy * Math.cos(phi);
+                dy = z;
+                dz = rxy * Math.sin(phi);
+            } else {
+                isGalactic = true;
+                const phi = rand() * 2.0 * Math.PI;
+                // Smooth bell-shaped latitude distribution (sum of 4 uniforms) to avoid hard strip edges
+                const b = ((rand() + rand() + rand() + rand()) - 2.0) * 0.18;
+                const rxy = Math.cos(b);
+                const sinB = Math.sin(b);
+                const cPhi = rxy * Math.cos(phi), sPhi = rxy * Math.sin(phi);
+                dx = cPhi * e1x + sinB * n0 + sPhi * e2x;
+                dy = cPhi * e1y + sinB * n1 + sPhi * e2y;
+                dz = cPhi * e1z + sinB * n2 + sPhi * e2z;
+            }
 
+            // Power-law magnitude distribution (Pareto): most stars faint, few prominent
             const u = Math.max(1e-4, rand());
-            const brightness = 0.16 * Math.pow(u, -0.58);
-            const clampedB = Math.min(12.0, brightness);
+            let brightness = 0.20 * Math.pow(u, -0.68);
 
+            // Dark dust lane attenuation along galactic equator
+            if (isGalactic) {
+                const galDist = Math.abs(dx * n0 + dy * n1 + dz * n2);
+                const dustLane = smoothstep(0.015, 0.065, galDist);
+                brightness *= (0.45 + 0.55 * dustLane);
+            }
+            const clampedB = Math.min(36.0, brightness);
+
+            // Blackbody temperature: IMF heavily skewed toward cooler dwarf stars
             const uT = rand();
-            const tempK = 3500 + (12000 - 3500) * uT * uT;
+            const tempK = 2400 + (34000 - 2400) * uT * uT * uT;
             const [cr, cg, cb] = blackbodyCol(tempK);
 
+            // Determine cubemap face and UV projection
             const ax = Math.abs(dx), ay = Math.abs(dy), az = Math.abs(dz);
             let face = 0, sc = 0, tc = 0, ma = 1;
             if (ax >= ay && ax >= az) {
                 if (dx > 0) { face = 0; sc = -dz; tc = -dy; ma = ax; }
-                else        { face = 1; sc =  dz; tc = -dy; ma = ax; }
+                else { face = 1; sc = dz; tc = -dy; ma = ax; }
             } else if (ay >= ax && ay >= az) {
-                if (dy > 0) { face = 2; sc =  dx; tc =  dz; ma = ay; }
-                else        { face = 3; sc =  dx; tc = -dz; ma = ay; }
+                if (dy > 0) { face = 2; sc = dx; tc = dz; ma = ay; }
+                else { face = 3; sc = dx; tc = -dz; ma = ay; }
             } else {
-                if (dz > 0) { face = 4; sc =  dx; tc = -dy; ma = az; }
-                else        { face = 5; sc = -dx; tc = -dy; ma = az; }
+                if (dz > 0) { face = 4; sc = dx; tc = -dy; ma = az; }
+                else { face = 5; sc = -dx; tc = -dy; ma = az; }
             }
 
             const px = 0.5 * (sc / ma + 1.0) * size - 0.5;
@@ -264,12 +262,17 @@
 
             if (ix >= 0 && ix < size - 1 && iy >= 0 && iy < size - 1) {
                 const fx = px - ix, fy = py - iy;
-                const w00 = (1.0 - fx) * (1.0 - fy), w10 = fx * (1.0 - fy), w01 = (1.0 - fx) * fy, w11 = fx * fy;
+                const w00 = (1.0 - fx) * (1.0 - fy);
+                const w10 = fx * (1.0 - fy);
+                const w01 = (1.0 - fx) * fy;
+                const w11 = fx * fy;
                 const rVal = cr * clampedB, gVal = cg * clampedB, bVal = cb * clampedB;
 
                 const data = faces[face];
                 const idx00 = (iy * size + ix) * 4;
-                const idx10 = idx00 + 4, idx01 = idx00 + size * 4, idx11 = idx01 + 4;
+                const idx10 = idx00 + 4;
+                const idx01 = idx00 + size * 4;
+                const idx11 = idx01 + 4;
 
                 data[idx00] += rVal * w00; data[idx00 + 1] += gVal * w00; data[idx00 + 2] += bVal * w00;
                 data[idx10] += rVal * w10; data[idx10 + 1] += gVal * w10; data[idx10 + 2] += bVal * w10;

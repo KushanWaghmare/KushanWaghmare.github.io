@@ -214,7 +214,6 @@
     let posVBO = null, prevPosVBO = null, colVBO = null, sizeVBO = null, seedVBO = null;
     let auxPosVBO = null, auxColVBO = null, quadVBO = null;
 
-    let skyCubeTex = null;
     let hdrSupported = false;
     let rtWidth = 0, rtHeight = 0;
     let trailRT = [null, null];
@@ -320,11 +319,11 @@
             "uHeroBoost", "uIsLight", "uStreakScale", "uMaxStreakPx", "uTrailGain", "uFogTint"
         ]);
         starUniforms = getUniforms(starProg, [
-            "uSkyCube", "uRes", "uBhScreenCentre", "uBhScale", "uTilt", "uTime", "uIsLight"
+            "uRes", "uBhScreenCentre", "uBhScale", "uTilt", "uTime", "uIsLight"
         ]);
         auxUniforms = getUniforms(auxProg, ["uViewProj", "uAuxOpacity", "uIsLight"]);
         kerrUniforms = getUniforms(kerrProg, [
-            "uSkyCube", "uRes", "uBhScreenCentre", "uBhScale", "uSpin", "uTilt", "uTime", "uAuxOpacity", "uIsLight", "uDebugMode"
+            "uRes", "uBhScreenCentre", "uBhScale", "uSpin", "uTilt", "uTime", "uAuxOpacity", "uIsLight", "uDebugMode"
         ]);
         trailDecayUniforms = getUniforms(trailDecayProg, ["uPrevTex", "uDecay"]);
         blitAddUniforms = getUniforms(blitAddProg, ["uTex"]);
@@ -334,12 +333,6 @@
             "uSceneTex", "uBloomTex", "uRes", "uTime", "uBloomStrength",
             "uVignette", "uGrain", "uCaStrength", "uWarpStrength", "uWarpCentre", "uFogTint", "uIsLight", "uDebugMode"
         ]);
-
-        // Deterministic Shared Sky Cubemap for all sections
-        const isMob = isMobileDevice();
-        if (root.STARFIELD && root.STARFIELD.bakeStarfieldCubemap) {
-            skyCubeTex = root.STARFIELD.bakeStarfieldCubemap(gl, isMob ? 1024 : 2048, isMob);
-        }
 
         // 1. Single Shared Swarm VAO
         sharedVAO = gl.createVertexArray();
@@ -1400,9 +1393,6 @@
 
             gl.disable(gl.BLEND);
             gl.useProgram(starProg);
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyCubeTex);
-            gl.uniform1i(starUniforms.uSkyCube, 0);
             gl.uniform2f(starUniforms.uRes, pw, ph);
             gl.uniform2f(starUniforms.uBhScreenCentre, currentScreenX, currentScreenY);
             gl.uniform1f(starUniforms.uBhScale, currentScale);
@@ -1435,9 +1425,6 @@
 
             const ko = activeRenderForm.kerrOverlay;
             gl.useProgram(kerrProg);
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyCubeTex);
-            gl.uniform1i(kerrUniforms.uSkyCube, 0);
             gl.uniform2f(kerrUniforms.uRes, kerrRT.width, kerrRT.height);
             gl.uniform2f(kerrUniforms.uBhScreenCentre, ko.screenX, ko.screenY);
             gl.uniform1f(kerrUniforms.uBhScale, debugScale !== null ? debugScale : ko.scale);
