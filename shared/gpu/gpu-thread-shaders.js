@@ -826,6 +826,8 @@ uniform float uWarpStrength;
 uniform vec2 uWarpCentre;
 uniform vec3 uFogTint;
 uniform vec3 uBloomTint;
+uniform float uShockwave;
+uniform float uShockwaveRadius;
 uniform float uIsLight;
 uniform int uDebugMode;
 out vec4 fragColor;
@@ -859,8 +861,17 @@ void main() {
         return;
     }
 
-    vec2 centred = vUV - uWarpCentre;
-    float edgeR2 = dot(vUV - 0.5, vUV - 0.5);
+    vec2 baseUV = vUV;
+    if (uShockwave > 0.0005) {
+        vec2 sc = vUV - vec2(0.5);
+        float distSc = length(sc);
+        float waveDist = abs(distSc - uShockwaveRadius);
+        float ripple = sin(waveDist * 42.0) * exp(-waveDist * 18.0) * uShockwave;
+        baseUV = vUV + (distSc > 0.001 ? (sc / distSc) * ripple : vec2(0.0));
+    }
+
+    vec2 centred = baseUV - uWarpCentre;
+    float edgeR2 = dot(baseUV - 0.5, baseUV - 0.5);
 
     vec3 sceneRgb;
     vec3 bloomRgb;
@@ -887,20 +898,20 @@ void main() {
         sceneRgb = accS / wSum;
         bloomRgb = accB / wSum;
     } else if (uCaStrength > 0.0001 && edgeR2 > 0.06) {
-        vec2 caVec = (vUV - 0.5) * (uCaStrength * edgeR2 * 2.2);
-        sceneRgb.r = texture(uSceneTex, clamp(vUV + caVec, 0.001, 0.999)).r;
-        sceneRgb.g = texture(uSceneTex, vUV).g;
-        sceneRgb.b = texture(uSceneTex, clamp(vUV - caVec, 0.001, 0.999)).b;
-        bloomRgb = texture(uBloomTex, vUV).rgb;
+        vec2 caVec = (baseUV - 0.5) * (uCaStrength * edgeR2 * 2.2);
+        sceneRgb.r = texture(uSceneTex, clamp(baseUV + caVec, 0.001, 0.999)).r;
+        sceneRgb.g = texture(uSceneTex, baseUV).g;
+        sceneRgb.b = texture(uSceneTex, clamp(baseUV - caVec, 0.001, 0.999)).b;
+        bloomRgb = texture(uBloomTex, baseUV).rgb;
     } else {
         // Gentle 5-tap sub-pixel smoothing + direct sample
         vec2 px = 0.35 / max(vec2(1.0), uRes);
-        sceneRgb = texture(uSceneTex, vUV).rgb * 0.60
-                 + texture(uSceneTex, vUV + vec2(px.x, px.y)).rgb * 0.10
-                 + texture(uSceneTex, vUV + vec2(-px.x, px.y)).rgb * 0.10
-                 + texture(uSceneTex, vUV + vec2(px.x, -px.y)).rgb * 0.10
-                 + texture(uSceneTex, vUV + vec2(-px.x, -px.y)).rgb * 0.10;
-        bloomRgb = texture(uBloomTex, vUV).rgb;
+        sceneRgb = texture(uSceneTex, baseUV).rgb * 0.60
+                 + texture(uSceneTex, baseUV + vec2(px.x, px.y)).rgb * 0.10
+                 + texture(uSceneTex, baseUV + vec2(-px.x, px.y)).rgb * 0.10
+                 + texture(uSceneTex, baseUV + vec2(px.x, -px.y)).rgb * 0.10
+                 + texture(uSceneTex, baseUV + vec2(-px.x, -px.y)).rgb * 0.10;
+        bloomRgb = texture(uBloomTex, baseUV).rgb;
     }
 
     // Deep pitch-black space background + HDR scene + selective bloom
@@ -924,6 +935,68 @@ void main() {
 }
 `;
 
+    /* 10. Threshold Rift Ring Shaders */
+    const VS_THRESHOLD_RING = `#version 300 es
+precision highp float;
+
+layout(location = 0) in vec2 aPosition;
+
+uniform mat4 uViewProj;
+uniform vec3 uRingPos;
+uniform vec3 uRingNormal;
+uniform float uRingRadius;
+
+out vec2 vLocalPos;
+
+void main() {
+    vLocalPos = aPosition;
+    vec3 n = normalize(uRingNormal);
+    vec3 up = abs(n.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 right = normalize(cross(up, n));
+    vec3 trueUp = cross(n, right);
+
+    vec3 worldPos = uRingPos + (right * aPosition.x + trueUp * aPosition.y) * uRingRadius;
+    gl_Position = uViewProj * vec4(worldPos, 1.0);
+}
+`;
+
+    const FS_THRESHOLD_RING = `#version 300 es
+precision highp float;
+
+in vec2 vLocalPos;
+
+uniform float uTime;
+uniform float uOpacity;
+uniform vec3 uColour;
+uniform float uRiftNoise;
+
+out vec4 fragColor;
+
+void main() {
+    float r = length(vLocalPos);
+    if (r > 1.25) discard;
+
+    float targetR = 0.85;
+    float d = abs(r - targetR);
+
+    // Dynamic rift harmonic ripple around perimeter
+    float angle = atan(vLocalPos.y, vLocalPos.x);
+    float ripple = sin(angle * 7.0 - uTime * 4.5) * 0.035 * uRiftNoise
+                 + cos(angle * 13.0 + uTime * 6.2) * 0.020 * uRiftNoise;
+    d = abs(r - (targetR + ripple));
+
+    // Core gaussian filament + outer exponential aura
+    float core = exp(-d * d / 0.0025);
+    float aura = exp(-d * 8.5) * 0.45;
+    float intensity = (core * 2.2 + aura) * uOpacity;
+
+    if (intensity < 0.005) discard;
+
+    vec3 glowCol = uColour * (1.2 + core * 1.5) + vec3(0.7, 0.85, 1.0) * core;
+    fragColor = vec4(glowCol * intensity, intensity);
+}
+`;
+
     return {
         VS_SHARED_POINTS,
         FS_SHARED_POINTS,
@@ -938,6 +1011,8 @@ void main() {
         FS_BLIT_ADD,
         FS_BRIGHT_PASS,
         FS_BLUR_9TAP,
-        FS_POST_COMPOSITE
+        FS_POST_COMPOSITE,
+        VS_THRESHOLD_RING,
+        FS_THRESHOLD_RING
     };
 }));

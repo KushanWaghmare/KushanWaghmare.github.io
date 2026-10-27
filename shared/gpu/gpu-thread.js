@@ -205,14 +205,20 @@
         return p;
     };
 
-    let pointProg = null, starProg = null, auxProg = null, kerrProg = null;
+    let pointProg = null, starProg = null, auxProg = null, kerrProg = null, ringProg = null;
     let trailDecayProg = null, blitAddProg = null, brightPassProg = null, blurProg = null, compositeProg = null;
-    let pointUniforms = {}, starUniforms = {}, auxUniforms = {}, kerrUniforms = {};
+    let pointUniforms = {}, starUniforms = {}, auxUniforms = {}, kerrUniforms = {}, ringUniforms = {};
     let trailDecayUniforms = {}, blitAddUniforms = {}, brightPassUniforms = {}, blurUniforms = {}, compositeUniforms = {};
 
-    let sharedVAO = null, auxVAO = null, quadVAO = null;
+    let sharedVAO = null, auxVAO = null, quadVAO = null, ringVAO = null;
     let posVBO = null, prevPosVBO = null, colVBO = null, sizeVBO = null, seedVBO = null;
-    let auxPosVBO = null, auxColVBO = null, quadVBO = null;
+    let auxPosVBO = null, auxColVBO = null, quadVBO = null, ringVBO = null;
+
+    const tmpThresholdPos = new Vector3();
+    const tmpThresholdTan = new Vector3();
+    const tmpRingColour = [1.0, 1.0, 1.0];
+    let ringOpacity = 0.0;
+    let fovSpike = 0.0;
 
     let hdrSupported = false;
     let rtWidth = 0, rtHeight = 0;
@@ -306,6 +312,9 @@
         starProg = createProgram(TS.VS_STARFIELD, TS.FS_STARFIELD);
         auxProg = createProgram(TS.VS_AUX_SCENE, TS.FS_AUX_SCENE);
         kerrProg = createProgram(TS.VS_KERR_SCENE, TS.FS_KERR_SCENE);
+        if (TS.VS_THRESHOLD_RING && TS.FS_THRESHOLD_RING) {
+            ringProg = createProgram(TS.VS_THRESHOLD_RING, TS.FS_THRESHOLD_RING);
+        }
         trailDecayProg = createProgram(TS.VS_POST_QUAD, TS.FS_TRAIL_DECAY);
         blitAddProg = createProgram(TS.VS_POST_QUAD, TS.FS_BLIT_ADD);
         brightPassProg = createProgram(TS.VS_POST_QUAD, TS.FS_BRIGHT_PASS);
@@ -325,13 +334,19 @@
         kerrUniforms = getUniforms(kerrProg, [
             "uRes", "uBhScreenCentre", "uBhScale", "uSpin", "uTilt", "uTime", "uAuxOpacity", "uIsLight", "uDebugMode"
         ]);
+        if (ringProg) {
+            ringUniforms = getUniforms(ringProg, [
+                "uViewProj", "uRingPos", "uRingNormal", "uRingRadius", "uTime", "uOpacity", "uColour", "uRiftNoise"
+            ]);
+        }
         trailDecayUniforms = getUniforms(trailDecayProg, ["uPrevTex", "uDecay"]);
         blitAddUniforms = getUniforms(blitAddProg, ["uTex"]);
         brightPassUniforms = getUniforms(brightPassProg, ["uSceneTex", "uThreshold"]);
         blurUniforms = getUniforms(blurProg, ["uTex", "uTexelStep"]);
         compositeUniforms = getUniforms(compositeProg, [
             "uSceneTex", "uBloomTex", "uRes", "uTime", "uBloomStrength", "uBloomTint",
-            "uVignette", "uGrain", "uCaStrength", "uWarpStrength", "uWarpCentre", "uFogTint", "uIsLight", "uDebugMode"
+            "uVignette", "uGrain", "uCaStrength", "uWarpStrength", "uWarpCentre", "uFogTint",
+            "uShockwave", "uShockwaveRadius", "uIsLight", "uDebugMode"
         ]);
 
         // 1. Single Shared Swarm VAO
@@ -396,6 +411,20 @@
         quadVBO = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, quadVBO);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+        gl.bindVertexArray(null);
+
+        // 5. Threshold Rift Ring VAO
+        ringVAO = gl.createVertexArray();
+        gl.bindVertexArray(ringVAO);
+        ringVBO = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, ringVBO);
+        const ringVerts = new Float32Array([
+            -1.25, -1.25,  1.25, -1.25, -1.25,  1.25,
+            -1.25,  1.25,  1.25, -1.25,  1.25,  1.25
+        ]);
+        gl.bufferData(gl.ARRAY_BUFFER, ringVerts, gl.STATIC_DRAW);
         gl.enableVertexAttribArray(0);
         gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
         gl.bindVertexArray(null);
@@ -517,6 +546,9 @@
         bloomTint: [1.0, 1.0, 1.0],
         fogTint: [0.022, 0.056, 0.145],
         fogDensity: 0.0035,
+        shockwave: 0.0,
+        shockwaveRadius: 0.0,
+        caExtra: 0.0,
         trailDecay: 0.82,
         streakScale: 1.65
     };
@@ -1514,9 +1546,39 @@
                 sizes[i] = fromSizes[i] + (nextSizes[i] - fromSizes[i]) * colBlend + streamEnv * 0.45;
             }
 
+            // THRESHOLD ring forms ahead of hero along path tangent around u = 0.55
+            if (!reduced && u >= 0.42 && u <= 0.68) {
+                ringOpacity = smoothstep(0.42, 0.52, u) * (1.0 - smoothstep(0.58, 0.68, u));
+                evalFlightPath(0.55, tmpThresholdPos);
+                evalFlightTangent(0.55, tmpThresholdTan);
+
+                tmpRingColour[0] = fromProf.heroColour[0] * (1.0 - dimBlend) + toProf.heroColour[0] * dimBlend;
+                tmpRingColour[1] = fromProf.heroColour[1] * (1.0 - dimBlend) + toProf.heroColour[1] * dimBlend;
+                tmpRingColour[2] = fromProf.heroColour[2] * (1.0 - dimBlend) + toProf.heroColour[2] * dimBlend;
+            } else {
+                ringOpacity = 0.0;
+            }
+
+            // On crossing (u in [0.52, 0.66]): brief shockwave ripple, short FOV spike, quick chromatic split
+            if (!reduced && u >= 0.52 && u <= 0.66) {
+                const spike = Math.exp(-Math.pow((u - 0.55) / 0.024, 2.0));
+                const shockProg = clamp((u - 0.54) / 0.10, 0.0, 1.0);
+                postState.shockwave = (1.0 - shockProg) * 0.042 * smoothstep(0.54, 0.56, u);
+                postState.shockwaveRadius = shockProg * 0.72;
+                postState.caExtra = 0.016 * spike;
+                fovSpike = 4.5 * spike;
+            } else {
+                postState.shockwave = 0.0;
+                postState.shockwaveRadius = 0.0;
+                postState.caExtra = 0.0;
+                fovSpike = 0.0;
+            }
+
+            const baseFov = fromProf.fov + (toProf.fov - fromProf.fov) * dimBlend;
+
             if (reduced) {
                 const cm = smootherstep(0.0, 1.0, u);
-                camera.fov = 52.0;
+                camera.fov = baseFov;
                 camera.position.lerpVectors(trans.camStartPos, trans.camEndPos, cm);
                 camera.target.lerpVectors(trans.camStartTarget, trans.camEndTarget, cm);
             } else {
@@ -1547,8 +1609,7 @@
                 );
 
                 const breath = Math.sin(Math.PI * smoothstep(0.10, 0.90, u));
-                const baseFov = fromProf.fov + (toProf.fov - fromProf.fov) * dimBlend;
-                camera.fov = baseFov + 8.5 * breath;
+                camera.fov = baseFov + 8.5 * breath + fovSpike;
             }
 
             // DimensionProfile continuous blend driven by dimBlend
@@ -1766,7 +1827,24 @@
             gl.bindVertexArray(null);
         }
 
-        // 2d. Composite persistent trailed particle swarm into sceneRT (suppressed during geodesic debugging)
+        // 2d. Threshold Rift Ring (luminous ring formed ahead of hero during 42% - 68% of inter-dimensional flight)
+        if (ringOpacity > 0.005 && ringProg && ringVAO) {
+            gl.useProgram(ringProg);
+            gl.uniformMatrix4fv(ringUniforms.uViewProj, false, camera.viewProjectionMatrix.elements);
+            gl.uniform3f(ringUniforms.uRingPos, tmpThresholdPos.x, tmpThresholdPos.y, tmpThresholdPos.z);
+            gl.uniform3f(ringUniforms.uRingNormal, tmpThresholdTan.x, tmpThresholdTan.y, tmpThresholdTan.z);
+            gl.uniform1f(ringUniforms.uRingRadius, 3.2);
+            gl.uniform1f(ringUniforms.uTime, simTime);
+            gl.uniform1f(ringUniforms.uOpacity, ringOpacity);
+            gl.uniform3f(ringUniforms.uColour, tmpRingColour[0], tmpRingColour[1], tmpRingColour[2]);
+            gl.uniform1f(ringUniforms.uRiftNoise, 1.0);
+
+            gl.bindVertexArray(ringVAO);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            gl.bindVertexArray(null);
+        }
+
+        // 2e. Composite persistent trailed particle swarm into sceneRT (suppressed during geodesic debugging)
         if (debugMode === 0) {
             if (isLight) {
                 gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -1850,7 +1928,9 @@
         gl.uniform3f(compositeUniforms.uBloomTint, postState.bloomTint[0], postState.bloomTint[1], postState.bloomTint[2]);
         gl.uniform1f(compositeUniforms.uVignette, 0.36);
         gl.uniform1f(compositeUniforms.uGrain, 0.020);
-        gl.uniform1f(compositeUniforms.uCaStrength, isReducedMotion() ? 0.0 : 0.0018);
+        gl.uniform1f(compositeUniforms.uCaStrength, isReducedMotion() ? 0.0 : (0.0018 + postState.caExtra));
+        gl.uniform1f(compositeUniforms.uShockwave, isReducedMotion() ? 0.0 : postState.shockwave);
+        gl.uniform1f(compositeUniforms.uShockwaveRadius, postState.shockwaveRadius);
         gl.uniform1f(compositeUniforms.uWarpStrength, isReducedMotion() ? 0.0 : trans.warpStrength);
         gl.uniform2f(compositeUniforms.uWarpCentre, 0.5, 0.5);
         gl.uniform3f(compositeUniforms.uFogTint, postState.fogTint[0], postState.fogTint[1], postState.fogTint[2]);
