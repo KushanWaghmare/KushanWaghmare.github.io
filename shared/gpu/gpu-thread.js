@@ -206,14 +206,15 @@
         return p;
     };
 
-    let pointProg = null, starProg = null, auxProg = null, kerrProg = null, ringProg = null;
+    let pointProg = null, starProg = null, auxProg = null, kerrProg = null, ringProg = null, ambientDustProg = null;
     let trailDecayProg = null, blitAddProg = null, brightPassProg = null, blurProg = null, compositeProg = null;
-    let pointUniforms = {}, starUniforms = {}, auxUniforms = {}, kerrUniforms = {}, ringUniforms = {};
+    let pointUniforms = {}, starUniforms = {}, auxUniforms = {}, kerrUniforms = {}, ringUniforms = {}, ambientDustUniforms = {};
     let trailDecayUniforms = {}, blitAddUniforms = {}, brightPassUniforms = {}, blurUniforms = {}, compositeUniforms = {};
 
-    let sharedVAO = null, auxVAO = null, quadVAO = null, ringVAO = null;
+    let sharedVAO = null, auxVAO = null, quadVAO = null, ringVAO = null, ambientDustVAO = null;
     let posVBO = null, prevPosVBO = null, colVBO = null, sizeVBO = null, seedVBO = null;
-    let auxPosVBO = null, auxColVBO = null, quadVBO = null, ringVBO = null;
+    let auxPosVBO = null, auxColVBO = null, quadVBO = null, ringVBO = null, ambientDustOffsetVBO = null, ambientDustSeedVBO = null;
+    const AMBIENT_DUST_COUNT = 1024;
 
     const tmpThresholdPos = new Vector3();
     const tmpThresholdTan = new Vector3();
@@ -316,6 +317,9 @@
         if (TS.VS_THRESHOLD_RING && TS.FS_THRESHOLD_RING) {
             ringProg = createProgram(TS.VS_THRESHOLD_RING, TS.FS_THRESHOLD_RING);
         }
+        if (TS.VS_AMBIENT_DUST && TS.FS_AMBIENT_DUST) {
+            ambientDustProg = createProgram(TS.VS_AMBIENT_DUST, TS.FS_AMBIENT_DUST);
+        }
         trailDecayProg = createProgram(TS.VS_POST_QUAD, TS.FS_TRAIL_DECAY);
         blitAddProg = createProgram(TS.VS_POST_QUAD, TS.FS_BLIT_ADD);
         brightPassProg = createProgram(TS.VS_POST_QUAD, TS.FS_BRIGHT_PASS);
@@ -339,6 +343,11 @@
         if (ringProg) {
             ringUniforms = getUniforms(ringProg, [
                 "uViewProj", "uRingPos", "uRingNormal", "uRingRadius", "uTime", "uOpacity", "uColour", "uRiftNoise"
+            ]);
+        }
+        if (ambientDustProg) {
+            ambientDustUniforms = getUniforms(ambientDustProg, [
+                "uViewProj", "uCamPos", "uTravelDir", "uSpeedN", "uInside", "uColour", "uTime", "uDpr", "uViewport"
             ]);
         }
         trailDecayUniforms = getUniforms(trailDecayProg, ["uPrevTex", "uDecay"]);
@@ -430,6 +439,37 @@
         gl.enableVertexAttribArray(0);
         gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
         gl.bindVertexArray(null);
+
+        // 6. Volumetric Interior Ambient Dust VAO (pooled field in local camera volume)
+        if (ambientDustProg) {
+            ambientDustVAO = gl.createVertexArray();
+            gl.bindVertexArray(ambientDustVAO);
+
+            const dustOffsets = new Float32Array(AMBIENT_DUST_COUNT * 3);
+            const dustSeeds = new Float32Array(AMBIENT_DUST_COUNT * 2);
+            const rnd = mulberry32(1337);
+            for (let i = 0; i < AMBIENT_DUST_COUNT; i++) {
+                dustOffsets[i * 3 + 0] = (rnd() - 0.5) * 24.0;
+                dustOffsets[i * 3 + 1] = (rnd() - 0.5) * 24.0;
+                dustOffsets[i * 3 + 2] = (rnd() - 0.5) * 24.0;
+                dustSeeds[i * 2 + 0] = rnd();
+                dustSeeds[i * 2 + 1] = rnd();
+            }
+
+            ambientDustOffsetVBO = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, ambientDustOffsetVBO);
+            gl.bufferData(gl.ARRAY_BUFFER, dustOffsets, gl.STATIC_DRAW);
+            gl.enableVertexAttribArray(0);
+            gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+
+            ambientDustSeedVBO = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, ambientDustSeedVBO);
+            gl.bufferData(gl.ARRAY_BUFFER, dustSeeds, gl.STATIC_DRAW);
+            gl.enableVertexAttribArray(1);
+            gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+
+            gl.bindVertexArray(null);
+        }
 
         rtWidth = 0;
         rtHeight = 0;
@@ -2427,6 +2467,30 @@
             gl.bindTexture(gl.TEXTURE_2D, trailRT[trailReadIdx].tex);
             gl.uniform1i(blitAddUniforms.uTex, 0);
             drawQuad();
+        }
+
+        // 2f. Volumetric Interior Ambient Dust (pooled field around camera, denser as insideness rises)
+        if (inside.value > 0.005 && ambientDustProg && ambientDustVAO) {
+            gl.enable(gl.BLEND);
+            if (isLight) {
+                gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+            } else {
+                gl.blendFunc(gl.ONE, gl.ONE);
+            }
+            gl.useProgram(ambientDustProg);
+            gl.uniformMatrix4fv(ambientDustUniforms.uViewProj, false, camera.viewProjectionMatrix.elements);
+            gl.uniform3f(ambientDustUniforms.uCamPos, camera.position.x, camera.position.y, camera.position.z);
+            gl.uniform3f(ambientDustUniforms.uTravelDir, diveTan.x, diveTan.y, diveTan.z);
+            gl.uniform1f(ambientDustUniforms.uSpeedN, inside.speedN);
+            gl.uniform1f(ambientDustUniforms.uInside, inside.value);
+            gl.uniform3f(ambientDustUniforms.uColour, inside.tint[0], inside.tint[1], inside.tint[2]);
+            gl.uniform1f(ambientDustUniforms.uTime, simTime);
+            gl.uniform1f(ambientDustUniforms.uDpr, dpr);
+            gl.uniform2f(ambientDustUniforms.uViewport, width, height);
+
+            gl.bindVertexArray(ambientDustVAO);
+            gl.drawArrays(gl.POINTS, 0, AMBIENT_DUST_COUNT);
+            gl.bindVertexArray(null);
         }
 
         // Pass 3: Selective HDR Bloom (Bright-Pass + Separable 9-Tap Gaussian Blur)

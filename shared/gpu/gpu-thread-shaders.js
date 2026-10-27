@@ -927,9 +927,10 @@ void main() {
 
     vec3 hdr = spaceBase + sceneRgb + bloomRgb * uBloomTint * uBloomStrength;
 
-    // Interior atmosphere: soft inner-palette haze towards the screen edges
+    // Interior atmosphere: soft inner-palette haze towards the screen edges and structure glow
     float innerHaze = uInside * smoothstep(0.05, 0.85, edgeR2 * 1.9);
     hdr += uInnerTint * innerHaze * 0.045;
+    hdr += bloomRgb * uInnerTint * (uInside * 0.40);
 
     // ACES Filmic Tone Mapping + sRGB gamma encoding
     vec3 mapped = acesFilm(hdr);
@@ -1009,6 +1010,118 @@ void main() {
 }
 `;
 
+    /* 11. Volumetric Interior Ambient Dust Shaders */
+    const VS_AMBIENT_DUST = `#version 300 es
+precision highp float;
+
+layout(location = 0) in vec3 aOffset; // base offset in [-12, 12]^3
+layout(location = 1) in vec2 aSeed;   // seed for phase & size
+
+uniform mat4 uViewProj;
+uniform vec3 uCamPos;
+uniform vec3 uTravelDir;
+uniform float uSpeedN;
+uniform float uInside;
+uniform vec3 uColour;
+uniform float uTime;
+uniform float uDpr;
+uniform vec2 uViewport;
+
+out vec3 vColour;
+out float vAlpha;
+out vec2 vUvDir;
+out float vHalfSeg;
+out float vCapRad;
+
+void main() {
+    if (uInside < 0.005) {
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+        gl_PointSize = 0.0;
+        vAlpha = 0.0;
+        return;
+    }
+
+    // Slow ambient drift (not a swarm, independent Brownian-like float)
+    vec3 drift = vec3(
+        sin(uTime * 0.18 + aSeed.x * 6.283),
+        cos(uTime * 0.14 + aSeed.y * 6.283),
+        sin(uTime * 0.22 + aSeed.x + aSeed.y)
+    ) * 1.6;
+
+    // Wrap around camera in 24-unit cubic volume
+    vec3 worldP = uCamPos + mod(aOffset + drift - uCamPos + 12.0, 24.0) - 12.0;
+
+    vec4 clipCurr = uViewProj * vec4(worldP, 1.0);
+    if (clipCurr.w <= 0.1) {
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+        gl_PointSize = 0.0;
+        vAlpha = 0.0;
+        return;
+    }
+
+    float dist = max(0.5, length(worldP - uCamPos));
+    float baseSize = clamp((2.2 + aSeed.x * 2.8) * (18.0 / (dist + 8.0)) * uDpr, 1.5 * uDpr, 12.0 * uDpr);
+
+    // Streaks stretch along the travel direction in proportion to speed
+    float streakLen = uSpeedN * 32.0 * uDpr;
+    vec2 dirNdc = vec2(1.0, 0.0);
+    vec4 clipAhead = uViewProj * vec4(worldP - uTravelDir * (streakLen * 0.05), 1.0);
+    if (clipAhead.w > 0.1 && streakLen > 0.5) {
+        vec2 d = (clipCurr.xy / clipCurr.w - clipAhead.xy / clipAhead.w) * 0.5 * uViewport * uDpr;
+        float dl = length(d);
+        if (dl > 0.2) dirNdc = d / dl;
+    }
+
+    float ptSize = baseSize + streakLen;
+    vec2 halfVpPx = max(vec2(1.0), 0.5 * uViewport * uDpr);
+    vec2 deltaNdc = (dirNdc * streakLen) / halfVpPx;
+
+    gl_Position = vec4(clipCurr.xy - 0.5 * deltaNdc * clipCurr.w, clipCurr.z, clipCurr.w);
+    gl_PointSize = ptSize;
+
+    vUvDir = vec2(dirNdc.x, -dirNdc.y);
+    vHalfSeg = 0.5 * streakLen / max(1.0, ptSize);
+    vCapRad = 0.5 * baseSize / max(1.0, ptSize);
+
+    // Fade with distance from camera and modulate by uInside and gentle twinkle
+    float sphereFade = smoothstep(12.0, 3.5, dist) * smoothstep(0.8, 2.0, dist);
+    float twinkle = 0.8 + 0.2 * sin(uTime * 2.1 + aSeed.y * 6.283);
+    vAlpha = uInside * sphereFade * twinkle * (0.35 + 0.45 * uSpeedN);
+    vColour = mix(uColour, vec3(1.0), 0.25) * (1.0 + uSpeedN * 0.6);
+}
+`;
+
+    const FS_AMBIENT_DUST = `#version 300 es
+precision highp float;
+
+in vec3 vColour;
+in float vAlpha;
+in vec2 vUvDir;
+in float vHalfSeg;
+in float vCapRad;
+
+out vec4 fragColor;
+
+void main() {
+    if (vAlpha <= 0.001) discard;
+
+    vec2 p = gl_PointCoord - vec2(0.5);
+    vec2 localP = vec2(dot(p, vec2(vUvDir.x, -vUvDir.y)), dot(p, vec2(-vUvDir.y, -vUvDir.x)));
+
+    float segDist = abs(localP.x) - vHalfSeg;
+    float dist = (segDist > 0.0) ? length(vec2(segDist, localP.y)) : abs(localP.y);
+
+    float normDist = dist / max(0.001, vCapRad);
+    if (normDist > 1.0) discard;
+
+    float core = exp(-normDist * normDist * 3.5);
+    float a = vAlpha * core;
+    if (a <= 0.002) discard;
+
+    fragColor = vec4(vColour * a, a);
+}
+`;
+
     return {
         VS_SHARED_POINTS,
         FS_SHARED_POINTS,
@@ -1025,6 +1138,8 @@ void main() {
         FS_BLUR_9TAP,
         FS_POST_COMPOSITE,
         VS_THRESHOLD_RING,
-        FS_THRESHOLD_RING
+        FS_THRESHOLD_RING,
+        VS_AMBIENT_DUST,
+        FS_AMBIENT_DUST
     };
 }));
