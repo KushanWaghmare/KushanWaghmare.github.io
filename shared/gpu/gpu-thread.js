@@ -536,66 +536,14 @@
     window.addEventListener("pointercancel", () => { isPointerDragging = false; });
 
     window.addEventListener("click", (e) => {
-        const ctaBtn = e.target && e.target.closest && e.target.closest(".snap-cta-btn");
-        if (ctaBtn) {
-            e.preventDefault();
-            e.stopPropagation();
-            const sec = ctaBtn.closest(".snap-section");
-            if (sec && sections) {
-                const sIdx = sections.indexOf(sec);
-                if (sIdx !== -1) {
-                    currentDimIndex = sIdx;
-                    currentIndex = sIdx;
-                }
-            }
-            enterSimulation();
-            return;
-        }
+        // Allow all interactive elements (links, buttons, inputs, pills, cards, snap-cta-btn) to function natively
+        if (e.target && e.target.closest && e.target.closest("a, button, input, .nav, .snap-pager, .card, .pill, .snap-cta-btn, .stage-debug-hud")) return;
 
-        const backBtn = e.target && e.target.closest && e.target.closest("#sim-back-btn");
-        if (backBtn) {
-            e.preventDefault();
-            e.stopPropagation();
-            exitSimulation();
-            return;
-        }
-
-        const subItem = e.target && e.target.closest && e.target.closest("[data-sim], [data-sim-index], [data-sim-id], [data-locale], [data-locale-index], [data-locale-id], a[href*='/']");
-        if (subItem) {
-            const simVal = subItem.dataset.simIndex || subItem.dataset.simId || subItem.dataset.sim ||
-                           subItem.dataset.localeIndex || subItem.dataset.localeId || subItem.dataset.locale;
-            if (simVal !== undefined) {
-                e.preventDefault();
-                goToSim(simVal);
-                return;
-            }
-            const href = subItem.getAttribute("href");
-            if (href && href.startsWith("#") && href.includes("/")) {
-                const parsed = parseHash(href);
-                if (parsed) {
-                    e.preventDefault();
-                    if (parsed.dimIndex !== currentDimIndex) {
-                        goToDimension(parsed.dimIndex, parsed.simIndex, parsed.inside);
-                    } else if (parsed.inside && appMode !== "INSIDE") {
-                        if (parsed.simIndex !== currentSimIndex) goToSim(parsed.simIndex);
-                        enterSimulation();
-                    } else {
-                        goToSim(parsed.simIndex);
-                    }
-                    return;
-                }
-            }
-        }
-        if (e.target && e.target.closest && e.target.closest("a, button, input, .nav, .snap-pager, .card, .pill, .stage-debug-hud")) return;
-        if (appMode === "INSIDE") {
-            postState.shockwave = 0.02;
-            postState.shockwaveRadius = 0.0;
-        }
         const activeForm = formations[currentIndex];
         if (activeForm && typeof activeForm.onClick === "function") {
             activeForm.onClick(e, ctxState);
         }
-    }, { capture: true });
+    });
 
     window.addEventListener("keydown", (e) => {
         if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
@@ -857,48 +805,25 @@
         return parsed;
     };
 
-    const ensureIntraIndicator = () => {
-        if (typeof document === "undefined") return null;
-        let el = document.getElementById("intra-indicator");
-        if (!el) {
-            el = document.createElement("nav");
-            el.id = "intra-indicator";
-            el.className = "intra-indicator";
-            el.setAttribute("aria-label", "Locales navigation");
-            document.body.appendChild(el);
-        }
-        return el;
+    const removeIntraIndicator = () => {
+        if (typeof document === "undefined") return;
+        const ind = document.getElementById("intra-indicator");
+        if (ind) ind.remove();
+        const hud = document.getElementById("sim-inside-hud");
+        if (hud) hud.remove();
+        if (document.body) document.body.classList.remove("is-inside");
+        document.querySelectorAll(".snap-section.is-inside").forEach((s) => s.classList.remove("is-inside"));
     };
-
-    const updateIntraIndicator = (dimIdx, locIdx) => {
-        const ind = ensureIntraIndicator();
-        if (!ind) return;
-        const dims = getDimensions();
-        const dim = dims[dimIdx];
-        if (!dim || !dim.locales || dim.locales.length <= 1) {
-            ind.style.display = "none";
-            return;
+    if (typeof document !== "undefined") {
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", removeIntraIndicator);
+        } else {
+            removeIntraIndicator();
         }
-        ind.style.display = "inline-flex";
+    }
 
-        ind.innerHTML = dim.locales.map((loc, idx) => {
-            const isActive = idx === locIdx;
-            return `<button class="intra-locale-btn${isActive ? " active" : ""}" data-locale-index="${idx}" aria-label="${loc.name}">` +
-                   `<span class="intra-dot"></span>` +
-                   `<span class="intra-label">${loc.short}</span>` +
-                   `</button>`;
-        }).join("");
-
-        ind.querySelectorAll(".intra-locale-btn").forEach((btn) => {
-            btn.addEventListener("click", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const idx = parseInt(btn.dataset.localeIndex, 10);
-                if (!isNaN(idx)) {
-                    goToLocale(idx);
-                }
-            });
-        });
+    const updateIntraIndicator = () => {
+        removeIntraIndicator();
     };
 
     const updateLocaleContent = (dimIdx, locIdx) => {
@@ -1136,51 +1061,12 @@
     const stepLocale = stepSim;
 
     const ensureInsideHud = () => {
-        if (typeof document === "undefined") return null;
-        let hud = document.getElementById("sim-inside-hud");
-        if (!hud) {
-            hud = document.createElement("div");
-            hud.id = "sim-inside-hud";
-            hud.className = "sim-inside-hud";
-            hud.setAttribute("aria-label", "Simulation View HUD");
-            hud.innerHTML = `
-                <button id="sim-back-btn" class="sim-back-btn glass" aria-label="Exit simulation (Esc)">
-                    <span class="arr">←</span> <span>Back</span>
-                </button>
-                <div class="sim-hud-meta">
-                    <span class="sim-hud-name"></span>
-                    <span class="sim-hud-params"></span>
-                </div>
-            `;
-            document.body.appendChild(hud);
-            const btn = hud.querySelector("#sim-back-btn");
-            if (btn) {
-                btn.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    exitSimulation();
-                });
-            }
-        }
-        return hud;
+        removeIntraIndicator();
+        return null;
     };
 
-    const updateInsideHud = (dimIdx, simIdx) => {
-        const hud = ensureInsideHud();
-        if (!hud) return;
-        const dims = getDimensions();
-        const dim = dims[dimIdx];
-        const sims = (dim && (dim.sims || dim.locales)) || [];
-        const sim = sims[simIdx] || sims[0];
-        if (!sim) return;
-
-        const nameEl = hud.querySelector(".sim-hud-name");
-        if (nameEl) nameEl.textContent = `${dim.name} · ${sim.label || sim.short}`;
-
-        const paramsEl = hud.querySelector(".sim-hud-params");
-        if (paramsEl && sim.content && sim.content.tag) {
-            paramsEl.textContent = sim.content.tag;
-        }
+    const updateInsideHud = () => {
+        removeIntraIndicator();
     };
 
     const enterSimulation = () => {
@@ -1230,11 +1116,7 @@
         navState = "INTRA_HOP";
         appMode = "INSIDE";
 
-        if (typeof document !== "undefined") {
-            document.body.classList.add("is-inside");
-            const sec = sections[currentDimIndex];
-            if (sec) sec.classList.add("is-inside");
-        }
+        removeIntraIndicator();
         updateInsideHud(currentDimIndex, currentSimIndex);
         updateUrlHash(currentDimIndex, currentSimIndex);
     };
@@ -1615,6 +1497,7 @@
     let simTime = 0;
 
     const refreshSections = () => {
+        removeIntraIndicator();
         sections = Array.from(document.querySelectorAll(".snap-section"));
         formations.forEach((f) => { if (f && f.dispose) f.dispose(); });
         formations = sections.map((sec, idx) => {
@@ -1661,12 +1544,7 @@
         trans.auxOpacity = 1.0;
         trans.warpStrength = 0.0;
 
-        if (startInside && typeof document !== "undefined") {
-            document.body.classList.add("is-inside");
-            const sec = sections[currentIndex];
-            if (sec) sec.classList.add("is-inside");
-            updateInsideHud(currentIndex, currentSimIndex);
-        }
+        removeIntraIndicator();
 
         const active = formations[currentIndex];
         if (active) {
