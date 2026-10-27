@@ -1378,18 +1378,10 @@
             const baseScreenX = isMob ? 0.50 : (0.66 - ctxState.pointerX * 0.015);
             const baseScreenY = isMob ? 0.68 : (0.50 + ctxState.pointerY * 0.02);
             const baseScale = isMob ? 44.0 : 34.0;
-            const currentTilt = (activeRenderForm && activeRenderForm.kerrOverlay && activeRenderForm.kerrOverlay.tilt !== undefined)
-                ? activeRenderForm.kerrOverlay.tilt
-                : (1.41 + ctxState.pointerY * 0.08);
-            const currentScreenX = (activeRenderForm && activeRenderForm.kerrOverlay && activeRenderForm.kerrOverlay.screenX !== undefined)
-                ? activeRenderForm.kerrOverlay.screenX
-                : baseScreenX;
-            const currentScreenY = (activeRenderForm && activeRenderForm.kerrOverlay && activeRenderForm.kerrOverlay.screenY !== undefined)
-                ? activeRenderForm.kerrOverlay.screenY
-                : baseScreenY;
-            const currentScale = (activeRenderForm && activeRenderForm.kerrOverlay && activeRenderForm.kerrOverlay.scale !== undefined)
-                ? activeRenderForm.kerrOverlay.scale
-                : baseScale;
+            const currentTilt = 1.41 + ctxState.pointerY * 0.08;
+            const currentScreenX = baseScreenX;
+            const currentScreenY = baseScreenY;
+            const currentScale = baseScale;
 
             gl.disable(gl.BLEND);
             gl.useProgram(starProg);

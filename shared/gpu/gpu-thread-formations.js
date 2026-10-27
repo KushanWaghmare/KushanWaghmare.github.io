@@ -568,7 +568,7 @@
             this.role = null;       // Uint8Array(N): 0 = equatorial disc, 1 = upper lensed arch, 2 = lower lensed arch
             this.tilt = 1.41;       // ~81 deg inclination
             this.cameraDistance = 13.5;
-            this.bloomThreshold = 1.15; // > 1.0 threshold eliminates background haze wash
+            this.bloomThreshold = 0.80; // Standard threshold matching Mathematics section
             this.kerrOverlay = {
                 screenX: 0.66,
                 screenY: 0.50,
