@@ -730,6 +730,13 @@ pre.glass {
     transform: translateX(4px);
 }
 
+.snap-section.is-exploring .snap-inner {
+    opacity: 0;
+    transform: scale(0.96) translateY(-14px);
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
 .snap-count {
     font: 500 12px var(--mono);
     letter-spacing: 0.04em;

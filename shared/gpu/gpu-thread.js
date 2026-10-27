@@ -535,15 +535,56 @@
     window.addEventListener("pointerup", () => { isPointerDragging = false; });
     window.addEventListener("pointercancel", () => { isPointerDragging = false; });
 
+    let isNavigatingExplore = false;
+
     window.addEventListener("click", (e) => {
+        const ctaBtn = e.target && e.target.closest && e.target.closest(".snap-cta-btn");
+        if (ctaBtn) {
+            const href = ctaBtn.getAttribute("href");
+            const isExplore = (ctaBtn.textContent || "").toLowerCase().includes("explore") || (href && !href.startsWith("#") && !href.includes("project.html"));
+            if (isExplore && href && !isNavigatingExplore) {
+                isNavigatingExplore = true;
+                e.preventDefault();
+                e.stopPropagation();
+
+                const sec = ctaBtn.closest(".snap-section");
+                if (sec && sections) {
+                    const sIdx = sections.indexOf(sec);
+                    if (sIdx !== -1) {
+                        currentDimIndex = sIdx;
+                        currentIndex = sIdx;
+                    }
+                    sec.classList.add("is-exploring");
+                }
+
+                // Trigger 3D camera zoom forward into the simulation!
+                enterSimulation();
+
+                if (typeof window !== "undefined" && window.SOUND && typeof window.SOUND.warp === "function") {
+                    window.SOUND.warp(0);
+                }
+
+                const targetUrl = new URL(href, location.href).href;
+                setTimeout(() => {
+                    isNavigatingExplore = false;
+                    if (typeof window !== "undefined" && window.KW && typeof window.KW.loadPage === "function") {
+                        window.KW.loadPage(targetUrl, true);
+                    } else if (typeof location !== "undefined") {
+                        location.href = targetUrl;
+                    }
+                }, 450);
+                return;
+            }
+        }
+
         // Allow all interactive elements (links, buttons, inputs, pills, cards, snap-cta-btn) to function natively
-        if (e.target && e.target.closest && e.target.closest("a, button, input, .nav, .snap-pager, .card, .pill, .snap-cta-btn, .stage-debug-hud")) return;
+        if (e.target && e.target.closest && e.target.closest("a, button, input, .nav, .snap-pager, .card, .pill, .stage-debug-hud")) return;
 
         const activeForm = formations[currentIndex];
         if (activeForm && typeof activeForm.onClick === "function") {
             activeForm.onClick(e, ctxState);
         }
-    });
+    }, { capture: true });
 
     window.addEventListener("keydown", (e) => {
         if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
@@ -1110,7 +1151,7 @@
         h.camStartPos.copy(camera.position);
         h.camStartTarget.copy(camera.target);
 
-        h.duration = reduced ? 0.6 : 2.4; // 2.4s forward dive into simulation
+        h.duration = reduced ? 0.45 : 1.1; // 1.1s cinematic forward dive into simulation
         h.u = 0.0;
         h.active = true;
         navState = "INTRA_HOP";
@@ -1498,6 +1539,10 @@
 
     const refreshSections = () => {
         removeIntraIndicator();
+        isNavigatingExplore = false;
+        if (typeof document !== "undefined") {
+            document.querySelectorAll(".snap-section.is-exploring").forEach((s) => s.classList.remove("is-exploring"));
+        }
         sections = Array.from(document.querySelectorAll(".snap-section"));
         formations.forEach((f) => { if (f && f.dispose) f.dispose(); });
         formations = sections.map((sec, idx) => {
