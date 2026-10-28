@@ -665,7 +665,7 @@ SITE.dimensions = [
         slug: "math",
         name: "Mathematics",
         sectionId: "domain-math",
-        anchor: [18, -14, -22],
+        anchor: [44, -36, -62],
         profile: {
             palette: ["#ff5c70", "#ffa87a", "#7a1a28", "#ffd2cc"],
             bloom: { strength: 0.92, threshold: 0.76, tint: [1.00, 0.45, 0.55] },
@@ -749,7 +749,7 @@ SITE.dimensions = [
         slug: "physics",
         name: "Physics",
         sectionId: "domain-physics",
-        anchor: [-16, -28, -46],
+        anchor: [-42, -72, -124],
         profile: {
             palette: ["#22d3ee", "#f59e0b", "#06222b", "#fed7aa"],
             bloom: { strength: 0.96, threshold: 0.74, tint: [0.35, 0.85, 1.00] },
@@ -833,7 +833,7 @@ SITE.dimensions = [
         slug: "datascience",
         name: "Data Science",
         sectionId: "domain-datascience",
-        anchor: [20, -42, -68],
+        anchor: [46, -108, -186],
         profile: {
             palette: ["#f5a623", "#d97706", "#261502", "#fde68a"],
             bloom: { strength: 0.88, threshold: 0.77, tint: [1.00, 0.70, 0.25] },
@@ -917,7 +917,7 @@ SITE.dimensions = [
         slug: "quant",
         name: "Quant Finance",
         sectionId: "domain-quant",
-        anchor: [-18, -56, -92],
+        anchor: [-44, -144, -248],
         profile: {
             palette: ["#20c991", "#059669", "#022418", "#a7f3d0"],
             bloom: { strength: 0.90, threshold: 0.75, tint: [0.30, 1.00, 0.70] },
@@ -1001,7 +1001,7 @@ SITE.dimensions = [
         slug: "cs",
         name: "Computer Science",
         sectionId: "domain-cs",
-        anchor: [16, -70, -116],
+        anchor: [40, -180, -310],
         profile: {
             palette: ["#ac84ff", "#7c3aed", "#1e093d", "#ddd6fe"],
             bloom: { strength: 0.94, threshold: 0.75, tint: [0.80, 0.50, 1.00] },
@@ -1085,7 +1085,7 @@ SITE.dimensions = [
         slug: "contact",
         name: "About & Contact",
         sectionId: "about-contact",
-        anchor: [0, -84, -140],
+        anchor: [0, -216, -372],
         profile: {
             palette: ["#24c8b6", "#0d9488", "#042825", "#99f6e4"],
             bloom: { strength: 0.88, threshold: 0.76, tint: [0.40, 0.95, 0.85] },
