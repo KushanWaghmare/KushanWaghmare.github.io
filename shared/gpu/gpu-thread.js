@@ -583,26 +583,17 @@
                 const targetRel = (href && !href.startsWith("#")) ? href : ((domain && DOMAIN_PROJECT_1[domain]) ? DOMAIN_PROJECT_1[domain] : "math.html");
                 const targetUrl = new URL(targetRel, location.href).href;
 
-                // Let the dive finish, fade to black at its end, swap page (new page starts INSIDE), fade back in
-                const veil = document.createElement("div");
-                veil.style.cssText = "position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:9999;transition:opacity .18s ease";
-                document.body.appendChild(veil);
+                // Seamless handoff: let the dive zoom into the simulation, then swap the page directly without any black veil overlay
                 const t0 = performance.now();
                 const go = () => {
                     if (intraHop.active && performance.now() - t0 < 2500) { setTimeout(go, 50); return; }
-                    veil.style.opacity = "1";
                     handoff = { t: 0, px: camera.position.x, py: camera.position.y, pz: camera.position.z, tx: camera.target.x, ty: camera.target.y, tz: camera.target.z, fov: camera.fov };
-                    setTimeout(async () => {
-                        isNavigatingExplore = false;
-                        if (window.KW && typeof window.KW.loadPage === "function") {
-                            await window.KW.loadPage(targetUrl, true);
-                        } else {
-                            location.href = targetUrl;
-                            return;
-                        }
-                        veil.style.opacity = "0";
-                        setTimeout(() => veil.remove(), 250);
-                    }, 190);
+                    isNavigatingExplore = false;
+                    if (window.KW && typeof window.KW.loadPage === "function") {
+                        window.KW.loadPage(targetUrl, true);
+                    } else {
+                        location.href = targetUrl;
+                    }
                 };
                 setTimeout(go, 600);
                 return;
