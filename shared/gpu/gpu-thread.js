@@ -1077,6 +1077,8 @@
 
         // 1.0 - 1.6s duration; 0.4s for reduced motion; 1.6s if already inside
         h.duration = reduced ? 0.4 : (appMode === "INSIDE" ? 1.6 : 1.25);
+        h.ins0 = appMode === "INSIDE" ? 1.0 : 0.0;
+        h.insT = appMode === "INSIDE" ? 1.0 : 0.0;
         h.u = 0.0;
         h.active = true;
         navState = "INTRA_HOP";
@@ -1172,6 +1174,8 @@
 
         h.isDive = true;
         h.exiting = false;
+        h.ins0 = 0.0;
+        h.insT = 1.0;
         h.fromSimIndex = currentSimIndex;
         h.toSimIndex = currentSimIndex;
         h.fromPos.set(positions[0], positions[1], positions[2]);
@@ -1221,6 +1225,8 @@
 
         h.isDive = true;
         h.exiting = true;
+        h.ins0 = 1.0;
+        h.insT = 0.0;
         h.fromSimIndex = currentSimIndex;
         h.toSimIndex = currentSimIndex;
         h.fromPos.set(positions[0], positions[1], positions[2]);
@@ -2805,13 +2811,16 @@
         // 2a. Celestial background starfield & Milky Way layer (matches Black Hole celestial sphere exactly)
         if (starProg) {
             const isMob = isMobileDevice();
-            const baseScreenX = isMob ? 0.50 : (0.66 - ctxState.pointerX * 0.015);
-            const baseScreenY = isMob ? 0.68 : (0.50 + ctxState.pointerY * 0.02);
+            const ins = (activeRenderForm && activeRenderForm.insideness) || inside.value || 0.0;
+            const targetScreenX = isMob ? 0.50 : (0.66 - ctxState.pointerX * 0.015);
+            const baseScreenX = targetScreenX * (1.0 - 0.65 * ins) + 0.50 * (0.65 * ins);
+            const baseScreenY = isMob ? (0.68 * (1.0 - 0.36 * ins) + 0.50 * (0.36 * ins)) : (0.50 + ctxState.pointerY * 0.02);
             const baseScale = isMob ? 44.0 : 34.0;
-            const currentTilt = 1.41 + ctxState.pointerY * 0.08;
+            const insideScale = isMob ? 10.5 : 8.2;
+            const currentTilt = 1.41 * (1.0 - 0.40 * ins) + 1.50 * (0.40 * ins) + ctxState.pointerY * 0.08;
             const currentScreenX = baseScreenX;
             const currentScreenY = baseScreenY;
-            const currentScale = baseScale;
+            const currentScale = baseScale * (1.0 - ins) + insideScale * ins;
 
             gl.disable(gl.BLEND);
             gl.useProgram(starProg);

@@ -805,9 +805,11 @@
             const isMob = (ctx && ctx.isMobile) || (typeof window !== "undefined" && window.innerWidth <= 768);
             const targetScreenX = isMob ? 0.50 : (0.66 - ptrX * 0.015);
             this.kerrOverlay.screenX = targetScreenX * (1.0 - 0.65 * ins) + 0.50 * (0.65 * ins);
-            this.kerrOverlay.screenY = isMob ? 0.68 : (0.50 + ptrY * 0.02);
+            this.kerrOverlay.screenY = isMob ? (0.68 * (1.0 - 0.36 * ins) + 0.50 * (0.36 * ins)) : (0.50 + ptrY * 0.02);
             const baseScale = isMob ? 44.0 : 34.0;
-            this.kerrOverlay.scale = (dbg && dbg.scale !== undefined && dbg.scale !== null) ? dbg.scale : (baseScale * (1.0 + 0.55 * ins));
+            // Diving inside zooms through the accretion disc plane and photon ring into the relativistic horizon
+            const insideScale = isMob ? 10.5 : 8.2;
+            this.kerrOverlay.scale = (dbg && dbg.scale !== undefined && dbg.scale !== null) ? dbg.scale : (baseScale * (1.0 - ins) + insideScale * ins);
             this.kerrOverlay.tilt = this.tilt * (1.0 - 0.40 * ins) + 1.50 * (0.40 * ins);
             if (dbg && dbg.spin !== null && dbg.spin !== undefined) {
                 this.kerrOverlay.spin = dbg.spin;
