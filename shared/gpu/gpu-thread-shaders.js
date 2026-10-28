@@ -47,32 +47,33 @@ void main() {
     float perspectiveScale = (uViewport.y * 0.0108) / dist;
 
     bool isHero = (gl_VertexID == 0);
-    float heroScale = isHero ? (1.0 + uHeroBoost * 3.0) * uHeroScale : uWorldGrow;
+    float heroScale = isHero ? (1.0 + uHeroBoost * 3.2) * uHeroScale : uWorldGrow;
     float seedVar = 0.80 + 0.42 * aSeed.x;
 
-    if (aSize <= 0.0001 || aPosition.z < -500.0) {
+    if (aSize <= 0.0001 || aPosition.z < -2500.0) {
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
         gl_PointSize = 0.0;
         vAlpha = 0.0;
         return;
     }
 
-    float baseSize = clamp(aSize * seedVar * perspectiveScale * uDpr * heroScale, 1.35 * uDpr, 40.0 * uDpr);
+    float baseSize = clamp(aSize * seedVar * perspectiveScale * uDpr * heroScale, 1.35 * uDpr, 44.0 * uDpr);
 
     // Velocity-aligned ribbon stretch with 3 parallax depth layers (near, mid, far)
-    float layerFactor = (dist < 7.5) ? 1.35 : ((dist < 17.0) ? 1.0 : 0.68);
+    float layerFactor = isHero ? 1.65 : ((dist < 7.5) ? 1.35 : ((dist < 17.0) ? 1.0 : 0.68));
     float worldStep = length(aPosition - aPrevPosition);
+    float maxStep = isHero ? 45.0 : 9.0;
     float streakLen = 0.0;
     vec2 dirNdc = vec2(1.0, 0.0);
 
-    if (clipCurr.w > 0.15 && clipPrev.w > 0.15 && worldStep < 9.0 && uStreakScale > 0.001) {
+    if (clipCurr.w > 0.15 && clipPrev.w > 0.15 && worldStep < maxStep && uStreakScale > 0.001) {
         vec2 ndcCurr = clipCurr.xy / clipCurr.w;
         vec2 ndcPrev = clipPrev.xy / clipPrev.w;
         vec2 rawDeltaPx = (ndcCurr - ndcPrev) * 0.5 * uViewport * uDpr * uStreakScale * layerFactor;
         float rawLen = length(rawDeltaPx);
         if (rawLen > 0.35) {
             dirNdc = rawDeltaPx / rawLen;
-            streakLen = min(rawLen, uMaxStreakPx * uDpr);
+            streakLen = min(rawLen, (isHero ? uMaxStreakPx * 1.45 : uMaxStreakPx) * uDpr);
         }
     }
 

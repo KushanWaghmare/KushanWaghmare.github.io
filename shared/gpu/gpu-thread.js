@@ -917,7 +917,7 @@
         const sims = (dim && (dim.sims || dim.locales)) || [];
         const sim = sims[simIdx] || sims[0];
         const la = (sim && sim.localAnchor) || [0, 0, 0];
-        const base = (dim && Array.isArray(dim.anchor)) ? dim.anchor : (f ? [f.origin.x, f.origin.y, f.origin.z] : [0, 0, 0]);
+        const base = f ? [f.origin.x, f.origin.y, f.origin.z] : ((dim && Array.isArray(dim.anchor)) ? dim.anchor : [0, 0, 0]);
         return out.set(base[0] + la[0], base[1] + la[1], base[2] + la[2]);
     };
 
@@ -1407,27 +1407,9 @@
         }
 
         toForm.update(0.016, simTime, nextScratchBuffer, ctxState);
-        rawTargetPositions.set(nextPositions);
-
-        computeSpatialMatching(
-            fromPositions,
-            rawTargetPositions,
-            N,
-            matchedTargetPositions,
-            mortonPerm,
-            scratchSrcCodes,
-            scratchDstCodes,
-            scratchSrcOrder,
-            scratchDstOrder
-        );
-
-        if (typeof toForm.applyPermutation === "function") {
-            toForm.applyPermutation(mortonPerm, N);
-            toForm.update(0.001, simTime, nextScratchBuffer, ctxState);
-        }
 
         trans.heroEnd.set(nextPositions[0], nextPositions[1], nextPositions[2]);
-        computeParticleRanks(fromPositions, N, trans.heroStart);
+        computeParticleRanks(nextPositions, N, trans.heroEnd);
 
         const jumpSpan = Math.abs(clampedTarget - (wasMidFlight ? currentIndex : fromIdx));
         if (jumpSpan > 1 && !wasMidFlight) {
@@ -1462,7 +1444,7 @@
         trans.toIndex = clampedTarget;
         trans.interrupted = wasMidFlight;
         trans.u = 0.0;
-        trans.duration = isReducedMotion() ? 0.80 : (jumpSpan > 1 ? 2.65 : 2.40);
+        trans.duration = isReducedMotion() ? 0.80 : (jumpSpan > 1 ? 3.60 : 3.20);
         trans.active = true;
         trans.phase = "DETACH";
         navState = "INTER_FLIGHT";
@@ -2359,7 +2341,14 @@
                 } else {
                     idleFrame(curProf, dt, pLerp);
                 }
-                if (inside.value > 0.002) applyHeroLocalPalette(curProf);
+                if (inside.value > 0.002) {
+                    applyHeroLocalPalette(curProf);
+                } else {
+                    colours[0] = colours[0] * 0.35 + curProf.heroColour[0] * 0.65;
+                    colours[1] = colours[1] * 0.35 + curProf.heroColour[1] * 0.65;
+                    colours[2] = colours[2] * 0.35 + curProf.heroColour[2] * 0.65;
+                    sizes[0] = Math.max(sizes[0], curProf.heroSize * 0.78);
+                }
                 innerTint(dimIdx, inside.tint);
 
                 // Smoothly converge post-processing parameters to active section profile
@@ -2415,18 +2404,18 @@
             if (fromForm) fromForm.insideness = inside.value;
             if (toForm) toForm.insideness = 0.0;
 
-            // Simulation rule blending: origin sim ramps to 0.15 behind, destination ramps from neutral
-            const fromSimIntensity = clamp(1.0 - (1.0 - 0.15) * dimBlend, 0.15, 1.0);
-            if (fromForm) {
+            // Simulation rule blending: origin sim updates in place before departure; destination sim runs live for seamless arrival
+            const fromSimIntensity = clamp(1.0 - smoothstep(0.0, 0.35, u), 0.15, 1.0);
+            if (fromForm && u < 0.45) {
                 if (typeof fromForm.setIntensity === "function") fromForm.setIntensity(fromSimIntensity);
                 fromForm.update(dt * fromSimIntensity, simTime, fromScratchBuffer, ctxState);
             }
 
-            if (u >= 0.50 && toForm) {
-                const toSimIntensity = clamp(dimBlend, 0.0, 1.0);
-                if (typeof toForm.setIntensity === "function") toForm.setIntensity(toSimIntensity);
-                if (typeof toForm.setReveal === "function") toForm.setReveal(toSimIntensity);
-                toForm.update(dt * Math.max(0.15, toSimIntensity), simTime, nextScratchBuffer, ctxState);
+            if (toForm) {
+                const toSimReveal = smoothstep(0.72, 1.00, u);
+                if (typeof toForm.setIntensity === "function") toForm.setIntensity(Math.max(0.25, toSimReveal));
+                if (typeof toForm.setReveal === "function") toForm.setReveal(toSimReveal);
+                toForm.update(dt, simTime, nextScratchBuffer, ctxState);
             }
 
             if (!trans.domScrolledToTarget && u >= 0.70) {
@@ -2439,54 +2428,55 @@
             }
             applyDomSectionVisibility(trans.fromIndex, trans.toIndex, u, true);
 
-            const sHero = smootherstep(0.0, 0.86, u);
+            // Solo hero particle (i = 0) detaches from origin simulation, travels long 3D arc, and joins destination simulation's live particle 0 trajectory seamlessly
+            const sHero = smootherstep(0.0, 0.92, u);
             evalFlightPath(sHero, tmpHeroPos);
             evalFlightTangent(sHero, tmpHeroTan);
 
-            const lambda = smoothstep(0.75, 1.00, u);
-            const nu = smoothstep(0.66, 0.94, u);
+            const detachW = smootherstep(0.0, 0.16, u);
+            const joinW = smootherstep(0.68, 0.98, u);
 
+            const hStartX = fromPositions[0], hStartY = fromPositions[1], hStartZ = fromPositions[2];
             const hEndX = nextPositions[0], hEndY = nextPositions[1], hEndZ = nextPositions[2];
-            const hFlightX = tmpHeroPos.x + (hEndX - trans.heroEnd.x) * sHero;
-            const hFlightY = tmpHeroPos.y + (hEndY - trans.heroEnd.y) * sHero;
-            const hFlightZ = tmpHeroPos.z + (hEndZ - trans.heroEnd.z) * sHero;
 
-            positions[0] = hFlightX + (hEndX - hFlightX) * lambda;
-            positions[1] = hFlightY + (hEndY - hFlightY) * lambda;
-            positions[2] = hFlightZ + (hEndZ - hFlightZ) * lambda;
+            const arcX = tmpHeroPos.x + (hStartX - trans.heroStart.x) * (1.0 - detachW) + (hEndX - trans.heroEnd.x) * joinW;
+            const arcY = tmpHeroPos.y + (hStartY - trans.heroStart.y) * (1.0 - detachW) + (hEndY - trans.heroEnd.y) * joinW;
+            const arcZ = tmpHeroPos.z + (hStartZ - trans.heroStart.z) * (1.0 - detachW) + (hEndZ - trans.heroEnd.z) * joinW;
 
-            // Hero particle chromatic & size morph driven by dimBlend
-            colours[0] = fromProf.heroColour[0] + (toProf.heroColour[0] - fromProf.heroColour[0]) * dimBlend;
-            colours[1] = fromProf.heroColour[1] + (toProf.heroColour[1] - fromProf.heroColour[1]) * dimBlend;
-            colours[2] = fromProf.heroColour[2] + (toProf.heroColour[2] - fromProf.heroColour[2]) * dimBlend;
-            sizes[0] = fromProf.heroSize + (toProf.heroSize - fromProf.heroSize) * dimBlend;
+            const finalLock = smootherstep(0.84, 1.00, u);
+            positions[0] = arcX + (hEndX - arcX) * finalLock;
+            positions[1] = arcY + (hEndY - arcY) * finalLock;
+            positions[2] = arcZ + (hEndZ - arcZ) * finalLock;
 
-            heroBoost = smoothstep(0.0, 0.12, u) * (1.0 - smoothstep(0.78, 0.98, u));
+            // Hero particle chromatic & size morph driven by dimBlend, settling into destination simulation at arrival
+            const settleBlend = smootherstep(0.88, 1.00, u);
+            const hColR = fromProf.heroColour[0] + (toProf.heroColour[0] - fromProf.heroColour[0]) * dimBlend;
+            const hColG = fromProf.heroColour[1] + (toProf.heroColour[1] - fromProf.heroColour[1]) * dimBlend;
+            const hColB = fromProf.heroColour[2] + (toProf.heroColour[2] - fromProf.heroColour[2]) * dimBlend;
+            const hSize = fromProf.heroSize + (toProf.heroSize - fromProf.heroSize) * dimBlend;
 
-            const hx0 = trans.heroStart.x, hy0 = trans.heroStart.y, hz0 = trans.heroStart.z;
-            const hx1 = trans.heroEnd.x, hy1 = trans.heroEnd.y, hz1 = trans.heroEnd.z;
+            colours[0] = hColR + ((nextColours[0] * 0.35 + toProf.heroColour[0] * 0.65) - hColR) * settleBlend;
+            colours[1] = hColG + ((nextColours[1] * 0.35 + toProf.heroColour[1] * 0.65) - hColG) * settleBlend;
+            colours[2] = hColB + ((nextColours[2] * 0.35 + toProf.heroColour[2] * 0.65) - hColB) * settleBlend;
+            sizes[0] = hSize + (Math.max(nextSizes[0] * 1.45, toProf.heroSize * 0.68) - hSize) * settleBlend;
 
-            for (let k = 0; k <= LUT_STEPS; k++) {
-                evalFlightPath(k / LUT_STEPS, tmpStreamPos);
-                curveLutX[k] = tmpStreamPos.x;
-                curveLutY[k] = tmpStreamPos.y;
-                curveLutZ[k] = tmpStreamPos.z;
-            }
+            heroBoost = smoothstep(0.0, 0.08, u) * (1.0 - smoothstep(0.84, 0.99, u));
 
             const reduced = isReducedMotion();
 
+            // Non-hero particles (i = 1..N-1) never travel along the flight curve:
+            // - u < 0.22: origin simulation fades out in place as hero particle detaches
+            // - 0.22 <= u < 0.72: completely invisible (sizes[i] = 0) so ONLY the 1 hero particle is seen travelling
+            // - u >= 0.72: destination simulation blossoms radially around the arriving hero particle at its live coordinates
+            const originFade = 1.0 - smootherstep(0.02, 0.22, u);
             for (let i = 1; i < N; i++) {
-                const i3 = i * 3, i4 = i * 4;
-                const rank = particleRanks[i];
-
-                const fx = fromPositions[i3], fy = fromPositions[i3 + 1], fz = fromPositions[i3 + 2];
-                const tx = nextPositions[i3], ty = nextPositions[i3 + 1], tz = nextPositions[i3 + 2];
+                const i3 = i * 3;
 
                 if (reduced) {
                     const m = smootherstep(0.0, 1.0, u);
-                    positions[i3]     = fx + (tx - fx) * m;
-                    positions[i3 + 1] = fy + (ty - fy) * m;
-                    positions[i3 + 2] = fz + (tz - fz) * m;
+                    positions[i3]     = fromPositions[i3] + (nextPositions[i3] - fromPositions[i3]) * m;
+                    positions[i3 + 1] = fromPositions[i3 + 1] + (nextPositions[i3 + 1] - fromPositions[i3 + 1]) * m;
+                    positions[i3 + 2] = fromPositions[i3 + 2] + (nextPositions[i3 + 2] - fromPositions[i3 + 2]) * m;
                     colours[i3]       = fromColours[i3] + (nextColours[i3] - fromColours[i3]) * m;
                     colours[i3 + 1]   = fromColours[i3 + 1] + (nextColours[i3 + 1] - fromColours[i3 + 1]) * m;
                     colours[i3 + 2]   = fromColours[i3 + 2] + (nextColours[i3 + 2] - fromColours[i3 + 2]) * m;
@@ -2494,53 +2484,42 @@
                     continue;
                 }
 
-                const uStart = 0.07 + 0.19 * rank;
-                const uEnd = 0.72 + 0.16 * rank;
-                const si = smootherstep(uStart, uEnd, u);
-                const oneMinusS = 1.0 - si;
-
-                const lutCoord = si * LUT_STEPS;
-                const lutIdx = Math.min(LUT_STEPS - 1, lutCoord | 0);
-                const lutFrac = lutCoord - lutIdx;
-                const bx = curveLutX[lutIdx] + (curveLutX[lutIdx + 1] - curveLutX[lutIdx]) * lutFrac;
-                const by = curveLutY[lutIdx] + (curveLutY[lutIdx + 1] - curveLutY[lutIdx]) * lutFrac;
-                const bz = curveLutZ[lutIdx] + (curveLutZ[lutIdx + 1] - curveLutZ[lutIdx]) * lutFrac;
-
-                const wSrc = oneMinusS * oneMinusS;
-                const dStartX = fx - hx0, dStartY = fy - hy0, dStartZ = fz - hz0;
-
-                const streamEnv = 4.0 * si * oneMinusS;
-                const phase = seeds[i4] * 6.2831853 + si * 9.5 - simTime * 2.4;
-                const tubeRad = (0.35 + 1.45 * rank) * streamEnv;
-                const cx = Math.cos(phase) * tubeRad + Math.sin(seeds[i4 + 1] * 12.0 + si * 5.0) * 0.45 * streamEnv;
-                const cy = Math.sin(phase) * tubeRad + Math.cos(seeds[i4 + 2] * 12.0 - si * 4.5) * 0.45 * streamEnv;
-                const cz = Math.sin(phase * 0.7 + seeds[i4 + 3] * 6.28) * tubeRad * 0.8;
-
-                const wDst = si * si * nu;
-                const dEndX = tx - hx1, dEndY = ty - hy1, dEndZ = tz - hz1;
-
-                const flightX = bx + wSrc * dStartX + cx + wDst * dEndX;
-                const flightY = by + wSrc * dStartY + cy + wDst * dEndY;
-                const flightZ = bz + wSrc * dStartZ + cz + wDst * dEndZ;
-
-                positions[i3]     = flightX + (tx - flightX) * lambda;
-                positions[i3 + 1] = flightY + (ty - flightY) * lambda;
-                positions[i3 + 2] = flightZ + (tz - flightZ) * lambda;
-
-                const colBlend = clamp(si * 0.72 + lambda * 0.28, 0.0, 1.0);
-                const streamGlow = streamEnv * 0.22;
-                colours[i3]     = fromColours[i3] + (nextColours[i3] - fromColours[i3]) * colBlend + streamGlow * 0.6;
-                colours[i3 + 1] = fromColours[i3 + 1] + (nextColours[i3 + 1] - fromColours[i3 + 1]) * colBlend + streamGlow * 0.8;
-                colours[i3 + 2] = fromColours[i3 + 2] + (nextColours[i3 + 2] - fromColours[i3 + 2]) * colBlend + streamGlow;
-
-                sizes[i] = fromSizes[i] + (nextSizes[i] - fromSizes[i]) * colBlend + streamEnv * 0.45;
+                if (u < 0.50) {
+                    positions[i3]     = fromPositions[i3];
+                    positions[i3 + 1] = fromPositions[i3 + 1];
+                    positions[i3 + 2] = fromPositions[i3 + 2];
+                    colours[i3]       = fromColours[i3] * originFade;
+                    colours[i3 + 1]   = fromColours[i3 + 1] * originFade;
+                    colours[i3 + 2]   = fromColours[i3 + 2] * originFade;
+                    sizes[i]          = fromSizes[i] * originFade;
+                } else {
+                    // Pre-position at destination while invisible (u in [0.50, 0.72]) so prevPositions velocity is clean on reveal
+                    positions[i3]     = nextPositions[i3];
+                    positions[i3 + 1] = nextPositions[i3 + 1];
+                    positions[i3 + 2] = nextPositions[i3 + 2];
+                    if (u < 0.72) {
+                        colours[i3]     = 0.0;
+                        colours[i3 + 1] = 0.0;
+                        colours[i3 + 2] = 0.0;
+                        sizes[i]        = 0.0;
+                    } else {
+                        const rank = particleRanks[i];
+                        const revealStart = 0.72 + 0.16 * rank;
+                        const revealEnd = Math.min(1.0, revealStart + 0.12);
+                        const wIn = smootherstep(revealStart, revealEnd, u);
+                        colours[i3]     = nextColours[i3] * wIn;
+                        colours[i3 + 1] = nextColours[i3 + 1] * wIn;
+                        colours[i3 + 2] = nextColours[i3 + 2] * wIn;
+                        sizes[i]        = nextSizes[i] * wIn;
+                    }
+                }
             }
 
-            // THRESHOLD ring forms ahead of hero along path tangent around u = 0.55
-            if (!reduced && u >= 0.42 && u <= 0.68) {
-                ringOpacity = smoothstep(0.42, 0.52, u) * (1.0 - smoothstep(0.58, 0.68, u));
-                evalFlightPath(0.55, tmpThresholdPos);
-                evalFlightTangent(0.55, tmpThresholdTan);
+            // THRESHOLD ring forms ahead of hero along path tangent around u = 0.50
+            if (!reduced && u >= 0.38 && u <= 0.64) {
+                ringOpacity = smoothstep(0.38, 0.48, u) * (1.0 - smoothstep(0.54, 0.64, u));
+                evalFlightPath(0.50, tmpThresholdPos);
+                evalFlightTangent(0.50, tmpThresholdTan);
 
                 tmpRingColour[0] = fromProf.heroColour[0] * (1.0 - dimBlend) + toProf.heroColour[0] * dimBlend;
                 tmpRingColour[1] = fromProf.heroColour[1] * (1.0 - dimBlend) + toProf.heroColour[1] * dimBlend;
@@ -2549,11 +2528,11 @@
                 ringOpacity = 0.0;
             }
 
-            // On crossing (u in [0.52, 0.66]): brief shockwave ripple, short FOV spike, quick chromatic split
-            if (!reduced && u >= 0.52 && u <= 0.66) {
-                const spike = Math.exp(-Math.pow((u - 0.55) / 0.024, 2.0));
-                const shockProg = clamp((u - 0.54) / 0.10, 0.0, 1.0);
-                postState.shockwave = (1.0 - shockProg) * 0.042 * smoothstep(0.54, 0.56, u);
+            // On crossing (u in [0.46, 0.60]): brief shockwave ripple, short FOV spike, quick chromatic split
+            if (!reduced && u >= 0.46 && u <= 0.60) {
+                const spike = Math.exp(-Math.pow((u - 0.50) / 0.024, 2.0));
+                const shockProg = clamp((u - 0.48) / 0.10, 0.0, 1.0);
+                postState.shockwave = (1.0 - shockProg) * 0.042 * smoothstep(0.48, 0.50, u);
                 postState.shockwaveRadius = shockProg * 0.72;
                 postState.caExtra = 0.016 * spike;
                 fovSpike = 4.5 * spike;
@@ -2572,7 +2551,7 @@
                 camera.position.lerpVectors(trans.camStartPos, trans.camEndPos, cm);
                 camera.target.lerpVectors(trans.camStartTarget, trans.camEndTarget, cm);
             } else {
-                const railWeight = smoothstep(0.06, 0.28, u) * (1.0 - smoothstep(0.68, 0.96, u));
+                const railWeight = smoothstep(0.04, 0.22, u) * (1.0 - smoothstep(0.72, 0.98, u));
                 const baseLerp = smootherstep(0.0, 1.0, u);
 
                 const baseCamX = trans.camStartPos.x + (trans.camEndPos.x - trans.camStartPos.x) * baseLerp;
@@ -2583,23 +2562,23 @@
                 const baseTgtY = trans.camStartTarget.y + (trans.camEndTarget.y - trans.camStartTarget.y) * baseLerp;
                 const baseTgtZ = trans.camStartTarget.z + (trans.camEndTarget.z - trans.camStartTarget.z) * baseLerp;
 
-                const railCamX = tmpHeroPos.x - tmpHeroTan.x * 6.5;
-                const railCamY = tmpHeroPos.y - tmpHeroTan.y * 4.0 + 2.8;
-                const railCamZ = tmpHeroPos.z + 14.5;
+                const railCamX = positions[0] - tmpHeroTan.x * 5.8;
+                const railCamY = positions[1] - tmpHeroTan.y * 3.8 + 1.8;
+                const railCamZ = positions[2] + 9.2;
 
                 camera.position.set(
-                    baseCamX + (railCamX - baseCamX) * railWeight * 0.65,
-                    baseCamY + (railCamY - baseCamY) * railWeight * 0.65,
-                    baseCamZ + (railCamZ - baseCamZ) * railWeight * 0.65
+                    baseCamX + (railCamX - baseCamX) * railWeight * 0.86,
+                    baseCamY + (railCamY - baseCamY) * railWeight * 0.86,
+                    baseCamZ + (railCamZ - baseCamZ) * railWeight * 0.86
                 );
                 camera.target.set(
-                    baseTgtX + (tmpHeroPos.x - baseTgtX) * railWeight * 0.72,
-                    baseTgtY + (tmpHeroPos.y - baseTgtY) * railWeight * 0.72,
-                    baseTgtZ + (tmpHeroPos.z - baseTgtZ) * railWeight * 0.72
+                    baseTgtX + (positions[0] - baseTgtX) * railWeight * 0.92,
+                    baseTgtY + (positions[1] - baseTgtY) * railWeight * 0.92,
+                    baseTgtZ + (positions[2] - baseTgtZ) * railWeight * 0.92
                 );
 
-                const breath = Math.sin(Math.PI * smoothstep(0.10, 0.90, u));
-                camera.fov = baseFov + 8.5 * breath + fovSpike;
+                const breath = Math.sin(Math.PI * smoothstep(0.08, 0.92, u));
+                camera.fov = baseFov + 9.5 * breath + fovSpike;
             }
 
             // DimensionProfile continuous blend driven by dimBlend
@@ -2618,7 +2597,7 @@
             const tD = (toForm && toForm.trailDecay) || 0.68;
             postState.trailDecay = (fD + (tD - fD) * dimBlend) * 0.72;
 
-            trans.auxOpacity = smoothstep(0.88, 1.00, u);
+            trans.auxOpacity = smoothstep(0.86, 1.00, u);
 
             if (u >= 1.0) {
                 currentIndex = trans.toIndex;

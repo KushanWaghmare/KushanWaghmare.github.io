@@ -343,13 +343,13 @@
 
     /* ---------- 3D World-Space Section Origins (Non-stacked path) ---------- */
     const HUB_ORIGINS = [
-        new Vector3(0, 0, 0),         // 0: Intro (Lorenz strange attractor)
-        new Vector3(18, -14, -22),    // 1: Mathematics (Calabi–Yau cross-section)
-        new Vector3(-16, -28, -46),   // 2: Physics (Kerr black hole & accretion disc)
-        new Vector3(20, -42, -68),    // 3: Data Science (Reverse-time score SDE)
-        new Vector3(-18, -56, -92),   // 4: Quantitative Finance (3-D option crystal)
-        new Vector3(16, -70, -116),   // 5: Computer Science (Grover / Shor quantum sim)
-        new Vector3(0, -84, -140)     // 6: About & Contact (3-body figure-8 choreography)
+        new Vector3(0, 0, 0),          // 0: Intro (Lorenz strange attractor)
+        new Vector3(44, -36, -62),     // 1: Mathematics (Calabi–Yau cross-section)
+        new Vector3(-42, -72, -124),   // 2: Physics (Kerr black hole & accretion disc)
+        new Vector3(46, -108, -186),   // 3: Data Science (Reverse-time score SDE)
+        new Vector3(-44, -144, -248),  // 4: Quantitative Finance (3-D option crystal)
+        new Vector3(40, -180, -310),   // 5: Computer Science (Grover / Shor quantum sim)
+        new Vector3(0, -216, -372)     // 6: About & Contact (3-body figure-8 choreography)
     ];
 
     const sectionOrigin = (index) => {
@@ -359,9 +359,9 @@
         const k = Math.max(0, index | 0);
         const angle = k * 1.35;
         return new Vector3(
-            18.0 * Math.sin(angle),
-            -14.0 * k,
-            -22.0 * k
+            44.0 * Math.sin(angle),
+            -36.0 * k,
+            -62.0 * k
         );
     };
 
@@ -405,20 +405,20 @@
         const chordLen = Math.max(1.0, Math.hypot(dx, dy, dz));
         const sign = (pairIndex % 2 === 0) ? 1.0 : -1.0;
 
-        // Perpendicular offset in 3D so the hero sweeps a clear, visible 3D arc
-        const perpX = -dz / chordLen * (0.28 * chordLen * sign);
-        const perpY = 0.16 * chordLen;
-        const perpZ = dx / chordLen * (0.22 * chordLen * sign) + 0.12 * chordLen;
+        // Perpendicular offset in 3D so the hero sweeps a wide, cinematic 3D arc
+        const perpX = -dz / chordLen * (0.36 * chordLen * sign);
+        const perpY = 0.22 * chordLen;
+        const perpZ = dx / chordLen * (0.28 * chordLen * sign) + 0.14 * chordLen;
 
         const c1Canon = new Vector3(
-            a.x + dx * 0.30 + perpX,
-            a.y + dy * 0.30 + perpY,
-            a.z + dz * 0.30 + perpZ
+            a.x + dx * 0.28 + perpX,
+            a.y + dy * 0.28 + perpY,
+            a.z + dz * 0.28 + perpZ
         );
         const c2Canon = new Vector3(
-            a.x + dx * 0.70 + perpX * 0.85,
-            a.y + dy * 0.70 + perpY * 0.65,
-            a.z + dz * 0.70 + perpZ * 0.85
+            a.x + dx * 0.72 + perpX * 0.85,
+            a.y + dy * 0.72 + perpY * 0.65,
+            a.z + dz * 0.72 + perpZ * 0.85
         );
 
         return forward
