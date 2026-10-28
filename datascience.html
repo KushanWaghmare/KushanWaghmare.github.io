@@ -11,37 +11,37 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" />
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" />
-    <link rel="stylesheet" href="shared/style.css?v=43" />
+    <link rel="stylesheet" href="shared/style.css?v=46" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-    <script defer src="shared/data.js?v=37"></script>
-    <script defer src="shared/lib/diffusion-math.js?v=37"></script>
-    <script defer src="shared/lib/market-math.js?v=37"></script>
-    <script defer src="shared/lib/lob-math.js?v=37"></script>
-    <script defer src="shared/lib/mobius-math.js?v=42"></script>
-    <script defer src="shared/lib/qsim-math.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-qsim.js?v=42"></script>
-    <script defer src="shared/lib/copula-math.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-copula-shaders.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-copula.js?v=42"></script>
-    <script defer src="shared/lib/lattice-math.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-crystal-shaders.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-crystal.js?v=42"></script>
-    <script defer src="shared/lib/cy-math.js?v=44"></script>
-    <script defer src="shared/blackhole-physics.js?v=44"></script>
-    <script defer src="shared/blackhole-shaders.js?v=44"></script>
-    <script defer src="shared/blackhole-lite.js?v=44"></script>
-    <script defer src="shared/blackhole.js?v=44"></script>
-    <script defer src="shared/gfx.js?v=44"></script>
-    <script defer src="shared/engines.js?v=44"></script>
-    <script defer src="shared/slides.js?v=44"></script>
-    <script defer src="shared/lib/thread-math.js?v=44"></script>
-    <script defer src="shared/gpu/gpu-thread-shaders.js?v=44"></script>
-    <script defer src="shared/gpu/gpu-thread-formations.js?v=44"></script>
-    <script defer src="shared/gpu/gpu-thread.js?v=44"></script>
-    <script defer src="shared/app.js?v=44"></script>
+    <script defer src="shared/data.js?v=46"></script>
+    <script defer src="shared/lib/diffusion-math.js?v=46"></script>
+    <script defer src="shared/lib/market-math.js?v=46"></script>
+    <script defer src="shared/lib/lob-math.js?v=46"></script>
+    <script defer src="shared/lib/mobius-math.js?v=46"></script>
+    <script defer src="shared/lib/qsim-math.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-qsim.js?v=46"></script>
+    <script defer src="shared/lib/copula-math.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-copula-shaders.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-copula.js?v=46"></script>
+    <script defer src="shared/lib/lattice-math.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-crystal-shaders.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-crystal.js?v=46"></script>
+    <script defer src="shared/lib/cy-math.js?v=46"></script>
+    <script defer src="shared/blackhole-physics.js?v=46"></script>
+    <script defer src="shared/blackhole-shaders.js?v=46"></script>
+    <script defer src="shared/blackhole-lite.js?v=46"></script>
+    <script defer src="shared/blackhole.js?v=46"></script>
+    <script defer src="shared/gfx.js?v=46"></script>
+    <script defer src="shared/engines.js?v=46"></script>
+    <script defer src="shared/slides.js?v=46"></script>
+    <script defer src="shared/lib/thread-math.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-thread-shaders.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-thread-formations.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-thread.js?v=46"></script>
+    <script defer src="shared/app.js?v=46"></script>
 
 </head>
 <body>
@@ -65,7 +65,7 @@
     
     <section class="snap-section project-snap hero" id="proj-regularised-regression" data-domain="datascience" data-sim="domain:datascience:1">
         <div class="snap-inner">
-            <div class="crumbs" data-hero><a href="index.html">Home</a> / <span>Data Science</span></div>
+            <div class="crumbs" data-hero><a href="index.html">Home</a> / <span>Data Science</span> · Project 01 of 02</div>
             <h1 class="snap-title" data-hero>Regularised Regression from Scratch</h1>
             <p class="lead snap-lead" data-hero>OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.</p>
             <div class="hero-eq glass snap-eq" data-hero>$$\min_{\boldsymbol\beta}\ \tfrac1{2n}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2+\lambda\,\lVert\boldsymbol\beta\rVert_1$$</div>
@@ -73,6 +73,10 @@
                 <span class="snap-proj-label">Architecture:</span>
                 <span class="snap-proj-pill glass"><strong>Python</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span><span class="snap-proj-pill glass"><strong>Linear algebra</strong></span>
                 <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-jump-pills" data-hero>
+                <span class="snap-jump-label">Section projects:</span>
+                <a href="#proj-regularised-regression" class="pill jump-pill active"><strong>01 · Regularised Regression from Scratch</strong></a><a href="#proj-spectral-clustering" class="pill jump-pill"><strong>02 · Spectral Clustering on Graphs</strong></a>
             </div>
             <div class="snap-actions" data-hero>
                 <a href="project.html?p=regularised-regression" class="snap-cta-btn glass">
@@ -87,7 +91,7 @@
     </section>
     <section class="snap-section project-snap" id="proj-spectral-clustering" data-domain="datascience" data-sim="domain:datascience:2">
         <div class="snap-inner">
-            
+            <div class="crumbs" data-reveal><a href="index.html">Home</a> / <span>Data Science</span> · Project 02 of 02</div>
             <h2 class="snap-title" data-reveal>Spectral Clustering on Graphs</h2>
             <p class="lead snap-lead" data-reveal>Recovering communities in a stochastic block model from the eigenvectors of the graph Laplacian.</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$L=D-A,\qquad L_{\mathrm{sym}}=I-D^{-1/2}AD^{-1/2}$$</div>
@@ -95,6 +99,10 @@
                 <span class="snap-proj-label">Architecture:</span>
                 <span class="snap-proj-pill glass"><strong>Graph theory</strong></span><span class="snap-proj-pill glass"><strong>Spectral methods</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span>
                 <span class="tag-status">Draft</span>
+            </div>
+            <div class="snap-jump-pills" data-reveal>
+                <span class="snap-jump-label">Section projects:</span>
+                <a href="#proj-regularised-regression" class="pill jump-pill"><strong>01 · Regularised Regression from Scratch</strong></a><a href="#proj-spectral-clustering" class="pill jump-pill active"><strong>02 · Spectral Clustering on Graphs</strong></a>
             </div>
             <div class="snap-actions" data-reveal>
                 <a href="project.html?p=spectral-clustering" class="snap-cta-btn glass">

@@ -897,16 +897,28 @@
         }
     };
 
+    const isHubPage = () => (
+        typeof document === "undefined" ||
+        !document.documentElement ||
+        !document.documentElement.dataset.page ||
+        document.documentElement.dataset.page === "hub"
+    );
+
     /* World-space rest anchor of a simulation (hero position excluding its idle sway).
        Offset from the dimension anchor by sim.localAnchor (spaced ~25-40 units apart). */
     const anchorWorld = (dimIdx, simIdx, insOrMode, out) => {
-        const f = formations[dimIdx];
+        if (!isHubPage()) {
+            const f = formations[currentIndex] || formations[0];
+            const o = f ? f.origin : { x: 0, y: 0, z: 0 };
+            return out.set(o.x, o.y, o.z);
+        }
+        const f = formations[dimIdx] || formations[currentIndex];
         const dim = getDimensions()[dimIdx];
         const sims = (dim && (dim.sims || dim.locales)) || [];
         const sim = sims[simIdx] || sims[0];
         const la = (sim && sim.localAnchor) || [0, 0, 0];
-        const o = f ? f.origin : { x: 0, y: 0, z: 0 };
-        return out.set(o.x + la[0], o.y + la[1], o.z + la[2]);
+        const base = (dim && Array.isArray(dim.anchor)) ? dim.anchor : (f ? [f.origin.x, f.origin.y, f.origin.z] : [0, 0, 0]);
+        return out.set(base[0] + la[0], base[1] + la[1], base[2] + la[2]);
     };
 
     const sampleIdle = (dimIdx, simIdx, out) => {
@@ -923,7 +935,7 @@
     /* Idle camera pose as a pure function of (dimension, simulation, mode/insideness, time).
        Hops end on exactly this pose, so there is no discontinuity at arrival. */
     const idlePose = (dimIdx, simIdx, modeOrIns, outPos, outTgt) => {
-        const f = formations[dimIdx];
+        const f = isHubPage() ? (formations[dimIdx] || formations[currentIndex]) : (formations[currentIndex] || formations[0]);
         if (!f) return;
         const dim = getDimensions()[dimIdx];
         const sims = (dim && (dim.sims || dim.locales)) || [];
@@ -1495,11 +1507,6 @@
     };
 
     window.addEventListener("wheel", (e) => {
-        if (appMode === "INSIDE") {
-            e.preventDefault();
-            insideOrbit.targetZoom = clamp(insideOrbit.targetZoom + e.deltaY * 0.002, 0.6, 2.0);
-            return;
-        }
         if (!sections.length) return;
         if (e.ctrlKey || e.metaKey) return;
         const dy = e.deltaY;
@@ -1666,7 +1673,7 @@
             if (curSim && curSim.simPreset && typeof active.applyPreset === "function") {
                 active.applyPreset(curSim.simPreset);
             }
-            if (curSim && curSim.localAnchor && curDim && curDim.anchor) {
+            if (isHubPage() && curSim && curSim.localAnchor && curDim && curDim.anchor) {
                 active.origin.set(
                     curDim.anchor[0] + curSim.localAnchor[0],
                     curDim.anchor[1] + curSim.localAnchor[1],
@@ -2615,7 +2622,22 @@
 
             if (u >= 1.0) {
                 currentIndex = trans.toIndex;
-                currentDimIndex = currentIndex;
+                if (isHubPage()) {
+                    currentDimIndex = currentIndex;
+                } else {
+                    const sec = sections[currentIndex];
+                    const domSlug = (sec && sec.dataset && sec.dataset.domain) || "";
+                    const dimsList = getDimensions();
+                    const mIdx = dimsList.findIndex((d) => d.slug === domSlug || d.id === `domain-${domSlug}` || d.id === domSlug);
+                    if (mIdx !== -1) currentDimIndex = mIdx;
+                    if (sec && sec.dataset && sec.dataset.sim) {
+                        const sp = sec.dataset.sim.split(":");
+                        if (sp.length >= 3 && !isNaN(parseInt(sp[2], 10))) {
+                            currentSimIndex = parseInt(sp[2], 10);
+                            currentLocaleIndex = currentSimIndex;
+                        }
+                    }
+                }
                 trans.active = false;
                 trans.phase = "IDLE";
                 navState = "IDLE";
@@ -2627,6 +2649,7 @@
                 trans.warpStrength = 0.0;
                 applyDomSectionVisibility(currentIndex, currentIndex, 1.0, false);
                 updateThemeAndDots(currentIndex);
+                appMode = "VIEW";
                 inside.value = 0.0;
                 inside.isInside = false;
                 inside.shift = 0.0;

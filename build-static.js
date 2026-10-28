@@ -182,19 +182,24 @@ const domainPage = (key) => {
         const eq = p.slideEq || ((p.math && p.math[0] && p.math[0].eq) ? p.math[0].eq : d.eq);
         const slideKey = `domain:${key}:${i + 1}`;
         const isFirst = (i === 0);
+        const attr = isFirst ? "data-hero" : "data-reveal";
         return `
     <section class="snap-section project-snap${isFirst ? ' hero' : ''}" id="proj-${p.id}" data-domain="${key}" data-sim="${slideKey}">
         <div class="snap-inner">
-            ${isFirst ? `<div class="crumbs" data-hero><a href="index.html">Home</a> / <span>${d.name}</span></div>` : ""}
-            <h${isFirst ? "1" : "2"} class="snap-title" ${isFirst ? 'data-hero' : 'data-reveal'}>${p.title}</h${isFirst ? "1" : "2"}>
-            <p class="lead snap-lead" ${isFirst ? 'data-hero' : 'data-reveal'}>${p.summary}</p>
-            <div class="hero-eq glass snap-eq" ${isFirst ? 'data-hero' : 'data-reveal'}>$$${eq}$$</div>
-            <div class="snap-projects" ${isFirst ? 'data-hero' : 'data-reveal'}>
+            <div class="crumbs" ${attr}><a href="index.html">Home</a> / <span>${d.name}</span> · Project 0${i + 1} of 0${ps.length}</div>
+            <h${isFirst ? "1" : "2"} class="snap-title" ${attr}>${p.title}</h${isFirst ? "1" : "2"}>
+            <p class="lead snap-lead" ${attr}>${p.summary}</p>
+            <div class="hero-eq glass snap-eq" ${attr}>$$${eq}$$</div>
+            <div class="snap-projects" ${attr}>
                 <span class="snap-proj-label">Architecture:</span>
                 ${p.tags.map(t => `<span class="snap-proj-pill glass"><strong>${t}</strong></span>`).join("")}
                 <span class="tag-status">${p.status}</span>
             </div>
-            <div class="snap-actions" ${isFirst ? 'data-hero' : 'data-reveal'}>
+            <div class="snap-jump-pills" ${attr}>
+                <span class="snap-jump-label">Section projects:</span>
+                ${ps.map((proj, idx) => `<a href="#proj-${proj.id}" class="pill jump-pill${idx === i ? ' active' : ''}"><strong>0${idx + 1} · ${proj.title}</strong></a>`).join("")}
+            </div>
+            <div class="snap-actions" ${attr}>
                 <a href="project.html?p=${p.id}" class="snap-cta-btn glass">
                     <span>Read Deep-Dive &amp; Architecture</span>
                     <span class="arr">→</span>
@@ -537,37 +542,37 @@ const buildHTML = ({ domain, pageType, title, desc, mainContent }) => `<!doctype
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" />
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" />
-    <link rel="stylesheet" href="shared/style.css?v=43" />
+    <link rel="stylesheet" href="shared/style.css?v=46" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-    <script defer src="shared/data.js?v=37"></script>
-    <script defer src="shared/lib/diffusion-math.js?v=37"></script>
-    <script defer src="shared/lib/market-math.js?v=37"></script>
-    <script defer src="shared/lib/lob-math.js?v=37"></script>
-    <script defer src="shared/lib/mobius-math.js?v=42"></script>
-    <script defer src="shared/lib/qsim-math.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-qsim.js?v=42"></script>
-    <script defer src="shared/lib/copula-math.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-copula-shaders.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-copula.js?v=42"></script>
-    <script defer src="shared/lib/lattice-math.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-crystal-shaders.js?v=42"></script>
-    <script defer src="shared/gpu/gpu-crystal.js?v=42"></script>
-    <script defer src="shared/lib/cy-math.js?v=44"></script>
-    <script defer src="shared/blackhole-physics.js?v=44"></script>
-    <script defer src="shared/blackhole-shaders.js?v=44"></script>
-    <script defer src="shared/blackhole-lite.js?v=44"></script>
-    <script defer src="shared/blackhole.js?v=44"></script>
-    <script defer src="shared/gfx.js?v=44"></script>
-    <script defer src="shared/engines.js?v=44"></script>
-    <script defer src="shared/slides.js?v=44"></script>
-    <script defer src="shared/lib/thread-math.js?v=44"></script>
-    <script defer src="shared/gpu/gpu-thread-shaders.js?v=44"></script>
-    <script defer src="shared/gpu/gpu-thread-formations.js?v=44"></script>
-    <script defer src="shared/gpu/gpu-thread.js?v=44"></script>
-    <script defer src="shared/app.js?v=44"></script>
+    <script defer src="shared/data.js?v=46"></script>
+    <script defer src="shared/lib/diffusion-math.js?v=46"></script>
+    <script defer src="shared/lib/market-math.js?v=46"></script>
+    <script defer src="shared/lib/lob-math.js?v=46"></script>
+    <script defer src="shared/lib/mobius-math.js?v=46"></script>
+    <script defer src="shared/lib/qsim-math.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-qsim.js?v=46"></script>
+    <script defer src="shared/lib/copula-math.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-copula-shaders.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-copula.js?v=46"></script>
+    <script defer src="shared/lib/lattice-math.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-crystal-shaders.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-crystal.js?v=46"></script>
+    <script defer src="shared/lib/cy-math.js?v=46"></script>
+    <script defer src="shared/blackhole-physics.js?v=46"></script>
+    <script defer src="shared/blackhole-shaders.js?v=46"></script>
+    <script defer src="shared/blackhole-lite.js?v=46"></script>
+    <script defer src="shared/blackhole.js?v=46"></script>
+    <script defer src="shared/gfx.js?v=46"></script>
+    <script defer src="shared/engines.js?v=46"></script>
+    <script defer src="shared/slides.js?v=46"></script>
+    <script defer src="shared/lib/thread-math.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-thread-shaders.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-thread-formations.js?v=46"></script>
+    <script defer src="shared/gpu/gpu-thread.js?v=46"></script>
+    <script defer src="shared/app.js?v=46"></script>
 
 </head>
 <body>
