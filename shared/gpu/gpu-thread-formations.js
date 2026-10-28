@@ -571,6 +571,236 @@
     }
 
     /* ============================================================================
+       1B. MÖBIUS FORMATION — Non-Orientable Manifold r(u, v)
+       Surface: r(u, v) = ((R + v*cos(k*u/2))*cos(u), (R + v*cos(k*u/2))*sin(u), v*sin(k*u/2))
+       Normal vector transport around non-orientable loop: n(2pi, v) = -n(0, -v).
+       ============================================================================ */
+    class MobiusFormation extends Formation {
+        constructor(origin, simKey = "domain:math:1", params = {}, sectionIndex = 1) {
+            super(origin, simKey);
+            this.params = params || {};
+            this.sectionIndex = sectionIndex;
+            this.R = (params && typeof params.r === "number") ? params.r : 2.05;
+            this.width = (params && typeof params.width === "number") ? params.width : 0.85;
+            this.k = (params && typeof params.k === "number") ? params.k : 1;
+            this.yaw = 0.45;
+            this.pitch = 0.35;
+            this.roll = 0.0;
+            this.cameraDistance = 12.0;
+            this.uCoords = null;
+            this.vCoords = null;
+            this.baseCols = null;
+        }
+
+        init(buffer, _ctx) {
+            const N = buffer.maxCount;
+            const seeds = buffer.seeds;
+            if (!this.uCoords || this.uCoords.length !== N) {
+                this.uCoords = new Float32Array(N);
+                this.vCoords = new Float32Array(N);
+                this.baseCols = new Float32Array(N * 3);
+            }
+
+            const MM = root.MobiusMath || (typeof require === "function" ? require("../lib/mobius-math.js") : null);
+            const TAU = Math.PI * 2.0;
+            const halfW = this.width * 0.5;
+
+            // Mathematics palette: Rose-crimson [1.0, 0.36, 0.44] -> soft blush [1.0, 0.72, 0.78]
+            for (let i = 0; i < N; i++) {
+                const i4 = i * 4, i3 = i * 3;
+                const u = seeds[i4] * TAU;
+                const v = (seeds[i4 + 1] * 2.0 - 1.0) * halfW;
+                this.uCoords[i] = u;
+                this.vCoords[i] = v;
+
+                const grad = (v / halfW) * 0.5 + 0.5;
+                const ribbonGrad = 0.5 + 0.5 * Math.sin(u * 0.5);
+                this.baseCols[i3]     = 1.0;
+                this.baseCols[i3 + 1] = 0.34 + 0.38 * (grad * 0.6 + ribbonGrad * 0.4);
+                this.baseCols[i3 + 2] = 0.42 + 0.36 * (grad * 0.4 + ribbonGrad * 0.6);
+            }
+            this.initialized = true;
+        }
+
+        update(_dt, t, buffer, ctx) {
+            if (!this.initialized || !this.uCoords) this.init(buffer, ctx);
+            const N = buffer.count;
+            const pos = buffer.positions;
+            const col = buffer.colours;
+            const sz = buffer.sizes;
+            const seeds = buffer.seeds;
+
+            const ptrX = (ctx && ctx.pointerX) || 0;
+            const ptrY = (ctx && ctx.pointerY) || 0;
+
+            this.yaw = t * 0.28 + ptrX * 0.42;
+            this.pitch = 0.38 + ptrY * 0.32 + Math.sin(t * 0.18) * 0.12;
+
+            const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
+            const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
+
+            const R = this.R;
+            const k = this.k;
+            const TAU = Math.PI * 2.0;
+            const halfW = this.width * 0.5;
+            const flowOffset = t * 0.15;
+
+            const scale = 1.35 * (1.0 + 0.25 * (this.insideness || 0));
+
+            for (let i = 0; i < N; i++) {
+                const i3 = i * 3, i4 = i * 4;
+                const u = (this.uCoords[i] + flowOffset) % TAU;
+                const v = this.vCoords[i];
+
+                const a = 0.5 * k * u;
+                const ca = Math.cos(a), sa = Math.sin(a);
+                const cu = Math.cos(u), su = Math.sin(u);
+                const rho = R + v * ca;
+
+                const lx = rho * cu;
+                const ly = rho * su;
+                const lz = v * sa;
+
+                // Orbit rotation (yaw & pitch)
+                const rx = lx * cosY - lz * sinY;
+                const rz = lx * sinY + lz * cosY;
+                const ry = ly * cosP - rz * sinP;
+                const rz2 = ly * sinP + rz * cosP;
+
+                pos[i3]     = this.origin.x + rx * scale;
+                pos[i3 + 1] = this.origin.y + ry * scale;
+                pos[i3 + 2] = this.origin.z + rz2 * scale;
+
+                const shade = clamp(0.72 + 0.28 * (lz / halfW), 0.45, 1.25);
+                col[i3]     = clamp(this.baseCols[i3] * shade, 0.05, 1.0);
+                col[i3 + 1] = clamp(this.baseCols[i3 + 1] * shade, 0.05, 1.0);
+                col[i3 + 2] = clamp(this.baseCols[i3 + 2] * shade, 0.05, 1.0);
+
+                sz[i] = 1.45 + 0.55 * seeds[i4 + 3];
+            }
+        }
+
+        targetFor(i, out = new Vector3()) {
+            if (!this.initialized || !this.uCoords) return out.copy(this.origin);
+            const idx = clamp(i | 0, 0, this.uCoords.length - 1);
+            const u = this.uCoords[idx];
+            const v = this.vCoords[idx];
+            const a = 0.5 * this.k * u;
+            const ca = Math.cos(a), sa = Math.sin(a);
+            const cu = Math.cos(u), su = Math.sin(u);
+            const rho = this.R + v * ca;
+
+            const lx = rho * cu;
+            const ly = rho * su;
+            const lz = v * sa;
+
+            const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
+            const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
+
+            const rx = lx * cosY - lz * sinY;
+            const rz = lx * sinY + lz * cosY;
+            const ry = ly * cosP - rz * sinP;
+            const rz2 = ly * sinP + rz * cosP;
+
+            const scale = 1.35;
+            return out.set(
+                this.origin.x + rx * scale,
+                this.origin.y + ry * scale,
+                this.origin.z + rz2 * scale
+            );
+        }
+    }
+
+    /* ============================================================================
+       1C. FOURIER FORMATION — Cooley–Tukey Radix-2 FFT & Epicycle Spectral Manifold
+       3D harmonic helix & butterfly twiddle factor W_N^k = exp(-2πi k/N) manifold.
+       ============================================================================ */
+    class FourierFormation extends Formation {
+        constructor(origin, simKey = "domain:math:2", params = {}, sectionIndex = 2) {
+            super(origin, simKey);
+            this.params = params || {};
+            this.sectionIndex = sectionIndex;
+            this.cameraDistance = 12.5;
+            this.sigMode = 0; // 0: Square wave odd harmonics, 1: Sawtooth, 2: Triangle
+        }
+
+        onClick() {
+            this.sigMode = (this.sigMode + 1) % 3;
+        }
+
+        init(_buffer, _ctx) {
+            this.initialized = true;
+        }
+
+        update(_dt, t, buffer, ctx) {
+            const N = buffer.count;
+            const pos = buffer.positions;
+            const col = buffer.colours;
+            const sz = buffer.sizes;
+            const seeds = buffer.seeds;
+
+            const ptrX = (ctx && ctx.pointerX) || 0;
+            const ptrY = (ctx && ctx.pointerY) || 0;
+            const yaw = t * 0.22 + ptrX * 0.42;
+            const pitch = 0.28 + ptrY * 0.28 + Math.sin(t * 0.16) * 0.1;
+            const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
+            const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
+
+            const TAU = Math.PI * 2.0;
+            const K = 8; // 8 harmonic frequency bins / FFT butterfly rings
+            const scale = 1.25 * (1.0 + 0.25 * (this.insideness || 0));
+
+            for (let i = 0; i < N; i++) {
+                const i3 = i * 3, i4 = i * 4;
+                const u1 = seeds[i4], u2 = seeds[i4 + 1], u3 = seeds[i4 + 2], u4 = seeds[i4 + 3];
+                const k = (i % K) + 1;
+                const harm = this.sigMode === 1 ? k : (2 * k - 1);
+                const amp = this.sigMode === 2 ? (1.8 / (harm * harm)) : (1.55 / Math.pow(harm, 0.78));
+
+                let lx, ly, lz;
+                if (u3 < 0.62) {
+                    // Harmonic phasor rings & 3D time-frequency spectral helix
+                    const zSpan = (u1 - 0.5) * 5.2;
+                    const ph = u2 * TAU + harm * (zSpan * 0.85 - t * 0.9);
+                    const ringR = amp * (0.85 + 0.3 * u4);
+                    lx = zSpan;
+                    ly = ringR * Math.cos(ph) + ((k - 4.5) * 0.28);
+                    lz = ringR * Math.sin(ph);
+                } else {
+                    // Cooley-Tukey butterfly cross-strands connecting even E_k and odd W_N^k O_k stages
+                    const stage = i & 3;
+                    const sLerp = (u1 + t * 0.35) % 1.0;
+                    const x0 = -2.4 + stage * 1.6;
+                    const x1 = x0 + 1.6;
+                    const bA = ((k - 4.5) * 0.52);
+                    const bB = ((((k ^ (1 << (stage & 1))) % K) - 4.5) * 0.52);
+                    const twiddle = TAU * sLerp + t * 1.2;
+                    lx = x0 + (x1 - x0) * sLerp;
+                    ly = bA + (bB - bA) * sLerp + Math.sin(twiddle) * 0.18;
+                    lz = Math.cos(twiddle) * (0.45 + 0.35 * u2);
+                }
+
+                const rx = lx * cosY - lz * sinY;
+                const rz = lx * sinY + lz * cosY;
+                const ry = ly * cosP - rz * sinP;
+                const rz2 = ly * sinP + rz * cosP;
+
+                pos[i3]     = this.origin.x + rx * scale;
+                pos[i3 + 1] = this.origin.y + ry * scale;
+                pos[i3 + 2] = this.origin.z + rz2 * scale;
+
+                const freqNorm = (k - 1) / (K - 1);
+                const pulse = 0.78 + 0.26 * Math.sin(u1 * TAU - t * 2.2);
+                col[i3]     = clamp((1.0 - 0.22 * freqNorm) * pulse, 0.08, 1.0);
+                col[i3 + 1] = clamp((0.32 + 0.52 * freqNorm) * pulse, 0.08, 1.0);
+                col[i3 + 2] = clamp((0.48 + 0.46 * (1.0 - freqNorm)) * pulse, 0.08, 1.0);
+
+                sz[i] = 1.42 + 0.58 * u4;
+            }
+        }
+    }
+
+    /* ============================================================================
        2. PHYSICS FORMATION — Kerr Black Hole (a/M = 0.99) & Relativistic Accretion Disc
        Wraps shared/blackhole-physics.js (isco, keplerianOmega, fourVelocityUt, pageThorneFlux).
        Shared buffer particles orbit in the Novikov–Thorne accretion disc with Keplerian
@@ -1785,17 +2015,26 @@
 
     // Sub-page domain hero & project mappings
     registerFormation("domain:math:0", MathematicsFormation);
+    registerFormation("domain:math:1", MobiusFormation);
+    registerFormation("domain:math:2", FourierFormation);
+    registerFormation("domain:math:3", ThreeBodyContactFormation);
     registerFormation("domain:physics:0", BlackHoleFormation);
+    registerFormation("domain:physics:3", ThreeBodyContactFormation);
     registerFormation("domain:datascience:0", DataScienceFormation);
+    registerFormation("domain:datascience:3", ThreeBodyContactFormation);
     registerFormation("domain:quant:0", QuantCrystalFormation);
+    registerFormation("domain:quant:3", ThreeBodyContactFormation);
     registerFormation("domain:cs:0", QuantumCSFormation);
+    registerFormation("domain:cs:3", ThreeBodyContactFormation);
     registerFormation("default", LorenzFormation);
 
     const createFormation = (simKey, sectionIndex, params = {}) => {
         const origin = sectionOrigin(sectionIndex);
         let Ctor = registry.get(simKey);
         if (!Ctor && typeof simKey === "string") {
-            if (simKey.includes("math") || simKey.includes("mobius") || simKey.includes("fourier")) Ctor = MathematicsFormation;
+            if (simKey.includes("mobius")) Ctor = MobiusFormation;
+            else if (simKey.includes("fourier")) Ctor = FourierFormation;
+            else if (simKey.includes("math")) Ctor = MathematicsFormation;
             else if (simKey.includes("physics") || simKey.includes("nbody") || simKey.includes("schrodinger")) Ctor = BlackHoleFormation;
             else if (simKey.includes("datascience") || simKey.includes("regression") || simKey.includes("spectral") || simKey.includes("papers")) Ctor = DataScienceFormation;
             else if (simKey.includes("quant") || simKey.includes("options") || simKey.includes("stat-arb")) Ctor = QuantCrystalFormation;
@@ -1810,6 +2049,8 @@
         Formation,
         LorenzFormation,
         MathematicsFormation,
+        MobiusFormation,
+        FourierFormation,
         BlackHoleFormation,
         DataScienceFormation,
         QuantCrystalFormation,

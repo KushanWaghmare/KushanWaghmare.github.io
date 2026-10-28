@@ -47,6 +47,19 @@
     const INITIAL_N = isMobileDevice() ? 30000 : 90000;
     const MIN_ADAPTIVE_N = isMobileDevice() ? 15000 : 36000;
 
+    /* ---------- Transit tuning (FLIGHT_V2) ----------
+       FLIGHT_V2 = true  : single hero-particle flight. Hero speed is driven by an ignite / accelerate /
+                           sustained cruise / sharp brake profile along the ARC LENGTH of the curve, the camera
+                           chases in the hero's tangent frame, the origin simulation recedes behind, and the
+                           destination simulation grows outward from the landing point. No swarm swirl.
+       FLIGHT_V2 = false : previous behaviour.
+       EXPLORE_ENTERS_SIM : "Explore ... section" dives into the active simulation (INSIDE mode) on the hub
+                            instead of swarm-morphing and loading a separate page. */
+    const FLIGHT_V2 = true;
+    const EXPLORE_ENTERS_SIM = false; // false: Explore flies in and SHOWS the domain's first project (page + simulation)
+    const TRAVEL_SEC = 4.2;        // adjacent section
+    const TRAVEL_SEC_JUMP = 5.6;   // multi-section jump
+
     let bufferReallocations = 0;
 
     /* ---------- Single Shared Particle Buffer (Allocated ONCE, Never Reallocated) ---------- */
@@ -539,6 +552,26 @@
     let handoff = null;
     let pendingStartInside = false;
 
+    /* Universal Ping-Pong Transition Engine state */
+    const exploreMorph = {
+        active: false,
+        domain: "",
+        targetUrl: "",
+        t: 0.0,
+        duration: FLIGHT_V2 ? 2.2 : 1.4, // universal continuous morph duration
+        domSwapped: false,
+        simple: false,
+        sourceSec: null,
+        targetSec: null,
+        targetTag: "",
+        camStartPos: new Vector3(),
+        camStartTarget: new Vector3(),
+        camStartFov: 50.0,
+        camEndPos: new Vector3(),
+        camEndTarget: new Vector3(),
+        camEndFov: 62.0
+    };
+
     const DOMAIN_PROJECT_1 = {
         "math": "math.html",
         "physics": "physics.html",
@@ -547,22 +580,174 @@
         "cs": "cs.html"
     };
 
+    const DOMAIN_TARGET_SIMS = {
+        "math": { key: "domain:math:1", tag: "Möbius strip & normal vector transport n(2π,v) = −n(0,−v) · non-orientable topology", cam: [0.0, 0.8, 3.6], fov: 62.0 },
+        "physics": { key: "domain:physics:1", tag: "Symplectic leapfrog integrator · N-body gravitational dynamics", cam: [0.0, 1.4, 4.0], fov: 64.0 },
+        "datascience": { key: "domain:datascience:1", tag: "Ridge & Lasso regularisation path · coordinate descent optimization", cam: [0.0, 0.6, 3.5], fov: 64.0 },
+        "quant": { key: "domain:quant:1", tag: "Black-Scholes & binomial lattice · options surface pricing", cam: [0.0, 0.7, 3.6], fov: 64.0 },
+        "cs": { key: "domain:cs:1", tag: "Grover search & quantum superposition · 256 state amplitude amplification", cam: [0.0, 0.5, 3.4], fov: 64.0 }
+    };
+
+    const exploreArc = { p0: new Vector3(), p1: new Vector3(), p2: new Vector3(), p3: new Vector3() };
+
+    /* Centralized Universal Transition Orchestrator */
+    const transitionToState = (target, opts = {}) => {
+        // 1. Guard against overlapping transitions: if mid-flight, snapshot current interpolated state as new source
+        const N = sharedBuffer.count;
+        fromPositions.subarray(0, N * 3).set(positions.subarray(0, N * 3));
+        fromColours.subarray(0, N * 3).set(colours.subarray(0, N * 3));
+        fromSizes.subarray(0, N).set(sizes.subarray(0, N));
+
+        // Stop conflicting intraHop or cross-dim transitions
+        intraHop.active = false;
+        trans.active = false;
+
+        // Capture starting camera state
+        exploreMorph.camStartPos.copy(camera.position);
+        exploreMorph.camStartTarget.copy(camera.target);
+        exploreMorph.camStartFov = camera.fov;
+
+        // Resolve target formation, camera pose, and metadata
+        let targetKey = "hub:intro";
+        let targetTag = "";
+        let targetCam = [0.0, 0.8, 3.6];
+        let targetFov = 62.0;
+        let targetUrl = opts.targetUrl || "";
+
+        if (typeof target === "string") {
+            if (DOMAIN_TARGET_SIMS[target]) {
+                const cfg = DOMAIN_TARGET_SIMS[target];
+                targetKey = cfg.key;
+                targetTag = cfg.tag;
+                targetCam = cfg.cam;
+                targetFov = cfg.fov;
+            } else if (target.startsWith("domain:") || target.startsWith("hub:") || target.startsWith("project:")) {
+                targetKey = target;
+            }
+        } else if (target && typeof target === "object") {
+            targetKey = target.key || targetKey;
+            targetTag = target.tag || targetTag;
+            targetCam = target.cam || targetCam;
+            targetFov = target.fov || targetFov;
+        }
+
+        exploreMorph.active = true;
+        exploreMorph.targetUrl = targetUrl;
+        exploreMorph.t = 0.0;
+        exploreMorph.startTime = performance.now();
+        exploreMorph.domSwapped = !targetUrl; // No page swap needed if purely in-page
+        exploreMorph.inPageScrolled = false;
+        exploreMorph.sourceSec = opts.sourceSec || (sections ? sections[currentIndex] : null);
+        exploreMorph.targetSec = opts.targetSec || (typeof opts.index === "number" && sections ? sections[opts.index] : null);
+        exploreMorph.targetTag = opts.tag || targetTag;
+
+        exploreMorph.camEndPos.set(targetCam[0], targetCam[1], targetCam[2]);
+        exploreMorph.camEndTarget.set(0.0, 0.0, 0.0);
+        exploreMorph.camEndFov = targetFov;
+
+        // In-page section switch: morph into the REAL section formation (same origin/preset) and its idle camera pose,
+        // so the steady-state hand-off at u = 1 has no jump.
+        let targetF;
+        if (typeof opts.index === "number" && formations[opts.index]) {
+            currentIndex = opts.index;
+            const secEl = sections && sections[opts.index];
+            const sp = ((secEl && secEl.dataset.sim) || "").split(":");
+            const si = parseInt(sp[2], 10);
+            if (!isNaN(si)) { currentSimIndex = si; currentLocaleIndex = si; }
+            targetF = formations[opts.index];
+            const dim = getDimensions()[currentDimIndex];
+            const sim = ((dim && (dim.sims || dim.locales)) || [])[currentSimIndex];
+            if (sim && sim.simPreset && typeof targetF.applyPreset === "function") targetF.applyPreset(sim.simPreset);
+            idlePose(currentDimIndex, currentSimIndex, "INSIDE", poseA, poseB);
+            exploreMorph.camEndPos.copy(poseA);
+            exploreMorph.camEndTarget.copy(poseB);
+            exploreMorph.camEndFov = (sim && sim.immersiveCamera && sim.immersiveCamera.fov) || targetFov;
+            if (secEl) {
+                secEl.querySelectorAll("[data-reveal], [data-hero]").forEach((el) => el.classList.add("revealed"));
+                const inner = secEl.querySelector(".snap-inner");
+                const tag = secEl.querySelector(".sim-tag");
+                const cue = secEl.querySelector(".snap-cue");
+                if (inner) { inner.style.opacity = "0"; inner.style.pointerEvents = "none"; }
+                if (tag) tag.style.opacity = "0";
+                if (cue) cue.style.opacity = "0";
+            }
+        } else {
+            targetF = TF.createFormation(targetKey, 0, opts.params || {});
+        }
+        const targetBuffer = {
+            count: N,
+            maxCount: sharedBuffer.maxCount,
+            positions: nextPositions,
+            colours: nextColours,
+            sizes: nextSizes,
+            seeds: sharedBuffer.seeds
+        };
+        targetF.init(targetBuffer, ctxState);
+        targetF.insideness = 1.0;
+        targetF.update(0.016, simTime, targetBuffer, ctxState);
+
+        if (FLIGHT_V2) {
+            // Hero particle arc from its live position to the destination's hero; destination grows outward from there
+            const hs = exploreArc.p0.set(fromPositions[0], fromPositions[1], fromPositions[2]);
+            const he = exploreArc.p3.set(nextPositions[0], nextPositions[1], nextPositions[2]);
+            const chord = Math.hypot(he.x - hs.x, he.y - hs.y, he.z - hs.z);
+            const lift = Math.max(3.0, chord * 0.35);
+            exploreArc.p1.set(hs.x + (he.x - hs.x) * 0.30, hs.y + (he.y - hs.y) * 0.30 + lift, hs.z + (he.z - hs.z) * 0.30 + lift * 0.4);
+            exploreArc.p2.set(hs.x + (he.x - hs.x) * 0.70, hs.y + (he.y - hs.y) * 0.70 + lift * 0.7, hs.z + (he.z - hs.z) * 0.70 - lift * 0.3);
+            computeParticleRanks(nextPositions, N, he);
+
+            exploreMorph.simple = isReducedMotion();
+            if (exploreMorph.simple) {
+                exploreArc.p1.set(hs.x + (he.x - hs.x) * 0.33, hs.y + (he.y - hs.y) * 0.33, hs.z + (he.z - hs.z) * 0.33);
+                exploreArc.p2.set(hs.x + (he.x - hs.x) * 0.66, hs.y + (he.y - hs.y) * 0.66, hs.z + (he.z - hs.z) * 0.66);
+                exploreMorph.duration = 0.8;
+            } else {
+                // long hops (hub anchor -> project world) need real travel time
+                exploreMorph.duration = clamp(2.4 + chord / 90.0, 2.6, 4.4);
+            }
+            // The explore arc reuses the flight-path evaluator and arc-length profile
+            trans.arc = exploreArc;
+            trans.waypoints = null;
+            buildFlightProfile(0.0);
+            buildArcLut();
+            chase.init = false;
+        }
+
+        inside.isInside = true;
+        inside.value = 1.0;
+
+        if (typeof window !== "undefined" && window.SOUND && typeof window.SOUND.warp === "function") {
+            window.SOUND.warp(0);
+        }
+    };
+
     window.addEventListener("click", (e) => {
+        // Intercept navigation links and buttons for universal continuous morph
         const ctaBtn = e.target && e.target.closest && e.target.closest(".snap-cta-btn");
+        const crumbLink = e.target && e.target.closest && e.target.closest(".crumbs a");
+        const jumpPill = e.target && e.target.closest && e.target.closest(".jump-pill");
+        const cueLink = e.target && e.target.closest && e.target.closest(".snap-cue");
+
         if (ctaBtn) {
             const href = ctaBtn.getAttribute("href");
             const sec = ctaBtn.closest(".snap-section");
             const domain = (sec && sec.dataset.domain) || "";
             const isExplore = (ctaBtn.textContent || "").toLowerCase().includes("explore") || (sec && sec.classList.contains("domain-snap"));
 
-            if (isExplore && !isNavigatingExplore) {
-                isNavigatingExplore = true;
-                pendingStartInside = true;
-                if (typeof sessionStorage !== "undefined") {
-                    try { sessionStorage.setItem("startInside", "1"); } catch (_) {}
-                }
+            if (isExplore) {
                 e.preventDefault();
                 e.stopPropagation();
+
+                if (EXPLORE_ENTERS_SIM && isHubPage() && sec && sections && !exploreMorph.active) {
+                    const sIdxE = sections.indexOf(sec);
+                    const dimE = getDimensions()[sIdxE];
+                    const simsE = (dimE && (dimE.sims || dimE.locales)) || [];
+                    if (sIdxE !== -1 && simsE.length > 0) {
+                        if (sIdxE === currentIndex && !trans.active) enterSimulation();
+                        else goToDimension(sIdxE, 0, true);
+                        return;
+                    }
+                }
 
                 if (sec && sections) {
                     const sIdx = sections.indexOf(sec);
@@ -573,30 +758,52 @@
                     sec.classList.add("is-exploring");
                 }
 
-                // Trigger 3D camera zoom forward into the simulation!
-                enterSimulation();
-
-                if (typeof window !== "undefined" && window.SOUND && typeof window.SOUND.warp === "function") {
-                    window.SOUND.warp(0);
-                }
-
                 const targetRel = (href && !href.startsWith("#")) ? href : ((domain && DOMAIN_PROJECT_1[domain]) ? DOMAIN_PROJECT_1[domain] : "math.html");
                 const targetUrl = new URL(targetRel, location.href).href;
-
-                // Seamless handoff: let the dive zoom into the simulation, then swap the page directly without any black veil overlay
-                const t0 = performance.now();
-                const go = () => {
-                    if (intraHop.active && performance.now() - t0 < 2500) { setTimeout(go, 50); return; }
-                    handoff = { t: 0, px: camera.position.x, py: camera.position.y, pz: camera.position.z, tx: camera.target.x, ty: camera.target.y, tz: camera.target.z, fov: camera.fov };
-                    isNavigatingExplore = false;
-                    if (window.KW && typeof window.KW.loadPage === "function") {
-                        window.KW.loadPage(targetUrl, true);
-                    } else {
-                        location.href = targetUrl;
-                    }
-                };
-                setTimeout(go, 600);
+                transitionToState(domain || "math", { targetUrl, sourceSec: sec });
                 return;
+            }
+        }
+
+        if (crumbLink) {
+            const href = crumbLink.getAttribute("href");
+            if (href && (href === "index.html" || href.endsWith("index.html") || href === "/")) {
+                e.preventDefault();
+                e.stopPropagation();
+                const targetUrl = new URL(href, location.href).href;
+                transitionToState("hub:intro", {
+                    targetUrl,
+                    cam: [0.0, 0.0, 13.8],
+                    fov: 52.0,
+                    tag: "σ=10, ρ=28, β=8/3 · RK4 integration · sensitive dependence on initial conditions"
+                });
+                return;
+            }
+        }
+
+        if (jumpPill || cueLink) {
+            const el = jumpPill || cueLink;
+            const href = el.getAttribute("href");
+            if (href && href.startsWith("#")) {
+                const targetEl = document.querySelector(href);
+                if (targetEl && targetEl.classList.contains("snap-section")) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const idx = sections ? sections.indexOf(targetEl) : -1;
+                    if (idx !== -1 && idx !== currentIndex) {
+                        const simKey = targetEl.dataset.sim || "domain:math:1";
+                        const tagEl = targetEl.querySelector(".sim-tag");
+                        const targetTag = tagEl ? tagEl.textContent : "";
+                        const sec = el.closest(".snap-section");
+                        transitionToState(simKey, {
+                            index: idx,
+                            sourceSec: sec,
+                            targetSec: targetEl,
+                            tag: targetTag
+                        });
+                    }
+                    return;
+                }
             }
         }
 
@@ -755,6 +962,84 @@
         warpStrength: 0.0
     };
 
+    /* FLIGHT_V2 helpers begin */
+    const PROFILE_N = 128;
+    const speedCdf = new Float32Array(PROFILE_N + 1);  // time -> normalised distance travelled
+    const arcCum = new Float32Array(PROFILE_N + 1);    // curve parameter -> normalised arc length
+    const lutA = new Vector3();
+    const lutB = new Vector3();
+    const chase = { pos: new Vector3(), tgt: new Vector3(), init: false };
+
+    // Normalised speed over normalised time: ignite, accelerate, sustained cruise, sharp brake.
+    const flightSpeed = (t, v0) => {
+        const up = smootherstep(0.0, 0.24, t);
+        const down = 1.0 - smootherstep(0.70, 1.0, t);
+        return Math.max(v0, up) * down;
+    };
+
+    const buildFlightProfile = (v0) => {
+        let acc = 0.0;
+        let prev = flightSpeed(0.0, v0);
+        speedCdf[0] = 0.0;
+        for (let k = 1; k <= PROFILE_N; k++) {
+            const v = flightSpeed(k / PROFILE_N, v0);
+            acc += 0.5 * (prev + v);
+            speedCdf[k] = acc;
+            prev = v;
+        }
+        const inv = acc > 1e-9 ? 1.0 / acc : 1.0;
+        for (let k = 0; k <= PROFILE_N; k++) speedCdf[k] *= inv;
+        speedCdf[PROFILE_N] = 1.0;
+    };
+
+    const buildArcLut = () => {
+        evalFlightPath(0.0, lutA);
+        let acc = 0.0;
+        arcCum[0] = 0.0;
+        for (let k = 1; k <= PROFILE_N; k++) {
+            evalFlightPath(k / PROFILE_N, lutB);
+            acc += Math.hypot(lutB.x - lutA.x, lutB.y - lutA.y, lutB.z - lutA.z);
+            arcCum[k] = acc;
+            lutA.copy(lutB);
+        }
+        const inv = acc > 1e-9 ? 1.0 / acc : 1.0;
+        for (let k = 0; k <= PROFILE_N; k++) arcCum[k] *= inv;
+        arcCum[PROFILE_N] = 1.0;
+    };
+
+    // Time fraction t in [0,1] -> curve parameter s in [0,1] (constant-speed-aware, profile driven).
+    const flightParam = (t) => {
+        const tt = clamp(t, 0.0, 1.0);
+        const f = tt * PROFILE_N;
+        const i = Math.min(PROFILE_N - 1, f | 0);
+        const S = speedCdf[i] + (speedCdf[i + 1] - speedCdf[i]) * (f - i);
+        let lo = 0, hi = PROFILE_N;
+        while (hi - lo > 1) {
+            const mid = (lo + hi) >> 1;
+            if (arcCum[mid] < S) lo = mid; else hi = mid;
+        }
+        const a0 = arcCum[lo], a1 = arcCum[hi];
+        const w = a1 > a0 ? (S - a0) / (a1 - a0) : 0.0;
+        return clamp((lo + w) / PROFILE_N, 0.0, 1.0);
+    };
+    // Smoothed chase rig in the hero's tangent frame (behind along -T, above). Result is left in chase.pos / chase.tgt.
+    const chaseStep = (dt, tx, ty, tz, span, hx, hy, hz) => {
+        const tl = Math.hypot(tx, ty, tz);
+        if (tl > 1e-6) { tx /= tl; ty /= tl; tz /= tl; } else { tx = 0.0; ty = 0.0; tz = -1.0; }
+        const dist = clamp(span * 0.045, 5.5, 13.0);
+        const dX = hx - tx * dist, dY = hy - ty * dist + dist * 0.28, dZ = hz - tz * dist;
+        if (!chase.init) { chase.pos.set(dX, dY, dZ); chase.tgt.set(hx, hy, hz); chase.init = true; }
+        const kp = 1.0 - Math.exp(-3.4 * dt);
+        const kt = 1.0 - Math.exp(-7.0 * dt);
+        chase.pos.x += (dX - chase.pos.x) * kp;
+        chase.pos.y += (dY - chase.pos.y) * kp;
+        chase.pos.z += (dZ - chase.pos.z) * kp;
+        chase.tgt.x += (hx - chase.tgt.x) * kt;
+        chase.tgt.y += (hy - chase.tgt.y) * kt;
+        chase.tgt.z += (hz - chase.tgt.z) * kt;
+    };
+    /* FLIGHT_V2 helpers end */
+
     // Smoothed per-section post parameters
     const postState = {
         bloomStrength: 0.92,
@@ -771,11 +1056,11 @@
 
     const getPhaseName = (u) => {
         if (!trans.active) return "IDLE";
-        if (u < 0.15) return "DETACH";
-        if (u < 0.35) return "COLLAPSE";
-        if (u < 0.72) return "FLIGHT";
-        if (u < 0.86) return "NUCLEATE";
-        return "HANDOFF";
+        if (u < 0.12) return "IGNITE";
+        if (u < 0.30) return "ACCELERATE";
+        if (u < 0.68) return "CRUISE";
+        if (u < 0.84) return "BRAKE";
+        return "ARRIVE";
     };
 
     const applyDomSectionVisibility = (fromIdx, toIdx, u, isActive) => {
@@ -1347,6 +1632,19 @@
     const goToDimension = (targetIdx, targetLocaleIdx = 0, enterInside = false) => {
         const maxIdx = Math.max(0, formations.length - 1);
         const clampedTarget = clamp(targetIdx | 0, 0, maxIdx);
+        if (!isHubPage() && sections[clampedTarget]) {
+            if (clampedTarget === currentIndex && !exploreMorph.active) return;
+            const targetSec = sections[clampedTarget];
+            const simKey = targetSec.dataset.sim || "domain:math:1";
+            const tagEl = targetSec.querySelector(".sim-tag");
+            transitionToState(simKey, {
+                sourceSec: sections[currentIndex],
+                targetSec,
+                index: clampedTarget,
+                tag: tagEl ? tagEl.textContent : ""
+            });
+            return;
+        }
         if (clampedTarget === currentDimIndex && !trans.active) {
             if (targetLocaleIdx !== currentLocaleIndex) {
                 goToLocale(targetLocaleIdx);
@@ -1438,6 +1736,26 @@
             trans.arc = computeArcControls(trans.heroStart, trans.heroEnd, Math.min(fromIdx, clampedTarget));
         }
 
+        if (FLIGHT_V2) {
+            const planDur = isReducedMotion() ? 0.80 : (jumpSpan > 1 ? TRAVEL_SEC_JUMP : TRAVEL_SEC);
+            let v0 = 0.0;
+            const a = trans.arc;
+            if (wasMidFlight && !trans.waypoints && a && a.p1 && typeof a.p1.set === "function") {
+                // Interrupt / reverse: leave along the live velocity instead of restarting from rest.
+                const speed = heroVel.length();
+                const span = Math.hypot(a.p3.x - a.p0.x, a.p3.y - a.p0.y, a.p3.z - a.p0.z);
+                if (speed > 0.5 && span > 1e-3) {
+                    const k = Math.min(0.45 * span, speed * 0.9);
+                    a.p1.set(a.p0.x + heroVel.x / speed * k, a.p0.y + heroVel.y / speed * k, a.p0.z + heroVel.z / speed * k);
+                    v0 = clamp(speed / (1.35 * span / planDur), 0.0, 0.45);
+                }
+            }
+            trans.v0 = v0;
+            buildFlightProfile(v0);
+            buildArcLut();
+            if (!wasMidFlight) chase.init = false; // mid-flight keeps the smoothed chase rig, so the camera stays continuous
+        }
+
         trans.camStartPos.copy(camera.position);
         trans.camStartTarget.copy(camera.target);
         const camDist = toForm.cameraDistance || 13.5;
@@ -1467,9 +1785,9 @@
         trans.toIndex = clampedTarget;
         trans.interrupted = wasMidFlight;
         trans.u = 0.0;
-        trans.duration = isReducedMotion() ? 0.80 : (jumpSpan > 1 ? 3.60 : 3.20);
+        trans.duration = isReducedMotion() ? 0.80 : (jumpSpan > 1 ? (FLIGHT_V2 ? TRAVEL_SEC_JUMP : 3.60) : (FLIGHT_V2 ? TRAVEL_SEC : 3.20));
         trans.active = true;
-        trans.phase = "DETACH";
+        trans.phase = "IGNITE";
         navState = "INTER_FLIGHT";
         trans.domScrolledToTarget = false;
         trans.auxOpacity = 0.0;
@@ -1481,6 +1799,9 @@
 
     const triggerStep = (deltaStep) => {
         const now = performance.now();
+        if (exploreMorph.active) {
+            if (exploreMorph.t < 0.25) return;
+        }
         if (trans.active) {
             const currentDir = Math.sign(trans.toIndex - trans.fromIndex) || 1;
             if (Math.sign(deltaStep) !== currentDir) {
@@ -1499,6 +1820,20 @@
         const nextIdx = clamp(currentIndex + deltaStep, 0, formations.length - 1);
         if (nextIdx !== currentIndex) {
             lastGestureTime = now;
+            // On project pages (non-hub), swipe up/down navigates between project sections seamlessly
+            if (!isHubPage() && sections[nextIdx]) {
+                const targetSec = sections[nextIdx];
+                const simKey = targetSec.dataset.sim || "domain:math:1";
+                const tagEl = targetSec.querySelector(".sim-tag");
+                const targetTag = tagEl ? tagEl.textContent : "";
+                transitionToState(simKey, {
+                    sourceSec: sections[currentIndex],
+                    targetSec: targetSec,
+                    index: nextIdx,
+                    tag: targetTag
+                });
+                return;
+            }
             startTransition(nextIdx);
         }
     };
@@ -1670,7 +2005,10 @@
         const active = formations[currentIndex];
         if (active) {
             active.insideness = inside.value;
-            active.init(sharedBuffer, ctxState);
+            // During exploreMorph, keep the continuous interpolation active; do not stomp buffer or camera!
+            if (!exploreMorph.active) {
+                active.init(sharedBuffer, ctxState);
+            }
             const dims = getDimensions();
             const curDim = dims[currentDimIndex];
             const sims = (curDim && (curDim.sims || curDim.locales)) || [];
@@ -1685,29 +2023,33 @@
                     curDim.anchor[2] + curSim.localAnchor[2]
                 );
             }
-            active.update(0.016, 0.016, sharedBuffer, ctxState);
-            prevPositions.set(positions);
+            if (!exploreMorph.active) {
+                active.update(0.016, 0.016, sharedBuffer, ctxState);
+                prevPositions.set(positions);
+            }
             const prof = getProfile(currentDimIndex);
-            if (startInside) {
-                idlePose(currentDimIndex, currentSimIndex, "INSIDE", poseA, poseB);
-                camera.position.copy(poseA);
-                camera.target.copy(poseB);
-                if (curSim && curSim.immersiveCamera) camera.fov = curSim.immersiveCamera.fov;
-                else camera.fov = prof.fov;
-                anchorWorld(currentDimIndex, currentSimIndex, "INSIDE", poseAnchor);
-                sampleIdle(currentDimIndex, currentSimIndex, idleVec);
-                positions[0] = poseAnchor.x + idleVec.x;
-                positions[1] = poseAnchor.y + idleVec.y;
-                positions[2] = poseAnchor.z + idleVec.z;
-                camera.near = 0.05;
-                camera.far = 450.0;
-            } else {
-                idlePose(currentDimIndex, currentSimIndex, "VIEW", poseA, poseB);
-                camera.position.copy(poseA);
-                camera.target.copy(poseB);
-                camera.fov = prof.fov;
-                camera.near = 0.1;
-                camera.far = 600.0;
+            if (!exploreMorph.active) {
+                if (startInside) {
+                    idlePose(currentDimIndex, currentSimIndex, "INSIDE", poseA, poseB);
+                    camera.position.copy(poseA);
+                    camera.target.copy(poseB);
+                    if (curSim && curSim.immersiveCamera) camera.fov = curSim.immersiveCamera.fov;
+                    else camera.fov = prof.fov;
+                    anchorWorld(currentDimIndex, currentSimIndex, "INSIDE", poseAnchor);
+                    sampleIdle(currentDimIndex, currentSimIndex, idleVec);
+                    positions[0] = poseAnchor.x + idleVec.x;
+                    positions[1] = poseAnchor.y + idleVec.y;
+                    positions[2] = poseAnchor.z + idleVec.z;
+                    camera.near = 0.05;
+                    camera.far = 450.0;
+                } else {
+                    idlePose(currentDimIndex, currentSimIndex, "VIEW", poseA, poseB);
+                    camera.position.copy(poseA);
+                    camera.target.copy(poseB);
+                    camera.fov = prof.fov;
+                    camera.near = 0.1;
+                    camera.far = 600.0;
+                }
             }
             postState.bloomStrength = prof.bloomStrength;
             postState.bloomThreshold = prof.bloomThreshold;
@@ -1720,13 +2062,17 @@
             postState.fogDensity = prof.fogDensity;
             postState.trailDecay = active.trailDecay || 0.68;
             postState.streakScale = active.streakScale || 1.25;
-            colours[0] = prof.heroColour[0];
-            colours[1] = prof.heroColour[1];
-            colours[2] = prof.heroColour[2];
-            sizes[0] = prof.heroSize;
+            if (!exploreMorph.active) {
+                colours[0] = prof.heroColour[0];
+                colours[1] = prof.heroColour[1];
+                colours[2] = prof.heroColour[2];
+                sizes[0] = prof.heroSize;
+            }
         }
-        trailNeedsReset = true;
-        applyDomSectionVisibility(currentIndex, currentIndex, 1.0, false);
+        if (!exploreMorph.active) {
+            trailNeedsReset = true;
+            applyDomSectionVisibility(currentIndex, currentIndex, 1.0, false);
+        }
         updateThemeAndDots(currentIndex);
         updateIntraIndicator(currentDimIndex, currentLocaleIndex);
         updateLocaleContent(currentDimIndex, currentLocaleIndex);
@@ -2348,7 +2694,184 @@
 
         let heroBoost = 0.0;
 
-        if (!trans.active) {
+        if (exploreMorph.active) {
+            /* ---------- SEAMLESS EXPLORE MORPH ENGINE (Unified Shader/Particle Morphing) ---------- */
+            const elapsedSec = (now - (exploreMorph.startTime || now)) * 0.001;
+            exploreMorph.t = Math.max(exploreMorph.t + dt / exploreMorph.duration, elapsedSec / exploreMorph.duration);
+            const u = clamp(exploreMorph.t, 0.0, 1.0);
+            const ease = smootherstep(0.0, 1.0, u);
+
+            // 1. Controlled divergence-free swirl displacement peaking at u = 0.5 (sin(u * PI))
+            if (FLIGHT_V2) {
+                // Hero flies the arc; the origin sim dims and recedes in place; the destination grows outward from the landing point
+                const sH = exploreMorph.simple ? ease : flightParam(u);
+                evalFlightPath(sH, tmpHeroPos);
+                evalFlightTangent(sH, tmpHeroTan);
+                positions[0] = tmpHeroPos.x;
+                positions[1] = tmpHeroPos.y;
+                positions[2] = tmpHeroPos.z;
+                colours[0] = fromColours[0] + (nextColours[0] - fromColours[0]) * ease;
+                colours[1] = fromColours[1] + (nextColours[1] - fromColours[1]) * ease;
+                colours[2] = fromColours[2] + (nextColours[2] - fromColours[2]) * ease;
+                sizes[0] = Math.max(fromSizes[0], nextSizes[0]) * (1.0 + 0.6 * Math.sin(Math.PI * u));
+
+                const oFade = (0.15 + 0.85 * (1.0 - smootherstep(0.02, 0.28, u))) * (1.0 - smootherstep(0.30, 0.46, u));
+                for (let i = 1; i < N; i++) {
+                    const i3 = i * 3;
+                    if (u < 0.5) {
+                        positions[i3]     = fromPositions[i3];
+                        positions[i3 + 1] = fromPositions[i3 + 1];
+                        positions[i3 + 2] = fromPositions[i3 + 2];
+                        colours[i3]       = fromColours[i3] * oFade;
+                        colours[i3 + 1]   = fromColours[i3 + 1] * oFade;
+                        colours[i3 + 2]   = fromColours[i3 + 2] * oFade;
+                        sizes[i]          = fromSizes[i] * oFade;
+                    } else {
+                        const rk = particleRanks[i];
+                        const rs = 0.60 + 0.22 * rk;
+                        const wIn = smootherstep(rs, Math.min(1.0, rs + 0.18), u);
+                        positions[i3]     = nextPositions[i3];
+                        positions[i3 + 1] = nextPositions[i3 + 1];
+                        positions[i3 + 2] = nextPositions[i3 + 2];
+                        colours[i3]       = nextColours[i3] * wIn;
+                        colours[i3 + 1]   = nextColours[i3 + 1] * wIn;
+                        colours[i3 + 2]   = nextColours[i3 + 2] * wIn;
+                        sizes[i]          = nextSizes[i] * wIn;
+                    }
+                }
+            }
+            const swirl = Math.sin(u * Math.PI) * 1.5;
+            for (let i = 0; i < (FLIGHT_V2 ? 0 : N); i++) {
+                const i3 = i * 3;
+                const px = fromPositions[i3] + (nextPositions[i3] - fromPositions[i3]) * ease;
+                const py = fromPositions[i3 + 1] + (nextPositions[i3 + 1] - fromPositions[i3 + 1]) * ease;
+                const pz = fromPositions[i3 + 2] + (nextPositions[i3 + 2] - fromPositions[i3 + 2]) * ease;
+
+                // Tangential swirl displacement without radial camera explosion
+                TM.curlNoise3D(px * 0.22, py * 0.22, pz * 0.22, simTime * 0.6, tmpHeroPos);
+                positions[i3]     = px + tmpHeroPos.x * swirl;
+                positions[i3 + 1] = py + tmpHeroPos.y * swirl;
+                positions[i3 + 2] = pz + tmpHeroPos.z * swirl;
+
+                colours[i3]     = fromColours[i3] + (nextColours[i3] - fromColours[i3]) * ease;
+                colours[i3 + 1] = fromColours[i3 + 1] + (nextColours[i3 + 1] - fromColours[i3 + 1]) * ease;
+                colours[i3 + 2] = fromColours[i3 + 2] + (nextColours[i3 + 2] - fromColours[i3 + 2]) * ease;
+
+                sizes[i] = fromSizes[i] + (nextSizes[i] - fromSizes[i]) * ease;
+            }
+
+            // 2. Smooth camera position, target, and FOV interpolation
+            camera.position.lerpVectors(exploreMorph.camStartPos, exploreMorph.camEndPos, ease);
+            camera.target.lerpVectors(exploreMorph.camStartTarget, exploreMorph.camEndTarget, ease);
+            camera.fov = exploreMorph.camStartFov + (exploreMorph.camEndFov - exploreMorph.camStartFov) * ease;
+            camera.up.set(0, 1, 0);
+
+            if (FLIGHT_V2 && !exploreMorph.simple) {
+                // Chase the hero in its tangent frame so the flight reads as travel, with speed-driven warp and FOV
+                const railW = smoothstep(0.04, 0.22, u) * (1.0 - smoothstep(0.72, 0.98, u));
+                const spanX = Math.hypot(exploreArc.p3.x - exploreArc.p0.x, exploreArc.p3.y - exploreArc.p0.y, exploreArc.p3.z - exploreArc.p0.z);
+                chaseStep(dt, tmpHeroTan.x, tmpHeroTan.y, tmpHeroTan.z, spanX, positions[0], positions[1], positions[2]);
+                camera.position.set(
+                    camera.position.x + (chase.pos.x - camera.position.x) * railW * 0.86,
+                    camera.position.y + (chase.pos.y - camera.position.y) * railW * 0.86,
+                    camera.position.z + (chase.pos.z - camera.position.z) * railW * 0.86
+                );
+                camera.target.set(
+                    camera.target.x + (chase.tgt.x - camera.target.x) * railW * 0.92,
+                    camera.target.y + (chase.tgt.y - camera.target.y) * railW * 0.92,
+                    camera.target.z + (chase.tgt.z - camera.target.z) * railW * 0.92
+                );
+                const vX = flightSpeed(u, 0.0);
+                camera.fov += 16.0 * vX;
+                trans.warpStrength = 0.55 * vX * vX;
+            } else {
+                trans.warpStrength = 0.0;
+            }
+
+            // 3. Synchronized DOM Choreography
+            // 0.0s - 0.4s (u in [0.0, 0.28]): Fade out source overview DOM container
+            if (exploreMorph.sourceSec) {
+                const inner = exploreMorph.sourceSec.querySelector(".snap-inner");
+                const tag = exploreMorph.sourceSec.querySelector(".sim-tag");
+                const cue = exploreMorph.sourceSec.querySelector(".snap-cue");
+                const fadeOut = clamp(1.0 - smoothstep(0.0, 0.28, u), 0.0, 1.0);
+                const shiftY = (1.0 - fadeOut) * -10.0;
+                const opStr = fadeOut.toFixed(3);
+                const trStr = `translate3d(0, ${shiftY.toFixed(1)}px, 0)`;
+                if (inner) {
+                    inner.style.opacity = opStr;
+                    inner.style.transform = trStr;
+                    inner.style.pointerEvents = fadeOut > 0.5 ? "auto" : "none";
+                }
+                if (tag) tag.style.opacity = opStr;
+                if (cue) cue.style.opacity = opStr;
+            }
+
+            // At u = 0.50: Perform seamless background DOM swap (keeps canvas intact) or in-page section scroll
+            if (u >= 0.50 && !exploreMorph.domSwapped) {
+                exploreMorph.domSwapped = true;
+                if (window.KW && typeof window.KW.loadPage === "function") {
+                    window.KW.loadPage(exploreMorph.targetUrl, true);
+                } else if (exploreMorph.targetUrl) {
+                    window.location.href = exploreMorph.targetUrl; // no soft loader on this page: hard navigate so the project still opens
+                }
+            }
+            if (u >= 0.45 && !exploreMorph.targetUrl && !exploreMorph.inPageScrolled) {
+                exploreMorph.inPageScrolled = true;
+                const tgt = exploreMorph.targetSec || (sections && sections[currentIndex]);
+                if (tgt) {
+                    window.scrollTo({ top: tgt.offsetTop, behavior: "instant" });
+                }
+                updateThemeAndDots(currentIndex);
+            }
+
+            // 0.9s - 1.4s (u in [0.65, 1.0]): Fade in target DOM container & update HUD telemetry badge
+            const targetSec = exploreMorph.targetSec || (sections && sections[currentIndex]) || document.querySelector("#proj-mobius-surfaces, #proj-nbody-leapfrog, #proj-regularised-regression, #proj-options-pricing, #proj-ku-lang, .project-snap.hero, .hero");
+            if (targetSec && (exploreMorph.inPageScrolled || exploreMorph.domSwapped)) {
+                const inner = targetSec.querySelector(".snap-inner");
+                const tag = targetSec.querySelector(".sim-tag");
+                const cue = targetSec.querySelector(".snap-cue");
+                const fadeIn = clamp(smoothstep(0.65, 1.0, u), 0.0, 1.0);
+                const shiftY = (1.0 - fadeIn) * 10.0;
+                const opStr = fadeIn.toFixed(3);
+                const trStr = `translate3d(0, ${shiftY.toFixed(1)}px, 0)`;
+                if (inner) {
+                    inner.style.opacity = opStr;
+                    inner.style.transform = trStr;
+                    inner.style.pointerEvents = fadeIn > 0.5 ? "auto" : "none";
+                }
+                if (tag) {
+                    tag.style.opacity = opStr;
+                    if (u >= 0.65 && exploreMorph.targetTag && tag.textContent !== exploreMorph.targetTag) {
+                        tag.textContent = exploreMorph.targetTag;
+                    }
+                }
+                if (cue) cue.style.opacity = opStr;
+            }
+
+            // Post-processing steady state values during morph
+            postState.bloomStrength += (0.90 - postState.bloomStrength) * 0.1;
+            postState.bloomThreshold += (0.80 - postState.bloomThreshold) * 0.1;
+            postState.trailDecay = 0.75;
+            postState.streakScale = 1.35;
+
+            // Transition completion at u = 1.0
+            if (u >= 1.0) {
+                exploreMorph.active = false;
+                trans.warpStrength = 0.0;
+                appMode = "INSIDE";
+                inside.isInside = true;
+                inside.value = 1.0;
+                if (formations[currentIndex]) {
+                    formations[currentIndex].insideness = 1.0;
+                }
+                if (exploreMorph.sourceSec) {
+                    exploreMorph.sourceSec.classList.remove("is-exploring");
+                }
+                applyDomSectionVisibility(currentIndex, currentIndex, 1.0, false);
+                updateThemeAndDots(currentIndex);
+            }
+        } else if (!trans.active) {
             /* ---------- STEADY STATE: Only current formation's update() runs ---------- */
             const active = formations[currentIndex];
             if (active) {
@@ -2439,7 +2962,7 @@
 
             // Simulation rule blending: origin sim updates in place before departure; destination sim runs live for seamless arrival
             const fromSimIntensity = clamp(1.0 - smoothstep(0.0, 0.35, u), 0.15, 1.0);
-            if (fromForm && u < 0.45) {
+            if (fromForm && u < (FLIGHT_V2 ? 0.50 : 0.45)) {
                 if (typeof fromForm.setIntensity === "function") fromForm.setIntensity(fromSimIntensity);
                 fromForm.update(dt * fromSimIntensity, simTime, fromScratchBuffer, ctxState);
             }
@@ -2462,7 +2985,7 @@
             applyDomSectionVisibility(trans.fromIndex, trans.toIndex, u, true);
 
             // Solo hero particle (i = 0) detaches from origin simulation, travels long 3D arc, and joins destination simulation's live particle 0 trajectory seamlessly
-            const sHero = smootherstep(0.0, 0.92, u);
+            const sHero = FLIGHT_V2 ? flightParam(u) : smootherstep(0.0, 0.92, u);
             evalFlightPath(sHero, tmpHeroPos);
             evalFlightTangent(sHero, tmpHeroTan);
 
@@ -2501,7 +3024,10 @@
             // - u < 0.22: origin simulation fades out in place as hero particle detaches
             // - 0.22 <= u < 0.72: completely invisible (sizes[i] = 0) so ONLY the 1 hero particle is seen travelling
             // - u >= 0.72: destination simulation blossoms radially around the arriving hero particle at its live coordinates
-            const originFade = 1.0 - smootherstep(0.02, 0.22, u);
+            // V2: the origin simulation dims to a faint backdrop and recedes with the camera, then is released once far away
+            const originFade = FLIGHT_V2
+                ? (0.15 + 0.85 * (1.0 - smootherstep(0.02, 0.30, u))) * (1.0 - smootherstep(0.38, 0.49, u))
+                : 1.0 - smootherstep(0.02, 0.22, u);
             for (let i = 1; i < N; i++) {
                 const i3 = i * 3;
 
@@ -2537,8 +3063,9 @@
                         sizes[i]        = 0.0;
                     } else {
                         const rank = particleRanks[i];
-                        const revealStart = 0.72 + 0.16 * rank;
-                        const revealEnd = Math.min(1.0, revealStart + 0.12);
+                        // V2: grows outward from the landing point (rank = distance from it) as the hero brakes in
+                        const revealStart = FLIGHT_V2 ? 0.76 + 0.12 * rank : 0.72 + 0.16 * rank;
+                        const revealEnd = Math.min(1.0, revealStart + (FLIGHT_V2 ? 0.16 : 0.12));
                         const wIn = smootherstep(revealStart, revealEnd, u);
                         colours[i3]     = nextColours[i3] * wIn;
                         colours[i3 + 1] = nextColours[i3 + 1] * wIn;
@@ -2551,8 +3078,9 @@
             // THRESHOLD ring forms ahead of hero along path tangent around u = 0.50
             if (!reduced && u >= 0.38 && u <= 0.64) {
                 ringOpacity = smoothstep(0.38, 0.48, u) * (1.0 - smoothstep(0.54, 0.64, u));
-                evalFlightPath(0.50, tmpThresholdPos);
-                evalFlightTangent(0.50, tmpThresholdTan);
+                const sRing = FLIGHT_V2 ? flightParam(0.50) : 0.50;
+                evalFlightPath(sRing, tmpThresholdPos);
+                evalFlightTangent(sRing, tmpThresholdTan);
 
                 tmpRingColour[0] = fromProf.heroColour[0] * (1.0 - dimBlend) + toProf.heroColour[0] * dimBlend;
                 tmpRingColour[1] = fromProf.heroColour[1] * (1.0 - dimBlend) + toProf.heroColour[1] * dimBlend;
@@ -2576,6 +3104,11 @@
                 fovSpike = 0.0;
             }
 
+            // V2: drive the (already present) radial warp blur + chromatic split from the hero's normalised speed,
+            // so cruise reads as travel at speed instead of a section change.
+            const vS = FLIGHT_V2 ? flightSpeed(u, trans.v0 || 0.0) : 0.0;
+            trans.warpStrength = (FLIGHT_V2 && !reduced) ? 0.55 * vS * vS : 0.0;
+
             const baseFov = fromProf.fov + (toProf.fov - fromProf.fov) * dimBlend;
 
             if (reduced) {
@@ -2595,9 +3128,38 @@
                 const baseTgtY = trans.camStartTarget.y + (trans.camEndTarget.y - trans.camStartTarget.y) * baseLerp;
                 const baseTgtZ = trans.camStartTarget.z + (trans.camEndTarget.z - trans.camStartTarget.z) * baseLerp;
 
-                const railCamX = positions[0] - tmpHeroTan.x * 5.8;
-                const railCamY = positions[1] - tmpHeroTan.y * 3.8 + 1.8;
-                const railCamZ = positions[2] + 9.2;
+                let railCamX, railCamY, railCamZ;
+                let tgtHX = positions[0], tgtHY = positions[1], tgtHZ = positions[2];
+                if (FLIGHT_V2) {
+                    // Chase in the hero's tangent frame (behind along -T, above), with exponential lag and a lagged look-at
+                    let tx = tmpHeroTan.x, ty = tmpHeroTan.y, tz = tmpHeroTan.z;
+                    const tl = Math.hypot(tx, ty, tz);
+                    if (tl > 1e-6) { tx /= tl; ty /= tl; tz /= tl; } else { tx = 0.0; ty = 0.0; tz = -1.0; }
+                    const chaseSpan = Math.hypot(trans.heroEnd.x - trans.heroStart.x, trans.heroEnd.y - trans.heroStart.y, trans.heroEnd.z - trans.heroStart.z);
+                    const chaseDist = clamp(chaseSpan * 0.045, 5.5, 13.0);
+                    const dX = positions[0] - tx * chaseDist;
+                    const dY = positions[1] - ty * chaseDist + chaseDist * 0.28;
+                    const dZ = positions[2] - tz * chaseDist;
+                    if (!chase.init) {
+                        chase.pos.set(dX, dY, dZ);
+                        chase.tgt.set(positions[0], positions[1], positions[2]);
+                        chase.init = true;
+                    }
+                    const kp = 1.0 - Math.exp(-3.4 * dt);
+                    const kt = 1.0 - Math.exp(-7.0 * dt);
+                    chase.pos.x += (dX - chase.pos.x) * kp;
+                    chase.pos.y += (dY - chase.pos.y) * kp;
+                    chase.pos.z += (dZ - chase.pos.z) * kp;
+                    chase.tgt.x += (positions[0] - chase.tgt.x) * kt;
+                    chase.tgt.y += (positions[1] - chase.tgt.y) * kt;
+                    chase.tgt.z += (positions[2] - chase.tgt.z) * kt;
+                    railCamX = chase.pos.x; railCamY = chase.pos.y; railCamZ = chase.pos.z;
+                    tgtHX = chase.tgt.x; tgtHY = chase.tgt.y; tgtHZ = chase.tgt.z;
+                } else {
+                    railCamX = positions[0] - tmpHeroTan.x * 5.8;
+                    railCamY = positions[1] - tmpHeroTan.y * 3.8 + 1.8;
+                    railCamZ = positions[2] + 9.2;
+                }
 
                 camera.position.set(
                     baseCamX + (railCamX - baseCamX) * railWeight * 0.86,
@@ -2605,13 +3167,13 @@
                     baseCamZ + (railCamZ - baseCamZ) * railWeight * 0.86
                 );
                 camera.target.set(
-                    baseTgtX + (positions[0] - baseTgtX) * railWeight * 0.92,
-                    baseTgtY + (positions[1] - baseTgtY) * railWeight * 0.92,
-                    baseTgtZ + (positions[2] - baseTgtZ) * railWeight * 0.92
+                    baseTgtX + (tgtHX - baseTgtX) * railWeight * 0.92,
+                    baseTgtY + (tgtHY - baseTgtY) * railWeight * 0.92,
+                    baseTgtZ + (tgtHZ - baseTgtZ) * railWeight * 0.92
                 );
 
                 const breath = Math.sin(Math.PI * smoothstep(0.08, 0.92, u));
-                camera.fov = baseFov + 9.5 * breath + fovSpike;
+                camera.fov = baseFov + (FLIGHT_V2 ? 16.0 * vS : 9.5 * breath) + fovSpike;
             }
 
             // DimensionProfile continuous blend driven by dimBlend
@@ -3085,6 +3647,7 @@
         stepLocale,
         refreshSections,
         goToSection: goToDimension,
+        transitionToState,
         triggerStep
     };
 }));
