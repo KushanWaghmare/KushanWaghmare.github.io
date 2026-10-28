@@ -14,12 +14,10 @@
     const MOD_DEPS = {
         lob: ["shared/gpu/gpu-lob-shaders.js"],
         math: ["shared/lib/mobius-math.js"],
-        "primes-waves": ["shared/lib/zeta-zeros.js", "shared/lib/zeta-math.js", "shared/gpu/gpu-primes-waves-shaders.js"],
         qsim: ["shared/lib/qsim-math.js", "shared/gpu/gpu-qsim-shaders.js"],
         copula: ["shared/lib/copula-math.js", "shared/gpu/gpu-copula-shaders.js"],
         crystal: ["shared/lib/lattice-math.js", "shared/gpu/gpu-crystal-shaders.js"],
-        quant: ["shared/lib/lattice-math.js", "shared/gpu/gpu-crystal-shaders.js"],
-        cy: ["shared/lib/cy-math.js", "shared/gpu/gpu-cy-shaders.js", "shared/gpu/gpu-cy-oit.js"]
+        quant: ["shared/lib/lattice-math.js", "shared/gpu/gpu-crystal-shaders.js"]
     };
 
     const loadScript = (src) => new Promise((resolve, reject) => {
