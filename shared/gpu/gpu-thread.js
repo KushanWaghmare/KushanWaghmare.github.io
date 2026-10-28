@@ -536,6 +536,7 @@
     window.addEventListener("pointercancel", () => { isPointerDragging = false; });
 
     let isNavigatingExplore = false;
+    let handoff = null;
     let pendingStartInside = false;
 
     const DOMAIN_PROJECT_1 = {
@@ -584,12 +585,13 @@
 
                 // Let the dive finish, fade to black at its end, swap page (new page starts INSIDE), fade back in
                 const veil = document.createElement("div");
-                veil.style.cssText = "position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:9999;transition:opacity .35s ease";
+                veil.style.cssText = "position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:9999;transition:opacity .18s ease";
                 document.body.appendChild(veil);
                 const t0 = performance.now();
                 const go = () => {
                     if (intraHop.active && performance.now() - t0 < 2500) { setTimeout(go, 50); return; }
                     veil.style.opacity = "1";
+                    handoff = { t: 0, px: camera.position.x, py: camera.position.y, pz: camera.position.z, tx: camera.target.x, ty: camera.target.y, tz: camera.target.z, fov: camera.fov };
                     setTimeout(async () => {
                         isNavigatingExplore = false;
                         if (window.KW && typeof window.KW.loadPage === "function") {
@@ -599,8 +601,8 @@
                             return;
                         }
                         veil.style.opacity = "0";
-                        setTimeout(() => veil.remove(), 450);
-                    }, 360);
+                        setTimeout(() => veil.remove(), 250);
+                    }, 190);
                 };
                 setTimeout(go, 600);
                 return;
@@ -2220,6 +2222,16 @@
 
         const targetFov = (isInside && curSim && curSim.immersiveCamera) ? curSim.immersiveCamera.fov : curProf.fov;
         camera.fov += (targetFov - camera.fov) * pLerp;
+        if (handoff) {
+            // Continue from the pose the previous page's dive ended on, easing into this page's inside pose
+            handoff.t += dt / 1.2;
+            const w = smootherstep(0.0, 1.0, handoff.t);
+            const k = 1.0 - w;
+            camera.position.set(poseA.x + (handoff.px - poseA.x) * k, poseA.y + (handoff.py - poseA.y) * k, poseA.z + (handoff.pz - poseA.z) * k);
+            camera.target.set(poseB.x + (handoff.tx - poseB.x) * k, poseB.y + (handoff.ty - poseB.y) * k, poseB.z + (handoff.tz - poseB.z) * k);
+            camera.fov = targetFov + (handoff.fov - targetFov) * k;
+            if (handoff.t >= 1.0) handoff = null;
+        }
         camera.near = isInside ? 0.05 : 0.1;
         camera.far = isInside ? 450.0 : 600.0;
         inside.shift = 0.0;
