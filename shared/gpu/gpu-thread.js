@@ -1444,6 +1444,17 @@
         const camDist = toForm.cameraDistance || 13.5;
         trans.camEndPos.set(toForm.origin.x, toForm.origin.y, toForm.origin.z + camDist);
         trans.camEndTarget.copy(toForm.origin);
+        if (!isHubPage()) {
+            // Project hub: fly straight to the inside pose, no settle in the outside view first
+            const sp = ((sections[clampedTarget] && sections[clampedTarget].dataset.sim) || "").split(":");
+            const dm = getDimensions()[currentDimIndex];
+            const ss = (dm && (dm.sims || dm.locales)) || [];
+            const sm = ss[parseInt(sp[2], 10)] || ss[0];
+            const im = (sm && sm.immersiveCamera) || { offset: [0, 0.6, 3.5], target: [0, 0, 0] };
+            trans.camEndPos.set(toForm.origin.x + im.offset[0], toForm.origin.y + im.offset[1], toForm.origin.z + im.offset[2]);
+            trans.camEndTarget.set(toForm.origin.x + im.target[0], toForm.origin.y + im.target[1], toForm.origin.z + im.target[2]);
+            trans.toInside = true;
+        } else trans.toInside = false;
 
         if (wasMidFlight) {
             // Continuing or reversing: blend smoothly from live value without a pop
@@ -2641,9 +2652,9 @@
                 trans.warpStrength = 0.0;
                 applyDomSectionVisibility(currentIndex, currentIndex, 1.0, false);
                 updateThemeAndDots(currentIndex);
-                appMode = "VIEW";
-                inside.value = 0.0;
-                inside.isInside = false;
+                appMode = trans.toInside ? "INSIDE" : "VIEW";
+                inside.value = trans.toInside ? 1.0 : 0.0;
+                inside.isInside = !!trans.toInside;
                 inside.shift = 0.0;
                 updateIntraIndicator(currentDimIndex, currentLocaleIndex);
                 updateLocaleContent(currentDimIndex, currentLocaleIndex);
@@ -2663,8 +2674,6 @@
                     startTransition(nextQ);
                 } else {
                     trans.queuedIndex = -1;
-                    // Project hub: arriving at the next project dives inside it, same as Explore
-                    if (!isHubPage() && pendingEnter < 0) pendingEnter = currentSimIndex;
                     if (pendingEnter >= 0) {
                         const pe = pendingEnter;
                         pendingEnter = -1;
