@@ -91,22 +91,18 @@ float noise2D(vec2 p) {
 
 // Continuous multi-octave plasma turbulence with differential Keplerian shear & advected hot spots
 float diskTurbulence(float r, float phiCorot) {
-    // 1. Keplerian differential shear stretches disturbances into tightly wound logarithmic spirals
     float shear = 2.4 * log(max(1.0, r));
     float spiralAngle = phiCorot + shear;
     vec2 pDisk = vec2(cos(spiralAngle), sin(spiralAngle)) * (r * 0.55);
 
-    // 2. 4-octave fractal noise
     float n1 = noise2D(pDisk * 1.6);
     float n2 = noise2D(pDisk * 3.6 + vec2(1.7, 3.2));
     float n3 = noise2D(pDisk * 8.2 + vec2(4.1, 0.9));
     float n4 = noise2D(pDisk * 17.5 + vec2(2.3, 5.7));
     float fbm = 0.48 * n1 + 0.28 * n2 + 0.16 * n3 + 0.08 * n4;
 
-    // 3. Concentric density ripples
     float ripples = 0.82 + 0.18 * sin(r * 4.2 + 2.5 * fbm);
 
-    // 4. Lensed & Doppler-boosted advected hot spots orbiting inside the tracer
     float spot1 = exp(-pow(length(vec2(cos(phiCorot - 0.4), sin(phiCorot - 0.4)) * r - vec2(2.8, 0.0)), 2.0) * 1.8);
     float spot2 = exp(-pow(length(vec2(cos(phiCorot - 2.6), sin(phiCorot - 2.6)) * r - vec2(4.2, 0.0)), 2.0) * 1.4);
     float spot3 = exp(-pow(length(vec2(cos(phiCorot - 4.8), sin(phiCorot - 4.8)) * r - vec2(6.5, 0.0)), 2.0) * 0.9);
@@ -115,9 +111,6 @@ float diskTurbulence(float r, float phiCorot) {
     return clamp((0.35 + 1.25 * fbm) * ripples * hotSpots, 0.15, 3.5);
 }
 
-// Canonical equations of motion in Boyer–Lindquist coordinates using Carter's
-// polynomial formulation in u = cos(θ). Free of coordinate singularities at the
-// polar axis (u = ±1), and exactly conserves Carter's constant Q along the trajectory.
 void stateDerivs(vec4 s, float a, float L, float c1, float c2, out vec4 ds) {
     float r = s.x;
     float u = clamp(s.y, -0.9998, 0.9998);
@@ -130,7 +123,6 @@ void stateDerivs(vec4 s, float a, float L, float c1, float c2, out vec4 ds) {
     float del = max(1e-5, r2 - 2.0 * r + a2);
     float pOverDel = (r2 + a2 - a * L) / del;
 
-    // Coordinate velocities dr/dλ, du/dλ and canonical forces dp_r/dλ, dp_u/dλ
     float dr = del * pr * invSig;
     float du = pu * invSig;
     float dpr = (2.0 * r * pOverDel - (r - 1.0) * (pr * pr + pOverDel * pOverDel)) * invSig;
@@ -139,7 +131,6 @@ void stateDerivs(vec4 s, float a, float L, float c1, float c2, out vec4 ds) {
     ds = vec4(dr, du, dpr, dpu);
 }
 
-// Evaluates local disk emission, Doppler shift, corotating turbulence, and blackbody colour
 void sampleDiskEmission(float r, float phi, float t, float L, out vec3 outCol, out float outIntensity, out float outG) {
     float uCoord = clamp((r - uRisco) / (uRout - uRisco), 0.0, 1.0);
     vec4 lut = texture(uDiskLUT, vec2(uCoord, 0.5));
@@ -148,31 +139,25 @@ void sampleDiskEmission(float r, float phi, float t, float L, out vec3 outCol, o
     float ut = lut.b;
     float tempScale = lut.a;
 
-    // Relativistic redshift and Doppler factor g = 1 / (u^t * (1 - Ω * L))
     float factor = ut * (1.0 - omega * L);
     float g = factor > 1e-5 ? clamp(1.0 / factor, 0.05, 10.0) : 0.0;
     outG = g;
 
-    // Mode: physical (0) vs cinematic (1)
     float gBoost = pow(g, 4.0);
     float gTemp = g;
     if (uMode == 1) {
-        // Cinematic mode: scale g toward 1 (as in Interstellar) to preserve visible receding side
         float gEff = pow(max(1e-4, g), 0.40);
         gBoost = gEff * gEff * gEff * gEff;
         gTemp = pow(max(1e-4, g), 0.65);
     }
 
-    // Corotating coordinates φ - Ω(r) * t_emit (differential Keplerian rotation + retardation)
     float phiCorot = phi - omega * (uTime - t);
     float turb = diskTurbulence(r, phiCorot);
 
-    // Temperature: T_em ∝ F^(1/4), T_obs = T_em * g
     float Tem = max(1200.0, uTpeak * tempScale);
     float Tobs = Tem * gTemp;
 
     vec3 c = blackbody(Tobs);
-    // Artistically scaled Planckian tone: deep rich burnt orange-brown below 3500 K, pristine white-blue at high temp
     if (Tobs < 3500.0) {
         float warmRamp = clamp((Tobs - 1000.0) / 2500.0, 0.0, 1.0);
         c = mix(vec3(0.55, 0.12, 0.02), c, warmRamp);
@@ -182,17 +167,14 @@ void sampleDiskEmission(float r, float phi, float t, float L, out vec3 outCol, o
 }
 
 void main() {
-    // Screen impact parameters (α, β) with sub-pixel Halton jitter
     vec2 pScreen = ((gl_FragCoord.xy + uJitter) - vec2(0.5 * uRes.x + uOriginShiftX * uRes.x, 0.5 * uRes.y)) / uRes.y;
     float alpha = pScreen.x * uFovScale;
     float beta = pScreen.y * uFovScale;
 
-    // Observer setup: clamp θ_obs to [0.05, π - 0.05]
     float thetaObs = clamp(uTilt, 0.05, 3.14159265 - 0.05);
     float sinObs = sin(thetaObs);
     float cosObs = cos(thetaObs);
 
-    // Bardeen initialisation
     float a = uSpin;
     float a2 = a * a;
     float L = -alpha * sinObs;
@@ -211,15 +193,11 @@ void main() {
     float tEmit = 0.0;
     float phiEmit = 0.0;
 
-    // Line-of-sight unit vectors
     vec3 fwd = vec3(-sinObs, -cosObs, 0.0);
     vec3 up = vec3(-cosObs, sinObs, 0.0);
     vec3 right = vec3(0.0, 0.0, -1.0);
     vec3 straightSkyDir = normalize(fwd + 1.25 * (beta * up + alpha * right) / rObs);
 
-    // Weak-field Kerr deflected background ray direction:
-    // In the far field (b >= 5.5), Kerr deflection is smooth, analytic, and free
-    // from polar coordinate singularities.
     float bImpact = max(1e-4, length(vec2(alpha, beta)));
     float thetaDefl = 4.0 / bImpact + 11.780972 / (bImpact * bImpact);
     float thetaKerr = (4.0 * a * sinObs) / (bImpact * bImpact);
@@ -233,7 +211,6 @@ void main() {
     float r_out = uRout;
     float epsH = uEpsHorizon;
 
-    // Screen-space bounding ellipse pre-check (maintains uniform control flow for dFdx/dFdy)
     float maxB = r_out + 2.2;
     float maxBeta = (r_out + 2.0) * abs(cosObs) + (uDiskType == 1 ? 11.0 : 8.5);
     bool escaped = (uDebugMode == 0) && (bImpact >= maxB || abs(beta) >= maxBeta);
@@ -243,7 +220,6 @@ void main() {
     float transmittance = 1.0;
     int diskCrossings = 0;
 
-    // Diagnostics telemetry
     float maxH = 0.0;
     float firstG = 0.0;
     float firstRHit = 0.0;
@@ -253,7 +229,6 @@ void main() {
         float r = s.x;
         float u = s.y;
 
-        // Hamiltonian conservation error |H|
         if (uDebugMode == 1 && r > r_plus) {
             float sig = r * r + a2 * u * u;
             float del = r * r - 2.0 * r + a2;
@@ -264,21 +239,16 @@ void main() {
             maxH = max(maxH, curH);
         }
 
-        // Horizon capture check: terminate when ray crosses absorbed threshold r < r_+(1+eps)
         if (r <= r_plus * (1.0 + epsH)) {
             captured = true;
             break;
         }
 
-        // Fast weak-field outward escape check:
-        // Any ray outside the multi-crossing region (b > 10.5) that is moving outward (pr > 0)
-        // and moving away from the equatorial plane (u * pu >= 0) cannot hit the thin disk again.
         if (uDebugMode == 0 && uDiskType == 0 && bImpact > 10.5 && s.z > 0.0 && u * s.w >= 0.0) {
             escaped = true;
             break;
         }
 
-        // Escape check: ray has turned around and escaped past the accretion disk
         if ((r >= 24.5 && s.z > 0.0 && step > 2) || (r >= rObs + 2.0 && s.z > 0.0)) {
             if (bImpact < 7.2) {
                 float uEsc = clamp(s.y, -0.9998, 0.9998);
@@ -304,14 +274,12 @@ void main() {
             break;
         }
 
-        // Adaptive step size: large in flat exterior (r > r_out + 1.5), fine near horizon & photon sphere
         float distH = max(1e-4, r - r_plus);
         float dl = (r > r_out + 1.5 && uDebugMode == 0)
             ? min(6.0, (r - r_out) * 0.45 + 1.2)
             : clamp(0.12 * distH, 0.001, 2.5);
         if (abs(u) < 0.08 && r < 25.0) dl *= 0.65;
 
-        // RK4 integration step for (r, u, pr, pu)
         vec4 k1s, k2s, k3s, k4s;
         stateDerivs(s, a, L, c1, c2, k1s);
         stateDerivs(s + 0.5 * dl * k1s, a, L, c1, c2, k2s);
@@ -320,7 +288,6 @@ void main() {
 
         vec4 sNext = s + (dl / 6.0) * (k1s + 2.0 * k2s + 2.0 * k3s + k4s);
 
-        // Midpoint quadrature for coordinate time t and exact Lorentzian-regularised φ near poles
         float rM = 0.5 * (r + sNext.x);
         float uM = clamp(0.5 * (u + sNext.y), -0.9999, 0.9999);
         float rM2 = rM * rM;
@@ -331,7 +298,6 @@ void main() {
 
         float dPhiSph;
         if (oneMinusU2 < 0.025) {
-            // Exact analytic integral of L / (Σ * (1 - u²)) across polar turning point (|u| > 0.987)
             float numK = Q + L * L + a2 * uM * uM;
             float denK = max(1e-5, Q + L * L - a2 + 2.0 * a2 * uM * uM) * uM;
             dPhiSph = (numK / denK) * atan(L * (s.w - sNext.w), L * L + s.w * sNext.w);
@@ -341,14 +307,10 @@ void main() {
         float phiNext = phiEmit + dPhiSph + dl * a * (pOverDelM - 1.0) * invSigM;
 
         if (uDiskType == 0) {
-            // -------------------------------------------------------------
-            // THIN DISK: Equatorial crossing detection & multi-crossing accumulation
-            // -------------------------------------------------------------
             float uPrev = s.y;
             float uNext = sNext.y;
 
             if (uPrev * uNext <= 0.0 && s.x > r_plus) {
-                // Secant / linear bisection refinement of equatorial hit (u = 0)
                 float frac = clamp(abs(uPrev) / max(1e-6, abs(uPrev) + abs(uNext)), 0.0, 1.0);
                 vec4 sHit = mix(s, sNext, frac);
                 float fracRefined = clamp(frac - sHit.y / max(1e-6, uPrev - uNext), 0.0, 1.0);
@@ -370,7 +332,6 @@ void main() {
                     }
 
                     float alphaDisk = uDiskOpacity * smoothstep(r_out, r_out * 0.75, rHit);
-                    // For higher-order crossings (n >= 2), the photon ring is thin and crisp
                     if (diskCrossings > 1) {
                         alphaDisk = min(alphaDisk, 0.70);
                     }
@@ -384,9 +345,6 @@ void main() {
                 }
             }
         } else {
-            // -------------------------------------------------------------
-            // VOLUMETRIC DISK: Gaussian vertical profile H/R in [0.03, 0.08]
-            // -------------------------------------------------------------
             float rAvg = 0.5 * (s.x + sNext.x);
             if (rAvg >= r_isco && rAvg <= r_out) {
                 float uNorm = abs(sNext.y) / max(1e-4, uDiskH);
@@ -418,7 +376,6 @@ void main() {
         phiEmit = phiNext;
     }
 
-    // If ray is moving outward in weak field when step cap was reached, it has escaped
     if (!escaped && !captured && s.z > 0.0 && s.x > 15.0) {
         float rEsc = s.x;
         float uEsc = clamp(s.y, -0.9998, 0.9998);
@@ -442,10 +399,7 @@ void main() {
         escaped = true;
     }
 
-    // Diagnostics Views (Telemetry Modes 1 to 4)
     if (uDebugMode == 1) {
-        // Mode 1: Hamiltonian error |H|
-        // Logarithmic scale: 1e-7 to 1e-3
         float logH = log(max(1e-9, maxH)) / 2.302585;
         float tH = clamp((logH + 7.0) / 4.0, 0.0, 1.0);
         vec3 colH;
@@ -456,18 +410,16 @@ void main() {
         return;
     }
     if (uDebugMode == 2) {
-        // Mode 2: Equatorial crossing order
         vec3 colOrder = vec3(0.02);
-        if (diskCrossings == 1) colOrder = vec3(0.15, 0.45, 0.95);      // Primary (blue)
-        else if (diskCrossings == 2) colOrder = vec3(0.15, 0.85, 0.35); // Secondary (green)
-        else if (diskCrossings == 3) colOrder = vec3(0.95, 0.75, 0.10); // Tertiary (yellow)
-        else if (diskCrossings >= 4) colOrder = vec3(0.95, 0.20, 0.15); // Quaternary+ (red)
+        if (diskCrossings == 1) colOrder = vec3(0.15, 0.45, 0.95);
+        else if (diskCrossings == 2) colOrder = vec3(0.15, 0.85, 0.35);
+        else if (diskCrossings == 3) colOrder = vec3(0.95, 0.75, 0.10);
+        else if (diskCrossings >= 4) colOrder = vec3(0.95, 0.20, 0.15);
         if (captured && diskCrossings == 0) colOrder = vec3(0.0);
         fragColor = vec4(colOrder, 1.0);
         return;
     }
     if (uDebugMode == 3) {
-        // Mode 3: Relativistic redshift & Doppler g-factor
         vec3 colG = vec3(0.03);
         if (diskCrossings > 0) {
             float gVal = clamp(firstG, 0.2, 2.5);
@@ -483,7 +435,6 @@ void main() {
         return;
     }
     if (uDebugMode == 4) {
-        // Mode 4: Disk hit radius r_hit ∈ [r_isco, r_out]
         vec3 colR = vec3(0.03);
         if (diskCrossings > 0) {
             float rNorm = clamp((firstRHit - uRisco) / (uRout - uRisco), 0.0, 1.0);
@@ -495,24 +446,19 @@ void main() {
         return;
     }
 
-    // Ray-bundle Jacobian finite-difference magnification:
-    // Near the photon sphere and shadow boundary, ray bundle cross section shrinks,
-    // magnifying background starlight and generating Einstein arcs and double images.
+    // Ray-bundle Jacobian finite-difference magnification (protected against quad branch discontinuity at shadow edge)
     vec3 dDirX = dFdx(skyDir);
     vec3 dDirY = dFdy(skyDir);
     float bundleArea = max(1e-7, length(cross(dDirX, dDirY)));
-    float mu = clamp(0.00018 / bundleArea, 0.45, 4.5);
+    float mu = (captured || bImpact < 5.2) ? 1.0 : clamp(0.00018 / bundleArea, 0.75, 4.5);
     vec3 gradX = clamp(dDirX, vec3(-0.015), vec3(0.015));
     vec3 gradY = clamp(dDirY, vec3(-0.015), vec3(0.015));
     vec3 bgSky = textureGrad(uSkyCube, skyDir, gradX, gradY).rgb * mu;
 
-    // Rays captured by the event horizon are completely dark if not occluded by the foreground disk
     if (captured || !escaped) {
         bgSky = vec3(0.0);
     }
 
-    // Screen-space mask fading leftward disc extension on desktop
-    // so streaks never cross or collide with subtitle or formula card
     float leftFade = (uOriginShiftX > 0.05) ? smoothstep(0.08, 0.44, gl_FragCoord.x / uRes.x) : 1.0;
     emitColor *= leftFade;
 
@@ -521,11 +467,6 @@ void main() {
 }
 `;
 
-    // -------------------------------------------------------------------------
-    // POST-PROCESSING PIPELINE (TAA, Dual-Kawase Bloom, Filmic Tonemapping)
-    // -------------------------------------------------------------------------
-
-    // Temporal Anti-Aliasing (TAA) Ping-Pong Accumulation
     const FS_ACCUM = `#version 300 es
 precision highp float;
 
@@ -534,7 +475,7 @@ out vec4 fragColor;
 
 uniform sampler2D uCurrent;
 uniform sampler2D uHistory;
-uniform float uBlend; // 1.0 / (N + 1.0)
+uniform float uBlend;
 
 void main() {
     vec4 current = texture(uCurrent, vUV);
@@ -543,7 +484,6 @@ void main() {
 }
 `;
 
-    // Dual-Kawase Bloom Downsampling Pass
     const FS_BLOOM_DOWN = `#version 300 es
 precision highp float;
 
@@ -555,7 +495,6 @@ uniform vec2 uTexelSize;
 uniform int uFirstPass;
 uniform float uThreshold;
 
-// Soft-knee brightness extraction
 vec3 prefilter(vec3 c) {
     float brightness = max(c.r, max(c.g, c.b));
     float knee = 0.5;
@@ -579,7 +518,6 @@ void main() {
 }
 `;
 
-    // Dual-Kawase Bloom Upsampling Pass
     const FS_BLOOM_UP = `#version 300 es
 precision highp float;
 
@@ -604,7 +542,6 @@ void main() {
 }
 `;
 
-    // Filmic Composition, Tonemapping, Subtle Vignette and Film Grain
     const FS_COMPOSE = `#version 300 es
 precision highp float;
 
@@ -623,7 +560,6 @@ uniform vec2 uRevealCentre;
 uniform float uRevealRadius;
 uniform float uRevealSoftness;
 
-// ACES filmic tonemapping
 vec3 aces(vec3 x) {
     const float a = 2.51;
     const float b = 0.03;
@@ -633,7 +569,6 @@ vec3 aces(vec3 x) {
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
-// Procedural hash for subtle film grain
 float hashGrain(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
@@ -641,14 +576,12 @@ float hashGrain(vec2 p) {
 }
 
 void main() {
-    // Bypass post-processing in debug modes to show exact false-colour telemetry
     if (uDebugMode > 0) {
         vec4 raw = texture(uRayTarget, vUV);
         fragColor = vec4(raw.rgb, 1.0);
         return;
     }
 
-    // 1. Very light chromatic aberration at the edges (radial split)
     vec2 uvDist = vUV - 0.5;
     float r2 = dot(uvDist, uvDist);
     vec2 caOffset = uvDist * (0.0032 * r2);
@@ -657,33 +590,24 @@ void main() {
     rawRgb.g = texture(uRayTarget, vUV).g;
     rawRgb.b = texture(uRayTarget, vUV + caOffset).b;
 
-    // 2. Dual-Kawase Bloom with subtle lens glare on the brightest points only
     vec3 bloom = texture(uBloomTarget, vUV).rgb;
     float peak = max(rawRgb.r, max(rawRgb.g, rawRgb.b));
     float glare = max(0.0, peak - 2.8) * 0.10;
     vec3 hdr = rawRgb + bloom * uBloomIntensity + vec3(glare * 0.75, glare * 0.88, glare * 1.05);
 
-    // 3. Gentle exposure adaptation & subtle corner vignette
     hdr *= (uExposure * max(0.0, uIntensity));
     float vig = clamp(1.0 - 0.32 * r2, 0.0, 1.0);
     hdr *= vig;
 
-    // 4. Filmic tonemapping (ACES)
     vec3 mapped = aces(hdr);
-
-    // 5. sRGB gamma 2.2
     vec3 finalRGB = pow(mapped, vec3(1.0 / 2.2));
 
-    // 6. Subtle film grain (<= 1.6%) weighted by luminance so pitch-black space remains pure #000000
     float luma = dot(finalRGB, vec3(0.2126, 0.7152, 0.0722));
     float grain = (hashGrain(vUV * uRes + fract(uTime * 19.3)) - 0.5) * 0.015 * smoothstep(0.01, 0.25, luma);
-
-    // 7. Spatial gradient dithering to eliminate banding in dark gradients
     float dither = (hashGrain(vUV * uRes + vec2(1.23, 4.56)) - 0.5) / 255.0;
 
     finalRGB = clamp(finalRGB + grain + dither, 0.0, 1.0);
 
-    // Optional circular reveal / iris mask for transit transitions (radius >= 1.95 leaves visuals unchanged)
     if (uRevealRadius < 1.95) {
         float dReveal = length(vUV - uRevealCentre);
         float revealMask = 1.0 - smoothstep(max(0.0, uRevealRadius - uRevealSoftness), uRevealRadius + uRevealSoftness, dReveal);

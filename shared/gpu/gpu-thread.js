@@ -2376,8 +2376,8 @@
 
         const active = formations[currentDimIndex];
         if (active) {
-            active.setIntensity(1.0);
-            active.setReveal(1.0);
+            if (typeof active.setIntensity === "function") active.setIntensity(1.0);
+            if (typeof active.setReveal === "function") active.setReveal(1.0);
         }
 
         const nextTarget = h.queuedSimIndex !== -1 ? h.queuedSimIndex : h.queuedLocaleIndex;
@@ -2428,7 +2428,7 @@
             // Previous sim recedes (1 -> 0.15), new sim blossoms outward from landing point (0 -> 1 over 1.2s)
             if (active) {
                 if (u < 0.45) {
-                    active.setIntensity(1.0 - 0.85 * (u / 0.45));
+                    if (typeof active.setIntensity === "function") active.setIntensity(1.0 - 0.85 * (u / 0.45));
                 } else {
                     if (!h.presetApplied) {
                         if (destSim && destSim.simPreset && typeof active.applyPreset === "function") {
@@ -2444,8 +2444,8 @@
                         h.presetApplied = true;
                     }
                     const revProgress = smoothstep(0.45, 1.0, u);
-                    active.setReveal(revProgress);
-                    active.setIntensity(0.15 + 0.85 * smoothstep(0.75, 1.0, u));
+                    if (typeof active.setReveal === "function") active.setReveal(revProgress);
+                    if (typeof active.setIntensity === "function") active.setIntensity(0.15 + 0.85 * smoothstep(0.75, 1.0, u));
                 }
             }
 
@@ -2586,8 +2586,10 @@
         postState.shockwave = 0.0;
         postState.shockwaveRadius = 0.0;
         diveBoost = 0.0;
-        if (isInside) {
+        const activeFormIdle = formations[currentIndex];
+        if (isInside && !(activeFormIdle && activeFormIdle.kerrOverlay)) {
             // Inside: the hero rests near the sim anchor and eases through its idle sway
+            // (Except on Kerr Black Hole where hero particle 0 natively orbits the relativistic inner disc)
             anchorWorld(dimIdx, currentSimIndex, "INSIDE", poseAnchor);
             sampleIdle(dimIdx, currentSimIndex, idleVec);
             positions[0] = poseAnchor.x + idleVec.x;
@@ -3192,7 +3194,8 @@
             const tD = (toForm && toForm.trailDecay) || 0.68;
             postState.trailDecay = (fD + (tD - fD) * dimBlend) * 0.72;
 
-            trans.auxOpacity = smoothstep(0.86, 1.00, u);
+            const isToKerr = !!(toForm && toForm.kerrOverlay);
+            trans.auxOpacity = isToKerr ? smoothstep(0.58, 0.94, u) : smoothstep(0.86, 1.00, u);
 
             if (u >= 1.0) {
                 currentIndex = trans.toIndex;

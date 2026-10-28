@@ -21,6 +21,21 @@
     };
 
     /**
+     * Tanner Helland blackbody colour approximation (hoisted to module scope).
+     */
+    const blackbodyCol = (tempK) => {
+        const t = Math.max(1000, Math.min(40000, tempK)) * 0.01;
+        const tA = Math.max(t - 60, 1.0);
+        const tB = Math.max(t - 10, 1.0);
+        const r = t <= 66 ? 1.0 : Math.min(1.0, Math.max(0, 329.698727 * Math.pow(tA, -0.1332047592) / 255.0));
+        const g = t <= 66
+            ? Math.min(1.0, Math.max(0, (99.4708025861 * Math.log(t) - 161.1195681661) / 255.0))
+            : Math.min(1.0, Math.max(0, 288.1221695283 * Math.pow(tA, -0.0755148492) / 255.0));
+        const b = t >= 66 ? 1.0 : (t <= 19 ? 0.0 : Math.min(1.0, Math.max(0, (138.5177312231 * Math.log(tB) - 305.0447927307) / 255.0)));
+        return [r, g, b];
+    };
+
+    /**
      * Innermost Stable Circular Orbit (ISCO) radius.
      */
     const isco = (a, prograde = true) => {
@@ -142,10 +157,6 @@
 
     /**
      * Procedural starfield cubemap generator.
-     * Bakes 6 faces (RGBA16F Float32Array) at initialisation with:
-     *   - Poisson-distributed stars with power-law magnitude distribution and blackbody colours
-     *   - Inclined Milky Way galactic band with central bulge and dark dust lanes
-     *   - Faint diffuse emission nebula tinted with KW.col.a accent colour
      */
     const bakeStarfieldFaces = (size = 1024, accent = [0.22, 0.74, 0.97]) => {
         const faces = [];
@@ -153,7 +164,6 @@
             faces.push(new Float32Array(size * size * 4));
         }
 
-        // Seeded deterministic pseudo-random number generator (Mulberry32)
         let seed = 133742;
         const rand = () => {
             let t = (seed += 0x6d2b79f5);
@@ -167,20 +177,6 @@
             return t * t * (3.0 - 2.0 * t);
         };
 
-        // Tanner Helland blackbody colour approximation
-        const blackbodyCol = (tempK) => {
-            const t = Math.max(1000, Math.min(40000, tempK)) * 0.01;
-            const tA = Math.max(t - 60, 1.0);
-            const tB = Math.max(t - 10, 1.0);
-            const r = t <= 66 ? 1.0 : Math.min(1.0, Math.max(0, 329.698727 * Math.pow(tA, -0.1332047592) / 255.0));
-            const g = t <= 66
-                ? Math.min(1.0, Math.max(0, (99.4708025861 * Math.log(t) - 161.1195681661) / 255.0))
-                : Math.min(1.0, Math.max(0, 288.1221695283 * Math.pow(tA, -0.0755148492) / 255.0));
-            const b = t >= 66 ? 1.0 : (t <= 19 ? 0.0 : Math.min(1.0, Math.max(0, (138.5177312231 * Math.log(tB) - 305.0447927307) / 255.0)));
-            return [r, g, b];
-        };
-
-        // Galactic coordinate vectors (tilted relative to black hole spin axis)
         const nGal = [0.35, 0.82, 0.45];
         const nGalLen = Math.hypot(...nGal);
         nGal[0] /= nGalLen; nGal[1] /= nGalLen; nGal[2] /= nGalLen;
@@ -191,20 +187,16 @@
 
         const n0 = nGal[0], n1 = nGal[1], n2 = nGal[2];
 
-        // Orthonormal basis (e1, nGal, e2) for galactic plane star placement
         const e1Len = Math.hypot(n2, 0.0, -n0);
         const e1x = n2 / e1Len, e1y = 0.0, e1z = -n0 / e1Len;
         const e2x = n1 * e1z - n2 * e1y;
         const e2y = n2 * e1x - n0 * e1z;
         const e2z = n0 * e1y - n1 * e1x;
 
-        // Denser Poisson-distributed stars with power-law magnitude and blackbody colours
-        // Includes faint procedural Milky Way galactic band with central bulge and dark dust lanes
         const numStars = 14000;
         for (let i = 0; i < numStars; i++) {
             let dx, dy, dz;
             let isGalactic = false;
-            // 55% isotropic distribution across the sphere, 45% concentrated along galactic plane
             if (rand() < 0.55) {
                 const z = rand() * 2.0 - 1.0;
                 const phi = rand() * 2.0 * Math.PI;
@@ -215,7 +207,6 @@
             } else {
                 isGalactic = true;
                 const phi = rand() * 2.0 * Math.PI;
-                // Smooth bell-shaped latitude distribution (sum of 4 uniforms) to avoid hard strip edges
                 const b = ((rand() + rand() + rand() + rand()) - 2.0) * 0.18;
                 const rxy = Math.cos(b);
                 const sinB = Math.sin(b);
@@ -225,11 +216,9 @@
                 dz = cPhi * e1z + sinB * n2 + sPhi * e2z;
             }
 
-            // Power-law magnitude distribution (Pareto): most stars faint, few prominent
             const u = Math.max(1e-4, rand());
             let brightness = 0.20 * Math.pow(u, -0.68);
 
-            // Dark dust lane attenuation along galactic equator
             if (isGalactic) {
                 const galDist = Math.abs(dx * n0 + dy * n1 + dz * n2);
                 const dustLane = smoothstep(0.015, 0.065, galDist);
@@ -237,12 +226,10 @@
             }
             const clampedB = Math.min(36.0, brightness);
 
-            // Blackbody temperature: IMF heavily skewed toward cooler dwarf stars
             const uT = rand();
             const tempK = 2400 + (34000 - 2400) * uT * uT * uT;
             const [cr, cg, cb] = blackbodyCol(tempK);
 
-            // Determine cubemap face and UV projection
             const ax = Math.abs(dx), ay = Math.abs(dy), az = Math.abs(dz);
             let face = 0, sc = 0, tc = 0, ma = 1;
             if (ax >= ay && ax >= az) {
@@ -285,9 +272,6 @@
     };
 
     let cachedLUT = null;
-    /**
-     * Cached accessor for disk LUT, rebuilt only when spin, isco, or rout changes.
-     */
     const getDiskLUT = (a, r_isco, r_out, width = 512) => {
         if (cachedLUT && cachedLUT.a === a && cachedLUT.r_isco === r_isco && cachedLUT.r_out === r_out && cachedLUT.width === width) {
             return cachedLUT;
@@ -298,9 +282,6 @@
     };
 
     let cachedStarfield = null;
-    /**
-     * Cached accessor for baked starfield cubemap data.
-     */
     const getStarfieldData = (size = 1024, accent = [0.22, 0.74, 0.97]) => {
         if (cachedStarfield && cachedStarfield.size === size) {
             return cachedStarfield;
@@ -309,10 +290,6 @@
         return cachedStarfield;
     };
 
-    /**
-     * Verifies that energy E, axial angular momentum L_z, and Carter constant Q
-     * are strictly conserved along integrated null geodesics with drift < 1e-3.
-     */
     const verifyConservationDrift = (spin = 0.95, inclinationDeg = 78.0) => {
         const a = Math.max(-0.998, Math.min(0.998, spin));
         const a2 = a * a;
@@ -370,7 +347,6 @@
                     : Math.max(0.001, Math.min(2.5, 0.12 * distH));
                 if (Math.abs(u) < 0.08 && r < 25.0) dl *= 0.65;
 
-                // Hamiltonian check: 2Σ H = Δ pr² - P²/Δ + pu² - c1 u² - 0.5 c2 u⁴ + (L - a)²
                 const sig = r * r + a2 * u * u;
                 const del = Math.max(1e-5, r * r - 2.0 * r + a2);
                 const p = r * r + a2 - a * L;
@@ -384,7 +360,6 @@
                     if (driftQ > worstDriftQ) worstDriftQ = driftQ;
                 }
 
-                // RK4
                 const k1 = derivs(s);
                 const s2 = s.map((v, i) => v + 0.5 * dl * k1[i]);
                 const k2 = derivs(s2);
@@ -405,10 +380,6 @@
         return { worstDriftH, worstDriftQ, passed };
     };
 
-    /**
-     * Precomputes 1D Blackbody LUT (512 texels) across 1,000 K to 32,000 K.
-     * Artistically scaled: white-hot inner core, warm golden-amber mid, deep burnt orange-brown outer.
-     */
     const generateBlackbodyLUT = (width = 512) => {
         const data = new Float32Array(width * 4);
         for (let i = 0; i < width; i++) {
@@ -416,7 +387,6 @@
             const tempK = 1000.0 + u * (32000.0 - 1000.0);
             const [r, g, b] = blackbodyCol(tempK);
 
-            // Tonal grading: deep rich burnt orange-brown below 3500 K, pristine white-blue at high temp
             let cr = r, cg = g, cb = b;
             if (tempK < 3500.0) {
                 const w = (tempK - 1000.0) / 2500.0;
@@ -436,6 +406,7 @@
 
     const api = {
         horizon,
+        blackbodyCol,
         isco,
         keplerianOmega,
         fourVelocityUt,

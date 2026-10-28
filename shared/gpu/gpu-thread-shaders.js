@@ -584,24 +584,28 @@ void main() {
                 float factor = ut * (1.0 - omega * L);
                 float g = factor > 1e-4 ? clamp(1.0 / factor, 0.12, 6.5) : 1.0;
 
-                // Novikov-Thorne zero-torque flux profile F(r) & emitted temperature T_em ~ F(r)^(1/4)
+                // Exact peak of Novikov-Thorne flux occurs at r_peak ≈ (1.29 - 0.12 * |a|) * r_isco
+                float rPeak = r_isco * (1.29 - 0.12 * abs(a));
+                float fPeak = max(1e-5, novikovThorneFlux(rPeak, a, r_isco));
                 float fNT = novikovThorneFlux(rHit, a, r_isco);
-                float fNorm = clamp(fNT / 0.02827, 0.0, 1.0);
+                float fNorm = clamp(fNT / fPeak, 0.0, 1.0);
                 float tempScale = pow(fNorm, 0.25);
                 float radCool = smoothstep(r_out + 1.0, r_isco, rHit);
-                float Tem = 28000.0 * tempScale * (0.35 + 0.65 * radCool) + 1200.0;
 
-                // Relativistic Doppler shift: observed temperature T_obs = g * T_em
-                float Tobs = clamp(Tem * g, 1000.0, 65000.0);
+                // Warm Planckian disk temperature (1,200 K outer -> 8,600 K inner core) so ACES preserves gold/amber
+                float Tem = 7400.0 * tempScale * (0.35 + 0.65 * radCool) + 1200.0;
+                float gTemp = pow(max(1e-4, g), 0.65);
+                float Tobs = clamp(Tem * gTemp, 1000.0, 38000.0);
                 vec3 col = blackbody(Tobs);
 
                 // Differential rotation shear in coordinates (r, φ - Ω(r)*t)
                 float phiCorot = phiCoord + omega * (uTime * 0.90);
                 float turb = diskPlasmaTurbulence(rHit, phiCorot, diskCrossings, r_isco);
 
-                // Bolometric intensity beaming boost: scales strictly as g^4
-                float beaming = pow(g, 4.0);
-                float intensity = 5.4 * fNorm * turb * beaming;
+                // Cinematic relativistic beaming so approaching side blazes blue-white without saturating to grey
+                float gEff = pow(max(1e-4, g), 0.55);
+                float beaming = gEff * gEff * gEff * gEff;
+                float intensity = 3.8 * fNorm * turb * beaming;
 
                 // Optical depth & vertical thickness H(r) = 0.035 r
                 float cosIncRay = max(0.06, abs(sHit.w));

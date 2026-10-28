@@ -245,7 +245,8 @@ void main() {
     C += glow * vec3(1.0, 0.85, 0.6) * 0.12;
     A = clamp(A + glow * 0.15, 0.0, 1.0);
 
-    vec3 c = aces(C / max(A, 1e-3) * uExposure);
+    // Tonemap linear HDR radiance directly without dividing by small alpha (avoids halo ring artifact)
+    vec3 c = aces(C * uExposure);
     c += (hash1(vec3(gl_FragCoord.xy, uTime * 37.0)) - 0.5) * 0.012;
     gl_FragColor = vec4(pow(clamp(c, 0.0, 1.0), vec3(0.4545)), A);
 }`;
