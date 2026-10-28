@@ -536,18 +536,30 @@
     window.addEventListener("pointercancel", () => { isPointerDragging = false; });
 
     let isNavigatingExplore = false;
+    let pendingStartInside = false;
+
+    const DOMAIN_PROJECT_1 = {
+        "math": "project.html?p=mobius-surfaces",
+        "physics": "project.html?p=nbody-leapfrog",
+        "datascience": "project.html?p=regularised-regression",
+        "quant": "project.html?p=options-pricing",
+        "cs": "project.html?p=ku-lang"
+    };
 
     window.addEventListener("click", (e) => {
         const ctaBtn = e.target && e.target.closest && e.target.closest(".snap-cta-btn");
         if (ctaBtn) {
             const href = ctaBtn.getAttribute("href");
-            const isExplore = (ctaBtn.textContent || "").toLowerCase().includes("explore") || (href && !href.startsWith("#") && !href.includes("project.html"));
-            if (isExplore && href && !isNavigatingExplore) {
+            const sec = ctaBtn.closest(".snap-section");
+            const domain = (sec && sec.dataset.domain) || "";
+            const isExplore = (ctaBtn.textContent || "").toLowerCase().includes("explore") || (sec && sec.classList.contains("domain-snap"));
+
+            if (isExplore && !isNavigatingExplore) {
                 isNavigatingExplore = true;
+                pendingStartInside = true;
                 e.preventDefault();
                 e.stopPropagation();
 
-                const sec = ctaBtn.closest(".snap-section");
                 if (sec && sections) {
                     const sIdx = sections.indexOf(sec);
                     if (sIdx !== -1) {
@@ -564,7 +576,9 @@
                     window.SOUND.warp(0);
                 }
 
-                const targetUrl = new URL(href, location.href).href;
+                const targetRel = (domain && DOMAIN_PROJECT_1[domain]) ? DOMAIN_PROJECT_1[domain] : (href || "project.html?p=mobius-surfaces");
+                const targetUrl = new URL(targetRel, location.href).href;
+
                 setTimeout(() => {
                     isNavigatingExplore = false;
                     if (typeof window !== "undefined" && window.KW && typeof window.KW.loadPage === "function") {
@@ -1557,20 +1571,54 @@
         let startIdx = 0;
         let startLocIdx = 0;
         let startInside = false;
+
+        const isProjectPage = (typeof document !== "undefined" && (
+            (document.documentElement && document.documentElement.dataset.page === "project") ||
+            (location.pathname && location.pathname.includes("project.html")) ||
+            (location.search && location.search.includes("?p="))
+        ));
+
+        if (isProjectPage || pendingStartInside) {
+            startInside = true;
+            pendingStartInside = false;
+        }
+
         if (typeof location !== "undefined" && location.hash) {
             const parsed = parseHash(location.hash);
             if (parsed) {
                 startIdx = parsed.dimIndex;
                 startLocIdx = parsed.localeIndex;
-                startInside = !!parsed.inside;
+                if (parsed.inside !== undefined) startInside = !!parsed.inside;
             } else {
                 const targetSec = document.querySelector(location.hash);
                 const found = sections.indexOf(targetSec);
                 if (found !== -1) startIdx = found;
             }
         }
+
+        const pageDom = (typeof document !== "undefined" && document.documentElement.dataset.domain) || "";
+        const dims = getDimensions();
+        let matchedDim = -1;
+        if (pageDom && pageDom !== "hub") {
+            matchedDim = dims.findIndex((d) => d.slug === pageDom || d.id === `domain-${pageDom}` || d.id === pageDom);
+        }
+        if (matchedDim !== -1) {
+            currentDimIndex = matchedDim;
+        } else {
+            currentDimIndex = startIdx;
+        }
+
+        if (isProjectPage && typeof location !== "undefined" && location.search) {
+            const pId = new URLSearchParams(location.search).get("p");
+            if (pId && dims[currentDimIndex] && dims[currentDimIndex].sims) {
+                const sIdx = dims[currentDimIndex].sims.findIndex((s) => s.id === pId || pId.includes(s.id) || s.id.includes(pId));
+                if (sIdx !== -1) {
+                    startLocIdx = sIdx;
+                }
+            }
+        }
+
         currentIndex = startIdx;
-        currentDimIndex = currentIndex;
         currentSimIndex = startLocIdx;
         currentLocaleIndex = startLocIdx;
         appMode = startInside ? "INSIDE" : "VIEW";
@@ -1611,22 +1659,22 @@
             }
             active.update(0.016, 0.016, sharedBuffer, ctxState);
             prevPositions.set(positions);
-            const prof = getProfile(currentIndex);
+            const prof = getProfile(currentDimIndex);
             if (startInside) {
-                idlePose(currentIndex, currentSimIndex, "INSIDE", poseA, poseB);
+                idlePose(currentDimIndex, currentSimIndex, "INSIDE", poseA, poseB);
                 camera.position.copy(poseA);
                 camera.target.copy(poseB);
                 if (curSim && curSim.immersiveCamera) camera.fov = curSim.immersiveCamera.fov;
                 else camera.fov = prof.fov;
-                anchorWorld(currentIndex, currentSimIndex, "INSIDE", poseAnchor);
-                sampleIdle(currentIndex, currentSimIndex, idleVec);
+                anchorWorld(currentDimIndex, currentSimIndex, "INSIDE", poseAnchor);
+                sampleIdle(currentDimIndex, currentSimIndex, idleVec);
                 positions[0] = poseAnchor.x + idleVec.x;
                 positions[1] = poseAnchor.y + idleVec.y;
                 positions[2] = poseAnchor.z + idleVec.z;
                 camera.near = 0.05;
                 camera.far = 450.0;
             } else {
-                idlePose(currentIndex, currentSimIndex, "VIEW", poseA, poseB);
+                idlePose(currentDimIndex, currentSimIndex, "VIEW", poseA, poseB);
                 camera.position.copy(poseA);
                 camera.target.copy(poseB);
                 camera.fov = prof.fov;
@@ -2131,11 +2179,12 @@
     const idleFrame = (curProf, dt, pLerp) => {
         const isInside = (appMode === "INSIDE" || inside.isInside);
         const dims = getDimensions();
-        const dim = dims[currentIndex];
+        const dimIdx = (currentDimIndex !== undefined && currentDimIndex >= 0) ? currentDimIndex : currentIndex;
+        const dim = dims[dimIdx];
         const sims = (dim && (dim.sims || dim.locales)) || [];
         const curSim = sims[currentSimIndex] || sims[0];
 
-        idlePose(currentIndex, currentSimIndex, isInside ? "INSIDE" : "VIEW", poseA, poseB);
+        idlePose(dimIdx, currentSimIndex, isInside ? "INSIDE" : "VIEW", poseA, poseB);
         camera.position.copy(poseA);
         camera.target.copy(poseB);
         camera.up.set(0, 1, 0);
@@ -2155,8 +2204,8 @@
         diveBoost = 0.0;
         if (isInside) {
             // Inside: the hero rests near the sim anchor and eases through its idle sway
-            anchorWorld(currentIndex, currentSimIndex, "INSIDE", poseAnchor);
-            sampleIdle(currentIndex, currentSimIndex, idleVec);
+            anchorWorld(dimIdx, currentSimIndex, "INSIDE", poseAnchor);
+            sampleIdle(dimIdx, currentSimIndex, idleVec);
             positions[0] = poseAnchor.x + idleVec.x;
             positions[1] = poseAnchor.y + idleVec.y;
             positions[2] = poseAnchor.z + idleVec.z;
@@ -2278,7 +2327,8 @@
                 active.update(dt, simTime, sharedBuffer, ctxState);
                 formHero.set(positions[0], positions[1], positions[2]);
 
-                const curProf = getProfile(currentIndex);
+                const dimIdx = (currentDimIndex !== undefined && currentDimIndex >= 0) ? currentDimIndex : currentIndex;
+                const curProf = getProfile(dimIdx);
                 const pLerp = clamp(dt * 4.0, 0.02, 0.25);
 
                 if (intraHop.active) {
@@ -2287,7 +2337,7 @@
                     idleFrame(curProf, dt, pLerp);
                 }
                 if (inside.value > 0.002) applyHeroLocalPalette(curProf);
-                innerTint(currentIndex, inside.tint);
+                innerTint(dimIdx, inside.tint);
 
                 // Smoothly converge post-processing parameters to active section profile
                 postState.bloomStrength += (curProf.bloomStrength - postState.bloomStrength) * pLerp;
