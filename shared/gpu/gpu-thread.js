@@ -582,14 +582,27 @@
                 const targetRel = (href && !href.startsWith("#")) ? href : ((domain && DOMAIN_PROJECT_1[domain]) ? DOMAIN_PROJECT_1[domain] : "math.html");
                 const targetUrl = new URL(targetRel, location.href).href;
 
-                setTimeout(() => {
-                    isNavigatingExplore = false;
-                    if (typeof window !== "undefined" && window.KW && typeof window.KW.loadPage === "function") {
-                        window.KW.loadPage(targetUrl, true);
-                    } else if (typeof location !== "undefined") {
-                        location.href = targetUrl;
-                    }
-                }, 450);
+                // Let the dive finish, fade to black at its end, swap page (new page starts INSIDE), fade back in
+                const veil = document.createElement("div");
+                veil.style.cssText = "position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:9999;transition:opacity .35s ease";
+                document.body.appendChild(veil);
+                const t0 = performance.now();
+                const go = () => {
+                    if (intraHop.active && performance.now() - t0 < 2500) { setTimeout(go, 50); return; }
+                    veil.style.opacity = "1";
+                    setTimeout(async () => {
+                        isNavigatingExplore = false;
+                        if (window.KW && typeof window.KW.loadPage === "function") {
+                            await window.KW.loadPage(targetUrl, true);
+                        } else {
+                            location.href = targetUrl;
+                            return;
+                        }
+                        veil.style.opacity = "0";
+                        setTimeout(() => veil.remove(), 450);
+                    }, 360);
+                };
+                setTimeout(go, 600);
                 return;
             }
         }
@@ -2650,6 +2663,8 @@
                     startTransition(nextQ);
                 } else {
                     trans.queuedIndex = -1;
+                    // Project hub: arriving at the next project dives inside it, same as Explore
+                    if (!isHubPage() && pendingEnter < 0) pendingEnter = currentSimIndex;
                     if (pendingEnter >= 0) {
                         const pe = pendingEnter;
                         pendingEnter = -1;
