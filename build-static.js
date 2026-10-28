@@ -176,37 +176,25 @@ const domainPage = (key) => {
     const d = SITE.domains[key], ps = list(key);
     const domainIdx = keys.indexOf(key);
     return `
-    <section class="snap-section hero" id="domain-intro" data-domain="${key}" data-sim="domain:${key}:0">
-        <div class="snap-inner">
-            <h1 data-hero>${d.name}</h1>
-            <p class="lead" data-hero>${d.blurb}</p>
-            <div class="hero-eq glass snap-eq" data-hero><div class="eq-body">$$${d.eq}$$</div>${d.eqCaption ? `<div class="eq-caption">$$${d.eqCaption}$$</div>` : ""}</div>
-            <div class="snap-jump-pills" data-hero>
-                <span class="snap-jump-label">Selected work:</span>
-                ${ps.map((p) => `<a href="#proj-${p.id}" class="pill jump-pill"><strong>${p.title}</strong></a>`).join("")}
-            </div>
-        </div>
-        <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS[`domain:${key}:0`].caption}</div>
-        <a class="snap-cue" href="#proj-${ps[0].id}">Scroll to projects</a>
-    </section>
-
     ${ps.map((p, i) => {
         const nextTarget = ps[i + 1] ? `#proj-${ps[i + 1].id}` : "#domain-explore";
         const nextLabel = ps[i + 1] ? `Next: ${ps[i + 1].title}` : "Next: Explore other domains";
         const eq = p.slideEq || ((p.math && p.math[0] && p.math[0].eq) ? p.math[0].eq : d.eq);
         const slideKey = `domain:${key}:${i + 1}`;
+        const isFirst = (i === 0);
         return `
-    <section class="snap-section project-snap" id="proj-${p.id}" data-domain="${key}" data-sim="${slideKey}">
+    <section class="snap-section project-snap${isFirst ? ' hero' : ''}" id="proj-${p.id}" data-domain="${key}" data-sim="${slideKey}">
         <div class="snap-inner">
-            <h2 class="snap-title" data-reveal>${p.title}</h2>
-            <p class="lead snap-lead" data-reveal>${p.summary}</p>
-            <div class="hero-eq glass snap-eq" data-reveal>$$${eq}$$</div>
-            <div class="snap-projects" data-reveal>
+            ${isFirst ? `<div class="crumbs" data-hero><a href="index.html">Home</a> / <span>${d.name}</span></div>` : ""}
+            <h${isFirst ? "1" : "2"} class="snap-title" ${isFirst ? 'data-hero' : 'data-reveal'}>${p.title}</h${isFirst ? "1" : "2"}>
+            <p class="lead snap-lead" ${isFirst ? 'data-hero' : 'data-reveal'}>${p.summary}</p>
+            <div class="hero-eq glass snap-eq" ${isFirst ? 'data-hero' : 'data-reveal'}>$$${eq}$$</div>
+            <div class="snap-projects" ${isFirst ? 'data-hero' : 'data-reveal'}>
                 <span class="snap-proj-label">Architecture:</span>
                 ${p.tags.map(t => `<span class="snap-proj-pill glass"><strong>${t}</strong></span>`).join("")}
                 <span class="tag-status">${p.status}</span>
             </div>
-            <div class="snap-actions" data-reveal>
+            <div class="snap-actions" ${isFirst ? 'data-hero' : 'data-reveal'}>
                 <a href="project.html?p=${p.id}" class="snap-cta-btn glass">
                     <span>Read Deep-Dive &amp; Architecture</span>
                     <span class="arr">→</span>

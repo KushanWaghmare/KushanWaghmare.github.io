@@ -104,7 +104,7 @@
     const eqShor = String.raw`$$\operatorname{QFT}_Q \left(\frac{1}{\sqrt{Q/r}}\sum_{k=0}^{Q/r - 1}\lvert x_0 + kr \rangle\right) = \frac{1}{\sqrt r}\sum_{s=0}^{r-1} e^{2\pi i s x_0 / r} \left\lvert s \frac{Q}{r} \right\rangle,\qquad \gcd(a^{r/2} \pm 1, N) \in \{3, 5\}$$`;
 
     const updateHeroEq = (canvas, m) => {
-        const sec = canvas.closest("section") || (typeof document !== "undefined" ? (document.getElementById("domain-intro") || document.getElementById("domain-cs")) : null);
+        const sec = canvas.closest("section") || (typeof document !== "undefined" ? (document.getElementById("domain-cs") || document.querySelector(".snap-section")) : null);
         const eqEl = sec ? sec.querySelector(".hero-eq") : null;
         if (eqEl) {
             eqEl.textContent = (m === "grover" ? eqGrover : eqShor);

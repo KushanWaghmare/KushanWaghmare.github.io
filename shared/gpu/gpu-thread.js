@@ -539,11 +539,11 @@
     let pendingStartInside = false;
 
     const DOMAIN_PROJECT_1 = {
-        "math": "project.html?p=mobius-surfaces",
-        "physics": "project.html?p=nbody-leapfrog",
-        "datascience": "project.html?p=regularised-regression",
-        "quant": "project.html?p=options-pricing",
-        "cs": "project.html?p=ku-lang"
+        "math": "math.html",
+        "physics": "physics.html",
+        "datascience": "datascience.html",
+        "quant": "quant.html",
+        "cs": "cs.html"
     };
 
     window.addEventListener("click", (e) => {
@@ -557,6 +557,9 @@
             if (isExplore && !isNavigatingExplore) {
                 isNavigatingExplore = true;
                 pendingStartInside = true;
+                if (typeof sessionStorage !== "undefined") {
+                    try { sessionStorage.setItem("startInside", "1"); } catch (_) {}
+                }
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -576,7 +579,7 @@
                     window.SOUND.warp(0);
                 }
 
-                const targetRel = (domain && DOMAIN_PROJECT_1[domain]) ? DOMAIN_PROJECT_1[domain] : (href || "project.html?p=mobius-surfaces");
+                const targetRel = (href && !href.startsWith("#")) ? href : ((domain && DOMAIN_PROJECT_1[domain]) ? DOMAIN_PROJECT_1[domain] : "math.html");
                 const targetUrl = new URL(targetRel, location.href).href;
 
                 setTimeout(() => {
@@ -1573,10 +1576,15 @@
         let startInside = false;
 
         const isProjectPage = (typeof document !== "undefined" && (
-            (document.documentElement && document.documentElement.dataset.page === "project") ||
-            (location.pathname && location.pathname.includes("project.html")) ||
+            (document.documentElement && (document.documentElement.dataset.page === "project" || document.documentElement.dataset.page === "domain")) ||
+            (location.pathname && (location.pathname.includes("project.html") || location.pathname.includes("math.html") || location.pathname.includes("physics.html") || location.pathname.includes("datascience.html") || location.pathname.includes("quant.html") || location.pathname.includes("cs.html"))) ||
             (location.search && location.search.includes("?p="))
         ));
+
+        if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("startInside") === "1") {
+            startInside = true;
+            try { sessionStorage.removeItem("startInside"); } catch (_) {}
+        }
 
         if (isProjectPage || pendingStartInside) {
             startInside = true;
@@ -1606,6 +1614,14 @@
             currentDimIndex = matchedDim;
         } else {
             currentDimIndex = startIdx;
+        }
+
+        const activeSec = sections[startIdx];
+        if (activeSec && activeSec.dataset && activeSec.dataset.sim) {
+            const parts = activeSec.dataset.sim.split(":");
+            if (parts.length >= 3 && !isNaN(parseInt(parts[2], 10))) {
+                startLocIdx = parseInt(parts[2], 10);
+            }
         }
 
         if (isProjectPage && typeof location !== "undefined" && location.search) {

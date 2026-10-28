@@ -62,32 +62,19 @@
         </nav>
     </header>
     <main id="main">
-    <section class="snap-section hero" id="domain-intro" data-domain="cs" data-sim="domain:cs:0">
-        <div class="snap-inner">
-            <h1 data-hero>Computer Science</h1>
-            <p class="lead" data-hero>Compilers, machine architecture and quantum state evolution — from grammars, SSA form and TTL gates to Grover search and Shor period finding.</p>
-            <div class="hero-eq glass snap-eq" data-hero><div class="eq-body">$$|\psi_{k+1}\rangle = (2|\psi\rangle\langle\psi| - \hat I)\,\hat O\,|\psi_k\rangle,\qquad \hat O = \hat I - 2|\omega\rangle\langle\omega|$$</div></div>
-            <div class="snap-jump-pills" data-hero>
-                <span class="snap-jump-label">Selected work:</span>
-                <a href="#proj-ku-lang" class="pill jump-pill"><strong>Ku-Lang Compiler</strong></a><a href="#proj-8bit-computer" class="pill jump-pill"><strong>8-Bit Breadboard Computer</strong></a>
-            </div>
-        </div>
-        <div class="sim-tag" aria-hidden="true">Grover search · 8 simulated qubits (exact classical simulation, not a quantum device) · N = 256 · optimal k = 12 · Shor period finding (N = 15, a = 7)</div>
-        <a class="snap-cue" href="#proj-ku-lang">Scroll to projects</a>
-    </section>
-
     
-    <section class="snap-section project-snap" id="proj-ku-lang" data-domain="cs" data-sim="domain:cs:1">
+    <section class="snap-section project-snap hero" id="proj-ku-lang" data-domain="cs" data-sim="domain:cs:1">
         <div class="snap-inner">
-            <h2 class="snap-title" data-reveal>Ku-Lang Compiler</h2>
-            <p class="lead snap-lead" data-reveal>A custom language and compiler: lexical analysis, parsing, semantic checks and LLVM IR generation, with control flow, functions and typed expressions.</p>
-            <div class="hero-eq glass snap-eq" data-reveal>$$x_3=\phi\big(x_1\ [\mathrm{bb}_1],\ x_2\ [\mathrm{bb}_2]\big),\qquad\mathrm{IN}[B]=\bigcup_{P\in\mathrm{pred}(B)}\mathrm{OUT}[P]$$</div>
-            <div class="snap-projects" data-reveal>
+            <div class="crumbs" data-hero><a href="index.html">Home</a> / <span>Computer Science</span></div>
+            <h1 class="snap-title" data-hero>Ku-Lang Compiler</h1>
+            <p class="lead snap-lead" data-hero>A custom language and compiler: lexical analysis, parsing, semantic checks and LLVM IR generation, with control flow, functions and typed expressions.</p>
+            <div class="hero-eq glass snap-eq" data-hero>$$x_3=\phi\big(x_1\ [\mathrm{bb}_1],\ x_2\ [\mathrm{bb}_2]\big),\qquad\mathrm{IN}[B]=\bigcup_{P\in\mathrm{pred}(B)}\mathrm{OUT}[P]$$</div>
+            <div class="snap-projects" data-hero>
                 <span class="snap-proj-label">Architecture:</span>
                 <span class="snap-proj-pill glass"><strong>C</strong></span><span class="snap-proj-pill glass"><strong>LLVM</strong></span><span class="snap-proj-pill glass"><strong>Flex</strong></span><span class="snap-proj-pill glass"><strong>Bison</strong></span><span class="snap-proj-pill glass"><strong>CMake</strong></span>
                 <span class="tag-status">In progress</span>
             </div>
-            <div class="snap-actions" data-reveal>
+            <div class="snap-actions" data-hero>
                 <a href="project.html?p=ku-lang" class="snap-cta-btn glass">
                     <span>Read Deep-Dive &amp; Architecture</span>
                     <span class="arr">→</span>
@@ -100,6 +87,7 @@
     </section>
     <section class="snap-section project-snap" id="proj-8bit-computer" data-domain="cs" data-sim="domain:cs:2">
         <div class="snap-inner">
+            
             <h2 class="snap-title" data-reveal>8-Bit Breadboard Computer</h2>
             <p class="lead snap-lead" data-reveal>An 8-bit computer built from discrete TTL logic: ALU, control unit and memory with a custom instruction set, validated with a logic analyser.</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$S=A\oplus B\oplus C_{\mathrm{in}},\qquad C_{\mathrm{out}}=AB+C_{\mathrm{in}}(A\oplus B)$$</div>

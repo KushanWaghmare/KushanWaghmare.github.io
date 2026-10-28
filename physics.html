@@ -62,32 +62,19 @@
         </nav>
     </header>
     <main id="main">
-    <section class="snap-section hero" id="domain-intro" data-domain="physics" data-sim="domain:physics:0">
-        <div class="snap-inner">
-            <h1 data-hero>Physics</h1>
-            <p class="lead" data-hero>Classical and quantum mechanics as computation: symplectic integrators, gravitating systems and wave equations.</p>
-            <div class="hero-eq glass snap-eq" data-hero><div class="eq-body">$$\begin{aligned} ds^2 &= -\left(1 - \frac{2Mr}{\rho^2}\right)dt^2 - \frac{4M\,a\,r\,\sin^2\theta}{\rho^2}\,dt\,d\phi \\ &\quad + \frac{\rho^2}{\Delta}dr^2 + \rho^2 d\theta^2 + \frac{\Sigma\sin^2\theta}{\rho^2}d\phi^2 \end{aligned}$$</div><div class="eq-caption">$$\Sigma = (r^2+a^2)^2 - a^2\Delta\sin^2\theta,\quad \Delta = r^2 - 2Mr + a^2,\quad \rho^2 = r^2 + a^2\cos^2\theta$$</div></div>
-            <div class="snap-jump-pills" data-hero>
-                <span class="snap-jump-label">Selected work:</span>
-                <a href="#proj-nbody-leapfrog" class="pill jump-pill"><strong>Gravitational N-Body Integrator</strong></a><a href="#proj-split-step-schrodinger" class="pill jump-pill"><strong>Time-Dependent Schrödinger Equation</strong></a>
-            </div>
-        </div>
-        <div class="sim-tag" aria-hidden="true">Kerr null geodesics (a = 0.95) · Boyer–Lindquist RK4 ray tracer · Novikov–Thorne thin disk · Doppler beaming g⁴ · photon ring · cursor tilts inclination</div>
-        <a class="snap-cue" href="#proj-nbody-leapfrog">Scroll to projects</a>
-    </section>
-
     
-    <section class="snap-section project-snap" id="proj-nbody-leapfrog" data-domain="physics" data-sim="domain:physics:1">
+    <section class="snap-section project-snap hero" id="proj-nbody-leapfrog" data-domain="physics" data-sim="domain:physics:1">
         <div class="snap-inner">
-            <h2 class="snap-title" data-reveal>Gravitational N-Body Integrator</h2>
-            <p class="lead snap-lead" data-reveal>A self-gravitating disc integrated with a symplectic kick–drift–kick leapfrog. The hero is the live simulation.</p>
-            <div class="hero-eq glass snap-eq" data-reveal>$$\mathbf a_i=-\sum_{j\ne i}\frac{G\,m_j\,(\mathbf r_i-\mathbf r_j)}{\left(\lVert\mathbf r_i-\mathbf r_j\rVert^2+\varepsilon^2\right)^{3/2}}$$</div>
-            <div class="snap-projects" data-reveal>
+            <div class="crumbs" data-hero><a href="index.html">Home</a> / <span>Physics</span></div>
+            <h1 class="snap-title" data-hero>Gravitational N-Body Integrator</h1>
+            <p class="lead snap-lead" data-hero>A self-gravitating disc integrated with a symplectic kick–drift–kick leapfrog. The hero is the live simulation.</p>
+            <div class="hero-eq glass snap-eq" data-hero>$$\mathbf a_i=-\sum_{j\ne i}\frac{G\,m_j\,(\mathbf r_i-\mathbf r_j)}{\left(\lVert\mathbf r_i-\mathbf r_j\rVert^2+\varepsilon^2\right)^{3/2}}$$</div>
+            <div class="snap-projects" data-hero>
                 <span class="snap-proj-label">Architecture:</span>
                 <span class="snap-proj-pill glass"><strong>Classical mechanics</strong></span><span class="snap-proj-pill glass"><strong>Symplectic integration</strong></span><span class="snap-proj-pill glass"><strong>Canvas</strong></span>
                 <span class="tag-status">Draft</span>
             </div>
-            <div class="snap-actions" data-reveal>
+            <div class="snap-actions" data-hero>
                 <a href="project.html?p=nbody-leapfrog" class="snap-cta-btn glass">
                     <span>Read Deep-Dive &amp; Architecture</span>
                     <span class="arr">→</span>
@@ -100,6 +87,7 @@
     </section>
     <section class="snap-section project-snap" id="proj-split-step-schrodinger" data-domain="physics" data-sim="domain:physics:2">
         <div class="snap-inner">
+            
             <h2 class="snap-title" data-reveal>Time-Dependent Schrödinger Equation</h2>
             <p class="lead snap-lead" data-reveal>Split-step Fourier evolution of a wave packet: unitary by construction and spectrally accurate in space.</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$i\hbar\,\frac{\partial\psi}{\partial t}=\hat H\psi=\Big[-\frac{\hbar^2}{2m}\nabla^2+V(\mathbf r)\Big]\psi$$</div>

@@ -62,32 +62,19 @@
         </nav>
     </header>
     <main id="main">
-    <section class="snap-section hero" id="domain-intro" data-domain="datascience" data-sim="domain:datascience:0">
-        <div class="snap-inner">
-            <h1 data-hero>Data Science</h1>
-            <p class="lead" data-hero>Statistical learning, agent-based modelling and non-convex optimisation: emergent collective behaviour, opinion dynamics, and complex stochastic systems.</p>
-            <div class="hero-eq glass snap-eq" data-hero><div class="eq-body">$$d\mathbf x = \Big[\mathbf f(\mathbf x, t) - g(t)^2\,\nabla_{\mathbf x}\log p_t(\mathbf x)\Big]dt + g(t)\,d\bar{\mathbf w}$$</div></div>
-            <div class="snap-jump-pills" data-hero>
-                <span class="snap-jump-label">Selected work:</span>
-                <a href="#proj-regularised-regression" class="pill jump-pill"><strong>Regularised Regression from Scratch</strong></a><a href="#proj-spectral-clustering" class="pill jump-pill"><strong>Spectral Clustering on Graphs</strong></a>
-            </div>
-        </div>
-        <div class="sim-tag" aria-hidden="true">Reverse-time SDE · closed-form Gaussian-mixture score · 65k GPU particles · click re-noises · press 'M' to toggle ODE</div>
-        <a class="snap-cue" href="#proj-regularised-regression">Scroll to projects</a>
-    </section>
-
     
-    <section class="snap-section project-snap" id="proj-regularised-regression" data-domain="datascience" data-sim="domain:datascience:1">
+    <section class="snap-section project-snap hero" id="proj-regularised-regression" data-domain="datascience" data-sim="domain:datascience:1">
         <div class="snap-inner">
-            <h2 class="snap-title" data-reveal>Regularised Regression from Scratch</h2>
-            <p class="lead snap-lead" data-reveal>OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.</p>
-            <div class="hero-eq glass snap-eq" data-reveal>$$\min_{\boldsymbol\beta}\ \tfrac1{2n}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2+\lambda\,\lVert\boldsymbol\beta\rVert_1$$</div>
-            <div class="snap-projects" data-reveal>
+            <div class="crumbs" data-hero><a href="index.html">Home</a> / <span>Data Science</span></div>
+            <h1 class="snap-title" data-hero>Regularised Regression from Scratch</h1>
+            <p class="lead snap-lead" data-hero>OLS, ridge and lasso derived and implemented from linear algebra, with the bias–variance trade-off made explicit.</p>
+            <div class="hero-eq glass snap-eq" data-hero>$$\min_{\boldsymbol\beta}\ \tfrac1{2n}\lVert\mathbf y-X\boldsymbol\beta\rVert_2^2+\lambda\,\lVert\boldsymbol\beta\rVert_1$$</div>
+            <div class="snap-projects" data-hero>
                 <span class="snap-proj-label">Architecture:</span>
                 <span class="snap-proj-pill glass"><strong>Python</strong></span><span class="snap-proj-pill glass"><strong>NumPy</strong></span><span class="snap-proj-pill glass"><strong>Linear algebra</strong></span>
                 <span class="tag-status">Draft</span>
             </div>
-            <div class="snap-actions" data-reveal>
+            <div class="snap-actions" data-hero>
                 <a href="project.html?p=regularised-regression" class="snap-cta-btn glass">
                     <span>Read Deep-Dive &amp; Architecture</span>
                     <span class="arr">→</span>
@@ -100,6 +87,7 @@
     </section>
     <section class="snap-section project-snap" id="proj-spectral-clustering" data-domain="datascience" data-sim="domain:datascience:2">
         <div class="snap-inner">
+            
             <h2 class="snap-title" data-reveal>Spectral Clustering on Graphs</h2>
             <p class="lead snap-lead" data-reveal>Recovering communities in a stochastic block model from the eigenvectors of the graph Laplacian.</p>
             <div class="hero-eq glass snap-eq" data-reveal>$$L=D-A,\qquad L_{\mathrm{sym}}=I-D^{-1/2}AD^{-1/2}$$</div>
