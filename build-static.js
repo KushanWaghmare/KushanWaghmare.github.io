@@ -542,33 +542,31 @@ const buildHTML = ({ domain, pageType, title, desc, mainContent }) => `<!doctype
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-    <script defer src="shared/data.js?v=60"></script>
-    <script defer src="shared/lib/diffusion-math.js?v=60"></script>
-    <script defer src="shared/lib/market-math.js?v=60"></script>
-    <script defer src="shared/lib/lob-math.js?v=60"></script>
-    <script defer src="shared/lib/mobius-math.js?v=60"></script>
-    <script defer src="shared/lib/qsim-math.js?v=60"></script>
-    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=60"></script>
-    <script defer src="shared/gpu/gpu-qsim.js?v=60"></script>
-    <script defer src="shared/lib/copula-math.js?v=60"></script>
-    <script defer src="shared/gpu/gpu-copula-shaders.js?v=60"></script>
-    <script defer src="shared/gpu/gpu-copula.js?v=60"></script>
-    <script defer src="shared/lib/lattice-math.js?v=60"></script>
-    <script defer src="shared/gpu/gpu-crystal-shaders.js?v=60"></script>
-    <script defer src="shared/gpu/gpu-crystal.js?v=60"></script>
-    <script defer src="shared/lib/cy-math.js?v=60"></script>
-    <script defer src="shared/blackhole-physics.js?v=60"></script>
-    <script defer src="shared/blackhole-shaders.js?v=60"></script>
-    <script defer src="shared/blackhole-lite.js?v=60"></script>
-    <script defer src="shared/blackhole.js?v=60"></script>
-    <script defer src="shared/gfx.js?v=60"></script>
-    <script defer src="shared/engines.js?v=60"></script>
-    <script defer src="shared/slides.js?v=60"></script>
-    <script defer src="shared/lib/thread-math.js?v=60"></script>
-    <script defer src="shared/gpu/gpu-thread-shaders.js?v=60"></script>
-    <script defer src="shared/gpu/gpu-thread-formations.js?v=60"></script>
-    <script defer src="shared/gpu/gpu-thread.js?v=60"></script>
-    <script defer src="shared/app.js?v=60"></script>
+    <script defer src="shared/data.js?v=61"></script>
+    <script defer src="shared/lib/diffusion-math.js?v=61"></script>
+    <script defer src="shared/lib/mobius-math.js?v=61"></script>
+    <script defer src="shared/lib/qsim-math.js?v=61"></script>
+    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=61"></script>
+    <script defer src="shared/gpu/gpu-qsim.js?v=61"></script>
+    <script defer src="shared/lib/copula-math.js?v=61"></script>
+    <script defer src="shared/gpu/gpu-copula-shaders.js?v=61"></script>
+    <script defer src="shared/gpu/gpu-copula.js?v=61"></script>
+    <script defer src="shared/lib/lattice-math.js?v=61"></script>
+    <script defer src="shared/gpu/gpu-crystal-shaders.js?v=61"></script>
+    <script defer src="shared/gpu/gpu-crystal.js?v=61"></script>
+    <script defer src="shared/lib/cy-math.js?v=61"></script>
+    <script defer src="shared/blackhole-physics.js?v=61"></script>
+    <script defer src="shared/blackhole-shaders.js?v=61"></script>
+    <script defer src="shared/blackhole-lite.js?v=61"></script>
+    <script defer src="shared/blackhole.js?v=61"></script>
+    <script defer src="shared/gfx.js?v=61"></script>
+    <script defer src="shared/engines.js?v=61"></script>
+    <script defer src="shared/slides.js?v=61"></script>
+    <script defer src="shared/lib/thread-math.js?v=61"></script>
+    <script defer src="shared/gpu/gpu-thread-shaders.js?v=61"></script>
+    <script defer src="shared/gpu/gpu-thread-formations.js?v=61"></script>
+    <script defer src="shared/gpu/gpu-thread.js?v=61"></script>
+    <script defer src="shared/app.js?v=61"></script>
 
 </head>
 <body>

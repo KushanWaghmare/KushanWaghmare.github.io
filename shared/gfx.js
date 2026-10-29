@@ -12,7 +12,6 @@
     const VERSION = "42", moduleCache = new Map(), progCache = new Map(), instances = new Set();
 
     const MOD_DEPS = {
-        lob: ["shared/gpu/gpu-lob-shaders.js"],
         math: ["shared/lib/mobius-math.js"],
         qsim: ["shared/lib/qsim-math.js", "shared/gpu/gpu-qsim-shaders.js"],
         copula: ["shared/lib/copula-math.js", "shared/gpu/gpu-copula-shaders.js"],
