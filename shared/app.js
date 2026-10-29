@@ -959,121 +959,515 @@ NAV.math = () => {
 };
 
 // Physics: Kerr Spacetime Geodesic Motion, Oblate Ergosphere & Frame-Dragging Lensing
+// Physics: the solar system, painted. The Sun and all eight planets as soft watercolour / anime sprites in a row,
+// drifting and spinning gently, with twinkling four-point stars, a shooting star, a moon, Saturn's ring, hover labels
+// and a sparkle burst on click. Sprites are painted once per layout (cheap per frame).
 NAV.physics = () => {
-    let massX = -1, massY = -1;
-    let orbitTheta = 0;
-    const trail = [];
-    const TRAIL_MAX = 42;
+    const BODIES = [
+        { id: "sun", name: "Sun", r: 0.46, light: [255, 246, 190], mid: [255, 204, 92], dark: [255, 140, 70],
+          washes: [[255, 226, 140], [255, 160, 78], [255, 240, 205], [255, 190, 90]], spin: 0.012, bob: 0.5, halo: [255, 196, 96], haloA: 0.5, haloR: 3.0 },
+        { id: "mercury", name: "Mercury", r: 0.18, light: [236, 222, 208], mid: [204, 184, 172], dark: [142, 122, 138],
+          washes: [[217, 167, 160], [184, 170, 181], [239, 224, 208]], spin: 0.02, bob: 1.0, halo: [220, 190, 180], haloA: 0.16, haloR: 2.2 },
+        { id: "venus", name: "Venus", r: 0.27, light: [253, 241, 182], mid: [242, 208, 134], dark: [217, 154, 108],
+          washes: [[255, 233, 160], [245, 183, 132], [255, 246, 214]], spin: 0.016, bob: 0.9, halo: [255, 226, 150], haloA: 0.22, haloR: 2.3 },
+        { id: "earth", name: "Earth", r: 0.29, light: [160, 224, 248], mid: [74, 163, 224], dark: [44, 95, 181],
+          washes: [[120, 205, 245], [60, 140, 215], [190, 240, 255]], spin: 0.03, bob: 1.0, halo: [120, 200, 255], haloA: 0.26, haloR: 2.4 },
+        { id: "mars", name: "Mars", r: 0.22, light: [255, 190, 160], mid: [238, 122, 92], dark: [185, 71, 90],
+          washes: [[255, 160, 127], [217, 86, 106], [255, 210, 184]], spin: 0.028, bob: 1.1, halo: [255, 150, 130], haloA: 0.2, haloR: 2.2 },
+        { id: "jupiter", name: "Jupiter", r: 0.44, light: [255, 241, 202], mid: [243, 197, 138], dark: [208, 138, 95],
+          washes: [[255, 246, 220], [240, 178, 122], [217, 138, 120], [248, 220, 166]], spin: 0.05, bob: 0.8, halo: [255, 214, 160], haloA: 0.22, haloR: 2.1,
+          bands: [{ y: 0.18, h: 0.12, k: 2, ph: 0.4, amp: 0.02, col: [217, 138, 120], a: 0.5 },
+                  { y: 0.34, h: 0.14, k: 3, ph: 1.9, amp: 0.025, col: [255, 246, 220], a: 0.7 },
+                  { y: 0.50, h: 0.12, k: 2, ph: 3.1, amp: 0.02, col: [240, 178, 122], a: 0.6 },
+                  { y: 0.66, h: 0.16, k: 3, ph: 0.9, amp: 0.03, col: [248, 220, 166], a: 0.65 },
+                  { y: 0.82, h: 0.12, k: 2, ph: 2.4, amp: 0.02, col: [217, 138, 120], a: 0.45 }] },
+        { id: "saturn", name: "Saturn", r: 0.33, light: [247, 236, 255], mid: [216, 194, 234], dark: [157, 132, 201],
+          washes: [[247, 217, 230], [205, 183, 238], [255, 242, 216]], spin: 0.04, bob: 0.9, halo: [226, 200, 250], haloA: 0.24, haloR: 2.4,
+          ring: [[255, 228, 240], [214, 196, 243], [255, 241, 215]],
+          bands: [{ y: 0.3, h: 0.14, k: 2, ph: 0.8, amp: 0.02, col: [247, 217, 230], a: 0.55 },
+                  { y: 0.55, h: 0.16, k: 3, ph: 2.2, amp: 0.02, col: [205, 183, 238], a: 0.5 },
+                  { y: 0.76, h: 0.12, k: 2, ph: 1.1, amp: 0.02, col: [255, 242, 216], a: 0.5 }] },
+        { id: "uranus", name: "Uranus", r: 0.30, light: [210, 252, 244], mid: [134, 224, 212], dark: [74, 168, 196],
+          washes: [[176, 240, 232], [127, 208, 232], [216, 255, 246]], spin: 0.035, bob: 1.0, halo: [150, 235, 225], haloA: 0.22, haloR: 2.3,
+          ring: [[200, 250, 244]] },
+        { id: "neptune", name: "Neptune", r: 0.29, light: [170, 190, 255], mid: [79, 104, 224], dark: [43, 47, 146],
+          washes: [[127, 155, 255], [107, 79, 208], [182, 200, 255]], spin: 0.04, bob: 1.1, halo: [110, 130, 255], haloA: 0.26, haloR: 2.4,
+          bands: [{ y: 0.28, h: 0.14, k: 2, ph: 0.3, amp: 0.02, col: [182, 200, 255], a: 0.5 },
+                  { y: 0.6, h: 0.18, k: 3, ph: 1.7, amp: 0.025, col: [107, 79, 208], a: 0.5 }] }
+    ];
+    const STAR_COLS = [[255, 255, 255], [255, 244, 200], [255, 192, 222], [172, 236, 255], [208, 192, 255]];
+    const N = BODIES.length;
+
+    const rng = (seed) => {
+        let s = seed >>> 0;
+        return () => {
+            s = (s + 0x6D2B79F5) >>> 0;
+            let t = s;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    };
+    const mk = (w, h) => {
+        const c = document.createElement("canvas");
+        c.width = Math.max(2, Math.ceil(w));
+        c.height = Math.max(2, Math.ceil(h));
+        return c;
+    };
+    const css = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a === undefined ? 1 : a})`;
+    const mixc = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+    const clampv = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+    /* Periodic texture (tile width = 2 x height) painted with soft pigment blots, bands and grain. */
+    const paintTex = (b, Rpx, seed) => {
+        const TH = Math.max(8, Math.ceil(2 * Rpx)), TW = TH * 2;
+        const c = mk(TW, TH), g = c.getContext("2d"), rnd = rng(seed);
+        const base = g.createLinearGradient(0, 0, 0, TH);
+        base.addColorStop(0, css(mixc(b.mid, b.dark, 0.35)));
+        base.addColorStop(0.5, css(b.light));
+        base.addColorStop(1, css(mixc(b.mid, b.dark, 0.6)));
+        g.fillStyle = base;
+        g.fillRect(0, 0, TW, TH);
+
+        const blot = (x, y, rx, ry, col, a) => {
+            for (const ox of [-TW, 0, TW]) {
+                g.save();
+                g.translate(x + ox, y);
+                g.scale(1, Math.max(0.05, ry / rx));
+                const gr = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+                gr.addColorStop(0, css(col, a));
+                gr.addColorStop(0.55, css(col, a * 0.55));
+                gr.addColorStop(1, css(col, 0));
+                g.fillStyle = gr;
+                g.beginPath();
+                g.arc(0, 0, rx, 0, TAU);
+                g.fill();
+                g.restore();
+            }
+        };
+        const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
+
+        const nWash = b.id === "sun" ? 26 : 16;
+        for (let i = 0; i < nWash; i++) {
+            const rx = TH * (0.16 + rnd() * 0.3);
+            blot(rnd() * TW, rnd() * TH, rx, rx * (0.6 + rnd() * 0.5), pick(b.washes), 0.22 + rnd() * 0.32);
+        }
+        if (b.bands) {
+            for (const bd of b.bands) {
+                for (let x = 0; x < TW; x += TH * 0.18) {
+                    const y = (bd.y + Math.sin(x / TW * TAU * bd.k + bd.ph) * bd.amp) * TH;
+                    blot(x, y, TH * 0.26, TH * bd.h * 0.55, bd.col, bd.a * 0.55);
+                }
+            }
+        }
+        // body-specific painting
+        if (b.id === "jupiter") {
+            blot(TW * 0.3, TH * 0.64, TH * 0.22, TH * 0.11, [244, 128, 140], 0.85);
+            blot(TW * 0.3, TH * 0.64, TH * 0.13, TH * 0.06, [255, 205, 196], 0.55);
+        } else if (b.id === "neptune") {
+            blot(TW * 0.6, TH * 0.4, TH * 0.15, TH * 0.07, [235, 240, 255], 0.75);
+            blot(TW * 0.15, TH * 0.7, TH * 0.18, TH * 0.06, [30, 30, 120], 0.35);
+        } else if (b.id === "mars") {
+            for (let x = 0; x < TW; x += TH * 0.22) blot(x, 0, TH * 0.2, TH * 0.1, [255, 255, 255], 0.85);
+            for (let x = 0; x < TW; x += TH * 0.3) blot(x, TH, TH * 0.16, TH * 0.07, [255, 255, 255], 0.7);
+            for (let i = 0; i < 6; i++) blot(rnd() * TW, TH * (0.3 + rnd() * 0.4), TH * 0.2, TH * 0.1, [150, 60, 84], 0.35);
+        } else if (b.id === "earth") {
+            for (let i = 0; i < 9; i++) {
+                const x = rnd() * TW, y = TH * (0.26 + rnd() * 0.46), rx = TH * (0.12 + rnd() * 0.16);
+                blot(x, y, rx, rx * 0.7, [118, 205, 135], 0.9);
+                blot(x + rx * 0.15, y - rx * 0.1, rx * 0.5, rx * 0.34, [244, 239, 192], 0.7);
+            }
+            for (let x = 0; x < TW; x += TH * 0.24) { blot(x, 0, TH * 0.2, TH * 0.08, [255, 255, 255], 0.85); blot(x, TH, TH * 0.2, TH * 0.08, [255, 255, 255], 0.85); }
+        } else if (b.id === "mercury") {
+            for (let i = 0; i < 12; i++) {
+                const x = rnd() * TW, y = TH * (0.16 + rnd() * 0.68), rr = TH * (0.04 + rnd() * 0.07);
+                for (const ox of [-TW, 0, TW]) {
+                    g.strokeStyle = css(b.dark, 0.34);
+                    g.lineWidth = Math.max(1, rr * 0.28);
+                    g.beginPath(); g.arc(x + ox, y, rr, 0, TAU); g.stroke();
+                    g.fillStyle = css([255, 244, 236], 0.18);
+                    g.beginPath(); g.arc(x + ox - rr * 0.2, y - rr * 0.2, rr * 0.55, 0, TAU); g.fill();
+                }
+            }
+        } else if (b.id === "venus") {
+            g.lineCap = "round";
+            for (let i = 0; i < 5; i++) {
+                g.strokeStyle = css(i % 2 ? [255, 246, 214] : [245, 183, 132], 0.3);
+                g.lineWidth = TH * 0.09;
+                g.beginPath();
+                for (let x = -TW * 0.1; x <= TW * 1.1; x += 4) {
+                    const y = TH * (0.16 + i * 0.17) + Math.sin(x / TW * TAU * 2 + i) * TH * 0.05;
+                    x <= -TW * 0.1 ? g.moveTo(x, y) : g.lineTo(x, y);
+                }
+                g.stroke();
+            }
+        } else if (b.id === "sun") {
+            for (let i = 0; i < 40; i++) blot(rnd() * TW, rnd() * TH, TH * (0.05 + rnd() * 0.08), TH * (0.05 + rnd() * 0.07), rnd() > 0.5 ? [255, 250, 220] : [255, 130, 60], 0.3);
+        }
+        // paper grain
+        const nGrain = Math.floor(TW * TH / 70);
+        for (let i = 0; i < nGrain; i++) {
+            g.fillStyle = rnd() > 0.45 ? `rgba(255,255,255,${0.05 + rnd() * 0.08})` : `rgba(30,20,60,${0.04 + rnd() * 0.07})`;
+            const sz = 0.7 + rnd() * 1.1;
+            g.fillRect(rnd() * TW, rnd() * TH, sz, sz);
+        }
+        return { c, TW, TH };
+    };
+
+    /* Static sphere shading, pooled-pigment rim, anime highlights. Drawn over the scrolling texture. */
+    const paintShade = (b, Rpx, seed) => {
+        const pad = 2;
+        const S = Math.ceil(2 * Rpx + 2 * pad), cx = S / 2, cy = S / 2;
+        const c = mk(S, S), g = c.getContext("2d"), rnd = rng(seed ^ 0x9e3779b9);
+        g.save();
+        g.beginPath(); g.arc(cx, cy, Rpx, 0, TAU); g.clip();
+        const sh = g.createRadialGradient(cx - 0.36 * Rpx, cy - 0.4 * Rpx, 0.1 * Rpx, cx, cy, 1.04 * Rpx);
+        sh.addColorStop(0, "rgba(255,255,255,0.24)");
+        sh.addColorStop(0.42, "rgba(255,255,255,0)");
+        sh.addColorStop(0.74, css(b.dark, 0.2));
+        sh.addColorStop(1, css(mixc(b.dark, [10, 8, 40], 0.45), 0.6));
+        g.fillStyle = sh; g.fillRect(0, 0, S, S);
+        const rl = g.createRadialGradient(cx + 0.8 * Rpx, cy + 0.8 * Rpx, 0, cx + 0.8 * Rpx, cy + 0.8 * Rpx, 0.85 * Rpx);
+        rl.addColorStop(0, css(mixc(b.light, [255, 255, 255], 0.4), 0.34));
+        rl.addColorStop(1, css(b.light, 0));
+        g.fillStyle = rl; g.fillRect(0, 0, S, S);
+        g.restore();
+
+        // watercolour edge: pigment pools unevenly along the rim
+        const segs = 48;
+        for (let i = 0; i < segs; i++) {
+            const a0 = i / segs * TAU, a1 = (i + 1.4) / segs * TAU, k = rnd();
+            g.strokeStyle = css(mixc(b.dark, [20, 10, 60], 0.35), 0.16 + 0.3 * k);
+            g.lineWidth = Rpx * (0.03 + 0.05 * k);
+            g.beginPath(); g.arc(cx, cy, Rpx - g.lineWidth * 0.5, a0, a1); g.stroke();
+        }
+        // anime highlights
+        g.save();
+        g.translate(cx - 0.38 * Rpx, cy - 0.42 * Rpx);
+        g.rotate(-0.6);
+        g.scale(1, 0.55);
+        const hl = g.createRadialGradient(0, 0, 0, 0, 0, 0.3 * Rpx);
+        hl.addColorStop(0, "rgba(255,255,255,0.7)");
+        hl.addColorStop(1, "rgba(255,255,255,0)");
+        g.fillStyle = hl; g.beginPath(); g.arc(0, 0, 0.3 * Rpx, 0, TAU); g.fill();
+        g.restore();
+        g.fillStyle = "rgba(255,255,255,0.85)";
+        g.beginPath(); g.arc(cx - 0.12 * Rpx, cy - 0.64 * Rpx, Math.max(0.8, 0.045 * Rpx), 0, TAU); g.fill();
+        return { c, S };
+    };
+
+    const paintHalo = (b, Rpx, hpx) => {
+        const Rh = Rpx * b.haloR;
+        const Rv = Math.max(Rpx * 0.9, Math.min(Rh, hpx * 0.5 - 7));
+        const SW = Math.ceil(2 * Rh), SH = Math.ceil(2 * Rv);
+        const c = mk(SW, SH), g = c.getContext("2d");
+        g.translate(SW / 2, SH / 2);
+        g.scale(1, Rv / Rh);
+        const gr = g.createRadialGradient(0, 0, Rpx * 0.7, 0, 0, Rh);
+        gr.addColorStop(0, css(b.halo, b.haloA));
+        gr.addColorStop(0.45, css(b.halo, b.haloA * 0.35));
+        gr.addColorStop(1, css(b.halo, 0));
+        g.fillStyle = gr; g.fillRect(-Rh, -Rh, 2 * Rh, 2 * Rh);
+        return { c, SW, SH };
+    };
+
+    const sparkle = (ctx, x, y, s, rot) => {
+        const k = 0.2;
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+            const a = rot + i * Math.PI / 2, a2 = a + Math.PI / 4, a3 = a + Math.PI / 2;
+            const tx = x + Math.cos(a) * s, ty = y + Math.sin(a) * s;
+            const nx = x + Math.cos(a3) * s, ny = y + Math.sin(a3) * s;
+            i === 0 ? ctx.moveTo(tx, ty) : null;
+            ctx.quadraticCurveTo(x + Math.cos(a2) * s * k, y + Math.sin(a2) * s * k, nx, ny);
+        }
+        ctx.closePath();
+        ctx.fill();
+    };
+
+    // state
+    let built = null;            // { key, bodies[], stars[], ... }
+    const hover = new Array(N).fill(0);
+    const scroll = new Array(N).fill(0).map((_, i) => i * 0.137);
+    const waves = [];
+    const bursts = [];
+    const shoot = { on: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, next: 4 };
+    let par = 0;
+
+    const layout = (w, h) => {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const x0 = 12, x1 = w - 12, trackW = x1 - x0;
+        // planets sit in a tight, centred row like the reference (spread only as far as the strip needs); stars fill the rest
+        const innerW = trackW * 0.93, spacing = Math.min(innerW / N, h * 2.6);
+        const innerX0 = x0 + (trackW - spacing * N) / 2;
+        let maxHalf = 0;
+        for (const b of BODIES) maxHalf = Math.max(maxHalf, (b.ring && b.id === "saturn" ? 1.95 : 1.0) * b.r * h);
+        const kfit = clampv(spacing * 0.9 / (2 * maxHalf), 0.5, 1);
+        const key = [Math.round(w / 8), Math.round(h), dpr, Math.round(kfit * 20)].join("|");
+        if (built && built.key === key) return built;
+
+        const bodies = BODIES.map((b, i) => {
+            const R = b.r * h * kfit, Rpx = R * dpr;
+            const tex = paintTex(b, Rpx, 1000 + i * 77);
+            return { b, i, R, Rpx, dpr, tex, shade: paintShade(b, Rpx, 5000 + i * 31), halo: paintHalo(b, Rpx, h * dpr),
+                     cx: innerX0 + (i + 0.5) * spacing, phase: i * 0.83 + 0.3 };
+        });
+        // stars in the gaps
+        const rnd = rng(424242 + Math.round(w));
+        const nStars = clampv(Math.round(trackW / 34), 14, 64);
+        const stars = [];
+        for (let k = 0; k < nStars * 3 && stars.length < nStars; k++) {
+            const sx = x0 + rnd() * trackW, sy = 3 + rnd() * (h - 6);
+            let ok = true;
+            for (const bd of bodies) { if (Math.hypot(sx - bd.cx, sy - h / 2) < bd.R * 1.45 + 4) { ok = false; break; } }
+            if (!ok) continue;
+            const big = rnd() < 0.34;
+            stars.push({ x: sx, y: sy, s: big ? 2.8 + rnd() * 3.4 : 0.8 + rnd() * 0.9, big,
+                         col: STAR_COLS[Math.floor(rnd() * STAR_COLS.length)], sp: 1.2 + rnd() * 2.2, ph: rnd() * TAU,
+                         d: 0.25 + rnd() * 0.75, rot: rnd() * 0.6 - 0.3 });
+        }
+        built = { key, bodies, stars, spacing, kfit, dpr, innerX0 };
+        return built;
+    };
+
+    const drawWindow = (ctx, tex, sc, R) => {
+        const win = tex.TH;
+        const sx = (((sc % 1) + 1) % 1) * tex.TW;
+        const first = Math.min(win, tex.TW - sx);
+        const wpx = 2 * R * first / win;
+        ctx.drawImage(tex.c, sx, 0, first, tex.TH, -R, -R, wpx, 2 * R);
+        if (first < win) ctx.drawImage(tex.c, 0, 0, win - first, tex.TH, -R + wpx, -R, 2 * R - wpx, 2 * R);
+    };
+
+    const ringArc = (ctx, rx, ry, a0, a1, col, lw, alpha) => {
+        ctx.strokeStyle = css(col, alpha);
+        ctx.lineWidth = lw;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx, ry, 0, a0, a1);
+        ctx.stroke();
+    };
 
     return (ctx, w, h, t, dt) => {
-        const a = KW.col.a;
-        const mid = h / 2;
-        const x0 = 12;
-        const x1 = w - 12;
-        const trackW = x1 - x0;
+        const x0 = 12, x1 = w - 12, trackW = x1 - x0, mid = h / 2;
         if (trackW < 40) return;
+        const L = layout(w, h);
+        const calm = !!(window.KW && KW.REDUCED);
+        const ga0 = ctx.globalAlpha;
+        const px = NAV_INPUT.inNav ? NAV_INPUT.canvasX / Math.max(w, 1) - 0.5 : 0;
+        par += (px - par) * Math.min(1, dt * 4);
 
-        const targetMassX = NAV_INPUT.inNav ? Math.max(x0 + 20, Math.min(x1 - 20, NAV_INPUT.canvasX)) : (x0 + trackW * 0.52);
-        const targetMassY = NAV_INPUT.inNav ? Math.max(6, Math.min(h - 6, NAV_INPUT.canvasY)) : mid;
+        // click -> sparkle burst + bounce wave
+        if (NAV_INPUT.clickImpulse > 0) {
+            NAV_INPUT.clickImpulse = 0;
+            const bx = NAV_INPUT.inNav ? NAV_INPUT.canvasX : w / 2, by = NAV_INPUT.inNav ? NAV_INPUT.canvasY : mid;
+            waves.push({ x: bx, age: 0 });
+            if (waves.length > 4) waves.shift();
+            for (let i = 0; i < 12; i++) {
+                const a = Math.random() * TAU, v = 30 + Math.random() * 70;
+                bursts.push({ x: bx, y: by, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.7, life: 0, max: 0.7 + Math.random() * 0.5,
+                              s: 1.8 + Math.random() * 2.6, col: STAR_COLS[Math.floor(Math.random() * STAR_COLS.length)], rot: Math.random() });
+            }
+        }
 
-        if (massX < 0) { massX = targetMassX; massY = targetMassY; }
-        else {
-            massX += (targetMassX - massX) * Math.min(1, dt * 7);
-            massY += (targetMassY - massY) * Math.min(1, dt * 7);
+        // hover target (nearest body to the pointer)
+        let hot = -1;
+        if (NAV_INPUT.inNav) {
+            let best = 1e9;
+            for (const bd of L.bodies) {
+                const d = Math.abs(NAV_INPUT.canvasX - bd.cx);
+                if (d < best) { best = d; hot = bd.i; }
+            }
+            if (best > L.spacing * 0.5) hot = -1;
         }
 
         ctx.save();
 
-        const rayCount = 5;
-        const raySpan = h * 0.72;
-        const rayStep = raySpan / Math.max(1, rayCount - 1);
-        const rayBaseY0 = mid - raySpan / 2;
-
-        for (let r = 0; r < rayCount; r++) {
-            const yBase = rayBaseY0 + r * rayStep;
-            const impactB = yBase - massY;
-            const absB = Math.max(Math.abs(impactB), 3.0);
-
-            ctx.lineWidth = 0.9;
-            ctx.strokeStyle = rgba(a, 0.22 + (1.0 - Math.abs(r - 2) / 2.0) * 0.35);
-            ctx.beginPath();
-
-            for (let x = x0; x <= x1; x += 3) {
-                const dx = x - massX;
-                const r2 = dx * dx + absB * absB;
-                const deflection = (140.0 * impactB) / (r2 + 35.0);
-                const y = yBase - deflection;
-                x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-
-            const photonProgress = ((t * 0.45 + r * 0.20) % 1.0);
-            const px = x0 + trackW * photonProgress;
-            const pdx = px - massX;
-            const pr2 = pdx * pdx + absB * absB;
-            const py = yBase - (140.0 * impactB) / (pr2 + 35.0);
-
-            ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-            ctx.beginPath();
-            ctx.arc(px, py, 1.2, 0, TAU);
-            ctx.fill();
+        // faint nebula washes behind everything
+        ctx.globalCompositeOperation = "lighter";
+        const neb = [[0.2, [150, 120, 255], 0.07], [0.52, [255, 150, 200], 0.055], [0.82, [110, 190, 255], 0.07]];
+        for (let i = 0; i < neb.length; i++) {
+            const nx = x0 + trackW * neb[i][0] + Math.sin(t * 0.12 + i * 2) * 30 + par * 20 * (i + 1) * 0.3;
+            const nr = trackW * 0.2;
+            ctx.save();
+            ctx.translate(nx, mid);
+            ctx.scale(1, (h * 0.42) / nr);
+            const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, nr);
+            gr.addColorStop(0, css(neb[i][1], neb[i][2] * ga0));
+            gr.addColorStop(1, css(neb[i][1], 0));
+            ctx.fillStyle = gr;
+            ctx.fillRect(-nr, -nr, 2 * nr, 2 * nr);
+            ctx.restore();
         }
 
-        const rH = 4.2;
-        ctx.strokeStyle = rgba(a, 0.35);
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.ellipse(massX, massY, rH * 2.3, rH * 1.35, -0.18, 0, TAU);
-        ctx.stroke();
+        // stars
+        for (const st of L.stars) {
+            const tw = 0.5 + 0.5 * Math.sin(t * st.sp + st.ph);
+            const a = (0.5 + 0.5 * tw) * ga0;
+            const sx = st.x + par * 14 * st.d, sy = st.y;
+            ctx.fillStyle = css(st.col, a);
+            if (st.big) sparkle(ctx, sx, sy, st.s * (0.8 + 0.3 * tw), st.rot + (calm ? 0 : Math.sin(t * 0.4 + st.ph) * 0.15));
+            else { ctx.beginPath(); ctx.arc(sx, sy, st.s, 0, TAU); ctx.fill(); }
+        }
 
-        ctx.fillStyle = "#020408";
-        ctx.beginPath();
-        ctx.ellipse(massX, massY, rH * 1.15, rH, 0, 0, TAU);
-        ctx.fill();
+        // shooting star
+        if (!calm) {
+            shoot.next -= dt;
+            if (!shoot.on && shoot.next <= 0) {
+                shoot.on = true; shoot.life = 0;
+                shoot.x = x0 + trackW * (0.1 + Math.random() * 0.55); shoot.y = 3 + Math.random() * 6;
+                shoot.vx = 190 + Math.random() * 90; shoot.vy = 55 + Math.random() * 30;
+                shoot.next = 7 + Math.random() * 8;
+            }
+            if (shoot.on) {
+                shoot.life += dt; shoot.x += shoot.vx * dt; shoot.y += shoot.vy * dt;
+                const f = 1 - shoot.life / 0.9;
+                if (f <= 0 || shoot.y > h + 6) shoot.on = false;
+                else {
+                    const len = 52, ux = shoot.vx / Math.hypot(shoot.vx, shoot.vy), uy = shoot.vy / Math.hypot(shoot.vx, shoot.vy);
+                    const tx = shoot.x - ux * len, ty = shoot.y - uy * len;
+                    const gr = ctx.createLinearGradient(shoot.x, shoot.y, tx, ty);
+                    gr.addColorStop(0, css([255, 255, 255], 0.9 * f * ga0));
+                    gr.addColorStop(0.4, css([190, 220, 255], 0.35 * f * ga0));
+                    gr.addColorStop(1, css([190, 220, 255], 0));
+                    ctx.strokeStyle = gr; ctx.lineWidth = 1.4; ctx.lineCap = "round";
+                    ctx.beginPath(); ctx.moveTo(shoot.x, shoot.y); ctx.lineTo(tx, ty); ctx.stroke();
+                    ctx.fillStyle = css([255, 255, 255], f * ga0);
+                    sparkle(ctx, shoot.x, shoot.y, 3.2, t * 3);
+                }
+            }
+        }
+        ctx.globalCompositeOperation = "source-over";
 
-        const ringPulse = 0.80 + 0.20 * Math.sin(t * 4.0);
-        ctx.strokeStyle = rgba(a, 0.90 * ringPulse);
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.ellipse(massX, massY, rH * 1.35, rH * 1.15, 0, 0, TAU);
-        ctx.stroke();
+        // planets
+        for (const bd of L.bodies) {
+            const b = bd.b, i = bd.i, R = bd.R;
+            hover[i] += ((hot === i ? 1 : 0) - hover[i]) * Math.min(1, dt * 9);
+            const hv = hover[i];
+            if (!calm) scroll[i] += dt * b.spin * (1 + 3.2 * hv);
 
-        const spinSpeed = NAV_INPUT.inNav ? 3.8 : 2.4;
-        orbitTheta += dt * spinSpeed;
-        const semiMajor = rH * 3.6;
-        const semiMinor = rH * 1.8;
-        const precAngle = t * 0.35;
-        const cosP = Math.cos(precAngle), sinP = Math.sin(precAngle);
+            let bounce = 0;
+            for (const wv of waves) {
+                const a = wv.age - Math.abs(bd.cx - wv.x) / 520;
+                if (a > 0 && a < 1.3) bounce -= Math.sin(a * TAU * 1.1) * Math.exp(-a * 3) * h * 0.2;
+            }
+            // hover growth, bob and bounce are all limited to the headroom the strip leaves around this body
+            let sc = 1 + 0.2 * hv;
+            if (R * sc > h / 2 - 2) sc = Math.max(1, (h / 2 - 2) / R);
+            const room = Math.max(0.5, h / 2 - R * sc - 1.5);
+            const bob = calm ? 0 : clampv(Math.sin(t * 0.9 + bd.phase) * h * 0.04 * b.bob, -room * 0.6, room * 0.6);
+            const cx = bd.cx + (calm ? 0 : Math.cos(t * 0.5 + bd.phase) * 1.6) + par * 4 * (0.4 + b.r);
+            const cy = mid + clampv(bob + bounce - hv * 2.4, -room, room);
 
-        const lx = Math.cos(orbitTheta) * semiMajor;
-        const ly = Math.sin(orbitTheta) * semiMinor;
-        const ox = massX + lx * cosP - ly * sinP;
-        const oy = massY + lx * sinP + ly * cosP;
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(sc, sc);
 
-        trail.push({ x: ox, y: oy });
-        if (trail.length > TRAIL_MAX) trail.shift();
+            // halo (additive)
+            ctx.globalCompositeOperation = "lighter";
+            const pulse = b.id === "sun" ? 0.85 + 0.15 * Math.sin(t * 1.6) : 1;
+            ctx.globalAlpha = ga0 * Math.min(1, (0.8 + 0.5 * hv) * pulse);
+            const hsw = bd.halo.SW / bd.dpr, hsh = bd.halo.SH / bd.dpr;
+            ctx.drawImage(bd.halo.c, -hsw / 2, -hsh / 2, hsw, hsh);
+            // sun rays
+            if (b.id === "sun") {
+                ctx.globalAlpha = ga0 * 0.13;
+                ctx.fillStyle = css([255, 214, 120]);
+                const rot = calm ? 0 : t * 0.08;
+                for (let k = 0; k < 10; k++) {
+                    const a = rot + k * TAU / 10;
+                    const len = Math.min(R * (1.9 + 0.35 * Math.sin(t * 1.3 + k * 1.7)), (h / 2 - 6) / Math.max(Math.abs(Math.sin(a)), 0.05));
+                    ctx.beginPath();
+                    ctx.moveTo(Math.cos(a - 0.09) * R * 0.95, Math.sin(a - 0.09) * R * 0.95);
+                    ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
+                    ctx.lineTo(Math.cos(a + 0.09) * R * 0.95, Math.sin(a + 0.09) * R * 0.95);
+                    ctx.closePath(); ctx.fill();
+                }
+            }
+            ctx.globalCompositeOperation = "source-over";
+            ctx.globalAlpha = ga0;
 
-        if (trail.length > 2) {
-            ctx.lineWidth = 1.0;
-            for (let i = 1; i < trail.length; i++) {
-                const trFrac = i / trail.length;
-                ctx.strokeStyle = rgba(a, trFrac * 0.75);
-                ctx.beginPath();
-                ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
-                ctx.lineTo(trail[i].x, trail[i].y);
-                ctx.stroke();
+            // rings, back half
+            const ringTilt = b.id === "saturn" ? -0.38 + (calm ? 0 : 0.035 * Math.sin(t * 0.7)) : 1.32;
+            if (b.ring) {
+                ctx.save(); ctx.rotate(ringTilt);
+                if (b.id === "saturn") {
+                    const rad = [1.9, 1.62, 1.36];
+                    for (let k = 0; k < 3; k++) ringArc(ctx, R * rad[k], R * rad[k] * 0.3, Math.PI, TAU, b.ring[k % b.ring.length], R * 0.17, 0.62 * ga0);
+                } else ringArc(ctx, R * 1.7, R * 0.3, Math.PI, TAU, b.ring[0], Math.max(0.8, R * 0.05), 0.5 * ga0);
+                ctx.restore();
+            }
+
+            // moon behind earth
+            let moon = null;
+            if (b.id === "earth") {
+                const ma = calm ? 0.8 : t * 1.25;
+                moon = { x: Math.cos(ma) * R * 2.0, y: Math.sin(ma) * R * 0.55 - R * 0.2, front: Math.sin(ma) > 0, r: Math.max(1.6, R * 0.22) };
+                if (!moon.front) { ctx.fillStyle = css([236, 230, 244], 0.9 * ga0); ctx.beginPath(); ctx.arc(moon.x, moon.y, moon.r, 0, TAU); ctx.fill(); }
+            }
+
+            // body: scrolling texture inside a circular clip, then static shading on top
+            ctx.save();
+            ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.clip();
+            drawWindow(ctx, bd.tex, scroll[i], R);
+            ctx.restore();
+            const ss = bd.shade.S / bd.dpr;
+            ctx.drawImage(bd.shade.c, -ss / 2, -ss / 2, ss, ss);
+
+            // rings, front half
+            if (b.ring) {
+                ctx.save(); ctx.rotate(ringTilt);
+                if (b.id === "saturn") {
+                    const rad = [1.9, 1.62, 1.36];
+                    for (let k = 0; k < 3; k++) ringArc(ctx, R * rad[k], R * rad[k] * 0.3, 0, Math.PI, b.ring[k % b.ring.length], R * 0.17, 0.9 * ga0);
+                } else ringArc(ctx, R * 1.7, R * 0.3, 0, Math.PI, b.ring[0], Math.max(0.8, R * 0.05), 0.75 * ga0);
+                ctx.restore();
+            }
+            if (moon && moon.front) {
+                ctx.fillStyle = css([248, 244, 252], ga0); ctx.beginPath(); ctx.arc(moon.x, moon.y, moon.r, 0, TAU); ctx.fill();
+                ctx.fillStyle = css([160, 150, 190], 0.35 * ga0); ctx.beginPath(); ctx.arc(moon.x + moon.r * 0.3, moon.y + moon.r * 0.3, moon.r * 0.7, 0, TAU); ctx.fill();
+            }
+
+            // hovered: orbiting sparkles
+            if (hv > 0.02) {
+                ctx.globalCompositeOperation = "lighter";
+                for (let k = 0; k < 3; k++) {
+                    const a = t * 2.1 + k * TAU / 3, rr = R * (1.45 + 0.1 * Math.sin(t * 3 + k));
+                    ctx.fillStyle = css(STAR_COLS[(k + i) % STAR_COLS.length], 0.9 * hv * ga0);
+                    sparkle(ctx, Math.cos(a) * rr, Math.sin(a) * rr * 0.8, 2.2 + 1.2 * hv, a);
+                }
+                ctx.globalCompositeOperation = "source-over";
+            }
+            ctx.restore();
+
+            // label
+            if (hv > 0.04 && L.spacing > 84) {
+                ctx.save();
+                ctx.globalAlpha = ga0 * Math.min(1, hv * 1.2);
+                ctx.font = "600 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+                ctx.textBaseline = "middle"; ctx.textAlign = "left";
+                ctx.shadowColor = css(b.halo, 0.9); ctx.shadowBlur = 8;
+                ctx.fillStyle = css(mixc(b.light, [255, 255, 255], 0.5));
+                const ext = (b.id === "saturn" ? 1.95 : 1) * R * sc;
+                ctx.fillText(b.name.toUpperCase(), cx + ext + 7, cy);
+                ctx.restore();
             }
         }
 
-        ctx.fillStyle = "#ffffff";
-        ctx.shadowColor = rgba(a, 0.8);
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-        ctx.arc(ox, oy, 1.8, 0, TAU);
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        // click burst sparkles
+        ctx.globalCompositeOperation = "lighter";
+        for (let k = bursts.length - 1; k >= 0; k--) {
+            const p = bursts[k];
+            p.life += dt;
+            if (p.life >= p.max) { bursts.splice(k, 1); continue; }
+            p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy *= 0.96;
+            const f = 1 - p.life / p.max;
+            ctx.fillStyle = css(p.col, f * ga0);
+            sparkle(ctx, p.x, p.y, p.s * (0.5 + f), p.rot * TAU + p.life * 3);
+        }
+        for (let k = waves.length - 1; k >= 0; k--) { waves[k].age += dt; if (waves[k].age > 1.6) waves.splice(k, 1); }
 
         ctx.restore();
+        ctx.globalAlpha = ga0;
     };
 };
 
