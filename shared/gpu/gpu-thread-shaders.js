@@ -951,6 +951,26 @@ void main() {
     float grainNoise = hash12(gl_FragCoord.xy + fract(uTime * 17.31) * 413.0) - 0.5;
     srgb = clamp(srgb + grainNoise * uGrain, 0.0, 1.0);
 
+    // Sci-Fi Cinematic Enhancements: Anamorphic Horizontal Lens Streak & Tactical Scanlines
+    // 1. Horizontal Anamorphic Flare from bright bloom highlights
+    vec3 anisoFlare = vec3(0.0);
+    for (float i = -4.0; i <= 4.0; i += 1.0) {
+        if (i == 0.0) continue;
+        vec2 sampleOffset = vec2(i * 0.0035 * (1.0 + uWarpStrength * 2.0), 0.0);
+        anisoFlare += texture(uBloomTex, clamp(baseUV + sampleOffset, 0.001, 0.999)).rgb * (1.0 / (abs(i) * 1.5));
+    }
+    srgb += anisoFlare * 0.18 * (0.5 + 0.5 * uInside + uWarpStrength);
+
+    // 2. High-tech tactical holographic scanlines (subtle 1.5% modulation)
+    float scanline = sin(gl_FragCoord.y * 2.0) * 0.015 * (0.5 + 0.5 * uInside);
+    srgb = clamp(srgb - vec3(scanline), 0.0, 1.0);
+
+    // 3. Quantum edge HUD vignette glow during hyperdrive warp
+    if (uWarpStrength > 0.05) {
+        float warpGlow = edgeR2 * uWarpStrength * 0.35;
+        srgb += vec3(0.12, 0.35, 0.85) * warpGlow;
+    }
+
     fragColor = vec4(srgb, 1.0);
 }
 `;
