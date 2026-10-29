@@ -721,6 +721,11 @@
             }
         }, { passive: true });
 
+        const resetInNav = () => { NAV_INPUT.inNav = false; };
+        window.addEventListener("pointerup", resetInNav, { passive: true });
+        window.addEventListener("pointercancel", resetInNav, { passive: true });
+        document.addEventListener("mouseleave", resetInNav, { passive: true });
+
         document.addEventListener("pointerenter", (e) => {
             if (e.target && e.target.closest && e.target.closest(".brand")) {
                 NAV_INPUT.brandHover = true;
@@ -953,9 +958,13 @@ NAV.math = () => {
     };
 };
 
-// Physics: Gravitational Lensing & Geodesic Deviation with hyperbolic deflection around mass
+// Physics: Kerr Spacetime Geodesic Motion, Oblate Ergosphere & Frame-Dragging Lensing
 NAV.physics = () => {
     let massX = -1, massY = -1;
+    let orbitTheta = 0;
+    const trail = [];
+    const TRAIL_MAX = 42;
+
     return (ctx, w, h, t, dt) => {
         const a = KW.col.a;
         const mid = h / 2;
@@ -965,7 +974,7 @@ NAV.physics = () => {
         if (trackW < 40) return;
 
         const targetMassX = NAV_INPUT.inNav ? Math.max(x0 + 20, Math.min(x1 - 20, NAV_INPUT.canvasX)) : (x0 + trackW * 0.52);
-        const targetMassY = NAV_INPUT.inNav ? Math.max(4, Math.min(h - 4, NAV_INPUT.canvasY)) : mid;
+        const targetMassY = NAV_INPUT.inNav ? Math.max(6, Math.min(h - 6, NAV_INPUT.canvasY)) : mid;
 
         if (massX < 0) { massX = targetMassX; massY = targetMassY; }
         else {
@@ -975,60 +984,94 @@ NAV.physics = () => {
 
         ctx.save();
 
-        const rSchw = 4.2;
-        ctx.fillStyle = "#020408";
-        ctx.beginPath();
-        ctx.arc(massX, massY, rSchw, 0, TAU);
-        ctx.fill();
-
-        const ringPulse = 0.75 + 0.25 * Math.sin(t * 3.5);
-        ctx.strokeStyle = rgba(a, 0.85 * ringPulse);
-        ctx.lineWidth = 1.3;
-        ctx.beginPath();
-        ctx.arc(massX, massY, rSchw + 1.8, 0, TAU);
-        ctx.stroke();
-
-        ctx.strokeStyle = rgba(a, 0.22);
-        ctx.beginPath();
-        ctx.ellipse(massX, massY, rSchw + 5.5, rSchw + 2.8, 0, 0, TAU);
-        ctx.stroke();
-
-        const rayCount = 7;
-        const raySpan = h * 0.76;
-        const rayStep = raySpan / (rayCount - 1);
+        const rayCount = 5;
+        const raySpan = h * 0.72;
+        const rayStep = raySpan / Math.max(1, rayCount - 1);
         const rayBaseY0 = mid - raySpan / 2;
 
         for (let r = 0; r < rayCount; r++) {
             const yBase = rayBaseY0 + r * rayStep;
             const impactB = yBase - massY;
-            const absB = Math.max(Math.abs(impactB), 2.5);
+            const absB = Math.max(Math.abs(impactB), 3.0);
 
-            ctx.lineWidth = r === Math.floor(rayCount / 2) ? 1.4 : 1.0;
-            ctx.strokeStyle = rgba(a, 0.35 + (1 - Math.abs(r - 3) / 3) * 0.45);
+            ctx.lineWidth = 0.9;
+            ctx.strokeStyle = rgba(a, 0.22 + (1.0 - Math.abs(r - 2) / 2.0) * 0.35);
             ctx.beginPath();
 
-            const xStep = 3;
-            for (let x = x0; x <= x1; x += xStep) {
+            for (let x = x0; x <= x1; x += 3) {
                 const dx = x - massX;
                 const r2 = dx * dx + absB * absB;
-                const deflection = (160 * impactB) / (r2 + 40);
+                const deflection = (140.0 * impactB) / (r2 + 35.0);
                 const y = yBase - deflection;
-
                 x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             }
             ctx.stroke();
 
-            const photonProgress = ((t * 0.45 + r * 0.16) % 1);
+            const photonProgress = ((t * 0.45 + r * 0.20) % 1.0);
             const px = x0 + trackW * photonProgress;
             const pdx = px - massX;
             const pr2 = pdx * pdx + absB * absB;
-            const py = yBase - (160 * impactB) / (pr2 + 40);
+            const py = yBase - (140.0 * impactB) / (pr2 + 35.0);
 
-            ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
             ctx.beginPath();
-            ctx.arc(px, py, 1.5, 0, TAU);
+            ctx.arc(px, py, 1.2, 0, TAU);
             ctx.fill();
         }
+
+        const rH = 4.2;
+        ctx.strokeStyle = rgba(a, 0.35);
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.ellipse(massX, massY, rH * 2.3, rH * 1.35, -0.18, 0, TAU);
+        ctx.stroke();
+
+        ctx.fillStyle = "#020408";
+        ctx.beginPath();
+        ctx.ellipse(massX, massY, rH * 1.15, rH, 0, 0, TAU);
+        ctx.fill();
+
+        const ringPulse = 0.80 + 0.20 * Math.sin(t * 4.0);
+        ctx.strokeStyle = rgba(a, 0.90 * ringPulse);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.ellipse(massX, massY, rH * 1.35, rH * 1.15, 0, 0, TAU);
+        ctx.stroke();
+
+        const spinSpeed = NAV_INPUT.inNav ? 3.8 : 2.4;
+        orbitTheta += dt * spinSpeed;
+        const semiMajor = rH * 3.6;
+        const semiMinor = rH * 1.8;
+        const precAngle = t * 0.35;
+        const cosP = Math.cos(precAngle), sinP = Math.sin(precAngle);
+
+        const lx = Math.cos(orbitTheta) * semiMajor;
+        const ly = Math.sin(orbitTheta) * semiMinor;
+        const ox = massX + lx * cosP - ly * sinP;
+        const oy = massY + lx * sinP + ly * cosP;
+
+        trail.push({ x: ox, y: oy });
+        if (trail.length > TRAIL_MAX) trail.shift();
+
+        if (trail.length > 2) {
+            ctx.lineWidth = 1.0;
+            for (let i = 1; i < trail.length; i++) {
+                const trFrac = i / trail.length;
+                ctx.strokeStyle = rgba(a, trFrac * 0.75);
+                ctx.beginPath();
+                ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
+                ctx.lineTo(trail[i].x, trail[i].y);
+                ctx.stroke();
+            }
+        }
+
+        ctx.fillStyle = "#ffffff";
+        ctx.shadowColor = rgba(a, 0.8);
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(ox, oy, 1.8, 0, TAU);
+        ctx.fill();
+        ctx.shadowBlur = 0;
 
         ctx.restore();
     };
@@ -1453,7 +1496,7 @@ const initNavSim = (c) => {
         ctx.save(); ctx.globalAlpha = mix;
         (inst[cur] || (inst[cur] = NAV[cur]()))(ctx, W, Hh, t, dt);
         ctx.restore();
-        navFade(ctx, W, Hh, false);
+        navFade(ctx, W, Hh, true);
     });
 };
 

@@ -57,8 +57,8 @@
                             instead of swarm-morphing and loading a separate page. */
     const FLIGHT_V2 = true;
     const EXPLORE_ENTERS_SIM = false; // false: Explore flies in and SHOWS the domain's first project (page + simulation)
-    const TRAVEL_SEC = 4.2;        // adjacent section
-    const TRAVEL_SEC_JUMP = 5.6;   // multi-section jump
+    const TRAVEL_SEC = 2.4;        // Punchy 2.4s jump for adjacent sections
+    const TRAVEL_SEC_JUMP = 3.4;   // 3.4s for multi-section jumps
 
     let bufferReallocations = 0;
 
@@ -970,11 +970,18 @@
     const lutB = new Vector3();
     const chase = { pos: new Vector3(), tgt: new Vector3(), init: false };
 
-    // Normalised speed over normalised time: ignite, accelerate, sustained cruise, sharp brake.
+    // Kinetic hyperdrive profile:
+    // 1. Spool & hold (0..0.12)
+    // 2. Exponential power punch (0.12..0.35)
+    // 3. Maximum hyperspace cruise (0.35..0.70)
+    // 4. Hard retro-thrust deceleration snap (0.70..1.00)
     const flightSpeed = (t, v0) => {
-        const up = smootherstep(0.0, 0.24, t);
-        const down = 1.0 - smootherstep(0.70, 1.0, t);
-        return Math.max(v0, up) * down;
+        if (t < 0.12) {
+            return Math.max(v0, 0.08 * (t / 0.12));
+        }
+        const launch = Math.pow(smootherstep(0.12, 0.32, t), 1.8);
+        const brake = 1.0 - Math.pow(smootherstep(0.72, 1.0, t), 2.8);
+        return Math.max(v0, launch) * brake;
     };
 
     const buildFlightProfile = (v0) => {
@@ -2784,10 +2791,36 @@
                     camera.target.z + (chase.tgt.z - camera.target.z) * railW * 0.92
                 );
                 const vX = flightSpeed(u, 0.0);
-                camera.fov += 16.0 * vX;
-                trans.warpStrength = 0.55 * vX * vX;
+                const spoolDip = Math.sin(Math.PI * clamp(u / 0.15, 0.0, 1.0)) * 4.0;
+                const burst = (u >= 0.52 && u <= 0.68) ? Math.exp(-Math.pow((u - 0.58) / 0.03, 2.0)) : 0.0;
+                camera.fov += (24.0 * vX) - spoolDip + 6.0 * burst;
+                trans.warpStrength = 0.85 * vX * vX;
+                postState.trailDecay = 0.88;
+                heroBoost = 1.0 + 3.0 * vX;
+
+                if (u >= 0.38 && u <= 0.72) {
+                    ringOpacity = smoothstep(0.38, 0.48, u) * (1.0 - smoothstep(0.64, 0.72, u));
+                    ringRadiusDraw = 3.6 + 1.2 * (1.0 - vX);
+                    ringNoiseDraw = 1.0 + 3.2 * vX;
+                    const sRing = flightParam(0.55);
+                    evalFlightPath(sRing, tmpThresholdPos);
+                    evalFlightTangent(sRing, tmpThresholdTan);
+                } else {
+                    ringOpacity = 0.0;
+                }
+
+                if (u >= 0.52 && u <= 0.68) {
+                    const shockProg = clamp((u - 0.54) / 0.12, 0.0, 1.0);
+                    postState.shockwave = (1.0 - shockProg) * 0.065 * burst;
+                    postState.shockwaveRadius = shockProg * 1.2;
+                    postState.caExtra = 0.025 * burst;
+                } else {
+                    postState.shockwave = 0.0;
+                    postState.caExtra = 0.0;
+                }
             } else {
                 trans.warpStrength = 0.0;
+                ringOpacity = 0.0;
             }
 
             // 3. Synchronized DOM Choreography
@@ -3077,10 +3110,15 @@
                 }
             }
 
-            // THRESHOLD ring forms ahead of hero along path tangent around u = 0.50
-            if (!reduced && u >= 0.38 && u <= 0.64) {
-                ringOpacity = smoothstep(0.38, 0.48, u) * (1.0 - smoothstep(0.54, 0.64, u));
-                const sRing = FLIGHT_V2 ? flightParam(0.50) : 0.50;
+            const vS = FLIGHT_V2 ? flightSpeed(u, trans.v0 || 0.0) : 0.0;
+
+            // Threshold rift ring appears ahead along flight path during cruise (u in [0.38, 0.72])
+            if (!reduced && u >= 0.38 && u <= 0.72) {
+                ringOpacity = smoothstep(0.38, 0.48, u) * (1.0 - smoothstep(0.64, 0.72, u));
+                ringRadiusDraw = 3.6 + 1.2 * (1.0 - vS); // Contracts under relativistic dilation
+                ringNoiseDraw = 1.0 + 3.2 * vS;
+
+                const sRing = FLIGHT_V2 ? flightParam(0.55) : 0.55;
                 evalFlightPath(sRing, tmpThresholdPos);
                 evalFlightTangent(sRing, tmpThresholdTan);
 
@@ -3091,14 +3129,14 @@
                 ringOpacity = 0.0;
             }
 
-            // On crossing (u in [0.46, 0.60]): brief shockwave ripple, short FOV spike, quick chromatic split
-            if (!reduced && u >= 0.46 && u <= 0.60) {
-                const spike = Math.exp(-Math.pow((u - 0.50) / 0.024, 2.0));
-                const shockProg = clamp((u - 0.48) / 0.10, 0.0, 1.0);
-                postState.shockwave = (1.0 - shockProg) * 0.042 * smoothstep(0.48, 0.50, u);
-                postState.shockwaveRadius = shockProg * 0.72;
-                postState.caExtra = 0.016 * spike;
-                fovSpike = 4.5 * spike;
+            // Dimensional breakthrough shockwave when bursting through the threshold (u in [0.52, 0.68])
+            if (!reduced && u >= 0.52 && u <= 0.68) {
+                const burst = Math.exp(-Math.pow((u - 0.58) / 0.03, 2.0));
+                const shockProg = clamp((u - 0.54) / 0.12, 0.0, 1.0);
+                postState.shockwave = (1.0 - shockProg) * 0.065 * burst;
+                postState.shockwaveRadius = shockProg * 1.2;
+                postState.caExtra = 0.025 * burst;
+                fovSpike = 6.0 * burst;
             } else {
                 postState.shockwave = 0.0;
                 postState.shockwaveRadius = 0.0;
@@ -3106,10 +3144,8 @@
                 fovSpike = 0.0;
             }
 
-            // V2: drive the (already present) radial warp blur + chromatic split from the hero's normalised speed,
-            // so cruise reads as travel at speed instead of a section change.
-            const vS = FLIGHT_V2 ? flightSpeed(u, trans.v0 || 0.0) : 0.0;
-            trans.warpStrength = (FLIGHT_V2 && !reduced) ? 0.55 * vS * vS : 0.0;
+            // Directional hyperdrive warp lines & relativistic FOV tunnel
+            trans.warpStrength = (FLIGHT_V2 && !reduced) ? (0.85 * vS * vS) : 0.0;
 
             const baseFov = fromProf.fov + (toProf.fov - fromProf.fov) * dimBlend;
 
@@ -3174,8 +3210,9 @@
                     baseTgtZ + (tgtHZ - baseTgtZ) * railWeight * 0.92
                 );
 
-                const breath = Math.sin(Math.PI * smoothstep(0.08, 0.92, u));
-                camera.fov = baseFov + (FLIGHT_V2 ? 16.0 * vS : 9.5 * breath) + fovSpike;
+                const spoolDip = Math.sin(Math.PI * clamp(u / 0.15, 0.0, 1.0)) * 4.0;
+                const warpFov = (24.0 * vS) - spoolDip;
+                camera.fov = baseFov + warpFov + fovSpike;
             }
 
             // DimensionProfile continuous blend driven by dimBlend
@@ -3313,8 +3350,24 @@
             gl.blendFunc(gl.ONE, gl.ONE);
         }
 
+        // Project Hero Particle coordinates into NDC space to anchor hyperdrive warp tunnel
+        let heroScreenX = 0.5, heroScreenY = 0.5;
+        {
+            const e = camera.viewProjectionMatrix.elements;
+            const hx = positions[0], hy = positions[1], hz = positions[2];
+            const wClip = e[3] * hx + e[7] * hy + e[11] * hz + e[15];
+            if (wClip > 0.1) {
+                heroScreenX = clamp((e[0] * hx + e[4] * hy + e[8]  * hz + e[12]) / wClip * 0.5 + 0.5, 0.05, 0.95);
+                heroScreenY = clamp((e[1] * hx + e[5] * hy + e[9]  * hz + e[13]) / wClip * 0.5 + 0.5, 0.05, 0.95);
+            }
+        }
+
         const trailGain = isLight ? 0.85 : clamp(1.0 - effDecay * 0.56, 0.36, 1.0);
-        const maxStreakPx = trans.active ? 48.0 : 20.0;
+        const isFlying = trans.active || (exploreMorph.active && !exploreMorph.simple);
+        const activeU = trans.active ? trans.u : (exploreMorph.active ? exploreMorph.t : 0.0);
+        const liveVs = isFlying ? flightSpeed(activeU, trans.active ? (trans.v0 || 0.0) : 0.0) : 0.0;
+        const maxStreakPx = isFlying ? (32.0 + 64.0 * liveVs) : 20.0;
+        const streakScale = isFlying ? (1.2 + 2.2 * liveVs) : postState.streakScale;
 
         gl.useProgram(pointProg);
         gl.uniformMatrix4fv(pointUniforms.uViewProj, false, camera.viewProjectionMatrix.elements);
@@ -3322,9 +3375,9 @@
         gl.uniform2f(pointUniforms.uViewport, width, height);
         gl.uniform1f(pointUniforms.uDpr, dpr);
         gl.uniform1f(pointUniforms.uTime, simTime);
-        gl.uniform1f(pointUniforms.uHeroBoost, heroBoost);
+        gl.uniform1f(pointUniforms.uHeroBoost, isFlying ? (1.0 + 3.0 * liveVs) : heroBoost);
         gl.uniform1f(pointUniforms.uIsLight, isLight ? 1.0 : 0.0);
-        gl.uniform1f(pointUniforms.uStreakScale, isReducedMotion() ? 0.0 : postState.streakScale);
+        gl.uniform1f(pointUniforms.uStreakScale, isReducedMotion() ? 0.0 : streakScale);
         gl.uniform1f(pointUniforms.uMaxStreakPx, maxStreakPx);
         gl.uniform1f(pointUniforms.uTrailGain, trailGain);
         gl.uniform3f(pointUniforms.uFogTint, postState.fogTint[0], postState.fogTint[1], postState.fogTint[2]);
@@ -3589,11 +3642,11 @@
         gl.uniform3f(compositeUniforms.uInnerTint, inside.tint[0], inside.tint[1], inside.tint[2]);
         gl.uniform1f(compositeUniforms.uVignette, 0.36 + 0.26 * inside.value);
         gl.uniform1f(compositeUniforms.uGrain, 0.020);
-        gl.uniform1f(compositeUniforms.uCaStrength, isReducedMotion() ? 0.0 : (0.0018 + postState.caExtra));
+        gl.uniform1f(compositeUniforms.uCaStrength, isReducedMotion() ? 0.0 : (0.002 + 0.018 * liveVs + postState.caExtra));
         gl.uniform1f(compositeUniforms.uShockwave, isReducedMotion() ? 0.0 : postState.shockwave);
         gl.uniform1f(compositeUniforms.uShockwaveRadius, postState.shockwaveRadius);
         gl.uniform1f(compositeUniforms.uWarpStrength, isReducedMotion() ? 0.0 : trans.warpStrength);
-        gl.uniform2f(compositeUniforms.uWarpCentre, 0.5, 0.5);
+        gl.uniform2f(compositeUniforms.uWarpCentre, heroScreenX, heroScreenY);
         gl.uniform3f(compositeUniforms.uFogTint, postState.fogTint[0], postState.fogTint[1], postState.fogTint[2]);
         gl.uniform1f(compositeUniforms.uIsLight, isLight ? 1.0 : 0.0);
         gl.uniform1i(compositeUniforms.uDebugMode, debugMode);

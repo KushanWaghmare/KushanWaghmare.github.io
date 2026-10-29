@@ -60,9 +60,10 @@ void main() {
     float baseSize = clamp(aSize * seedVar * perspectiveScale * uDpr * heroScale, 1.35 * uDpr, 44.0 * uDpr);
 
     // Velocity-aligned ribbon stretch with 3 parallax depth layers (near, mid, far)
-    float layerFactor = isHero ? 1.65 : ((dist < 7.5) ? 1.35 : ((dist < 17.0) ? 1.0 : 0.68));
+    float layerFactor = isHero ? 1.85 : ((dist < 7.5) ? 1.35 : ((dist < 17.0) ? 1.0 : 0.68));
     float worldStep = length(aPosition - aPrevPosition);
-    float maxStep = isHero ? 45.0 : 9.0;
+    // Allow hero particle to streak up to 350 world units during hyperdrive punch
+    float maxStep = isHero ? 350.0 : 12.0;
     float streakLen = 0.0;
     vec2 dirNdc = vec2(1.0, 0.0);
 
@@ -71,9 +72,10 @@ void main() {
         vec2 ndcPrev = clipPrev.xy / clipPrev.w;
         vec2 rawDeltaPx = (ndcCurr - ndcPrev) * 0.5 * uViewport * uDpr * uStreakScale * layerFactor;
         float rawLen = length(rawDeltaPx);
-        if (rawLen > 0.35) {
+        if (rawLen > 0.25) {
             dirNdc = rawDeltaPx / rawLen;
-            streakLen = min(rawLen, (isHero ? uMaxStreakPx * 1.45 : uMaxStreakPx) * uDpr);
+            float maxHeroPx = min(96.0 * uDpr, 240.0 - baseSize);
+            streakLen = min(rawLen, isHero ? maxHeroPx : (uMaxStreakPx * uDpr));
         }
     }
 

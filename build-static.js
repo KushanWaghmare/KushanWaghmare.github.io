@@ -195,10 +195,6 @@ const domainPage = (key) => {
                 ${p.tags.map(t => `<span class="snap-proj-pill glass"><strong>${t}</strong></span>`).join("")}
                 <span class="tag-status">${p.status}</span>
             </div>
-            <div class="snap-jump-pills" ${attr}>
-                <span class="snap-jump-label">Section projects:</span>
-                ${ps.map((proj, idx) => `<a href="#proj-${proj.id}" class="pill jump-pill${idx === i ? ' active' : ''}"><strong>0${idx + 1} · ${proj.title}</strong></a>`).join("")}
-            </div>
             <div class="snap-actions" ${attr}>
                 <a href="project.html?p=${p.id}" class="snap-cta-btn glass">
                     <span>Read Deep-Dive &amp; Architecture</span>

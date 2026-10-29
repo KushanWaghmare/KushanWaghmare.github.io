@@ -319,9 +319,12 @@ pre.glass {
     flex: 1 1 auto;
     min-width: 0;
     height: 36px;
-    margin: 0 clamp(12px, 3vw, 36px);
+    margin: 0 clamp(10px, 2.5vw, 32px);
     pointer-events: auto;
     cursor: crosshair;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
 }
 .nav-live canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
