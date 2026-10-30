@@ -611,24 +611,7 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 
 /* Simulation caption HUD card (.sim-tag) */
 .sim-tag {
-    position: absolute;
-    right: clamp(16px, 3.5vw, 42px);
-    bottom: 20px;
-    max-width: min(540px, calc(100vw - 36px));
-    text-align: left;
-    font: 500 11px/1.55 var(--mono);
-    letter-spacing: 0.02em;
-    color: rgba(230, 236, 245, 0.92);
-    background: rgba(8, 10, 16, 0.84);
-    -webkit-backdrop-filter: blur(18px) saturate(140%);
-    backdrop-filter: blur(18px) saturate(140%);
-    border: 1px solid rgba(var(--a), 0.30);
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    border-radius: 8px;
-    padding: 7px 13px;
-    z-index: 5 !important;
-    pointer-events: none;
-    transition: opacity 0.25s ease, border-color 0.25s ease;
+    display: none !important;
 }
 
 .sim-tag::before {
