@@ -750,134 +750,219 @@ const navFade = (ctx, w, h, left) => { // feather the strip's edges into the gla
     ctx.restore();
 };
 
-// Hero: Dynamic Phase Space / Strange Attractor Tracer with sensitive dependence & brand bifurcation
+// Hero: Laniakea Cosmic Watershed Streamlines converging to the Great Attractor
+// Enhanced faithfully from Tully et al. cosmic velocity field visualization
 NAV.hub = () => {
-    let x = 0.1, y = 0.0, z = 0.0;
-    const sigma = 10, beta = 8 / 3;
-    const TRAIL_MAX = 130;
-    const trail = [];
-    let collapse = 0;
-    let bifurcateTimer = 0;
-    let wasBrandHover = false;
-
-    const rk4Step = (dtStep, rhoVal) => {
-        const dx = (cx, cy, cz) => sigma * (cy - cx);
-        const dy = (cx, cy, cz) => cx * (rhoVal - cz) - cy;
-        const dz = (cx, cy, cz) => cx * cy - beta * cz;
-
-        const k1x = dx(x, y, z), k1y = dy(x, y, z), k1z = dz(x, y, z);
-        const k2x = dx(x + 0.5 * dtStep * k1x, y + 0.5 * dtStep * k1y, z + 0.5 * dtStep * k1z);
-        const k2y = dy(x + 0.5 * dtStep * k1x, y + 0.5 * dtStep * k1y, z + 0.5 * dtStep * k1z);
-        const k2z = dz(x + 0.5 * dtStep * k1x, y + 0.5 * dtStep * k1y, z + 0.5 * dtStep * k1z);
-        const k3x = dx(x + 0.5 * dtStep * k2x, y + 0.5 * dtStep * k2y, z + 0.5 * dtStep * k2z);
-        const k3y = dy(x + 0.5 * dtStep * k2x, y + 0.5 * dtStep * k2y, z + 0.5 * dtStep * k2z);
-        const k3z = dz(x + 0.5 * dtStep * k2x, y + 0.5 * dtStep * k2y, z + 0.5 * dtStep * k2z);
-        const k4x = dx(x + dtStep * k3x, y + dtStep * k3y, z + dtStep * k3z);
-        const k4y = dy(x + dtStep * k3x, y + dtStep * k3y, z + dtStep * k3z);
-        const k4z = dz(x + dtStep * k3x, y + dtStep * k3y, z + dtStep * k3z);
-
-        x += (dtStep / 6) * (k1x + 2 * k2x + 2 * k3x + k4x);
-        y += (dtStep / 6) * (k1y + 2 * k2y + 2 * k3y + k4y);
-        z += (dtStep / 6) * (k1z + 2 * k2z + 2 * k3z + k4z);
+    const rng = (seed) => {
+        let s = seed >>> 0;
+        return () => {
+            s = (s + 0x6D2B79F5) >>> 0;
+            let t = Math.imul(s ^ (s >>> 15), s | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
     };
 
+    const NUM_FILAMENTS = 140;
+    const NUM_STARS = 180;
+    const rand = rng(0x1a71a);
+
+    const filaments = [];
+    for (let i = 0; i < NUM_FILAMENTS; i++) {
+        const branch = rand() < 0.62 ? "spine" : (rand() < 0.85 ? "lower" : "outer_blue");
+        filaments.push({
+            branch,
+            seed: rand(),
+            spread: (rand() - 0.5) * 2,
+            speed: 0.08 + rand() * 0.12,
+            offset: rand(),
+            width: 0.6 + rand() * 0.9,
+            alpha: 0.18 + rand() * 0.55
+        });
+    }
+
+    const dust = [];
+    for (let i = 0; i < NUM_STARS; i++) {
+        dust.push({
+            u: rand(),
+            v: (rand() - 0.5) * 2,
+            r: 0.4 + rand() * 1.1,
+            twinkle: 1.5 + rand() * 3.5,
+            phase: rand() * TAU,
+            isCyan: rand() < 0.35
+        });
+    }
+
     return (ctx, w, h, t, dt) => {
-        const a = KW.col.a;
+        const a = KW.col.a || [245, 175, 60];
         const mid = h / 2;
         const x0 = 12;
         const x1 = w - 12;
         const trackW = x1 - x0;
         if (trackW < 30) return;
 
-        // Detect brand hover state transitions
-        if (NAV_INPUT.brandHover && !wasBrandHover) {
-            wasBrandHover = true;
-        } else if (!NAV_INPUT.brandHover && wasBrandHover) {
-            wasBrandHover = false;
-            bifurcateTimer = 1.0; // Trigger bifurcation burst outward
-        }
+        const calm = !!(window.KW && KW.REDUCED);
+        const mouseX = NAV_INPUT.inNav ? NAV_INPUT.canvasX : (w * NAV_INPUT.x);
+        const mouseY = NAV_INPUT.inNav ? NAV_INPUT.canvasY : mid;
 
-        if (NAV_INPUT.brandHover) {
-            collapse = Math.min(1, collapse + dt * 4.5);
-        } else {
-            collapse = Math.max(0, collapse - dt * 3.0);
-        }
+        const apexX = x0 + trackW * 0.72 + (mouseX - (x0 + trackW * 0.5)) * 0.08;
+        const apexY = mid - h * 0.08 + (mouseY - mid) * 0.08;
 
-        if (bifurcateTimer > 0) {
-            bifurcateTimer = Math.max(0, bifurcateTimer - dt * 1.8);
-        }
+        const branchForkX = x0 + trackW * 0.60;
+        const branchForkY = mid + h * 0.12;
 
-        // Sensitive dependence: cursor modulates Rayleigh number rho
-        const cursorPerturb = (NAV_INPUT.x - 0.5) * 12;
-        const rho = 28 + cursorPerturb;
-
-        // Run RK4 micro-steps
-        for (let s = 0; s < 3; s++) {
-            rk4Step(0.012, rho);
-            trail.push({ x, y, z });
-            if (trail.length > TRAIL_MAX) trail.shift();
-        }
-
-        // Mapping Lorenz coordinates into canvas track
-        const centreX = x0 + trackW * 0.5;
-        const scaleX = (trackW * 0.44) / 22;
-        const scaleY = (h * 0.38) / 24;
+        const mwX = x0 + trackW * 0.44;
+        const mwY = mid + h * 0.14;
 
         ctx.save();
-        ctx.lineWidth = 1.2;
 
-        if (trail.length > 2) {
-            for (let i = 1; i < trail.length; i++) {
-                const frac = i / trail.length;
-                const p0 = trail[i - 1], p1 = trail[i];
+        // 1. Deep Amber Cosmic Watershed Ellipsoidal Glow
+        const bgGrad = ctx.createRadialGradient(apexX - trackW * 0.15, mid, 2, apexX, mid, trackW * 0.45);
+        bgGrad.addColorStop(0, "rgba(225, 160, 45, 0.22)");
+        bgGrad.addColorStop(0.45, "rgba(180, 110, 20, 0.11)");
+        bgGrad.addColorStop(0.85, "rgba(20, 15, 35, 0.03)");
+        bgGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
 
-                const c0x = p0.x * (1 - collapse);
-                const c0z = 27 + (p0.z - 27) * (1 - collapse);
-                const c1x = p1.x * (1 - collapse);
-                const c1z = 27 + (p1.z - 27) * (1 - collapse);
+        ctx.save();
+        ctx.translate(apexX - trackW * 0.1, mid);
+        ctx.scale(1.4, 0.55);
+        ctx.fillStyle = bgGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, trackW * 0.36, 0, TAU);
+        ctx.fill();
+        ctx.restore();
 
-                const sx0 = centreX + c0x * scaleX;
-                const sy0 = mid - (c0z - 27) * scaleY;
-                const sx1 = centreX + c1x * scaleX;
-                const sy1 = mid - (c1z - 27) * scaleY;
+        // 2. Peripheral Blue/Cyan Boundary Streams
+        ctx.lineWidth = 0.8;
+        for (let i = 0; i < filaments.length; i++) {
+            const f = filaments[i];
+            if (f.branch !== "outer_blue") continue;
 
-                ctx.strokeStyle = rgba(a, frac * 0.85 * (1 - collapse * 0.5));
-                ctx.beginPath();
-                ctx.moveTo(sx0, sy0);
-                ctx.lineTo(sx1, sy1);
-                ctx.stroke();
+            const startX = x0 + f.seed * trackW;
+            const isTop = f.spread > 0;
+            const startY = isTop ? 2 : h - 2;
+            const endX = startX + f.spread * 40;
+            const endY = isTop ? h * 0.28 : h * 0.72;
 
-                if (bifurcateTimer > 0) {
-                    const bFrac = bifurcateTimer;
-                    const bx0 = centreX - c0x * scaleX * (1 + bFrac * 0.6);
-                    const by0 = mid - (c0z - 27) * scaleY * (1 + bFrac * 0.4);
-                    const bx1 = centreX - c1x * scaleX * (1 + bFrac * 0.6);
-                    const by1 = mid - (c1z - 27) * scaleY * (1 + bFrac * 0.4);
-
-                    ctx.strokeStyle = rgba(KW.col.pal[1] || a, frac * bFrac * 0.9);
-                    ctx.beginPath();
-                    ctx.moveTo(bx0, by0);
-                    ctx.lineTo(bx1, by1);
-                    ctx.stroke();
-                }
-            }
-
-            const head = trail[trail.length - 1];
-            const hx = centreX + head.x * (1 - collapse) * scaleX;
-            const hy = mid - (head.z - 27) * (1 - collapse) * scaleY;
-
-            ctx.fillStyle = rgba(a, 0.95);
+            ctx.strokeStyle = `rgba(140, 180, 255, ${f.alpha * 0.35})`;
             ctx.beginPath();
-            ctx.arc(hx, hy, collapse > 0.5 ? 3.2 : 2.2, 0, TAU);
-            ctx.fill();
+            ctx.moveTo(startX, startY);
+            ctx.quadraticCurveTo(startX + 15, (startY + endY) * 0.5, endX, endY);
+            ctx.stroke();
+        }
 
-            if (collapse > 0.1) {
-                ctx.strokeStyle = rgba(a, collapse * 0.7);
+        // 3. Dense Converging Golden Streamlines with Branching Flow
+        for (let i = 0; i < NUM_FILAMENTS; i++) {
+            const f = filaments[i];
+            if (f.branch === "outer_blue") continue;
+
+            const flow = (f.offset + (calm ? 0 : t * f.speed)) % 1.0;
+            const spreadRad = (1.0 - Math.pow(flow, 1.8)) * (h * 0.46) * f.spread;
+
+            ctx.lineWidth = f.width;
+
+            if (f.branch === "spine") {
+                const sx = x0 + trackW * 0.15 + (1 - flow) * trackW * 0.55;
+                const sy = mid + Math.sin(f.seed * TAU + (calm ? 0 : t * 0.5)) * spreadRad;
+
+                const cpx = sx * 0.4 + apexX * 0.6;
+                const cpy = sy * 0.5 + apexY * 0.5;
+
+                const alpha = Math.min(1.0, (0.15 + 0.85 * Math.pow(flow, 1.6)) * f.alpha);
+                ctx.strokeStyle = `rgba(255, ${Math.floor(215 + f.seed * 35)}, ${Math.floor(110 + f.seed * 60)}, ${alpha})`;
+
                 ctx.beginPath();
-                ctx.arc(centreX, mid, 4 + (1 - collapse) * 6, 0, TAU);
+                ctx.moveTo(sx, sy);
+                ctx.quadraticCurveTo(cpx, cpy, apexX, apexY);
+                ctx.stroke();
+            } else {
+                const sx = x0 + trackW * 0.05 + (1 - flow) * trackW * 0.42;
+                const sy = mid + h * 0.28 + Math.cos(f.seed * TAU) * (spreadRad * 0.6);
+
+                const alpha = (0.12 + 0.75 * Math.pow(flow, 1.4)) * f.alpha * 0.85;
+                ctx.strokeStyle = `rgba(255, 230, 140, ${alpha})`;
+
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.quadraticCurveTo(branchForkX - 20, branchForkY + 10, branchForkX, branchForkY);
                 ctx.stroke();
             }
         }
+
+        // 4. Stippled Galaxy Clusters & Cosmic Dust
+        for (let i = 0; i < dust.length; i++) {
+            const d = dust[i];
+            const gx = x0 + trackW * (0.28 + d.u * 0.55);
+            const gy = (mid + d.v * (h * 0.32) * Math.sin(d.u * Math.PI)) + Math.sin(t * 0.2 + d.phase) * 1.5;
+
+            const tw = 0.5 + 0.5 * Math.sin((calm ? 0 : t * d.twinkle) + d.phase);
+            const dustAlpha = 0.3 + 0.6 * tw;
+
+            ctx.fillStyle = d.isCyan
+                ? `rgba(180, 220, 255, ${dustAlpha * 0.75})`
+                : `rgba(255, 250, 220, ${dustAlpha * 0.85})`;
+
+            ctx.beginPath();
+            ctx.arc(gx, gy, d.r, 0, TAU);
+            ctx.fill();
+        }
+
+        // 5. Great Attractor Core Focal Bloom
+        ctx.globalCompositeOperation = "lighter";
+        const gaGlow = ctx.createRadialGradient(apexX, apexY, 0, apexX, apexY, 18);
+        gaGlow.addColorStop(0, "rgba(255, 255, 240, 0.95)");
+        gaGlow.addColorStop(0.2, "rgba(255, 210, 110, 0.75)");
+        gaGlow.addColorStop(0.6, "rgba(240, 150, 40, 0.25)");
+        gaGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = gaGlow;
+        ctx.beginPath();
+        ctx.arc(apexX, apexY, 18, 0, TAU);
+        ctx.fill();
+
+        const forkGlow = ctx.createRadialGradient(branchForkX, branchForkY, 0, branchForkX, branchForkY, 12);
+        forkGlow.addColorStop(0, "rgba(255, 255, 220, 0.8)");
+        forkGlow.addColorStop(0.4, "rgba(255, 180, 70, 0.35)");
+        forkGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = forkGlow;
+        ctx.beginPath();
+        ctx.arc(branchForkX, branchForkY, 12, 0, TAU);
+        ctx.fill();
+
+        ctx.globalCompositeOperation = "source-over";
+
+        // 6. Milky Way Red Dot Marker
+        const mwPulse = calm ? 1.0 : (0.85 + 0.25 * Math.sin(t * 3.6));
+        const mwHalo = ctx.createRadialGradient(mwX, mwY, 0, mwX, mwY, 6 * mwPulse);
+        mwHalo.addColorStop(0, "rgba(255, 50, 60, 0.95)");
+        mwHalo.addColorStop(0.5, "rgba(255, 40, 50, 0.4)");
+        mwHalo.addColorStop(1, "rgba(255, 0, 0, 0)");
+
+        ctx.fillStyle = mwHalo;
+        ctx.beginPath();
+        ctx.arc(mwX, mwY, 6 * mwPulse, 0, TAU);
+        ctx.fill();
+
+        ctx.fillStyle = "#ff2a3a";
+        ctx.beginPath();
+        ctx.arc(mwX, mwY, 2.2, 0, TAU);
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(mwX, mwY, 0.8, 0, TAU);
+        ctx.fill();
+
+        // 7. Telemetry Caption on Hover
+        if (NAV_INPUT.inNav && trackW > 180) {
+            ctx.font = '600 7px "JetBrains Mono", monospace';
+            ctx.fillStyle = "rgba(255, 225, 140, 0.85)";
+            ctx.fillText("LANIAKEA · 10¹⁷ M☉", x0 + 4, h - 3);
+            ctx.fillStyle = "rgba(255, 80, 80, 0.9)";
+            ctx.textAlign = "right";
+            ctx.fillText("MILKY WAY", x1 - 4, h - 3);
+            ctx.textAlign = "left";
+        }
+
         ctx.restore();
     };
 };
@@ -1901,6 +1986,702 @@ const initNavSim = (c) => {
 
 
 
+    /* ---------- Full-Viewport Widescreen Laniakea Renderer (Translucent Amber & Crisp Filaments) ---------- */
+    const createLaniakeaPoster = (canvas, opts = {}) => {
+        const ctx = canvas.getContext("2d", { alpha: true });
+        const TAU = Math.PI * 2;
+        const reduced = !!opts.reducedMotion;
+
+        // ---- deterministic PRNG
+        let seed = 0x1A71A2026 >>> 0;
+        const rnd = () => {
+            seed = (seed + 0x6D2B79F5) >>> 0;
+            let t = Math.imul(seed ^ (seed >>> 15), seed | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+        const gauss = () => (rnd() + rnd() + rnd() - 1.5) / 0.5;
+
+        // ---- Anatomical landmarks in expanded widescreen space (design centre = 395, 635)
+        // A: Great Attractor / Norma Cusp (536, 464)
+        // P: Lower Spine Plume / Virgo-Perseus-Pisces Nexus (484, 895)
+        // M: Milky Way Red Dot Beacon (386, 967)
+        const A = [536, 464], P = [484, 895], M = [386, 967];
+
+        // 1. Central S-Curved Luminous Spine (Lower Plume -> Great Attractor Cusp)
+        const R_SPINE = [
+            [479, 985], [482, 945], [484, 905], [489, 860], [502, 825],
+            [518, 785], [533, 735], [543, 685], [551, 635], [544, 588],
+            [535, 545], [532, 502], [536, 464]
+        ];
+        // 2. Upper-Left Caustic Ridge (Extended left across the widescreen viewport into Cusp)
+        const R_CAUSTIC = [
+            [-140, 495], [-40, 520], [42, 532], [115, 562], [185, 578],
+            [245, 579], [305, 566], [365, 544], [425, 516], [480, 488],
+            [514, 471], [536, 464]
+        ];
+        // 3. Right-Flank Arch (Extending across the right widescreen expanse from Cusp)
+        const R_RIGHT_ARCH = [
+            [920, 405], [820, 414], [732, 420], [690, 428], [645, 433],
+            [600, 442], [564, 454], [536, 464]
+        ];
+        // 4. Milky Way Feeder Tendril (Straight white-gold bridge from Milky Way Red Dot into Lower Plume)
+        const R_MILKY_WAY = [
+            [386, 967], [418, 944], [450, 922], [478, 902], [488, 875]
+        ];
+        // 5. Secondary Upper-Left Plume Branch (Diverging left above the Milky Way tendril)
+        const R_PLUME_LEFT = [
+            [355, 926], [395, 902], [440, 875], [486, 848], [509, 810]
+        ];
+        // 6. Interior Valley Curtain Ribs
+        const R_VALLEY_1 = [
+            [185, 895], [235, 865], [268, 775], [308, 680], [358, 595],
+            [420, 528], [485, 488], [536, 464]
+        ];
+        const R_VALLEY_2 = [
+            [312, 925], [358, 825], [408, 725], [462, 625], [508, 535], [536, 464]
+        ];
+
+        // Bottom & Peripheral Dendritic Blue-White Cosmic Web Spines (spanning full widescreen width)
+        const R_BLUE_BOT = [
+            [-280, 1060], [-140, 1120], [-10, 1185], [65, 1245], [155, 1288],
+            [255, 1322], [365, 1346], [485, 1365], [625, 1385], [790, 1405]
+        ];
+        const R_BLUE_LEFT = [
+            [-320, 820], [-240, 680], [-185, 540], [-150, 380], [-95, 220], [15, 95]
+        ];
+        const BLUE_SINKS = [
+            [780, 85, 1.1],
+            [120, 20, 0.9],
+            [640, 1385, 1.0],
+            [860, 880, 0.85],
+            [-220, 740, 0.9]
+        ];
+
+        // Expanded widescreen Catmull-Rom silhouette of the Laniakea basin
+        const BLOB_CTRL = [
+            [-155, 310], [-45, 210], [115, 175], [295, 190], [455, 255],
+            [585, 315], [715, 375], [815, 445], [835, 545], [805, 665],
+            [745, 775], [655, 875], [555, 955], [465, 1005], [365, 1025],
+            [245, 1015], [125, 960], [15, 875], [-85, 765], [-155, 625],
+            [-185, 465]
+        ];
+        const evalCatmullClosed = (P, segsPerPt = 12) => {
+            const n = P.length, out = [];
+            for (let i = 0; i < n; i++) {
+                const p0 = P[(i + n - 1) % n], p1 = P[i], p2 = P[(i + 1) % n], p3 = P[(i + 2) % n];
+                for (let j = 0; j < segsPerPt; j++) {
+                    const t = j / segsPerPt, t2 = t * t, t3 = t2 * t;
+                    out.push([
+                        0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+                        0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)
+                    ]);
+                }
+            }
+            return out;
+        };
+        const BLOB = evalCatmullClosed(BLOB_CTRL, 12);
+
+        const inBlob = (x, y) => {
+            let inside = false;
+            for (let i = 0, j = BLOB.length - 1; i < BLOB.length; j = i++) {
+                const xi = BLOB[i][0], yi = BLOB[i][1], xj = BLOB[j][0], yj = BLOB[j][1];
+                if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+            }
+            return inside;
+        };
+
+        const K = 64;
+        const evalCubicBezier = (p0, p1, p2, p3, K_pts) => {
+            const out = new Float32Array(K_pts * 2);
+            for (let k = 0; k < K_pts; k++) {
+                const u = k / (K_pts - 1), inv = 1 - u;
+                const b0 = inv * inv * inv, b1 = 3 * inv * inv * u, b2 = 3 * inv * u * u, b3 = u * u * u;
+                out[k * 2]     = b0 * p0[0] + b1 * p1[0] + b2 * p2[0] + b3 * p3[0];
+                out[k * 2 + 1] = b0 * p0[1] + b1 * p1[1] + b2 * p2[1] + b3 * p3[1];
+            }
+            return out;
+        };
+
+        const samplePolyline = (R, u) => {
+            const f = Math.min(Math.max(u, 0), 0.99999) * (R.length - 1);
+            const i = f | 0, fr = f - i;
+            return [
+                R[i][0] + (R[i + 1][0] - R[i][0]) * fr,
+                R[i][1] + (R[i + 1][1] - R[i][1]) * fr
+            ];
+        };
+
+        // ---- Build 1,250+ widescreen multi-sheet golden streamlines & 460 dendritic blue streamlines
+        const gold = [], goldMeta = [], blue = [];
+
+        // Sheet 1 (360 lines): Expansive Upper-Left & Left Widescreen Fan -> Caustic Ridge -> Cusp A(536, 464)
+        for (let i = 0; i < 360; i++) {
+            const uSpread = rnd();
+            const isTopEdge = uSpread < 0.45;
+            const p0 = isTopEdge
+                ? [-160 + rnd() * 680, 175 + rnd() * 195]
+                : [-180 + rnd() * 290, 260 + rnd() * 310];
+            if (!inBlob(p0[0], p0[1])) continue;
+
+            const joinU = 0.20 + 0.80 * Math.pow(rnd(), 0.75);
+            const cPt = samplePolyline(R_CAUSTIC, joinU);
+            const ribOff = gauss() * 8.0;
+            const p1 = [
+                p0[0] * 0.58 + cPt[0] * 0.42 + (rnd() - 0.5) * 42,
+                p0[1] * 0.65 + cPt[1] * 0.35 - 32 * Math.sin(uSpread * Math.PI)
+            ];
+            const p2 = [
+                cPt[0] * 0.65 + A[0] * 0.35 - 18,
+                cPt[1] * 0.65 + A[1] * 0.35 + ribOff
+            ];
+            const p3 = [A[0] + gauss() * 3.5, A[1] + gauss() * 3.5];
+            gold.push(evalCubicBezier(p0, p1, p2, p3, K));
+            goldMeta.push({ weight: 0.60 + rnd() * 0.62, alpha: 0.20 + Math.pow(rnd(), 1.35) * 0.38, warmth: rnd() });
+        }
+
+        // Sheet 2 (290 lines): Draped Interior Valley Curtains (Lower-Left / Mid-Left -> Crossing into Caustic & Spine)
+        for (let i = 0; i < 290; i++) {
+            const s = rnd();
+            const p0 = [-120 + s * 510 + gauss() * 22, 535 + Math.pow(rnd(), 0.85) * 445];
+            if (!inBlob(p0[0], p0[1])) continue;
+
+            const toSpine = rnd() < 0.48;
+            if (toSpine) {
+                const spineU = 0.32 + 0.68 * rnd();
+                const sPt = samplePolyline(R_SPINE, spineU);
+                const p1 = [p0[0] + (sPt[0] - p0[0]) * 0.42 - 24, p0[1] + (sPt[1] - p0[1]) * 0.32];
+                const p2 = [sPt[0] - 14 + gauss() * 8, sPt[1] + gauss() * 12];
+                const p3 = [A[0] + gauss() * 4, A[1] + gauss() * 4];
+                gold.push(evalCubicBezier(p0, p1, p2, p3, K));
+            } else {
+                const cU = 0.28 + 0.68 * s;
+                const cPt = samplePolyline(R_CAUSTIC, cU);
+                const p1 = [p0[0] + 18 + gauss() * 22, p0[1] - (p0[1] - cPt[1]) * 0.48];
+                const p2 = [cPt[0] + gauss() * 10, cPt[1] + gauss() * 8];
+                const p3 = [A[0] + gauss() * 3.5, A[1] + gauss() * 3.5];
+                gold.push(evalCubicBezier(p0, p1, p2, p3, K));
+            }
+            goldMeta.push({ weight: 0.62 + rnd() * 0.68, alpha: 0.22 + Math.pow(rnd(), 1.3) * 0.42, warmth: rnd() });
+        }
+
+        // Sheet 3 (240 lines): Central S-Curved Spine Bundle & Lower Plume Spray (P -> A)
+        for (let i = 0; i < 240; i++) {
+            const out = new Float32Array(K * 2);
+            const latSpread = gauss() * 14.0;
+            const tailSpread = gauss() * 26.0;
+            const startFrac = rnd() < 0.65 ? (rnd() * 0.18) : (rnd() * 0.55);
+            for (let k = 0; k < K; k++) {
+                const u = startFrac + (1 - startFrac) * (k / (K - 1));
+                const pt = samplePolyline(R_SPINE, u);
+                const pinch = Math.sin(u * Math.PI) * (1 - 0.78 * Math.pow(u, 1.6));
+                const tail = Math.pow(1 - u, 2.4);
+                out[k * 2]     = pt[0] + latSpread * pinch + tailSpread * tail;
+                out[k * 2 + 1] = pt[1] + (tailSpread * 0.6) * tail;
+            }
+            gold.push(out);
+            goldMeta.push({ weight: 0.72 + rnd() * 0.70, alpha: 0.26 + Math.pow(rnd(), 1.15) * 0.44, warmth: 0.6 + 0.4 * rnd() });
+        }
+
+        // Sheet 4 (160 lines): Local Group / Milky Way Feeder Tendril & Secondary Plume Branch -> Spine -> Cusp
+        for (let i = 0; i < 160; i++) {
+            const isMW = i < 95;
+            const branch = isMW ? R_MILKY_WAY : R_PLUME_LEFT;
+            const spread = gauss() * (isMW ? 6.5 : 11.0);
+            const p0 = [branch[0][0] + spread * 0.9, branch[0][1] + gauss() * 6.5];
+            const pMid = branch[2];
+            const pJoin = isMW ? [484 + spread * 0.4, 885] : [502 + spread * 0.4, 825];
+            const pTop = [546 + spread * 0.3, 625];
+            const pEnd = [A[0] + gauss() * 3.0, A[1] + gauss() * 3.0];
+            const out = new Float32Array(K * 2);
+            const half = K >> 1;
+            const seg1 = evalCubicBezier(p0, [pMid[0] + spread * 0.6, pMid[1]], [pJoin[0] - 8, pJoin[1] + 15], pJoin, half);
+            const seg2 = evalCubicBezier(pJoin, [535 + spread * 0.4, 745], pTop, pEnd, K - half + 1);
+            out.set(seg1, 0);
+            out.set(seg2.subarray(2), half * 2);
+            gold.push(out);
+            goldMeta.push({ weight: isMW ? 0.90 : 0.72, alpha: isMW ? (0.38 + 0.38 * rnd()) : (0.26 + 0.35 * rnd()), warmth: 0.8 + 0.2 * rnd() });
+        }
+
+        // Sheet 5 (210 lines): Right-Flank Looping Ribs & Right Arch -> Great Attractor Cusp
+        for (let i = 0; i < 210; i++) {
+            const isUpperRight = rnd() < 0.44;
+            if (isUpperRight) {
+                const p0 = [545 + rnd() * 285, 295 + rnd() * 155];
+                const p1 = [p0[0] - 20, p0[1] + 38];
+                const p2 = [590 + gauss() * 14, 444 + gauss() * 7];
+                const p3 = [A[0] + gauss() * 3.5, A[1] + gauss() * 3.5];
+                gold.push(evalCubicBezier(p0, p1, p2, p3, K));
+            } else {
+                const startY = 505 + rnd() * 410;
+                const startX = 505 + rnd() * 275;
+                if (!inBlob(startX, startY)) continue;
+                const bowX = Math.min(820, startX + 42 + rnd() * 85);
+                const p0 = [startX, startY];
+                const p1 = [bowX, startY - (startY - A[1]) * 0.38];
+                const p2 = [A[0] + 48 + rnd() * 68, A[1] - 12 + gauss() * 14];
+                const p3 = [A[0] + gauss() * 3.5, A[1] + gauss() * 3.5];
+                gold.push(evalCubicBezier(p0, p1, p2, p3, K));
+            }
+            goldMeta.push({ weight: 0.58 + rnd() * 0.62, alpha: 0.20 + Math.pow(rnd(), 1.3) * 0.36, warmth: rnd() });
+        }
+
+        // Sheet 6 (460 lines): Full-Viewport Peripheral Dendritic Blue-White Cosmic Web
+        // 6a. Bottom dendritic fern spine & side ribs
+        for (let i = 0; i < 250; i++) {
+            const uSpine = rnd();
+            const spPt = samplePolyline(R_BLUE_BOT, uSpine);
+            if (i < 45) {
+                const out = new Float32Array(K * 2);
+                const offY = gauss() * 7.0;
+                for (let k = 0; k < K; k++) {
+                    const pt = samplePolyline(R_BLUE_BOT, k / (K - 1));
+                    out[k * 2] = pt[0];
+                    out[k * 2 + 1] = pt[1] + offY;
+                }
+                blue.push(out);
+            } else {
+                const side = (i & 1) ? 1 : -1;
+                const ribLen = 65 + rnd() * 175;
+                const angle = (side > 0 ? -1.15 : 1.25) + (rnd() - 0.5) * 0.45;
+                const p0 = [spPt[0] - Math.cos(angle) * ribLen, spPt[1] - Math.sin(angle) * ribLen];
+                if (inBlob(p0[0], p0[1])) continue;
+                const p1 = [(p0[0] + spPt[0]) * 0.5 - 18, (p0[1] + spPt[1]) * 0.5 + side * 14];
+                const uEnd = Math.min(0.99, uSpine + 0.08 + rnd() * 0.08);
+                const endPt = samplePolyline(R_BLUE_BOT, uEnd);
+                blue.push(evalCubicBezier(p0, p1, spPt, endPt, K));
+            }
+        }
+        // 6b. Left-flank & upper-left cosmic web dendritic spine (wraps around the left side of the website)
+        for (let i = 0; i < 110; i++) {
+            const uL = rnd();
+            const spPt = samplePolyline(R_BLUE_LEFT, uL);
+            const side = (i & 1) ? 1 : -1;
+            const ribLen = 60 + rnd() * 160;
+            const angle = (side > 0 ? -0.35 : 2.45) + (rnd() - 0.5) * 0.5;
+            const p0 = [spPt[0] + Math.cos(angle) * ribLen, spPt[1] + Math.sin(angle) * ribLen];
+            if (inBlob(p0[0], p0[1])) continue;
+            const p1 = [(p0[0] + spPt[0]) * 0.5, (p0[1] + spPt[1]) * 0.5 - 15];
+            const uEnd = Math.min(0.99, uL + 0.10);
+            const endPt = samplePolyline(R_BLUE_LEFT, uEnd);
+            blue.push(evalCubicBezier(p0, p1, spPt, endPt, K));
+        }
+        // 6c. Top-right & right-flank divergent cosmic web rays
+        for (let i = 0; i < 120; i++) {
+            const isTopRight = i < 75;
+            if (isTopRight) {
+                const ang = 1.55 + rnd() * 1.45;
+                const rad = 110 + rnd() * 340;
+                const sx0 = 840 + Math.cos(ang) * rad, sy0 = 65 + Math.sin(ang) * rad * 0.85;
+                const p1 = [sx0 * 0.6 + 840 * 0.4, sy0 * 0.5 + 65 * 0.5 - 14];
+                blue.push(evalCubicBezier([sx0, sy0], p1, [815, 75], [845, 65], K));
+            } else {
+                const sx0 = 680 + rnd() * 320, sy0 = 720 + rnd() * 480;
+                if (inBlob(sx0, sy0)) continue;
+                const p1 = [sx0 + 65, sy0 - 35];
+                const p2 = [sx0 + 130, sy0 - 55];
+                blue.push(evalCubicBezier([sx0, sy0], p1, p2, [880, 860], K));
+            }
+        }
+
+        // ---- 7,600+ Glowing Circular Galaxy Pearls
+        const stipples = [];
+        const lineAt = (L, u, out) => {
+            const f = Math.min(Math.max(u, 0), 0.99999) * (K - 1), i0 = f | 0, fr = f - i0, b = i0 * 2;
+            out[0] = L[b] + (L[b + 2] - L[b]) * fr;
+            out[1] = L[b + 1] + (L[b + 3] - L[b + 1]) * fr;
+        };
+        {
+            const t = [0, 0];
+            for (let i = 0; i < 4800; i++) {
+                const L = gold[(rnd() * gold.length) | 0];
+                const u = Math.pow(rnd(), 0.78);
+                lineAt(L, u, t);
+                const tight = rnd() < 0.72 ? (1.0 + rnd() * 5.8) : (5.5 + 24.0 * Math.pow(rnd(), 2));
+                stipples.push({
+                    x: t[0] + gauss() * tight * 0.45,
+                    y: t[1] + gauss() * tight * 0.45,
+                    s: 0.70 + Math.pow(rnd(), 1.65) * 1.55,
+                    a: 0.34 + rnd() * 0.62,
+                    k: rnd() < 0.25 ? 1 : 0
+                });
+            }
+            for (let i = 0; i < 900; i++) {
+                const nearMW = rnd() < 0.42;
+                const cxP = nearMW ? (M[0] + gauss() * 48) : (P[0] + gauss() * 34);
+                const cyP = nearMW ? (M[1] - 10 + gauss() * 38) : (P[1] - 15 + gauss() * 52);
+                stipples.push({
+                    x: cxP,
+                    y: cyP,
+                    s: 0.72 + rnd() * 1.40,
+                    a: 0.38 + rnd() * 0.56,
+                    k: rnd() < 0.32 ? 1 : 0
+                });
+            }
+            for (let i = 0; i < 3000; i++) {
+                const L = blue[(rnd() * blue.length) | 0];
+                lineAt(L, Math.pow(rnd(), 0.82), t);
+                const sc = 2.5 + 28.0 * Math.pow(rnd(), 2);
+                stipples.push({
+                    x: t[0] + gauss() * sc * 0.45,
+                    y: t[1] + gauss() * sc * 0.45,
+                    s: 0.65 + rnd() * 1.15,
+                    a: 0.28 + rnd() * 0.66,
+                    k: 2
+                });
+            }
+        }
+
+        // Pre-render circular radial-glow pearl sprites
+        const makePearlSprite = (rHalo, gHalo, bHalo) => {
+            const c = document.createElement("canvas");
+            c.width = 32; c.height = 32;
+            const g = c.getContext("2d");
+            const gr = g.createRadialGradient(16, 16, 0, 16, 16, 15);
+            gr.addColorStop(0.0, "rgba(255, 255, 255, 1.0)");
+            gr.addColorStop(0.16, "rgba(255, 253, 245, 0.92)");
+            gr.addColorStop(0.38, `rgba(${rHalo}, ${gHalo}, ${bHalo}, 0.40)`);
+            gr.addColorStop(0.72, `rgba(${rHalo}, ${gHalo}, ${bHalo}, 0.10)`);
+            gr.addColorStop(1.0, `rgba(${rHalo}, ${gHalo}, ${bHalo}, 0.0)`);
+            g.fillStyle = gr;
+            g.beginPath();
+            g.arc(16, 16, 15, 0, TAU);
+            g.fill();
+            return c;
+        };
+        const pearlGold = makePearlSprite(255, 232, 168);
+        const pearlIce  = makePearlSprite(195, 222, 255);
+        const pearlBlue = makePearlSprite(150, 188, 255);
+
+        const goldTracers = [], blueTracers = [];
+        for (let i = 0; i < 1150; i++) goldTracers.push({ li: (rnd() * gold.length) | 0, t: rnd(), sp: 0.09 + rnd() * 0.16, len: 0.08 + rnd() * 0.10, b: 0.34 + rnd() * 0.58 });
+        for (let i = 0; i < 680; i++) blueTracers.push({ li: (rnd() * blue.length) | 0, t: rnd(), sp: 0.05 + rnd() * 0.09, len: 0.04 + rnd() * 0.06, b: 0.30 + rnd() * 0.68 });
+        const twinkle = [];
+        for (let i = 0; i < 380; i++) twinkle.push({ s: stipples[(rnd() * stipples.length) | 0], f: 0.8 + rnd() * 2.6, p: rnd() * TAU });
+
+        // ---- Full-Viewport Widescreen Layout & Static High-Resolution Layer
+        let W = 0, H = 0, dpr = 1, k = 1, ox = 0, oy = 0, adx = 0, ady = 0;
+        const stat = (typeof document !== "undefined") ? document.createElement("canvas") : opts.createCanvas();
+        const sx = (px) => ox + px * k, sy = (py) => oy + py * k;
+
+        const radial = (c, x, y, r, stops) => {
+            const g = c.createRadialGradient(x, y, 0, x, y, r);
+            for (const s of stops) g.addColorStop(s[0], s[1]);
+            c.fillStyle = g;
+            c.beginPath();
+            c.arc(x, y, r, 0, TAU);
+            c.fill();
+        };
+        const strokeLine = (c, L, u0, u1) => {
+            const t = [0, 0];
+            const n = Math.max(2, Math.round((u1 - u0) * (K - 1)));
+            c.beginPath();
+            for (let i = 0; i <= n; i++) {
+                lineAt(L, u0 + (u1 - u0) * i / n, t);
+                if (i) c.lineTo(sx(t[0]), sy(t[1]));
+                else c.moveTo(sx(t[0]), sy(t[1]));
+            }
+            c.stroke();
+        };
+        const strokeRidge = (c, R) => {
+            c.beginPath();
+            c.moveTo(sx(R[0][0]), sy(R[0][1]));
+            for (let i = 1; i < R.length - 1; i++) {
+                const mx = (R[i][0] + R[i + 1][0]) / 2, my = (R[i][1] + R[i + 1][1]) / 2;
+                c.quadraticCurveTo(sx(R[i][0]), sy(R[i][1]), sx(mx), sy(my));
+            }
+            c.lineTo(sx(R[R.length - 1][0]), sy(R[R.length - 1][1]));
+            c.stroke();
+        };
+
+        const buildStatic = () => {
+            stat.width = Math.round(W * dpr);
+            stat.height = Math.round(H * dpr);
+            const c = stat.getContext("2d");
+            c.setTransform(dpr, 0, 0, dpr, 0, 0);
+            c.clearRect(0, 0, W, H);
+            c.lineCap = "round";
+            c.lineJoin = "round";
+
+            // 1. Deep midnight-indigo cosmic void backdrop
+            radial(c, sx(380), sy(640), 960 * k, [[0, "rgba(12,20,46,0.45)"], [0.65, "rgba(6,10,28,0.25)"], [1, "rgba(0,0,0,0)"]]);
+            for (const b of BLUE_SINKS) radial(c, sx(b[0]), sy(b[1]), 185 * k * b[2], [[0, "rgba(65,100,190,0.22)"], [1, "rgba(0,0,0,0)"]]);
+
+            // 2. Subtle, Translucent Deep-Space Amber Basin Veil (reduced opacity so dark space & crisp filaments pop)
+            const poly = BLOB;
+            const path = () => {
+                c.beginPath();
+                poly.forEach((p, i) => i ? c.lineTo(sx(p[0]), sy(p[1])) : c.moveTo(sx(p[0]), sy(p[1])));
+                c.closePath();
+            };
+            c.save();
+            if ("filter" in c) c.filter = `blur(${(14.0 * k).toFixed(1)}px)`;
+            const g = c.createRadialGradient(sx(430), sy(565), 15 * k, sx(350), sy(610), 560 * k);
+            g.addColorStop(0.0, "rgba(195, 148, 52, 0.28)");
+            g.addColorStop(0.36, "rgba(162, 118, 38, 0.20)");
+            g.addColorStop(0.72, "rgba(112, 80, 24, 0.11)");
+            g.addColorStop(1.0, "rgba(45, 32, 8, 0.0)");
+            path();
+            c.fillStyle = g;
+            c.fill();
+            c.restore();
+
+            // 3. Peripheral Dendritic Blue-White Cosmic Web
+            c.globalCompositeOperation = "lighter";
+            c.strokeStyle = "rgba(115, 150, 235, 0.05)";
+            c.lineWidth = 3.0 * k;
+            for (const L of blue) strokeLine(c, L, 0, 1);
+            c.strokeStyle = "rgba(170, 205, 255, 0.24)";
+            c.lineWidth = Math.max(0.75, 0.88 * k);
+            for (const L of blue) {
+                for (let j = 0; j < 4; j++) {
+                    c.globalAlpha = 0.42 + 0.58 * (j / 3);
+                    strokeLine(c, L, j / 4, (j + 1) / 4);
+                }
+            }
+            c.globalAlpha = 1;
+
+            // 4. Crisp, High-Definition Multi-Sheet Golden Streamlines (reduced glare, high strand definition)
+            c.strokeStyle = "rgba(245, 195, 95, 0.014)";
+            c.lineWidth = 3.2 * k;
+            for (let i = 0; i < gold.length; i += 2) strokeLine(c, gold[i], 0, 1);
+
+            for (let i = 0; i < gold.length; i++) {
+                const L = gold[i];
+                const meta = goldMeta[i];
+                c.lineWidth = Math.max(0.60, 0.76 * k * meta.weight);
+                const gTint = (224 + meta.warmth * 22) | 0;
+                const bTint = (142 + meta.warmth * 62) | 0;
+
+                for (let j = 0; j < 4; j++) {
+                    const f = j / 3;
+                    const segAlpha = meta.alpha * (0.30 + 0.58 * Math.pow(f, 1.4));
+                    c.strokeStyle = `rgba(255, ${gTint}, ${bTint}, ${segAlpha.toFixed(3)})`;
+                    strokeLine(c, L, j / 4, (j + 1) / 4);
+                }
+            }
+
+            // 5. Refined Spine, Caustic Ridge, Right Arch & Milky Way Tendril Glows (controlled opacity, zero blowout)
+            const ridgeStyles = [
+                [R_SPINE,      0.85],
+                [R_CAUSTIC,    0.72],
+                [R_RIGHT_ARCH, 0.55],
+                [R_MILKY_WAY,  0.75],
+                [R_PLUME_LEFT, 0.55]
+            ];
+            for (const [R, w] of ridgeStyles) {
+                c.strokeStyle = `rgba(245, 188, 82, ${0.028 * w})`;
+                c.lineWidth = 15 * k;
+                strokeRidge(c, R);
+                c.strokeStyle = `rgba(255, 224, 150, ${0.075 * w})`;
+                c.lineWidth = 5.5 * k;
+                strokeRidge(c, R);
+                c.strokeStyle = `rgba(255, 246, 215, ${0.24 * w})`;
+                c.lineWidth = Math.max(0.9, 1.45 * k);
+                strokeRidge(c, R);
+            }
+            // Controlled focal blooms at Great Attractor Cusp & Lower Local Sheet Plume
+            radial(c, sx(A[0] - 8), sy(A[1] + 4), 72 * k, [[0, "rgba(255,248,220,0.42)"], [0.28, "rgba(255,218,135,0.18)"], [0.65, "rgba(225,155,48,0.06)"], [1, "rgba(0,0,0,0)"]]);
+            radial(c, sx(P[0]), sy(P[1]), 66 * k, [[0, "rgba(255,248,220,0.44)"], [0.30, "rgba(255,215,130,0.19)"], [0.7, "rgba(225,150,45,0.06)"], [1, "rgba(0,0,0,0)"]]);
+
+            // 6. Glowing Circular Galaxy Pearls
+            for (const d of stipples) {
+                const px = sx(d.x), py = sy(d.y);
+                const sprite = d.k === 0 ? pearlGold : d.k === 1 ? pearlIce : pearlBlue;
+                const rad = d.s * Math.max(2.4, k * 3.1);
+                c.globalAlpha = d.a * 0.88;
+                c.drawImage(sprite, px - rad, py - rad, rad * 2, rad * 2);
+            }
+            c.globalAlpha = 1.0;
+            c.globalCompositeOperation = "source-over";
+        };
+
+        const resize = (w, h, ratio = 1) => {
+            dpr = Math.min(2, ratio || 1);
+            W = w; H = h;
+            canvas.width = Math.round(W * dpr);
+            canvas.height = Math.round(H * dpr);
+            const mobile = W < 760;
+            // Scale expansively so the simulation wraps across the full widescreen website
+            k = mobile
+                ? Math.max(W / 760, H / 1180)
+                : Math.max(W / 1080, H / 960);
+            const cx = mobile ? 0.52 * W : 0.58 * W;
+            const cy = mobile ? 0.54 * H : 0.48 * H;
+            ox = cx - 395 * k;
+            oy = cy - 645 * k;
+            buildStatic();
+        };
+
+        const t2 = [0, 0], t3 = [0, 0];
+        const drawTracers = (list, table, rgb, accel, aMul, dt, lw) => {
+            const buckets = [[], [], [], []];
+            for (const tr of list) {
+                if (!reduced) {
+                    tr.t += tr.sp * dt * (accel ? 0.6 + tr.t : 1);
+                    if (tr.t >= 1) tr.t -= 1;
+                }
+                const L = table[tr.li], u1 = tr.t, u0 = Math.max(0, u1 - tr.len);
+                const fade = Math.min(1, u1 * 10) * Math.min(1, (1 - u1) * 12);
+                const a = tr.b * fade;
+                if (a < 0.02) continue;
+                lineAt(L, u0, t2);
+                lineAt(L, (u0 + u1) / 2, t3);
+                const bi = Math.min(3, (a * 4) | 0), B = buckets[bi];
+                B.push(sx(t2[0]), sy(t2[1]), sx(t3[0]), sy(t3[1]));
+                lineAt(L, u1, t2);
+                B.push(sx(t2[0]), sy(t2[1]));
+            }
+            ctx.lineWidth = lw;
+            for (let b = 0; b < 4; b++) {
+                const B = buckets[b];
+                if (!B.length) continue;
+                ctx.strokeStyle = `rgba(${rgb},${(aMul * (0.22 + 0.22 * b)).toFixed(3)})`;
+                ctx.beginPath();
+                for (let i = 0; i < B.length; i += 6) {
+                    ctx.moveTo(B[i], B[i + 1]);
+                    ctx.lineTo(B[i + 2], B[i + 3]);
+                    ctx.lineTo(B[i + 4], B[i + 5]);
+                }
+                ctx.stroke();
+            }
+        };
+
+        let last = 0;
+        const draw = (tSec) => {
+            const dt = last ? Math.min(0.05, tSec - last) : 0.016;
+            last = tSec;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(dpr, 0, 0, dpr, adx * dpr, ady * dpr);
+            ctx.drawImage(stat, 0, 0, W, H);
+            ctx.lineCap = "round";
+            ctx.globalCompositeOperation = "lighter";
+
+            const lwG = Math.max(0.70, 0.85 * k);
+            drawTracers(goldTracers, gold, "255,238,192", true, 0.26, dt, lwG);
+            drawTracers(blueTracers, blue, "175,208,255", false, 0.25, dt, Math.max(0.70, 0.85 * k));
+
+            // Twinkling circular galaxy pearls
+            for (const w of twinkle) {
+                const v = 0.5 + 0.5 * Math.sin(tSec * w.f + w.p);
+                const r = Math.max(0.9, 1.35 * k * (0.7 + v * 0.6));
+                ctx.fillStyle = `rgba(255, 255, 248, ${(0.14 + 0.52 * v * v).toFixed(3)})`;
+                ctx.beginPath();
+                ctx.arc(sx(w.s.x), sy(w.s.y), r, 0, TAU);
+                ctx.fill();
+            }
+
+            // Subtle breathing glow at Great Attractor Cusp and Lower Plume
+            const br = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(tSec * 0.9);
+            radial(ctx, sx(A[0] - 6), sy(A[1] + 2), 28 * k, [[0, `rgba(255,248,220,${0.14 + 0.10 * br})`], [1, "rgba(0,0,0,0)"]]);
+            radial(ctx, sx(P[0]), sy(P[1]), 48 * k, [[0, `rgba(255,240,190,${0.13 + 0.09 * (1 - br)})`], [1, "rgba(0,0,0,0)"]]);
+            ctx.globalCompositeOperation = "source-over";
+
+            // Milky Way Beacon at (386, 967): ruby-red core, crisp white halo ring, and soft red bloom
+            const mx = sx(M[0]), my = sy(M[1]), pulse = reduced ? 1 : 0.9 + 0.15 * Math.sin(tSec * 2.4);
+            radial(ctx, mx, my, 16 * pulse * Math.max(1, k), [[0, "rgba(255,40,50,0.55)"], [0.5, "rgba(255,30,45,0.18)"], [1, "rgba(255,0,0,0)"]]);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+            ctx.beginPath();
+            ctx.arc(mx, my, Math.max(4.5, 5.5 * k), 0, TAU);
+            ctx.fill();
+            ctx.fillStyle = "#ff1e2e";
+            ctx.beginPath();
+            ctx.arc(mx, my, Math.max(3.2, 3.8 * k), 0, TAU);
+            ctx.fill();
+        };
+
+        // Keep full-viewport widescreen framing centered and apply smooth pointer/stage parallax via nudgeTo
+        let baseAx = 0, baseAy = 0;
+        const layoutTo = (ax, ay) => { baseAx = ax; baseAy = ay; adx = 0; ady = 0; };
+        const nudgeTo = (ax, ay) => {
+            adx = Math.max(-48, Math.min(48, (ax - baseAx) * 0.45));
+            ady = Math.max(-36, Math.min(36, (ay - baseAy) * 0.45));
+        };
+        return { resize, draw, layoutTo, nudgeTo };
+    };
+
+
+
+    /* ---------- Full-Viewport Hero Stage: Laniakea Supercluster (poster-faithful Canvas 2D) ---------- */
+    const initHeroLaniakeaStage = () => {
+        const heroSec = document.querySelector('.snap-section[data-sim="hub:intro"], .snap-section.hero#hub-intro, .snap-section.hero[data-domain="hub"]');
+        if (!heroSec) return;
+
+        let c = heroSec.querySelector("canvas.laniakea-hero-canvas");
+        if (!c) {
+            c = document.createElement("canvas");
+            c.className = "laniakea-hero-canvas";
+            c.setAttribute("aria-hidden", "true");
+            c.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;";
+            if (getComputedStyle(heroSec).position === "static") heroSec.style.position = "relative";
+            heroSec.insertBefore(c, heroSec.firstChild);
+        }
+        if (c.__dispose) c.__dispose();
+
+        // Keep hero copy above the canvas
+        Array.from(heroSec.children).forEach((el) => {
+            if (el === c) return;
+            if (getComputedStyle(el).position === "static") { el.style.position = "relative"; el.style.zIndex = "1"; }
+        });
+
+        const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const poster = createLaniakeaPoster(c, { reducedMotion: reduced });
+        const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * t * (t * (t * 6 - 15) + 10); };
+
+        // The WebGL stage launches the hero particle from the Milky Way dot; pin the artwork's dot to that exact point
+        let anchored = false;
+        const anchorPoint = () => {
+            const S = window.THREAD_STAGE;
+            if (!S || !S.supported || S.currentFormation !== "hub:intro" && !S.isTransitioning) return null;
+            const p = S.heroScreen;
+            if (!p) return null;
+            const r = heroSec.getBoundingClientRect();
+            return { x: p.x - r.left, y: p.y - r.top };
+        };
+        const fit = () => {
+            const r = heroSec.getBoundingClientRect();
+            if (r.width <= 0 || r.height <= 0) return;
+            poster.resize(r.width, r.height, window.devicePixelRatio || 1);
+            anchored = false;
+        };
+        fit();
+
+        // Artwork follows the origin simulation through the flight: dims as the hero detaches, blossoms back on return
+        const visibility = () => {
+            const S = window.THREAD_STAGE;
+            if (!S || !S.supported) return 1;
+            const T = S.trans;
+            if (T && T.active) {
+                const u = T.u;
+                if (T.fromIndex === 0 && T.toIndex !== 0) return (0.12 + 0.88 * (1 - sm(0.02, 0.30, u))) * (1 - sm(0.38, 0.49, u));
+                if (T.toIndex === 0 && T.fromIndex !== 0) return sm(0.72, 1.0, u);
+                return 0;
+            }
+            return S.currentIndex === 0 ? 1 : 0;
+        };
+
+        let visible = true, raf = 0, lastOp = -1;
+        const loop = (now) => {
+            raf = requestAnimationFrame(loop);
+            if (!visible || document.hidden) return;
+            const a = anchorPoint();
+            if (a) {
+                if (!anchored) { poster.layoutTo(a.x, a.y); anchored = true; }
+                else poster.nudgeTo(a.x, a.y);
+            }
+            const op = visibility();
+            if (Math.abs(op - lastOp) > 0.004) { c.style.opacity = op.toFixed(3); lastOp = op; }
+            if (op > 0.003) poster.draw(now * 0.001);
+        };
+        raf = requestAnimationFrame(loop);
+
+        const ro = new ResizeObserver(fit); ro.observe(heroSec);
+        const io = new IntersectionObserver((e) => { visible = e[0].isIntersecting; }, { threshold: 0 }); io.observe(heroSec);
+        c.__dispose = () => { cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); };
+    };
+
+
     const initPage = () => {
         const u = new URL(location.href);
         const file = u.pathname.split("/").pop() || "index.html";
@@ -2017,6 +2798,7 @@ const initNavSim = (c) => {
         }
 
         setupSnapObserver();
+        initHeroLaniakeaStage();
         observeReveals();
         const renderMath = () => {
             const doRender = () => {

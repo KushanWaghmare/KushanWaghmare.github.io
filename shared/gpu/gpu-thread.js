@@ -773,9 +773,9 @@
                 const targetUrl = new URL(href, location.href).href;
                 transitionToState("hub:intro", {
                     targetUrl,
-                    cam: [0.0, 0.0, 13.8],
+                    cam: [0.0, 0.0, 14.2],
                     fov: 52.0,
-                    tag: "σ=10, ρ=28, β=8/3 · RK4 integration · sensitive dependence on initial conditions"
+                    tag: "Laniakea Supercluster · 10¹⁷ M☉ · cosmic velocity streamlines · Great Attractor basin"
                 });
                 return;
             }
@@ -2069,7 +2069,7 @@
             postState.fogDensity = prof.fogDensity;
             postState.trailDecay = active.trailDecay || 0.68;
             postState.streakScale = active.streakScale || 1.25;
-            if (!exploreMorph.active) {
+            if (!exploreMorph.active && !active.preserveHeroColour) {
                 colours[0] = prof.heroColour[0];
                 colours[1] = prof.heroColour[1];
                 colours[2] = prof.heroColour[2];
@@ -2932,19 +2932,23 @@
                 } else {
                     idleFrame(curProf, dt, pLerp);
                 }
-                if (inside.value > 0.002) {
-                    applyHeroLocalPalette(curProf);
-                } else {
-                    colours[0] = colours[0] * 0.35 + curProf.heroColour[0] * 0.65;
-                    colours[1] = colours[1] * 0.35 + curProf.heroColour[1] * 0.65;
-                    colours[2] = colours[2] * 0.35 + curProf.heroColour[2] * 0.65;
-                    sizes[0] = Math.max(sizes[0], curProf.heroSize * 0.78);
+                if (!active.preserveHeroColour) {
+                    if (inside.value > 0.002) {
+                        applyHeroLocalPalette(curProf);
+                    } else {
+                        colours[0] = colours[0] * 0.35 + curProf.heroColour[0] * 0.65;
+                        colours[1] = colours[1] * 0.35 + curProf.heroColour[1] * 0.65;
+                        colours[2] = colours[2] * 0.35 + curProf.heroColour[2] * 0.65;
+                        sizes[0] = Math.max(sizes[0], curProf.heroSize * 0.78);
+                    }
                 }
                 innerTint(dimIdx, inside.tint);
 
-                // Smoothly converge post-processing parameters to active section profile
-                postState.bloomStrength += (curProf.bloomStrength - postState.bloomStrength) * pLerp;
-                postState.bloomThreshold += (curProf.bloomThreshold - postState.bloomThreshold) * pLerp;
+                // Smoothly converge post-processing parameters to active section profile (or formation override)
+                const targetBloomStr = (typeof active.bloomStrength === "number") ? active.bloomStrength : curProf.bloomStrength;
+                const targetBloomThr = (typeof active.bloomThreshold === "number") ? active.bloomThreshold : curProf.bloomThreshold;
+                postState.bloomStrength += (targetBloomStr - postState.bloomStrength) * pLerp;
+                postState.bloomThreshold += (targetBloomThr - postState.bloomThreshold) * pLerp;
                 postState.bloomTint[0] += (curProf.bloomTint[0] - postState.bloomTint[0]) * pLerp;
                 postState.bloomTint[1] += (curProf.bloomTint[1] - postState.bloomTint[1]) * pLerp;
                 postState.bloomTint[2] += (curProf.bloomTint[2] - postState.bloomTint[2]) * pLerp;
@@ -3695,6 +3699,17 @@
         goToSim,
         stepSim,
         get heroPosition() { return new Vector3(positions[0], positions[1], positions[2]); },
+        // Screen-space (CSS px, viewport-relative) position of hero particle 0; used to pin the 2D hero artwork to the flight origin
+        get heroScreen() {
+            const e = camera.viewProjectionMatrix.elements;
+            const x = positions[0], y = positions[1], z = positions[2];
+            const w = e[3] * x + e[7] * y + e[11] * z + e[15];
+            if (!(w > 1e-6)) return null;
+            const nx = (e[0] * x + e[4] * y + e[8] * z + e[12]) / w;
+            const ny = (e[1] * x + e[5] * y + e[9] * z + e[13]) / w;
+            return { x: (nx * 0.5 + 0.5) * window.innerWidth, y: (1.0 - (ny * 0.5 + 0.5)) * window.innerHeight };
+        },
+        get currentIndex() { return currentIndex; },
         get formations() { return formations; },
         get trans() { return trans; },
         getNavState,

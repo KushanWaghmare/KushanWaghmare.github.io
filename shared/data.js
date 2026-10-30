@@ -599,30 +599,30 @@ SITE.dimensions = [
         sectionId: "intro",
         anchor: [0, 0, 0],
         profile: {
-            palette: ["#609cff", "#2a60d0", "#0c1a38", "#a8c7fa"],
-            bloom: { strength: 0.85, threshold: 0.78, tint: [0.45, 0.70, 1.00] },
-            fog: { colour: [0.022, 0.056, 0.145], density: 0.0035 },
+            palette: ["#f5b842", "#e89225", "#16284e", "#ffe8a3"],
+            bloom: { strength: 1.05, threshold: 0.72, tint: [1.00, 0.85, 0.45] },
+            fog: { colour: [0.015, 0.038, 0.095], density: 0.0035 },
             fov: 52.0,
             cameraDamping: 0.08,
-            hero: { colour: [0.45, 0.75, 1.00], size: 5.5 },
-            sim: { sigma: 10, rho: 28, beta: 2.6667 },
+            hero: { colour: [1.00, 0.22, 0.25], size: 5.5 },
+            sim: { mass: "10^17" },
             audio: { rootFreq: 110.0, harmonicRatios: [1.0, 1.5, 2.0, 2.5], filterCutoff: 480, q: 3.2 }
         },
         sims: [
             {
                 id: "canonical",
-                label: "Lorenz Strange Attractor",
-                short: "Lorenz",
+                label: "Laniakea Supercluster",
+                short: "Laniakea",
                 get name() { return this.label; },
                 localAnchor: [0.0, 0.0, 0.0],
                 content: {
-                    title: "Lorenz Strange Attractor",
-                    summary: "Classic two-wing chaotic convection flow governed by non-linear differential equations.",
-                    tag: "σ=10, ρ=28, β=8/3 · RK4 integration · sensitive dependence on initial conditions"
+                    title: "Laniakea Supercluster",
+                    summary: "Cosmic velocity basin spanning 10¹⁷ solar masses with streamlines converging towards the Great Attractor.",
+                    tag: "Laniakea Supercluster · 10¹⁷ M☉ · cosmic velocity streamlines · Great Attractor gravitational basin"
                 },
-                cameraPose: { offset: [0.0, 0.0, 13.5], target: [0.0, 0.0, 0.0] },
+                cameraPose: { offset: [0.0, 0.0, 14.2], target: [0.0, 0.0, 0.0] },
                 immersiveCamera: { offset: [0.0, 0.6, 3.8], target: [0.0, 0.0, 0.0], fov: 62.0 },
-                simPreset: { sigma: 10, rho: 28, beta: 2.6667 },
+                simPreset: {},
                 idle: (t) => [Math.sin(t * 0.8) * 0.5, Math.cos(t * 0.6) * 0.3, Math.sin(t * 0.4) * 0.4]
             },
             {

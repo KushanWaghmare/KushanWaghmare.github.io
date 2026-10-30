@@ -104,7 +104,7 @@ const hubPage = () => `
             <div class="snap-inner">
                 <h1 data-hero>Kushan<br>Waghmare</h1>
                 <p class="lead" data-hero>Data Science &amp; Quantitative Finance student at IIT Madras, building complex systems from compilers to statistical-arbitrage models, and studying the physics underneath them.</p>
-                <div class="hero-eq glass" data-hero>$$\\dot x=\\sigma(y-x),\\quad\\dot y=x(\\rho-z)-y,\\quad\\dot z=xy-\\beta z$$</div>
+                <div class="hero-eq glass" data-hero>$$\\nabla\\cdot\\mathbf v = -4\\pi G\\,\\delta\\rho_m,\\quad \\mathbf v_p(\\mathbf r) = -\\frac{H_0 f}{4\\pi}\\int \\delta_m(\\mathbf r')\\frac{\\mathbf r - \\mathbf r'}{|\\mathbf r - \\mathbf r'|^3}\\,d^3\\mathbf r'$$</div>
             </div>
             <div class="sim-tag" aria-hidden="true">${SLIDE_SIMS["hub:intro"].caption}</div>
             <a class="snap-cue" href="#domain-math">Scroll to explore domains</a>

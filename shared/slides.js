@@ -23,8 +23,8 @@
            ===================================================================== */
         "hub:intro": {
             engine: "orbit",
-            params: { system: "lorenz", sigma: 10, rho: 28, beta: 2.6667, numTraj: 5, dt: 0.005, scale: 9.5, pert: 0.001 },
-            caption: "Lorenz system · σ=10, ρ=28, β=8/3 · RK4 · 5 domain trajectories",
+            params: { system: "laniakea", mass: "10^17 M_sun", particles: 90000 },
+            caption: "Laniakea Supercluster · 10¹⁷ M☉ · cosmic velocity streamlines · Great Attractor gravitational basin · red dot: Milky Way",
         },
         "hub:domain-math": {
             engine: "cy-cross-section-2d",

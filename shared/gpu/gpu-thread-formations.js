@@ -13,7 +13,8 @@
     "use strict";
 
     const TM = root.THREAD_MATH || (typeof require === "function" ? require("../lib/thread-math.js") : null);
-    const { Vector3, Formation, sectionOrigin, clamp, smoothstep } = TM;
+    const { Vector3, Formation,
+        sectionOrigin, clamp, smoothstep } = TM;
 
     const registry = new Map();
 
@@ -27,6 +28,443 @@
        incommensurate breathing parameter drift, speed-based HDR colour ramp (cool slow
        → incandescent fast), two-lobe focal glow, and slow cinematic orbit framing.
        ============================================================================ */
+    /* ============================================================================
+       0. INTRO FORMATION — Laniakea Supercluster (poster-matched)
+       Gravitational-flow streamlines are numerically traced through a velocity
+       field (main sink = Great Attractor, ridge splines = bright spine & Local
+       Sheet branch, blue sinks = neighbouring basins). Particles flow along the
+       traced polylines; an amber haze fills the basin; blue flows wrap outside.
+       ============================================================================ */
+    const LANIAKEA_FIELD = (() => {
+        // Exact Laniakea cover_3.jpg coordinate space (736 x 1403, y down)
+        const A = [536, 464], M = [386, 967], S = [484, 895];
+        const R_SPINE = [[479, 985], [482, 945], [484, 905], [489, 860], [502, 825], [518, 785], [533, 735], [543, 685], [551, 635], [544, 588], [535, 545], [532, 502], [536, 464]];
+        const R_CAUSTIC = [[42, 532], [115, 562], [185, 578], [245, 579], [305, 566], [365, 544], [425, 516], [480, 488], [514, 471], [536, 464]];
+        const R_RIGHT_ARCH = [[732, 420], [690, 428], [645, 433], [600, 442], [564, 454], [536, 464]];
+        const R_MILKY_WAY = [[386, 967], [418, 944], [450, 922], [478, 902], [488, 875]];
+        const R_PLUME_LEFT = [[355, 926], [395, 902], [440, 875], [486, 848], [509, 810]];
+        const R_VALLEY_1 = [[235, 865], [268, 775], [308, 680], [358, 595], [420, 528], [485, 488], [536, 464]];
+        const RIDGES = [[R_SPINE, 1.05], [R_CAUSTIC, 0.95], [R_RIGHT_ARCH, 0.78], [R_MILKY_WAY, 0.90], [R_PLUME_LEFT, 0.75], [R_VALLEY_1, 0.65]];
+        const BLUE = [[732, 88, 1.1], [165, 12, 0.85], [595, 1365, 1.0], [695, 965, 0.75], [85, 1255, 0.9]];
+        const SHEET_MASKS = [0b000001, 0b000010, 0b100001, 0b011001, 0b000111, 0b000000];
+        let sheetCounter = 0;
+
+        const inBlob = (x, y) => {
+            const dx = (x - 365) / 345, dy = (y - 615) / 390;
+            return Math.pow(Math.abs(dx), dx > 0 ? 2.4 : 2.0) + Math.pow(Math.abs(dy), 2.2) < 1;
+        };
+        const nearest = (R, x, y) => {
+            let best = 1e9, qx = 0, qy = 0, tx = 0, ty = 0;
+            for (let i = 0; i < R.length - 1; i++) {
+                const ax = R[i][0], ay = R[i][1], ex = R[i + 1][0] - ax, ey = R[i + 1][1] - ay;
+                const l2 = ex * ex + ey * ey;
+                let t = ((x - ax) * ex + (y - ay) * ey) / l2;
+                t = t < 0 ? 0 : (t > 1 ? 1 : t);
+                const px = ax + t * ex, py = ay + t * ey, d = (x - px) * (x - px) + (y - py) * (y - py);
+                if (d < best) { best = d; qx = px; qy = py; const l = Math.sqrt(l2) || 1; tx = ex / l; ty = ey / l; }
+            }
+            return [Math.sqrt(best), qx, qy, tx, ty];
+        };
+        const goldVel = (x, y, mask, swirl, ribbonOff) => {
+            const dx = A[0] - x, dy = A[1] - y, r = Math.hypot(dx, dy) + 1e-6;
+            let vx = dx / r, vy = dy / r;
+            const sw = swirl * Math.min(1, r / 190);
+            vx += -dy / r * sw; vy += dx / r * sw;
+            for (let k = 0; k < RIDGES.length; k++) {
+                if ((mask & (1 << k)) === 0) continue;
+                const R = RIDGES[k][0], w = RIDGES[k][1];
+                const n = nearest(R, x, y);
+                const tx = n[1] - n[4] * ribbonOff, ty = n[2] + n[3] * ribbonOff;
+                const d = Math.hypot(tx - x, ty - y);
+                const g = w * Math.exp(-d / (w > 0.85 ? 65 : 44));
+                const pull = Math.min(1, d / 34) * 1.5;
+                if (d > 1e-3) { vx += g * pull * (tx - x) / d; vy += g * pull * (ty - y) / d; }
+                vx += g * 2.7 * n[3]; vy += g * 2.7 * n[4];
+            }
+            const l = Math.hypot(vx, vy) + 1e-9;
+            return [vx / l, vy / l];
+        };
+        const blueVel = (x, y) => {
+            let best = BLUE[0], bd = 1e9;
+            for (let k = 0; k < BLUE.length; k++) {
+                const b = BLUE[k], d = Math.hypot(b[0] - x, b[1] - y) / b[2];
+                if (d < bd) { bd = d; best = b; }
+            }
+            const dx = best[0] - x, dy = best[1] - y, r = Math.hypot(dx, dy) + 1e-6, sw = 0.35;
+            const vx = dx / r - dy / r * sw, vy = dy / r + dx / r * sw, l = Math.hypot(vx, vy);
+            return [vx / l, vy / l];
+        };
+        const trace = (x, y, kind) => {
+            const pts = [[x, y]], step = 4;
+            const idx = (sheetCounter++) % SHEET_MASKS.length;
+            const mask = SHEET_MASKS[idx];
+            const swirl = idx === 5 ? 0.22 : (0.30 + (idx * 0.08));
+            const ribbonOff = ((sheetCounter % 11) - 5) * 2.4;
+            for (let s = 0; s < 380; s++) {
+                const v = kind === 0 ? goldVel(x, y, mask, swirl, ribbonOff) : blueVel(x, y);
+                x += v[0] * step; y += v[1] * step;
+                pts.push([x, y]);
+                if (kind === 0) {
+                    if (Math.hypot(x - A[0], y - A[1]) < 5) break;
+                } else {
+                    if (inBlob(x, y)) { pts.pop(); break; }
+                    let hit = false;
+                    for (let k = 0; k < BLUE.length; k++) if (Math.hypot(x - BLUE[k][0], y - BLUE[k][1]) < 6) hit = true;
+                    if (hit) break;
+                }
+            }
+            return pts;
+        };
+        const resample = (pts, K) => {
+            const cum = [0];
+            for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+            const total = cum[cum.length - 1] || 1, out = new Float32Array(K * 2);
+            let j = 0;
+            for (let k = 0; k < K; k++) {
+                const target = total * k / (K - 1);
+                while (j < pts.length - 2 && cum[j + 1] < target) j++;
+                const seg = (cum[j + 1] - cum[j]) || 1, f = Math.min(1, Math.max(0, (target - cum[j]) / seg));
+                out[k * 2]     = pts[j][0] + (pts[j + 1][0] - pts[j][0]) * f;
+                out[k * 2 + 1] = pts[j][1] + (pts[j + 1][1] - pts[j][1]) * f;
+            }
+            return out;
+        };
+        return { A, M, S, inBlob, trace, resample };
+    })();
+
+    class LaniakeaFormation extends Formation {
+        constructor(origin, simKey = "hub:intro", params = {}, sectionIndex = 0) {
+            super(origin, simKey);
+            this.params = params || {};
+            this.sectionIndex = sectionIndex;
+            this.uParam = null;        // Float32Array(N): position along streamline in [0, 1]
+            this.flowSpeed = null;     // Float32Array(N)
+            this.lineIdx = null;       // Uint16Array(N): streamline index for flowing particles
+            this.offs = null;          // Float32Array(N * 3): small fixed offset so bundles have thickness
+            this.roles = null;         // 0 gold flow, 1 gold stipple, 2 blue stipple, 3 Milky Way beacon/ring, 4 amber haze, 5 blue flow
+            this.coordsLocal = null;
+            this.baseCols = null;
+            this.sizeBase = null;
+            this.goldLines = null;     // Float32Array(nGold * K * 2) local xy
+            this.blueLines = null;
+            this.nGold = 0;
+            this.nBlue = 0;
+            this.K = 64;
+            this.auxLinesLocal = null;
+            this.auxBaseCols = null;
+            this.auxPositions = new Float32Array(8192 * 3);
+            this.auxColours = new Float32Array(8192 * 4);
+            this.auxLineCount = 0;
+
+            this.yaw = -0.08;
+            this.pitch = 0.06;
+            this.cameraDistance = 13.8;
+            this.bloomStrength = 0.64;
+            this.bloomThreshold = 0.84;
+            this.trailDecay = 0.86;
+            this.streakScale = 2.2;
+            this.fogTint = [0.012, 0.024, 0.058];
+            this.preserveHeroColour = true;
+            this.milkyWayIndex = 0;
+
+            // Tuning knobs
+            this.HAZE_GAIN = 0.42;     // reduced translucent amber basin fill brightness
+            this.HAZE_SIZE = 7.0;      // amber basin sprite size
+            this.UNIT_PX = 115;       // 736x1403 poster pixels per local unit
+            this.SHIFT_X = 1.65;       // local shift right (clear of hero text)
+            this.SHIFT_Y = 0.35;
+            this.HIDE_WEBGL = true;    // hero is drawn by the Canvas 2D poster renderer in app.js; keep WebGL particles invisible
+        }
+
+        _toLocal(px, py, out, o) {
+            out[o]     = (px - 395) / this.UNIT_PX + this.SHIFT_X;
+            out[o + 1] = -(py - 635) / this.UNIT_PX + this.SHIFT_Y;
+        }
+
+        _evalLine(table, li, u, out3) {
+            const K = this.K, f = Math.min(Math.max(u, 0), 0.99999) * (K - 1);
+            const i0 = f | 0, fr = f - i0, b = (li * K + i0) * 2;
+            out3[0] = table[b]     + (table[b + 2] - table[b])     * fr;
+            out3[1] = table[b + 1] + (table[b + 3] - table[b + 1]) * fr;
+        }
+
+        _buildLines() {
+            let s = 20261031 >>> 0;
+            const rnd = () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+            const F = LANIAKEA_FIELD, K = this.K;
+            const gold = [], blue = [];
+            let guard = 0;
+            while (gold.length < 300 && guard++ < 40000) {
+                const x = 60 + rnd() * 620, y = 240 + rnd() * 660;
+                if (!F.inBlob(x, y)) continue;
+                const dx = (x - 365) / 300, dy = (y - 570) / 325;
+                if (rnd() > Math.min(1, 0.25 + (dx * dx + dy * dy) * 0.9)) continue;
+                const p = F.trace(x, y, 0);
+                if (p.length > 6) gold.push(p);
+            }
+            guard = 0;
+            while (blue.length < 180 && guard++ < 40000) {
+                const x = -60 + rnd() * 950, y = rnd() * 1100;
+                if (F.inBlob(x, y) || F.inBlob(x * 0.98, y)) continue;
+                const p = F.trace(x, y, 1);
+                if (p.length > 6) blue.push(p);
+            }
+            this.nGold = gold.length; this.nBlue = blue.length;
+            this.goldLines = new Float32Array(this.nGold * K * 2);
+            this.blueLines = new Float32Array(this.nBlue * K * 2);
+            const tmp = [0, 0];
+            const put = (dst, li, pts) => {
+                const r = F.resample(pts, K);
+                for (let k = 0; k < K; k++) {
+                    this._toLocal(r[k * 2], r[k * 2 + 1], tmp, 0);
+                    dst[(li * K + k) * 2] = tmp[0]; dst[(li * K + k) * 2 + 1] = tmp[1];
+                }
+            };
+            gold.forEach((p, i) => put(this.goldLines, i, p));
+            blue.forEach((p, i) => put(this.blueLines, i, p));
+        }
+
+        init(buffer, _ctx) {
+            const N = buffer.maxCount, seeds = buffer.seeds, F = LANIAKEA_FIELD;
+            if (!this.goldLines) this._buildLines();
+            if (!this.uParam || this.uParam.length !== N) {
+                this.uParam = new Float32Array(N);
+                this.flowSpeed = new Float32Array(N);
+                this.lineIdx = new Uint16Array(N);
+                this.offs = new Float32Array(N * 3);
+                this.roles = new Uint8Array(N);
+                this.coordsLocal = new Float32Array(N * 3);
+                this.baseCols = new Float32Array(N * 3);
+            }
+
+            const nBeacon = 96;
+            // Roles are interleaved by a golden-ratio hash (not index bands) so the adaptive particle
+            // governor, which truncates the tail of the buffer, thins every layer evenly.
+
+            const mw = [0, 0]; this._toLocal(F.M[0], F.M[1], mw, 0);
+            const mwx = mw[0], mwy = mw[1], mwz = 0.0;
+            const tmp = [0, 0], p2 = [0, 0];
+            const K = this.K, nG = this.nGold, nB = this.nBlue;
+
+            for (let i = 0; i < N; i++) {
+                const i3 = i * 3, i4 = i * 4;
+                const u1 = seeds[i4], u2 = seeds[i4 + 1], u3 = seeds[i4 + 2], u4 = seeds[i4 + 3];
+                const h = (i * 0.6180339887) % 1.0;
+                this.uParam[i] = u1;
+                this.flowSpeed[i] = 0;
+
+                if (i < nBeacon) {
+                    this.roles[i] = 3;
+                    if (i === 0) {
+                        this.coordsLocal[i3] = mwx; this.coordsLocal[i3 + 1] = mwy; this.coordsLocal[i3 + 2] = mwz;
+                        this.baseCols[i3] = 1.65; this.baseCols[i3 + 1] = 0.08; this.baseCols[i3 + 2] = 0.10;
+                    } else if (i < 36) {
+                        const rC = Math.sqrt(u1) * 0.045, ang = u2 * Math.PI * 2;
+                        this.coordsLocal[i3] = mwx + Math.cos(ang) * rC; this.coordsLocal[i3 + 1] = mwy + Math.sin(ang) * rC; this.coordsLocal[i3 + 2] = mwz + (u3 - 0.5) * 0.02;
+                        this.baseCols[i3] = 0.85; this.baseCols[i3 + 1] = 0.03; this.baseCols[i3 + 2] = 0.04;
+                    } else {
+                        const rR = 0.068 + (u1 - 0.5) * 0.014, ang = ((i - 36) / (nBeacon - 36)) * Math.PI * 2;
+                        this.coordsLocal[i3] = mwx + Math.cos(ang) * rR; this.coordsLocal[i3 + 1] = mwy + Math.sin(ang) * rR; this.coordsLocal[i3 + 2] = mwz + (u3 - 0.5) * 0.015;
+                        this.baseCols[i3] = 0.52; this.baseCols[i3 + 1] = 0.50; this.baseCols[i3 + 2] = 0.46;
+                    }
+                } else if (h < 0.60) {
+                    // Gold flow: bundle = one traced streamline, tiny offset gives each bundle a soft core
+                    this.roles[i] = 0;
+                    const li = Math.min(nG - 1, Math.floor(u2 * nG));
+                    this.lineIdx[i] = li;
+                    this.offs[i3] = (u3 - 0.5) * 0.035; this.offs[i3 + 1] = (u4 - 0.5) * 0.035; this.offs[i3 + 2] = (u3 - 0.5) * 0.5;
+                    this.flowSpeed[i] = 0.09 + 0.12 * u4;
+                    this._evalLine(this.goldLines, li, u1, tmp);
+                    this.coordsLocal[i3] = tmp[0]; this.coordsLocal[i3 + 1] = tmp[1]; this.coordsLocal[i3 + 2] = this.offs[i3 + 2];
+                    const warmth = 0.5 + 0.5 * Math.sin(u2 * 37.7);
+                    this.baseCols[i3] = 0.30 + 0.10 * warmth; this.baseCols[i3 + 1] = 0.20 + 0.09 * warmth; this.baseCols[i3 + 2] = 0.06 + 0.05 * warmth;
+                } else if (h < 0.72) {
+                    // Gold stipple: galaxies hugging the filaments, plus a dense cloud at the Local Sheet end of the spine
+                    this.roles[i] = 1;
+                    if (u4 < 0.22) {
+                        const sc = [0, 0]; this._toLocal(F.S[0], F.S[1], sc, 0);
+                        const r = 0.55 * Math.pow(u1, 0.7), a = u2 * 6.2832;
+                        this.coordsLocal[i3] = sc[0] + Math.cos(a) * r * 1.3; this.coordsLocal[i3 + 1] = sc[1] + Math.sin(a) * r * 0.55; this.coordsLocal[i3 + 2] = (u3 - 0.5) * 0.4;
+                    } else {
+                        const li = Math.min(nG - 1, Math.floor(u2 * nG));
+                        this._evalLine(this.goldLines, li, Math.pow(u1, 0.7), tmp);
+                        const sc = 0.04 + 0.16 * u3 * u3;
+                        this.coordsLocal[i3] = tmp[0] + (u4 - 0.5) * 2 * sc; this.coordsLocal[i3 + 1] = tmp[1] + (u3 - 0.5) * 2 * sc; this.coordsLocal[i3 + 2] = (u1 - 0.5) * 0.5;
+                    }
+                    const ice = (i % 3) === 0;
+                    this.baseCols[i3] = ice ? 0.26 : 0.38; this.baseCols[i3 + 1] = ice ? 0.32 : 0.34; this.baseCols[i3 + 2] = ice ? 0.42 : 0.26;
+                } else if (h < 0.77) {
+                    // Amber basin haze: soft large sprites filling the supercluster silhouette
+                    this.roles[i] = 4;
+                    let px = 365, py = 570, tries = 0;
+                    do { px = 60 + (u1 + tries * 0.61803) % 1 * 620; py = 240 + ((u2 + tries * 0.41421) % 1) * 660; tries++; } while (!F.inBlob(px, py) && tries < 12);
+                    if (!F.inBlob(px, py)) { px = 300; py = 500; }
+                    this._toLocal(px, py, tmp, 0);
+                    this.coordsLocal[i3] = tmp[0]; this.coordsLocal[i3 + 1] = tmp[1]; this.coordsLocal[i3 + 2] = (u3 - 0.5) * 0.8;
+                    const dA = Math.hypot(px - F.A[0], py - F.A[1]) / 400;
+                    const g = this.HAZE_GAIN * (0.7 + 0.6 * Math.max(0, 1 - dA));
+                    this.baseCols[i3] = 0.075 * g; this.baseCols[i3 + 1] = 0.042 * g; this.baseCols[i3 + 2] = 0.009 * g;
+                } else if (h < 0.90) {
+                    // Blue flow around neighbouring basins
+                    this.roles[i] = 5;
+                    const li = Math.min(nB - 1, Math.floor(u2 * nB));
+                    this.lineIdx[i] = li;
+                    this.offs[i3] = (u3 - 0.5) * 0.04; this.offs[i3 + 1] = (u4 - 0.5) * 0.04; this.offs[i3 + 2] = -0.5 + (u3 - 0.5) * 0.8;
+                    this.flowSpeed[i] = 0.05 + 0.07 * u4;
+                    this._evalLine(this.blueLines, li, u1, tmp);
+                    this.coordsLocal[i3] = tmp[0]; this.coordsLocal[i3 + 1] = tmp[1]; this.coordsLocal[i3 + 2] = this.offs[i3 + 2];
+                    this.baseCols[i3] = 0.07; this.baseCols[i3 + 1] = 0.13; this.baseCols[i3 + 2] = 0.30;
+                } else {
+                    // Blue stipple galaxies along the outer web
+                    this.roles[i] = 2;
+                    const li = Math.min(nB - 1, Math.floor(u2 * nB));
+                    this._evalLine(this.blueLines, li, Math.pow(u1, 0.8), tmp);
+                    const sc = 0.05 + 0.22 * u3 * u3;
+                    this.coordsLocal[i3] = tmp[0] + (u4 - 0.5) * 2 * sc; this.coordsLocal[i3 + 1] = tmp[1] + (u3 - 0.5) * 2 * sc; this.coordsLocal[i3 + 2] = -0.5 + (u1 - 0.5) * 0.8;
+                    const b = 0.55 + 0.45 * Math.pow(1 - u2, 1.4);
+                    this.baseCols[i3] = 0.16 * b; this.baseCols[i3 + 1] = 0.26 * b; this.baseCols[i3 + 2] = 0.48 * b;
+                }
+            }
+            this._buildAuxFilamentLines();
+            this.initialized = true;
+        }
+
+        _buildAuxFilamentLines() {
+            const MAX_VERTS = 8192, KA = 24, K = this.K;
+            this.auxLinesLocal = new Float32Array(MAX_VERTS * 3);
+            this.auxBaseCols = new Float32Array(MAX_VERTS * 4);
+            let ptr = 0;
+            const a = [0, 0], b = [0, 0];
+            const emit = (table, li, cr, cg, cb, aMin, aMax, z, pw) => {
+                for (let s = 0; s < KA - 1 && ptr + 2 <= MAX_VERTS; s++) {
+                    const u0 = s / (KA - 1), u1 = (s + 1) / (KA - 1);
+                    this._evalLine(table, li, u0, a); this._evalLine(table, li, u1, b);
+                    const g0 = Math.pow(u0, pw), g1 = Math.pow(u1, pw);
+                    let p3 = ptr * 3, p4 = ptr * 4;
+                    this.auxLinesLocal[p3] = a[0]; this.auxLinesLocal[p3 + 1] = a[1]; this.auxLinesLocal[p3 + 2] = z;
+                    this.auxBaseCols[p4] = cr; this.auxBaseCols[p4 + 1] = cg; this.auxBaseCols[p4 + 2] = cb; this.auxBaseCols[p4 + 3] = aMin + (aMax - aMin) * g0;
+                    ptr++;
+                    p3 = ptr * 3; p4 = ptr * 4;
+                    this.auxLinesLocal[p3] = b[0]; this.auxLinesLocal[p3 + 1] = b[1]; this.auxLinesLocal[p3 + 2] = z;
+                    this.auxBaseCols[p4] = cr; this.auxBaseCols[p4 + 1] = cg; this.auxBaseCols[p4 + 2] = cb; this.auxBaseCols[p4 + 3] = aMin + (aMax - aMin) * g1;
+                    ptr++;
+                }
+            };
+            const goldN = Math.min(this.nGold, 120), goldStride = this.nGold / goldN;
+            for (let c = 0; c < goldN; c++) emit(this.goldLines, Math.floor(c * goldStride), 1.0, 0.82, 0.45, 0.03, 0.20, 0.0, 1.6);
+            const blueN = Math.min(this.nBlue, 56), blueStride = this.nBlue / blueN;
+            for (let c = 0; c < blueN; c++) emit(this.blueLines, Math.floor(c * blueStride), 0.42, 0.62, 0.98, 0.05, 0.015, -0.5, 1.0);
+            this.auxLineCount = ptr;
+        }
+
+        onClick() {
+            const tag = typeof document !== "undefined" ? document.querySelector('#intro .sim-tag, [data-sim="hub:intro"] .sim-tag') : null;
+            if (tag) tag.textContent = "Laniakea Supercluster · 10¹⁷ M☉ · 100,000 galaxies · Great Attractor gravitational basin";
+        }
+
+        update(dt, t, buffer, ctx) {
+            if (!this.initialized || !this.uParam) this.init(buffer, ctx);
+
+            const N = buffer.count, pos = buffer.positions, prevPos = buffer.prevPositions;
+            const col = buffer.colours, sz = buffer.sizes, seeds = buffer.seeds;
+            const coords = this.coordsLocal, bCols = this.baseCols, uArr = this.uParam, speeds = this.flowSpeed;
+            const roles = this.roles, lineIdx = this.lineIdx, offs = this.offs;
+
+            const ptrX = (ctx && ctx.pointerX) || 0, ptrY = (ctx && ctx.pointerY) || 0;
+            this.yaw = -0.08 + 0.04 * Math.sin(t * 0.08) + ptrX * 0.18;
+            this.pitch = 0.06 + 0.03 * Math.cos(t * 0.06) + ptrY * 0.12;
+
+            const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
+            const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
+            const offsetX = ((ctx && ctx.isMobile) ? 0.0 : 2.15) * (1.0 - 0.85 * (this.insideness || 0));
+            const scale = 1.42 * (1.0 + 0.75 * (this.insideness || 0));
+            const timeStep = clamp(dt, 0.001, 0.033);
+            const tmp = [0, 0];
+
+            for (let i = 0; i < N; i++) {
+                const i3 = i * 3, i4 = i * 4, role = roles[i];
+                let lx, ly, lz, rC, gC, bC, pSize, wrapped = false;
+
+                if (role === 0 || role === 5) {
+                    const gold0 = role === 0;
+                    let u = uArr[i] + speeds[i] * timeStep * (gold0 ? (0.6 + 1.0 * uArr[i]) : 1.0);
+                    if (u >= 1.0) { u -= 1.0; wrapped = true; }
+                    uArr[i] = u;
+                    const gold = role === 0;
+                    this._evalLine(gold ? this.goldLines : this.blueLines, lineIdx[i], u, tmp);
+                    lx = tmp[0] + offs[i3]; ly = tmp[1] + offs[i3 + 1]; lz = offs[i3 + 2];
+                    const endFade = smoothstep(0.0, 0.08, u) * smoothstep(1.0, 0.94, u);
+                    if (gold) {
+                        const focus = Math.pow(u, 2.2);
+                        rC = (bCols[i3] + 0.30 * focus) * endFade;
+                        gC = (bCols[i3 + 1] + 0.24 * focus) * endFade;
+                        bC = (bCols[i3 + 2] + 0.12 * focus) * endFade;
+                        pSize = (0.95 + 0.65 * focus + 0.25 * seeds[i4 + 3]) * endFade;
+                    } else {
+                        const f = 0.5 + 0.5 * Math.pow(u, 0.8);
+                        rC = bCols[i3] * f * endFade; gC = bCols[i3 + 1] * f * endFade; bC = bCols[i3 + 2] * f * endFade;
+                        pSize = (0.9 + 0.3 * seeds[i4 + 3]) * endFade;
+                    }
+                } else if (role === 3) {
+                    lx = coords[i3]; ly = coords[i3 + 1]; lz = coords[i3 + 2];
+                    rC = bCols[i3]; gC = bCols[i3 + 1]; bC = bCols[i3 + 2];
+                    pSize = (i === 0) ? 6.8 : (i < 36 ? 3.2 : 1.95);
+                } else if (role === 4) {
+                    lx = coords[i3]; ly = coords[i3 + 1]; lz = coords[i3 + 2];
+                    rC = bCols[i3]; gC = bCols[i3 + 1]; bC = bCols[i3 + 2];
+                    pSize = this.HAZE_SIZE * (0.8 + 0.5 * seeds[i4 + 3]);
+                } else if (role === 1) {
+                    lx = coords[i3]; ly = coords[i3 + 1]; lz = coords[i3 + 2];
+                    const tw = 0.82 + 0.18 * Math.sin(t * 1.8 + seeds[i4] * 6.283);
+                    rC = bCols[i3] * tw; gC = bCols[i3 + 1] * tw; bC = bCols[i3 + 2] * tw;
+                    pSize = 1.1 + 0.8 * seeds[i4 + 2];
+                } else {
+                    lx = coords[i3]; ly = coords[i3 + 1]; lz = coords[i3 + 2];
+                    rC = bCols[i3]; gC = bCols[i3 + 1]; bC = bCols[i3 + 2];
+                    pSize = 1.0 + 0.5 * seeds[i4 + 3];
+                }
+
+                const rx = lx * cosY - lz * sinY, rz = lx * sinY + lz * cosY;
+                const ry = ly * cosP - rz * sinP, rz2 = ly * sinP + rz * cosP;
+                const wx = this.origin.x + offsetX + rx * scale;
+                const wy = this.origin.y + ry * scale;
+                const wz = this.origin.z + rz2 * scale;
+                pos[i3] = wx; pos[i3 + 1] = wy; pos[i3 + 2] = wz;
+                if (wrapped && prevPos) { prevPos[i3] = wx; prevPos[i3 + 1] = wy; prevPos[i3 + 2] = wz; }
+                const vis = this.HIDE_WEBGL ? 0.0 : 1.0;
+                col[i3] = rC * vis; col[i3 + 1] = gC * vis; col[i3 + 2] = bC * vis;
+                sz[i] = pSize * vis;
+            }
+
+            if (this.auxLinesLocal && this.auxLineCount > 0) {
+                const nAux = this.auxLineCount, aLoc = this.auxLinesLocal, aCol = this.auxBaseCols;
+                const outP = this.auxPositions, outC = this.auxColours;
+                for (let k = 0; k < nAux; k++) {
+                    const k3 = k * 3, k4 = k * 4;
+                    const lx = aLoc[k3], ly = aLoc[k3 + 1], lz = aLoc[k3 + 2];
+                    const rx = lx * cosY - lz * sinY, rz = lx * sinY + lz * cosY;
+                    const ry = ly * cosP - rz * sinP, rz2 = ly * sinP + rz * cosP;
+                    outP[k3] = this.origin.x + offsetX + rx * scale;
+                    outP[k3 + 1] = this.origin.y + ry * scale;
+                    outP[k3 + 2] = this.origin.z + rz2 * scale;
+                    outC[k4] = aCol[k4]; outC[k4 + 1] = aCol[k4 + 1]; outC[k4 + 2] = aCol[k4 + 2]; outC[k4 + 3] = this.HIDE_WEBGL ? 0.0 : aCol[k4 + 3];
+                }
+            }
+        }
+
+        targetFor(i, out = new Vector3()) {
+            if (!this.initialized || !this.coordsLocal) return out.copy(this.origin);
+            const idx = clamp(i | 0, 0, (this.coordsLocal.length / 3) - 1), i3 = idx * 3;
+            const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
+            const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
+            const scale = 1.42;
+            const lx = this.coordsLocal[i3], ly = this.coordsLocal[i3 + 1], lz = this.coordsLocal[i3 + 2];
+            const rx = lx * cosY - lz * sinY, rz = lx * sinY + lz * cosY;
+            const ry = ly * cosP - rz * sinP, rz2 = ly * sinP + rz * cosP;
+            return out.set(this.origin.x + 2.15 + rx * scale, this.origin.y + ry * scale, this.origin.z + rz2 * scale);
+        }
+    }
+
     class LorenzFormation extends Formation {
         constructor(origin, simKey = "hub:intro", params = {}, sectionIndex = 0) {
             super(origin, simKey);
@@ -2209,7 +2647,7 @@
     }
 
     /* ---------- Register Hub & Domain Formations ---------- */
-    registerFormation("hub:intro", LorenzFormation);
+    registerFormation("hub:intro", LaniakeaFormation);
     registerFormation("hub:domain-math", MathematicsFormation);
     registerFormation("hub:domain-physics", BlackHoleFormation);
     registerFormation("hub:domain-datascience", DataScienceFormation);
