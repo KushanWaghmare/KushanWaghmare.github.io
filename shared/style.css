@@ -1,7 +1,20 @@
 /* ---------- Typography System ---------- */
-/* Cabinet Grotesk (Headings) + General Sans (Prose) */
 :root,
-html[data-font="general"],
+html[data-font="editorial"],
+html[data-font="newsreader"] {
+    --heading-font: "Newsreader", "EB Garamond", Georgia, serif;
+    --sans: "General Sans", "Inter", -apple-system, system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+
+
+html[data-font="space"],
+html[data-font="general"] {
+    --heading-font: "Newsreader", "EB Garamond", "Space Grotesk", serif;
+    --sans: "General Sans", "Inter", -apple-system, system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 html[data-font="cabinet"] {
     --heading-font: "Cabinet Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --sans: "General Sans", "Inter", -apple-system, system-ui, sans-serif;
@@ -19,9 +32,9 @@ html[data-theme="dark"] {
     --fg-faint: #8b93a7;
     --muted: var(--fg-muted);
     --line: rgba(255, 255, 255, 0.10);
-    --glass: rgba(0, 0, 0, 0.65);
+    --glass: rgba(10, 14, 22, 0.72);
     --glass-line: rgba(255, 255, 255, 0.12);
-    --glass-solid: rgba(0, 0, 0, 0.92);
+    --glass-solid: rgba(6, 9, 15, 0.90);
     --radius: 16px;
     --success: #20c991;
 
@@ -64,7 +77,6 @@ html[data-domain="hub"] { --a: var(--rgb-hub); }
 
 html,
 .snap-section,
-.snap-dot,
 .pill,
 .snap-cta-btn,
 .course-card,
@@ -78,13 +90,13 @@ html,
 /* ---------- Scroll reveal ---------- */
 [data-reveal] {
     opacity: 0;
-    transform: translateY(22px);
+    transform: translate3d(0, 22px, 0);
     transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 [data-reveal].revealed,
 [data-hero] {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
 }
 [data-hero] {
     transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
@@ -99,7 +111,13 @@ html.tt .snap-section {
 }
 
 /* ---------- Base & Typography ---------- */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
 html {
     scroll-behavior: smooth;
     scroll-snap-type: y mandatory;
@@ -117,6 +135,7 @@ body {
     line-height: 1.62;
     overflow-x: clip;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 body::before {
     content: "";
@@ -133,15 +152,19 @@ h1, h2, h3, h4,
 .contact-title,
 .paper-title {
     font-family: var(--heading-font, var(--sans));
-    font-weight: 700;
+    font-weight: 400;
     color: var(--fg);
     line-height: 1.15;
     letter-spacing: -0.03em;
+    user-select: text;
+    -webkit-user-select: none;
 }
-p {
+p, code, pre, .eq, .bibtex-block, .katex {
     font-weight: 400;
     line-height: 1.62;
     max-width: 68ch;
+    user-select: text;
+    -webkit-user-select: none; 
 }
 
 a {
@@ -172,11 +195,26 @@ button:disabled,
     color: var(--on-accent);
     -webkit-text-fill-color: var(--on-accent);
 }
-::-webkit-scrollbar { display: none; width: 0; height: 0; }
-::-webkit-scrollbar-track { display: none; }
-::-webkit-scrollbar-thumb { display: none; }
+::-webkit-scrollbar,
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-thumb {
+    display: none;
+    width: 0;
+    height: 0;
+}
 
-/* Unified glass & card surface treatment across all pages */
+/* Tabular numerals for quantitative & HUD metrics */
+table,
+.stage-debug-hud,
+.snap-count,
+.course-code,
+.paper-meta,
+.card .no,
+.section-head .idx {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Unified specular glass & card surface treatment (GPU-budget optimized) */
 .glass,
 .snap-overview-card,
 .paper-abstract-card,
@@ -184,12 +222,21 @@ button:disabled,
 .contact-card,
 .course-card,
 .math-block {
-    background: var(--glass);
+    background: linear-gradient(
+        165deg,
+        rgba(255, 255, 255, 0.045) 0%,
+        rgba(10, 14, 22, 0.80) 42%,
+        rgba(6, 9, 15, 0.90) 100%
+    );
     -webkit-backdrop-filter: blur(14px) saturate(135%);
     backdrop-filter: blur(14px) saturate(135%);
     border: 1px solid var(--glass-line);
     border-radius: var(--radius);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 18px 40px -24px rgba(0, 0, 0, 0.6);
+    box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.10),
+        inset 0 0 0 1px rgba(var(--a), 0.06),
+        0 18px 40px -22px rgba(0, 0, 0, 0.68);
+    contain: layout style;
 }
 
 /* Tables & Code Blocks */
@@ -224,11 +271,19 @@ pre.glass {
     border: 1px solid var(--glass-line);
     border-radius: var(--radius);
     color: var(--fg);
+    flex-shrink: 0;
+    min-height: fit-content;
+    overflow-y: visible;
 }
 
-/* ---------- Progress bar ---------- */
-.progress {
+/* ---------- Progress & Legacy Hidden Elements ---------- */
+.progress,
+.sim-tag,
+.snap-pager,
+.snap-dot {
     display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
 }
 
 /* ---------- Navigation ---------- */
@@ -239,13 +294,14 @@ pre.glass {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 10px 8px 18px;
+    padding: 8px 12px 8px 18px;
     border-radius: var(--radius);
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(18px) saturate(140%);
-    backdrop-filter: blur(18px) saturate(140%);
-    border: none;
-    box-shadow: none;
+    background: rgba(8, 11, 18, 0.80);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    backdrop-filter: blur(20px) saturate(140%);
+    border: 0px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    will-change: transform;
 }
 .brand {
     font: 700 14px var(--mono);
@@ -328,8 +384,7 @@ pre.glass {
 }
 .nav-live canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
-/* Physics: the painted solar-system strip is taller than the other nav scenes. Negative vertical margins keep the
-   nav bar's own height unchanged (the canvas uses the bar's padding). */
+/* Physics: painted solar-system strip uses negative vertical margins to preserve nav height */
 html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-bottom: -6px; cursor: default; }
 
 .nav-contact-link {
@@ -371,18 +426,18 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 .snap-section {
     position: relative;
     isolation: isolate;
+    contain: paint;
     scroll-snap-align: start;
     scroll-snap-stop: always;
+    min-height: 100svh;
     height: 100vh;
     height: 100dvh;
-    height: 100svh;
-    min-height: 100svh;
-    max-height: 100svh;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    justify-content: safe center;
     align-items: flex-start;
-    padding: clamp(60px, 8vh, 88px) clamp(24px, 6vw, 96px) clamp(30px, 4vh, 52px);
+    padding: max(clamp(72px, 9.5vh, 96px), calc(var(--nav-height, 56px) + 20px)) clamp(24px, 6vw, 96px) clamp(68px, 9vh, 88px);
     overflow: hidden;
     box-sizing: border-box;
 }
@@ -391,7 +446,9 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     position: fixed;
     inset: 0;
     width: 100vw;
+    width: 100dvw;
     height: 100vh;
+    height: 100dvh;
     pointer-events: none;
     z-index: 0;
     display: block;
@@ -404,12 +461,11 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     z-index: 9999;
     padding: 10px 14px;
     border-radius: 10px;
-    background: rgba(8, 12, 20, 0.86);
+    background: rgba(8, 12, 20, 0.90);
     border: 1px solid rgba(124, 184, 255, 0.28);
     color: #e6eefc;
     font: 500 11.5px/1.55 var(--mono, monospace);
     pointer-events: none;
-    backdrop-filter: blur(10px);
     white-space: pre;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
@@ -433,19 +489,30 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 }
 
 .snap-inner {
-    max-width: min(760px, 64ch);
+    max-width: min(780px, 66ch);
     position: relative;
     z-index: 5 !important;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: clamp(10px, 1.5vh, 16px);
+    max-height: calc(100dvh - clamp(146px, 19vh, 184px));
+    overflow: visible;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    box-sizing: border-box;
+}
+
+.snap-inner::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
 }
 
 .snap-inner::before {
     display: none;
 }
 
-/* Soft organic radial vignette behind the Physics text column (no hard edges) */
+/* Soft organic radial vignette behind the Physics text column */
 #domain-physics .snap-inner::before,
 #domain-intro[data-domain="physics"] .snap-inner::before {
     content: "";
@@ -454,9 +521,8 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     inset: -36px -48px -36px -64px;
     z-index: -1;
     pointer-events: none;
-    background: radial-gradient(ellipse 75% 65% at 30% 50%, rgba(5, 8, 15, 0.75) 0%, rgba(5, 8, 15, 0.40) 55%, transparent 100%);
+    background: radial-gradient(ellipse 75% 65% at 30% 50%, rgba(5, 8, 15, 0.78) 0%, rgba(5, 8, 15, 0.42) 55%, transparent 100%);
     border-radius: 40px;
-    filter: blur(14px);
 }
 
 #domain-physics .snap-lead,
@@ -471,35 +537,36 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 #domain-physics .snap-eq,
 #domain-intro[data-domain="physics"] .hero-eq,
 #domain-intro[data-domain="physics"] .snap-eq {
-    background: rgba(7, 11, 20, 0.72);
-    border: 1px solid rgba(124, 184, 255, 0.16);
-    box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    background: rgba(7, 11, 20, 0.78);
+    border: 1px solid rgba(124, 184, 255, 0.18);
+    box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .hero h1 {
     font-family: var(--heading-font, var(--sans));
-    font-size: clamp(2.5rem, 6.5vw, 5.75rem);
+    font-size: clamp(2.35rem, 5.8vw, 5.25rem);
     line-height: 1.08;
     letter-spacing: -0.035em;
     font-weight: 700;
-    margin: 14px 0 18px;
+    margin: 8px 0 12px;
     color: var(--fg);
     text-shadow: 0 2px 14px rgba(var(--bg-rgb), 0.85);
 }
 
 .snap-title,
 .section-head h2 {
-    font-size: clamp(1.85rem, 4.4vw, 3.5rem);
-    line-height: 1.14;
+    font-size: clamp(1.75rem, 3.8vw, 3.25rem);
+    line-height: 1.15;
     letter-spacing: -0.03em;
     font-weight: 700;
     color: var(--fg);
     text-shadow: 0 1px 12px rgba(var(--bg-rgb), 0.85);
+    margin: 0;
 }
 
 .lead,
 .snap-lead {
-    font-size: clamp(1rem, 1.35vw, 1.15rem);
+    font-size: clamp(0.95rem, 1.25vw, 1.08rem);
     font-weight: 400;
     color: var(--fg-muted);
     line-height: 1.62;
@@ -507,36 +574,43 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     text-shadow: 0 1px 10px rgba(var(--bg-rgb), 0.85);
 }
 
-.hero-eq {
+.hero-eq,
+.snap-eq {
     display: inline-flex;
     flex-direction: column;
-    max-width: min(100%, 720px);
+    max-width: min(100%, 740px);
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 10px 22px;
-    margin-top: 18px;
+    padding: 10px 20px;
+    margin-top: 6px;
+    margin-bottom: 4px;
     font-size: clamp(0.72rem, 1.8vw, 0.98rem);
     color: var(--fg);
-    background: rgba(0, 0, 0, 0.88);
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.04) 0%, rgba(8, 12, 20, 0.82) 100%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid var(--glass-line);
-    border-radius: var(--radius);
-    box-shadow: 0 8px 30px -10px rgba(var(--a), 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 10px 28px -10px rgba(var(--a), 0.22);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    contain: layout style;
 }
-.hero-eq .eq-body {
+.hero-eq .eq-body,
+.snap-eq .eq-body {
     max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
 }
-.hero-eq .eq-caption {
+.hero-eq .eq-caption,
+.snap-eq .eq-caption {
     margin-top: 6px;
     padding-top: 6px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    font-size: clamp(0.68rem, 1.35vw, 0.82rem);
-    opacity: 0.82;
+    font-size: clamp(0.68rem, 1.3vw, 0.82rem);
+    opacity: 0.85;
     max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
@@ -545,25 +619,12 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     letter-spacing: 0.01em;
 }
 .hero-eq .eq-body::-webkit-scrollbar,
-.hero-eq .eq-caption::-webkit-scrollbar {
+.hero-eq .eq-caption::-webkit-scrollbar,
+.snap-eq .eq-body::-webkit-scrollbar,
+.snap-eq .eq-caption::-webkit-scrollbar {
     display: none;
     width: 0;
     height: 0;
-}
-.hero-eq,
-.snap-eq {
-    max-width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    color: var(--fg);
-    background: rgba(0, 0, 0, 0.88);
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
-    backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid var(--glass-line);
-    border-radius: var(--radius);
-    box-shadow: 0 8px 30px -10px rgba(var(--a), 0.22);
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
 }
 .eq,
 .paper-eq,
@@ -572,9 +633,7 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     overflow-x: auto;
     overflow-y: hidden;
     color: var(--fg);
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
-    backdrop-filter: blur(16px) saturate(140%);
+    background: var(--glass-solid);
     border: 1px solid var(--glass-line);
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -609,59 +668,36 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     max-width: 100%;
 }
 
-/* Simulation caption HUD card (.sim-tag) */
-.sim-tag {
-    display: none !important;
-}
-
-.sim-tag::before {
-    content: "";
-    display: inline-block;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: rgb(var(--a));
-    box-shadow: 0 0 8px rgb(var(--a));
-    margin-right: 8px;
-    vertical-align: 1px;
-}
-
-.snap-eq {
-    align-self: flex-start;
-    padding: 10px 22px;
-    margin: 8px 0;
-}
-
 .snap-projects {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
     margin-top: 6px;
 }
 
 .snap-proj-label,
 .snap-jump-label {
-    font: 500 12px var(--mono);
+    font: 500 11.5px var(--mono);
     text-transform: uppercase;
-    letter-spacing: 0.10em;
+    letter-spacing: 0.08em;
     color: var(--fg-faint);
-    margin-right: 4px;
+    margin-right: 2px;
 }
 
+/* Micro-badges use high-opacity solid surfaces instead of per-pill backdrop-filter to save WebGL frame budget */
 .snap-proj-pill {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 14px;
-    font-size: 13px;
+    gap: 6px;
+    padding: 5px 12px;
+    font-size: 12.5px;
     color: var(--fg);
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(14px) saturate(130%);
-    backdrop-filter: blur(14px) saturate(130%);
-    border: 1px solid var(--glass-line);
+    background: rgba(10, 14, 22, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.09);
     border-radius: 99px;
     text-decoration: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     transition: transform 0.2s, border-color 0.2s, background-color 0.2s, color 0.2s;
 }
 .snap-proj-pill:hover {
@@ -671,14 +707,12 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 }
 
 .tag-status {
-    font: 500 12px var(--mono);
+    font: 500 11px var(--mono);
     letter-spacing: 0.05em;
     padding: 2px 8px;
     border-radius: 99px;
-    border: 1px solid var(--glass-line);
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(12px) saturate(130%);
-    backdrop-filter: blur(12px) saturate(130%);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(10, 14, 22, 0.86);
     color: var(--fg-faint);
     text-transform: uppercase;
 }
@@ -686,31 +720,31 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 .snap-actions {
     display: flex;
     align-items: center;
-    gap: 18px;
-    margin-top: 14px;
+    gap: 14px;
+    margin-top: 8px;
     flex-wrap: wrap;
 }
 
 .snap-cta-btn {
-    font: 700 13px var(--mono);
+    font: 700 12.5px var(--mono);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    padding: 12px 24px;
+    padding: 10px 22px;
     border-radius: 99px;
-    border: 1px solid rgba(var(--a), 0.55);
-    background: color-mix(in srgb, rgb(var(--a)) 10%, var(--glass-solid));
+    border: 1px solid rgba(var(--a), 0.50);
+    background: color-mix(in srgb, rgb(var(--a)) 10%, rgba(10, 14, 24, 0.88));
     color: var(--a-text);
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    box-shadow: 0 8px 24px -8px rgba(var(--a), 0.35);
+    box-shadow: 0 6px 20px -6px rgba(var(--a), 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transition: transform 0.25s, background-color 0.25s, border-color 0.25s, box-shadow 0.25s;
 }
 .snap-cta-btn:hover {
     transform: translateY(-2px);
-    background: color-mix(in srgb, rgb(var(--a)) 16%, var(--glass-solid));
+    background: color-mix(in srgb, rgb(var(--a)) 18%, rgba(10, 14, 24, 0.95));
     border-color: var(--a-text);
-    box-shadow: 0 12px 30px -8px rgba(var(--a), 0.55);
+    box-shadow: 0 10px 28px -6px rgba(var(--a), 0.55);
 }
 .snap-cta-btn .arr {
     transition: transform 0.25s;
@@ -722,21 +756,19 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 
 .snap-section.is-exploring .snap-inner {
     opacity: 0;
-    transform: scale(0.96) translateY(-14px);
+    transform: scale3d(0.96, 0.96, 1) translate3d(0, -14px, 0);
     transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
 }
 
 .snap-count {
-    font: 500 12px var(--mono);
+    font: 500 11.5px var(--mono);
     letter-spacing: 0.04em;
     color: var(--fg-muted);
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(12px) saturate(130%);
-    backdrop-filter: blur(12px) saturate(130%);
-    padding: 4px 10px;
+    background: rgba(10, 14, 22, 0.88);
+    padding: 3px 9px;
     border-radius: 99px;
-    border: 1px solid var(--glass-line);
+    border: 1px solid rgba(255, 255, 255, 0.09);
 }
 
 .domain-badge {
@@ -747,6 +779,7 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     margin-right: 8px;
     vertical-align: middle;
     background: var(--a-text) !important;
+    box-shadow: 0 0 8px var(--a-text);
 }
 
 .snap-jump-pills {
@@ -765,105 +798,57 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 .snap-cue {
     position: absolute;
     left: clamp(24px, 6vw, 96px);
-    bottom: 22px;
-    font: 500 12px var(--mono);
-    letter-spacing: 0.10em;
+    bottom: clamp(16px, 2.5vh, 24px);
+    font: 500 11.5px var(--mono);
+    letter-spacing: 0.08em;
     text-transform: uppercase;
+    user-select: none;
+    -webkit-user-select: none;
     color: var(--fg-muted);
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(14px) saturate(130%);
-    backdrop-filter: blur(14px) saturate(130%);
-    border: 1px solid var(--glass-line);
+    background: rgba(10, 14, 24, 0.86);
+    border: 1px solid rgba(255, 255, 255, 0.10);
     border-radius: 99px;
-    padding: 6px 14px;
+    padding: 5px 13px;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    transition: color 0.2s, border-color 0.2s, transform 0.2s;
-    z-index: 5 !important;
+    gap: 7px;
+    transition: color 0.2s, border-color 0.2s, background-color 0.2s, transform 0.2s;
+    z-index: 10 !important;
+    pointer-events: auto;
+    box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.5);
 }
 .snap-cue:hover {
     color: var(--a-text);
     border-color: rgba(var(--a), 0.55);
+    background: color-mix(in srgb, rgb(var(--a)) 10%, rgba(10, 14, 24, 0.92));
     transform: translateY(2px);
 }
 .snap-cue::after {
     content: "↓";
-    font-size: 12px;
-}
-
-/* Fixed side-pager dots */
-.snap-pager,
-.snap-dot {
-    display: none !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-    opacity: 0 !important;
-}
-
-.snap-dot {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-    padding: 4px;
-    text-decoration: none;
-}
-
-.snap-dot .dot-text {
-    font: 500 12px var(--mono);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--fg-muted);
-    opacity: 0;
-    transform: translateX(8px);
-    transition: opacity 0.25s, transform 0.25s, color 0.2s;
-    pointer-events: none;
-    white-space: nowrap;
-    background: var(--glass-solid);
-    padding: 4px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--glass-line);
-}
-.snap-dot:hover .dot-text {
-    opacity: 1;
-    transform: translateX(0);
-    color: var(--fg);
-    background: var(--glass-solid);
-}
-.snap-dot.active .dot-text {
-    color: var(--a-text);
-    background: var(--glass-solid);
-}
-
-.snap-dot .dot-disc {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--line);
-    border: 1px solid var(--glass-line);
-    transition: transform 0.25s, background-color 0.25s, border-color 0.25s, box-shadow 0.25s;
-}
-.snap-dot:hover .dot-disc {
-    transform: scale(1.3);
-    border-color: var(--a-text);
-}
-.snap-dot.active .dot-disc {
-    transform: scale(1.5);
-    background: var(--a-text);
-    border-color: var(--a-text);
-    box-shadow: 0 0 10px var(--a-text);
+    font-size: 11px;
 }
 
 .about-contact-section {
-    padding-top: clamp(52px, 7vh, 76px);
-    padding-bottom: clamp(16px, 2.5vh, 28px);
+    padding-top: max(clamp(72px, 9.5vh, 96px), calc(var(--nav-height, 56px) + 24px));
+    padding-bottom: clamp(28px, 4.5vh, 48px);
     justify-content: center;
+    justify-content: safe center;
 }
 .about-contact-section .snap-inner {
     max-width: min(880px, 70ch);
-    gap: clamp(8px, 1.2vh, 12px);
+    gap: clamp(8px, 1.2vh, 14px);
     width: 100%;
+    max-height: calc(100dvh - clamp(140px, 18vh, 180px));
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    box-sizing: border-box;
+}
+.about-contact-section .snap-inner::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
 }
 .about-contact-section .section-head {
     margin-bottom: clamp(6px, 1vh, 12px);
@@ -884,8 +869,8 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     padding: clamp(8px, 1vh, 11px) 14px;
 }
 .about-contact-section .contact-card {
-    padding: clamp(12px, 1.6vw, 18px);
-    gap: clamp(8px, 1vh, 12px);
+    padding: clamp(14px, 2vw, 22px);
+    gap: clamp(8px, 1vh, 14px);
 }
 .about-contact-section .contact-header .contact-title {
     font-size: clamp(1.1rem, 1.6vw, 1.35rem);
@@ -893,10 +878,10 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 }
 .about-contact-section .contact-header .contact-lead {
     font-size: 13px;
-    line-height: 1.42;
+    line-height: 1.45;
 }
 .about-contact-section .contact-grid {
-    padding-top: clamp(8px, 1vh, 12px);
+    padding-top: clamp(8px, 1vh, 14px);
     gap: 14px;
 }
 .about-contact-section .contact-item {
@@ -926,17 +911,16 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     max-width: min(920px, 70ch);
 }
 .snap-overview-card {
-    padding: clamp(22px, 3.5vw, 34px);
+    padding: clamp(18px, 2.8vw, 28px);
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    margin-top: 10px;
-    background: var(--glass-solid);
+    gap: 14px;
+    margin-top: 8px;
 }
 .snap-overview-card p {
     color: var(--fg-muted);
-    font-size: 1rem !important;
-    line-height: 1.68 !important;
+    font-size: 0.96rem !important;
+    line-height: 1.65 !important;
     margin: 0;
 }
 
@@ -944,58 +928,87 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     list-style: none;
     counter-reset: s;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
     width: 100%;
-    margin-top: 14px;
+    margin-top: 10px;
     padding: 0;
 }
 .snap-arch-grid li {
     counter-increment: s;
     position: relative;
-    padding: 18px 20px 18px 60px;
-    background: var(--glass-solid);
+    padding: 14px 18px 14px 52px;
+    background: rgba(10, 14, 22, 0.84);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 .snap-arch-grid li::before {
     content: counter(s, decimal-leading-zero);
     position: absolute;
-    left: 20px;
-    top: 19px;
-    font: 700 13px var(--mono);
+    left: 18px;
+    top: 15px;
+    font: 700 12px var(--mono);
     color: var(--a-text);
 }
 .snap-arch-grid strong {
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
+    font-size: 13.5px;
     font-weight: 700;
     color: var(--fg);
 }
 .snap-arch-grid span {
     color: var(--fg-muted);
-    font-size: 14px;
-    line-height: 1.6;
+    font-size: 13px;
+    line-height: 1.55;
 }
 
 .snap-math-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
     width: 100%;
-    margin-top: 14px;
+    margin-top: 10px;
 }
 .snap-math-grid .math-block {
     margin: 0;
-    padding: 16px 22px;
-    background: var(--glass-solid);
+    padding: 14px 18px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-sizing: border-box;
+}
+.snap-math-grid .math-block h3 {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--fg);
+    margin: 0;
+}
+.snap-math-grid .math-block p {
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--fg-muted);
+    margin: 0;
+}
+.snap-math-grid .math-block .eq {
+    margin: 4px 0 0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(6, 9, 15, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.95rem;
 }
 
 .snap-nav-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
-    gap: 16px;
+    gap: 14px;
     width: 100%;
-    margin-top: 18px;
-    margin-bottom: 24px;
+    margin-top: 16px;
+    margin-bottom: 20px;
+    flex-shrink: 0;
 }
 
 /* ---------- Course & Paper cards ---------- */
@@ -1004,30 +1017,33 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: stretch;
-    gap: 20px;
-    width: 100vw;
-    margin-left: calc(-1 * clamp(20px, 6vw, 88px));
-    margin-top: 16px;
+    gap: 16px;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 10px;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 6px clamp(20px, 6vw, 88px) 10px;
+    padding: 4px 24px 10px 2px;
     box-sizing: border-box;
     scrollbar-width: none;
     -ms-overflow-style: none;
     -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    -webkit-mask-image: linear-gradient(to right, #000 0%, #000 94%, transparent 100%);
+    mask-image: linear-gradient(to right, #000 0%, #000 94%, transparent 100%);
     cursor: grab;
 }
 .course-grid:active { cursor: grabbing; }
 .course-grid::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 .course-card {
-    flex: 0 0 clamp(320px, 34vw, 440px);
-    padding: 20px 22px;
-    border-radius: var(--radius);
-    background: var(--glass-solid);
+    flex: 0 0 clamp(290px, 30vw, 360px);
+    scroll-snap-align: start;
+    padding: 16px 18px;
+    border-radius: 14px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     box-sizing: border-box;
 }
 .course-card-head {
@@ -1037,50 +1053,60 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     gap: 12px;
 }
 .course-code {
-    font: 700 13px var(--mono);
+    font: 700 12.5px var(--mono);
     color: var(--a-text);
     letter-spacing: 0.06em;
 }
 .course-card h3 {
     margin: 0;
-    font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+    font-size: 15px;
     font-weight: 700;
-    line-height: 1.22;
+    line-height: 1.25;
 }
 .course-card p {
     color: var(--fg-muted);
-    font-size: 14px;
-    line-height: 1.6;
+    font-size: 12.5px;
+    line-height: 1.55;
     margin: 0;
 }
 .course-card .pill {
-    font-size: 12px !important;
+    font-size: 11.5px !important;
+}
+.course-card .eq {
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin: 4px 0;
+    font-size: 0.85rem;
+    overflow-x: auto;
+    max-width: 100%;
+    background: rgba(6, 9, 15, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
 .course-topics {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 6px;
+    gap: 4px;
+    margin-top: 4px;
 }
 .course-topics span {
-    font: 500 12px var(--mono);
+    font: 500 11px var(--mono);
     letter-spacing: 0.03em;
-    padding: 3px 9px;
-    border-radius: 6px;
-    background: color-mix(in srgb, rgb(var(--a)) 9%, var(--glass-solid));
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: color-mix(in srgb, rgb(var(--a)) 9%, rgba(10, 14, 22, 0.88));
     color: var(--fg);
-    border: 1px solid rgba(var(--a), 0.22);
+    border: 1px solid rgba(var(--a), 0.2);
 }
 
 .paper-meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
-    font: 500 12px var(--mono);
+    gap: 8px;
+    font: 500 11.5px var(--mono);
     letter-spacing: 0.04em;
     color: var(--fg-muted);
-    margin-top: 6px;
+    margin-top: 4px;
 }
 .paper-meta .venue {
     color: var(--a-text);
@@ -1097,17 +1123,19 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 .paper-inner {
     max-width: 1060px;
     width: 100%;
-    max-height: calc(100svh - clamp(96px, 13vh, 136px));
+    max-height: calc(100dvh - clamp(96px, 13vh, 136px));
     overflow-y: auto;
     scrollbar-width: none;
     padding-right: 8px;
     box-sizing: border-box;
 }
 .paper-inner::-webkit-scrollbar,
-.course-inner::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.course-inner::-webkit-scrollbar,
 .paper-inner::-webkit-scrollbar-thumb,
 .course-inner::-webkit-scrollbar-thumb {
     display: none;
+    width: 0;
+    height: 0;
 }
 
 .paper-title {
@@ -1155,7 +1183,6 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 
 .paper-abstract-card {
     padding: 16px 20px;
-    background: var(--glass-solid);
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1187,7 +1214,6 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 
 .paper-eq-card {
     padding: 14px 18px;
-    background: var(--glass-solid);
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -1255,7 +1281,7 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 .course-inner {
     max-width: 100%;
     width: 100%;
-    max-height: calc(100svh - clamp(96px, 13vh, 136px));
+    max-height: calc(100dvh - clamp(96px, 13vh, 136px));
     overflow-y: auto;
     overflow-x: visible;
     scrollbar-width: none;
@@ -1263,38 +1289,47 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     padding-right: 0;
     box-sizing: border-box;
 }
-.course-inner::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 @media (max-width: 960px) {
     .paper-grid { grid-template-columns: 1fr; gap: 16px; }
     .paper-highlights-grid { grid-template-columns: 1fr; }
-    .paper-inner, .course-inner { max-height: calc(100svh - 110px); }
+    .paper-inner, .course-inner { max-height: calc(100dvh - 110px); }
 }
 
-/* ---------- Supersonic warp transition (hub) ---------- */
+/* ---------- Supersonic warp transition (GPU-only transform/opacity) ---------- */
 .warp { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 45; pointer-events: none; }
 .snap-section[data-enter="right"]  { --warp-from: translate3d(85vw, 0, 0) scaleX(1.8); }
 .snap-section[data-enter="left"]   { --warp-from: translate3d(-85vw, 0, 0) scaleX(1.8); }
 .snap-section[data-enter="bottom"] { --warp-from: translate3d(0, 75vh, 0) scaleY(1.6); }
 .snap-section[data-enter="top"]    { --warp-from: translate3d(0, -75vh, 0) scaleY(1.6); }
-.snap-section[data-enter="zoom"]   { --warp-from: scale(0.2); }
+.snap-section[data-enter="zoom"]   { --warp-from: scale3d(0.2, 0.2, 1); }
 
 .snap-section.warp-out > .snap-inner {
-    transform: scale(1.6);
+    transform: scale3d(1.38, 1.38, 1) translateZ(0);
     opacity: 0;
-    filter: blur(14px);
-    transition: transform 0.34s cubic-bezier(0.6, 0, 1, 0.4), opacity 0.3s ease-in, filter 0.3s ease-in;
+    transition: transform 0.32s cubic-bezier(0.6, 0, 1, 0.4), opacity 0.26s ease-in;
 }
 .snap-section.warp-out > canvas {
-    transform: scale(1.25);
+    transform: scale3d(1.22, 1.22, 1) translateZ(0);
     opacity: 0.15;
-    filter: blur(6px);
-    transition: transform 0.34s cubic-bezier(0.6, 0, 1, 0.4), opacity 0.3s ease-in, filter 0.3s ease-in;
+    transition: transform 0.32s cubic-bezier(0.6, 0, 1, 0.4), opacity 0.26s ease-in;
 }
-.snap-section.warp-in > .snap-inner { transform: var(--warp-from, scale(0.2)); opacity: 0; filter: blur(16px); transition: none; }
-.snap-section.warp-in > canvas { transform: scale(0.85); opacity: 0; transition: none; }
-.snap-section.warp-land > .snap-inner { transition: transform 0.75s cubic-bezier(0.12, 1, 0.25, 1), opacity 0.4s ease-out, filter 0.55s ease-out; }
-.snap-section.warp-land > canvas { transition: transform 0.9s cubic-bezier(0.12, 1, 0.25, 1), opacity 0.7s ease-out; }
+.snap-section.warp-in > .snap-inner {
+    transform: var(--warp-from, scale3d(0.2, 0.2, 1));
+    opacity: 0;
+    transition: none;
+}
+.snap-section.warp-in > canvas {
+    transform: scale3d(0.85, 0.85, 1);
+    opacity: 0;
+    transition: none;
+}
+.snap-section.warp-land > .snap-inner {
+    transition: transform 0.72s cubic-bezier(0.12, 1, 0.25, 1), opacity 0.38s ease-out;
+}
+.snap-section.warp-land > canvas {
+    transition: transform 0.85s cubic-bezier(0.12, 1, 0.25, 1), opacity 0.65s ease-out;
+}
 
 /* ---------- Sections & cards ---------- */
 .section { max-width: 1280px; margin: 0 auto; padding: 96px clamp(20px, 6vw, 96px); }
@@ -1308,9 +1343,15 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     flex-direction: column;
     gap: 12px;
     padding: 24px 26px;
-    background: var(--glass-solid);
+    background: linear-gradient(
+        165deg,
+        rgba(255, 255, 255, 0.04) 0%,
+        rgba(10, 14, 22, 0.88) 45%,
+        rgba(6, 9, 15, 0.94) 100%
+    );
     border-radius: var(--radius);
     border: 1px solid var(--glass-line);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
     overflow: hidden;
     transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s, box-shadow 0.3s;
 }
@@ -1326,7 +1367,7 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 .card:hover {
     transform: translateY(-4px);
     border-color: rgba(var(--a), 0.65);
-    box-shadow: 0 24px 50px -24px rgba(var(--a), 0.45);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 24px 50px -24px rgba(var(--a), 0.45);
 }
 .card:hover::before { opacity: 1; }
 .card .no {
@@ -1419,7 +1460,6 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
 /* ---------- Contact card ---------- */
 .contact-card {
     padding: clamp(24px, 4vw, 40px);
-    background: var(--glass-solid);
     display: flex;
     flex-direction: column;
     gap: 28px;
@@ -1561,7 +1601,6 @@ a.contact-value:hover {
 
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
-    .snap-pager { display: none; }
     .course-grid {
         margin-left: -18px;
         padding-left: 18px;
@@ -1570,22 +1609,18 @@ a.contact-value:hover {
     .snap-section,
     .snap-section.hero {
         padding: 68px 18px 56px;
-        height: 100vh;
-        height: 100dvh;
-        height: 100svh;
         min-height: 100svh;
-        max-height: 100svh;
+        height: 100dvh;
         justify-content: center;
+        justify-content: safe center;
     }
     .about-contact-section {
-        height: 100vh;
-        height: 100dvh;
-        height: 100svh;
         min-height: 100svh;
-        max-height: 100svh;
-        padding-top: 60px;
-        padding-bottom: 20px;
+        height: 100dvh;
+        padding-top: max(68px, calc(var(--nav-height, 56px) + 16px));
+        padding-bottom: 24px;
         justify-content: center;
+        justify-content: safe center;
     }
     .about-contact-section .section-head { margin-bottom: 12px; }
     .about-contact-section .two-col { gap: 14px; margin-bottom: 14px !important; }
@@ -1593,15 +1628,20 @@ a.contact-value:hover {
     .about-contact-section .edu { grid-template-columns: 1fr 1fr; gap: 8px; }
     .about-contact-section .edu > div { padding: 10px 12px; font-size: 13px; }
     .about-contact-section .edu span { font-size: 12px; }
-    .snap-inner { width: 100%; gap: 10px; }
+    .snap-inner {
+        width: 100%;
+        gap: 10px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
     .snap-inner::before { display: none; }
     #domain-physics .snap-inner::before,
     #domain-intro[data-domain="physics"] .snap-inner::before {
         display: block;
-        inset: -20px -20px -20px -20px;
-        background: radial-gradient(ellipse 90% 75% at 50% 40%, rgba(5, 8, 15, 0.75) 0%, transparent 100%);
+        inset: -20px;
+        background: radial-gradient(ellipse 90% 75% at 50% 40%, rgba(5, 8, 15, 0.78) 0%, transparent 100%);
         border-radius: 24px;
-        filter: blur(12px);
     }
     .hero h1 { font-size: clamp(2.125rem, 10vw, 3.6rem); margin: 6px 0 10px; }
     .snap-title { font-size: clamp(1.75rem, 7.5vw, 3rem); }
@@ -1611,7 +1651,7 @@ a.contact-value:hover {
         margin-top: 6px;
         font-size: clamp(0.66rem, 3.2vw, 0.84rem);
         max-width: calc(100vw - 36px);
-        background: rgba(0, 0, 0, 0.88);
+        background: rgba(6, 9, 15, 0.90);
         border: 1px solid var(--glass-line);
         border-radius: 12px;
     }
@@ -1619,24 +1659,12 @@ a.contact-value:hover {
     #domain-physics .snap-eq,
     #domain-intro[data-domain="physics"] .hero-eq,
     #domain-intro[data-domain="physics"] .snap-eq {
-        background: rgba(7, 11, 20, 0.72);
-        border: 1px solid rgba(124, 184, 255, 0.16);
+        background: rgba(7, 11, 20, 0.82);
+        border: 1px solid rgba(124, 184, 255, 0.18);
     }
     .snap-cta-btn { padding: 10px 18px; font-size: 12px; width: 100%; justify-content: center; }
     .snap-actions { width: 100%; gap: 8px; }
     .snap-cue { left: 18px; bottom: 42px; font-size: 12px; }
-    .sim-tag {
-        left: 14px;
-        right: 14px;
-        bottom: 10px;
-        max-width: none;
-        text-align: left;
-        font-size: 10.5px;
-        line-height: 1.45;
-        white-space: normal;
-        border-radius: 6px;
-        padding: 6px 10px;
-    }
     .glass,
     .snap-overview-card,
     .paper-abstract-card,
@@ -1662,6 +1690,7 @@ a.contact-value:hover {
     .sound-btn { width: 32px; height: 32px; margin-left: 5px; font-size: 14px; }
     .contact-card { padding: 22px 18px; gap: 20px; }
     .contact-grid { grid-template-columns: 1fr; gap: 18px; padding-top: 18px; }
+    .snap-arch-grid, .snap-math-grid { grid-template-columns: 1fr; }
     .snap-arch-grid li { padding: 14px 16px 14px 48px; }
     .math-block { padding: 16px 18px; }
 }
@@ -1672,40 +1701,339 @@ a.contact-value:hover {
     .course-card { flex: 0 0 clamp(270px, 82vw, 340px); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    html { scroll-behavior: auto; }
-    [data-reveal], [data-hero] { opacity: 1 !important; transform: none !important; transition: none !important; }
+/* ---------- Equation reveal & Display ---------- */
+.snap-eq .katex,
+.hero-eq .katex,
+.eq .katex {
+    transition: opacity 0.4s ease;
 }
 
-
-/* ---------- Equation reveal ---------- */
-.snap-eq .katex { transition: filter 0.8s ease, opacity 0.8s ease; }
-[data-reveal]:not(.revealed) .katex { filter: blur(6px); opacity: 0; }
-
-/* ---------- Scroll-driven reveals ---------- */
+/* ---------- Scroll-driven reveals (scoped outside mandatory snap sections to avoid timeline clashes) ---------- */
 @supports (animation-timeline: view()) {
-    [data-reveal] {
-        opacity: 1;
-        transform: none;
-        transition: none;
+    .section [data-reveal]:not(.revealed) {
         animation: reveal-in linear both;
         animation-timeline: view();
         animation-range: entry 0% cover 28%;
     }
+    [data-reveal].revealed,
+    [data-hero] {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+    }
     @keyframes reveal-in {
-        from { opacity: 0; transform: translateY(22px); filter: blur(6px); }
-        to   { opacity: 1; transform: none; filter: none; }
+        from { opacity: 0; transform: translate3d(0, 16px, 0); }
+        to   { opacity: 1; transform: translate3d(0, 0, 0); }
     }
 }
 
 /* ---------- Page transitions (View Transitions API) ---------- */
 ::view-transition-old(root) { animation: vt-out 0.25s ease-in both; }
-::view-transition-new(root) { animation: vt-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+::view-transition-new(root) { animation: vt-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
 @keyframes vt-out { to { opacity: 0; transform: scale(0.985); } }
-@keyframes vt-in { from { opacity: 0; transform: translateY(10px); filter: blur(6px); } }
+@keyframes vt-in { from { opacity: 0; transform: translateY(8px); } }
+
+/* ---------- Simple vs Complex Portfolio Mode & Entry Modal ---------- */
+.mode-toggle-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 99px;
+    padding: 5px 12px;
+    font: 500 11.5px/1 var(--mono);
+    color: var(--fg);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.mode-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(var(--a), 0.5);
+}
+
+html[data-life-mode="simple"] .stage-canvas,
+html[data-life-mode="simple"] .laniakea-hero-canvas,
+html[data-life-mode="simple"] .nav-live,
+html[data-life-mode="simple"] .sim-tag,
+html[data-life-mode="simple"] .snap-cue {
+    display: none !important;
+}
+
+/* Academic Monograph Editorial Styling for Simple Mode */
+html[data-life-mode="simple"] {
+    --heading-font: "Newsreader", "EB Garamond", Georgia, serif !important;
+    --sans: "EB Garamond", "Newsreader", Georgia, serif !important;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace !important;
+    --bg: #f9f9fc !important;
+    --bg-rgb: 249, 249, 252 !important;
+    --fg: #1a1e29 !important;
+    --fg-muted: #4a5568 !important;
+    --fg-faint: #718096 !important;
+    --line: rgba(0, 0, 0, 0.08) !important;
+    --glass: rgba(255, 255, 255, 0.88) !important;
+    --glass-line: rgba(0, 0, 0, 0.10) !important;
+    --glass-solid: #ffffff !important;
+    --rgb-hub: 30, 58, 138 !important; /* Archival ink navy */
+    --a: 30, 58, 138 !important;
+    --on-accent: #ffffff !important;
+    scroll-snap-type: none !important;
+    scroll-behavior: smooth !important;
+    color-scheme: light !important;
+}
+
+html[data-life-mode="simple"] body {
+    background-color: var(--bg) !important;
+    background-image: 
+        radial-gradient(circle at 50% 0%, rgba(30, 58, 138, 0.03) 0%, transparent 60%),
+        linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px) !important;
+    background-size: 100% 100%, 100% 28px !important;
+    color: var(--fg) !important;
+}
+
+html[data-life-mode="simple"] .snap-section {
+    height: auto !important;
+    min-height: auto !important;
+    padding: clamp(48px, 6vw, 84px) 24px !important;
+    scroll-snap-align: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+html[data-life-mode="simple"] .snap-inner {
+    max-width: 820px !important;
+    margin: 0 auto !important;
+}
+
+html[data-life-mode="simple"] h1,
+html[data-life-mode="simple"] h2,
+html[data-life-mode="simple"] h3,
+html[data-life-mode="simple"] .snap-title {
+    font-family: var(--heading-font) !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.015em !important;
+    color: #0f172a !important;
+}
+
+html[data-life-mode="simple"] p,
+html[data-life-mode="simple"] .lead,
+html[data-life-mode="simple"] .snap-lead {
+    font-family: var(--sans) !important;
+    font-size: clamp(17px, 1.25vw, 19.5px) !important;
+    line-height: 1.72 !important;
+    color: #2d3748 !important;
+}
+
+html[data-life-mode="simple"] .hero-eq,
+html[data-life-mode="simple"] .eq,
+html[data-life-mode="simple"] .math-block,
+html[data-life-mode="simple"] .glass {
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    color: #0f172a !important;
+}
+
+html[data-life-mode="simple"] .nav {
+    background: rgba(249, 249, 252, 0.94) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.10) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+}
+
+html[data-life-mode="simple"] .nav .brand,
+html[data-life-mode="simple"] .nav a {
+    color: #1e293b !important;
+}
+
+html[data-life-mode="simple"] .mode-toggle-btn {
+    background: rgba(30, 58, 138, 0.08) !important;
+    border: 1px solid rgba(30, 58, 138, 0.25) !important;
+    color: #1e3a8a !important;
+    font-weight: 600 !important;
+}
+
+html[data-life-mode="simple"] .pill,
+html[data-life-mode="simple"] .snap-cta-btn {
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.14) !important;
+    color: #1e3a8a !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+}
+
+html[data-life-mode="simple"] .pill:hover,
+html[data-life-mode="simple"] .snap-cta-btn:hover {
+    background: #1e3a8a !important;
+    color: #ffffff !important;
+}
+
+html[data-life-mode="simple"] .katex {
+    color: #0f172a !important;
+    font-size: 1.05em !important;
+}
+
+/* Masthead styling */
+.academic-masthead {
+    display: none;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.10);
+}
+
+html[data-life-mode="simple"] .academic-masthead {
+    display: block;
+}
+
+.masthead-pretitle {
+    font: 600 11.5px/1 var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #1e3a8a;
+    margin-bottom: 10px;
+}
+
+.masthead-mandate {
+    font-family: var(--heading-font);
+    font-style: italic;
+    font-size: clamp(16px, 1.3vw, 18px);
+    line-height: 1.5;
+    color: #334155;
+    margin-bottom: 14px;
+}
+
+.masthead-accreditations {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: #64748b;
+}
+
+.accred-sep {
+    color: #cbd5e1;
+}
+
+.academic-masthead-actions {
+    display: none;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+html[data-life-mode="simple"] .academic-masthead-actions {
+    display: flex;
+}
+
+.gpg-badge {
+    font: 400 11px/1 var(--mono);
+    color: var(--fg-muted);
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+    padding: 6px 10px;
+}
+
+.gpg-badge code {
+    font-weight: 600;
+    color: #1e3a8a;
+}
+
+.life-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transition: opacity 0.28s ease;
+}
+.life-modal.closing {
+    opacity: 0;
+    pointer-events: none;
+}
+.life-modal-card {
+    max-width: 420px;
+    margin: 20px;
+    padding: clamp(24px, 4vw, 36px);
+    text-align: center;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(12, 16, 26, 0.92);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8);
+}
+.life-modal-prompt {
+    font: 700 clamp(24px, 3.2vw, 32px)/1.15 var(--heading-font);
+    color: var(--fg);
+    margin-bottom: 24px;
+    letter-spacing: -0.02em;
+}
+.life-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+.life-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border-radius: 99px;
+    font: 600 13px/1 var(--sans);
+    cursor: pointer;
+    transition: transform 0.18s, background 0.18s, border-color 0.18s;
+}
+.life-btn:hover {
+    transform: translateY(-1px);
+}
+.life-btn-simple {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--fg);
+}
+.life-btn-simple:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: #fff;
+}
+.life-btn-complex {
+    background: rgb(var(--a));
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #000;
+    font-weight: 700;
+}
+.life-btn-complex:hover {
+    filter: brightness(1.12);
+}
+.life-modal-hint {
+    font: 400 11.5px/1.5 var(--mono);
+    color: var(--fg-muted);
+}
 
 @media (prefers-reduced-motion: reduce) {
-    [data-reveal] { animation: none !important; }
-    [data-reveal]:not(.revealed) .katex { filter: none; opacity: 1; }
-    ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+    html { scroll-behavior: auto; }
+    [data-reveal],
+    [data-hero],
+    .snap-section.warp-out > .snap-inner,
+    .snap-section.warp-out > canvas,
+    .snap-section.warp-in > .snap-inner,
+    .snap-section.warp-in > canvas,
+    .snap-section.warp-land > .snap-inner,
+    .snap-section.warp-land > canvas,
+    .status-dot {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+        transition: none !important;
+        animation: none !important;
+    }
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+    }
 }
