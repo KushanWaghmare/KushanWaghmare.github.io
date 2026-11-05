@@ -118,7 +118,7 @@
             }
         };
 
-        // Capture-phase gesture listeners guarantee wakeup before any stopPropagation
+        // Capture-phase gesture listeners guarantee wakeup across all interactions
         ["pointerdown", "touchstart", "touchend", "click", "keydown", "wheel"].forEach((ev) => {
             window.addEventListener(ev, init, { passive: true, capture: true });
         });
@@ -154,7 +154,7 @@
             if (!ctx) return;
             const run = () => {
                 try {
-                    const t0 = Math.max(ctx.currentTime || 0, 0) + 0.008;
+                    const t0 = Math.max(ctx.currentTime || 0, 0) + 0.005;
                     cb(t0);
                 } catch (e) {}
             };
@@ -212,13 +212,15 @@
 
             for (let h = 0; h < bank.oscs.length; h++) {
                 const ratio = ratios[h] || (h + 1);
-                const freq = Math.max(30, Math.min(3000, root * ratio));
-                bank.oscs[h].osc.frequency.setTargetAtTime(freq, t0, 0.06);
+                const freq = Math.max(25, Math.min(3200, root * ratio));
+                bank.oscs[h].osc.frequency.setTargetAtTime(freq, t0, 0.04);
             }
-            bank.filter.frequency.setTargetAtTime(cutoff, t0, 0.08);
-            bank.filter.Q.setTargetAtTime(q, t0, 0.08);
-            const masterVol = enabled ? targetGain * 0.035 : 0.0;
-            bank.gain.gain.setTargetAtTime(masterVol, t0, 0.08);
+            bank.filter.frequency.setTargetAtTime(cutoff, t0, 0.05);
+            bank.filter.Q.setTargetAtTime(q, t0, 0.05);
+            // Equal-power cross-fade curve sqrt(gain) prevents middle volume dip
+            const curve = Math.sqrt(Math.max(0.0, Math.min(1.0, targetGain)));
+            const masterVol = enabled ? curve * 0.038 : 0.0;
+            bank.gain.gain.setTargetAtTime(masterVol, t0, 0.04);
         };
 
         const playTone = (freqStart, freqEnd, type, duration, volume) => {
@@ -239,8 +241,14 @@
                 gain.connect(ctx.destination);
                 osc.start(t0);
                 osc.stop(tEnd + 0.02);
+                osc.onended = () => {
+                    try { osc.disconnect(); gain.disconnect(); } catch (e) {}
+                };
             });
         };
+
+        // Live wormhole transit audio state
+        let wormholeVoice = null;
 
         return {
             isEnabled: () => enabled,
@@ -278,45 +286,179 @@
                     if (ctx.createStereoPanner) {
                         try {
                             const p = ctx.createStereoPanner();
-                            p.pan.setValueAtTime(pan, t0);
-                            p.pan.linearRampToValueAtTime(0, t0 + 0.6);
+                            p.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), t0);
+                            p.pan.linearRampToValueAtTime(0, t0 + 0.7);
                             p.connect(ctx.destination);
                             bus = p;
                         } catch (e) { bus = ctx.destination; }
                     }
+
+                    // 1. Resonant sub-bass launch pulse (deep space thud transitioning to smooth glide)
+                    const sub = ctx.createOscillator();
+                    const subGain = ctx.createGain();
+                    sub.type = "sine";
+                    sub.frequency.setValueAtTime(80, t0);
+                    sub.frequency.exponentialRampToValueAtTime(45, t0 + 0.28);
+                    sub.frequency.exponentialRampToValueAtTime(32, t0 + 0.85);
+                    subGain.gain.setValueAtTime(0.0001, t0);
+                    subGain.gain.linearRampToValueAtTime(0.22, t0 + 0.05);
+                    subGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.90);
+                    sub.connect(subGain);
+                    subGain.connect(bus);
+                    sub.start(t0);
+                    sub.stop(t0 + 0.92);
+                    sub.onended = () => {
+                        try { sub.disconnect(); subGain.disconnect(); } catch (e) {}
+                    };
+
+                    // 2. High-Q resonant Doppler air column (coherent harmonic whistle, not harsh hiss)
                     const nb = noise();
                     if (nb) {
                         const src = ctx.createBufferSource();
                         const bp = ctx.createBiquadFilter();
-                        const g = ctx.createGain();
+                        const bpGain = ctx.createGain();
                         src.buffer = nb;
                         bp.type = "bandpass";
-                        bp.Q.value = 1.2;
-                        bp.frequency.setValueAtTime(450, t0);
-                        bp.frequency.exponentialRampToValueAtTime(3200, t0 + 0.22);
-                        bp.frequency.exponentialRampToValueAtTime(550, t0 + 0.65);
-                        g.gain.setValueAtTime(0.0001, t0);
-                        g.gain.linearRampToValueAtTime(0.24, t0 + 0.20);
-                        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.70);
+                        bp.Q.value = 3.6; // narrow resonance gives a musical wind / atmospheric tunnel tone
+                        bp.frequency.setValueAtTime(260, t0);
+                        bp.frequency.exponentialRampToValueAtTime(1450, t0 + 0.38); // matches Doppler peak
+                        bp.frequency.exponentialRampToValueAtTime(320, t0 + 0.85);
+                        bpGain.gain.setValueAtTime(0.0001, t0);
+                        bpGain.gain.linearRampToValueAtTime(0.12, t0 + 0.25);
+                        bpGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.90);
                         src.connect(bp);
-                        bp.connect(g);
-                        g.connect(bus);
+                        bp.connect(bpGain);
+                        bpGain.connect(bus);
                         src.start(t0);
-                        src.stop(t0 + 0.75);
+                        src.stop(t0 + 0.92);
+                        src.onended = () => {
+                            try { src.disconnect(); bp.disconnect(); bpGain.disconnect(); } catch (e) {}
+                        };
                     }
-                    const o = ctx.createOscillator();
+
+                    // 3. Harmonic slipstream carrier (warm dual-detuned sine layer that blends into the ambient drone)
+                    const o1 = ctx.createOscillator();
+                    const o2 = ctx.createOscillator();
                     const og = ctx.createGain();
-                    o.type = "triangle";
-                    o.frequency.setValueAtTime(160, t0);
-                    o.frequency.exponentialRampToValueAtTime(420, t0 + 0.22);
-                    o.frequency.exponentialRampToValueAtTime(140, t0 + 0.65);
+                    o1.type = "sine";
+                    o2.type = "sine";
+                    o1.frequency.setValueAtTime(110, t0);
+                    o2.frequency.setValueAtTime(112.5, t0);
+                    o1.frequency.exponentialRampToValueAtTime(330, t0 + 0.35);
+                    o2.frequency.exponentialRampToValueAtTime(332, t0 + 0.35);
+                    o1.frequency.exponentialRampToValueAtTime(110, t0 + 0.85);
+                    o2.frequency.exponentialRampToValueAtTime(110, t0 + 0.85);
                     og.gain.setValueAtTime(0.0001, t0);
-                    og.gain.linearRampToValueAtTime(0.18, t0 + 0.20);
-                    og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.70);
-                    o.connect(og);
+                    og.gain.linearRampToValueAtTime(0.10, t0 + 0.20);
+                    og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.90);
+                    o1.connect(og);
+                    o2.connect(og);
                     og.connect(bus);
-                    o.start(t0);
-                    o.stop(t0 + 0.75);
+                    o1.start(t0);
+                    o2.start(t0);
+                    o1.stop(t0 + 0.92);
+                    o2.stop(t0 + 0.92);
+                    o1.onended = () => {
+                        try { o1.disconnect(); o2.disconnect(); og.disconnect(); if (bus !== ctx.destination) bus.disconnect(); } catch (e) {}
+                    };
+                });
+            },
+            // Continuous live wormhole transit Doppler synthesizer tracking THREAD_STAGE.trans
+            updateWormhole: (u, speed = 1.0, pan = 0.0) => {
+                if (!enabled) {
+                    if (wormholeVoice) {
+                        try {
+                            const t0 = (ctx && ctx.currentTime) || 0;
+                            wormholeVoice.gain.gain.setTargetAtTime(0.0, t0, 0.03);
+                        } catch (e) {}
+                    }
+                    return;
+                }
+                withContext((t0) => {
+                    if (!wormholeVoice) {
+                        try {
+                            const nb = noise();
+                            if (!nb) return;
+                            const src = ctx.createBufferSource();
+                            src.buffer = nb;
+                            src.loop = true;
+                            const filter = ctx.createBiquadFilter();
+                            filter.type = "bandpass";
+                            filter.Q.value = 2.4;
+                            const gain = ctx.createGain();
+                            gain.gain.value = 0.0001;
+
+                            const sub = ctx.createOscillator();
+                            sub.type = "sine";
+                            sub.frequency.value = 55.0;
+                            const subGain = ctx.createGain();
+                            subGain.gain.value = 0.0001;
+
+                            src.connect(filter);
+                            filter.connect(gain);
+                            sub.connect(subGain);
+
+                            let panner = null;
+                            if (ctx.createStereoPanner) {
+                                try {
+                                    panner = ctx.createStereoPanner();
+                                    gain.connect(panner);
+                                    subGain.connect(panner);
+                                    panner.connect(ctx.destination);
+                                } catch (e) {
+                                    gain.connect(ctx.destination);
+                                    subGain.connect(ctx.destination);
+                                }
+                            } else {
+                                gain.connect(ctx.destination);
+                                subGain.connect(ctx.destination);
+                            }
+
+                            src.start(t0);
+                            sub.start(t0);
+                            wormholeVoice = { src, filter, gain, sub, subGain, panner };
+                        } catch (e) {
+                            wormholeVoice = null;
+                            return;
+                        }
+                    }
+
+                    // Bell envelope peaking at mid-wormhole u = 0.5
+                    const bell = Math.sin(Math.max(0.0, Math.min(1.0, u)) * Math.PI);
+                    const sp = Math.max(0.2, Math.min(3.5, speed));
+                    // Doppler frequency: 320 Hz base rising to 2800 Hz at peak speed
+                    const targetFreq = Math.min(3800, 320 + Math.pow(bell, 1.4) * 2200 * (0.6 + 0.4 * sp));
+                    const targetVol = bell * 0.16 * Math.min(1.5, 0.7 + 0.3 * sp);
+                    // Sub-bass thud near arrival (u > 0.8)
+                    const arrivalThud = Math.pow(Math.max(0.0, Math.min(1.0, (u - 0.75) / 0.25)), 2) * (1.0 - Math.max(0.0, Math.min(1.0, (u - 0.98) / 0.02)));
+
+                    wormholeVoice.filter.frequency.setTargetAtTime(targetFreq, t0, 0.03);
+                    wormholeVoice.gain.gain.setTargetAtTime(targetVol, t0, 0.03);
+                    wormholeVoice.sub.frequency.setTargetAtTime(65.0 - 25.0 * bell, t0, 0.04);
+                    wormholeVoice.subGain.gain.setTargetAtTime(arrivalThud * 0.18, t0, 0.03);
+                    if (wormholeVoice.panner) {
+                        wormholeVoice.panner.pan.setTargetAtTime(Math.max(-1, Math.min(1, pan)), t0, 0.04);
+                    }
+
+                    // Clean shutdown when transition finishes
+                    if (u >= 0.999 || u <= 0.001) {
+                        const voice = wormholeVoice;
+                        wormholeVoice = null;
+                        voice.gain.gain.setTargetAtTime(0.0001, t0 + 0.04, 0.02);
+                        voice.subGain.gain.setTargetAtTime(0.0001, t0 + 0.04, 0.02);
+                        setTimeout(() => {
+                            try {
+                                voice.src.stop();
+                                voice.sub.stop();
+                                voice.src.disconnect();
+                                voice.filter.disconnect();
+                                voice.gain.disconnect();
+                                voice.sub.disconnect();
+                                voice.subGain.disconnect();
+                                if (voice.panner) voice.panner.disconnect();
+                            } catch (e) {}
+                        }, 120);
+                    }
                 });
             },
             setDimensionAmbient: (fromAudio, toAudio, blend) => {
@@ -1986,102 +2128,40 @@ const initNavSim = (c) => {
 
 
 
-    /* ---------- Full-Viewport Widescreen Laniakea Renderer (Translucent Amber & Crisp Filaments) ---------- */
+    /* ---------- Laniakea hero renderer (poster-faithful, Canvas 2D) ---------- */
     const createLaniakeaPoster = (canvas, opts = {}) => {
         const ctx = canvas.getContext("2d", { alpha: true });
         const TAU = Math.PI * 2;
         const reduced = !!opts.reducedMotion;
 
-        // ---- deterministic PRNG
+        // ---- deterministic RNG
         let seed = 0x1A71A2026 >>> 0;
-        const rnd = () => {
-            seed = (seed + 0x6D2B79F5) >>> 0;
-            let t = Math.imul(seed ^ (seed >>> 15), seed | 1);
-            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-        };
+        const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = Math.imul(seed ^ (seed >>> 15), seed | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
         const gauss = () => (rnd() + rnd() + rnd() - 1.5) / 0.5;
 
-        // ---- Anatomical landmarks in expanded widescreen space (design centre = 395, 635)
-        // A: Great Attractor / Norma Cusp (536, 464)
-        // P: Lower Spine Plume / Virgo-Perseus-Pisces Nexus (484, 895)
-        // M: Milky Way Red Dot Beacon (386, 967)
-        const A = [536, 464], P = [484, 895], M = [386, 967];
+        // ---- flow field in poster-pixel space (828 x 1035, y down)
+        const A = [270, 425], M = [572, 520], S = [565, 468];
+        const R1 = [[618, 482], [565, 468], [520, 452], [470, 433], [400, 421], [330, 422], [272, 425]];
+        const R2 = [[440, 770], [400, 700], [350, 620], [312, 540], [285, 470], [272, 432]];
+        const R3 = [[582, 534], [552, 497], [522, 458]];
+        const R4 = [[648, 470], [622, 385], [556, 318], [470, 276], [378, 262], [304, 290], [272, 350], [270, 422]];
+        const R5 = [[575, 720], [535, 640], [490, 560], [440, 490], [385, 442], [330, 424]];
+        const RIDGES = [[R1, 1.0], [R2, 0.85], [R3, 0.7], [R4, 0.55], [R5, 0.5]];
+        const BLUE = [[55, 250, 1], [505, 165, 1], [770, 690, 1], [330, 985, 0.8], [740, 270, 0.6]];
 
-        // 1. Central S-Curved Luminous Spine (Lower Plume -> Great Attractor Cusp)
-        const R_SPINE = [
-            [479, 985], [482, 945], [484, 905], [489, 860], [502, 825],
-            [518, 785], [533, 735], [543, 685], [551, 635], [544, 588],
-            [535, 545], [532, 502], [536, 464]
-        ];
-        // 2. Upper-Left Caustic Ridge (Extended left across the widescreen viewport into Cusp)
-        const R_CAUSTIC = [
-            [-140, 495], [-40, 520], [42, 532], [115, 562], [185, 578],
-            [245, 579], [305, 566], [365, 544], [425, 516], [480, 488],
-            [514, 471], [536, 464]
-        ];
-        // 3. Right-Flank Arch (Extending across the right widescreen expanse from Cusp)
-        const R_RIGHT_ARCH = [
-            [920, 405], [820, 414], [732, 420], [690, 428], [645, 433],
-            [600, 442], [564, 454], [536, 464]
-        ];
-        // 4. Milky Way Feeder Tendril (Straight white-gold bridge from Milky Way Red Dot into Lower Plume)
-        const R_MILKY_WAY = [
-            [386, 967], [418, 944], [450, 922], [478, 902], [488, 875]
-        ];
-        // 5. Secondary Upper-Left Plume Branch (Diverging left above the Milky Way tendril)
-        const R_PLUME_LEFT = [
-            [355, 926], [395, 902], [440, 875], [486, 848], [509, 810]
-        ];
-        // 6. Interior Valley Curtain Ribs
-        const R_VALLEY_1 = [
-            [185, 895], [235, 865], [268, 775], [308, 680], [358, 595],
-            [420, 528], [485, 488], [536, 464]
-        ];
-        const R_VALLEY_2 = [
-            [312, 925], [358, 825], [408, 725], [462, 625], [508, 535], [536, 464]
-        ];
-
-        // Bottom & Peripheral Dendritic Blue-White Cosmic Web Spines (spanning full widescreen width)
-        const R_BLUE_BOT = [
-            [-280, 1060], [-140, 1120], [-10, 1185], [65, 1245], [155, 1288],
-            [255, 1322], [365, 1346], [485, 1365], [625, 1385], [790, 1405]
-        ];
-        const R_BLUE_LEFT = [
-            [-320, 820], [-240, 680], [-185, 540], [-150, 380], [-95, 220], [15, 95]
-        ];
-        const BLUE_SINKS = [
-            [780, 85, 1.1],
-            [120, 20, 0.9],
-            [640, 1385, 1.0],
-            [860, 880, 0.85],
-            [-220, 740, 0.9]
-        ];
-
-        // Expanded widescreen Catmull-Rom silhouette of the Laniakea basin
-        const BLOB_CTRL = [
-            [-155, 310], [-45, 210], [115, 175], [295, 190], [455, 255],
-            [585, 315], [715, 375], [815, 445], [835, 545], [805, 665],
-            [745, 775], [655, 875], [555, 955], [465, 1005], [365, 1025],
-            [245, 1015], [125, 960], [15, 875], [-85, 765], [-155, 625],
-            [-185, 465]
-        ];
-        const evalCatmullClosed = (P, segsPerPt = 12) => {
-            const n = P.length, out = [];
+        const BLOB_CTRL = [[68, 610], [92, 500], [150, 385], [215, 305], [275, 258], [340, 252], [420, 268], [510, 320], [585, 385], [638, 450], [656, 520], [645, 600], [605, 690], [535, 770], [440, 835], [330, 880], [235, 888], [160, 845], [105, 765], [74, 690]];
+        const BLOB = (() => {
+            const P = BLOB_CTRL, n = P.length, out = [];
             for (let i = 0; i < n; i++) {
                 const p0 = P[(i + n - 1) % n], p1 = P[i], p2 = P[(i + 1) % n], p3 = P[(i + 2) % n];
-                for (let j = 0; j < segsPerPt; j++) {
-                    const t = j / segsPerPt, t2 = t * t, t3 = t2 * t;
-                    out.push([
-                        0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
-                        0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)
-                    ]);
+                for (let j = 0; j < 12; j++) {
+                    const t = j / 12, t2 = t * t, t3 = t2 * t;
+                    out.push([0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+                              0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)]);
                 }
             }
             return out;
-        };
-        const BLOB = evalCatmullClosed(BLOB_CTRL, 12);
-
+        })();
         const inBlob = (x, y) => {
             let inside = false;
             for (let i = 0, j = BLOB.length - 1; i < BLOB.length; j = i++) {
@@ -2091,425 +2171,170 @@ const initNavSim = (c) => {
             return inside;
         };
 
+        const nearest = (R, x, y) => {
+            let best = 1e9, qx = 0, qy = 0, tx = 0, ty = 0;
+            for (let i = 0; i < R.length - 1; i++) {
+                const ax = R[i][0], ay = R[i][1], ex = R[i + 1][0] - ax, ey = R[i + 1][1] - ay, l2 = ex * ex + ey * ey;
+                let t = ((x - ax) * ex + (y - ay) * ey) / l2; t = t < 0 ? 0 : t > 1 ? 1 : t;
+                const px = ax + t * ex, py = ay + t * ey, d = (x - px) ** 2 + (y - py) ** 2;
+                if (d < best) { best = d; qx = px; qy = py; const l = Math.sqrt(l2); tx = ex / l; ty = ey / l; }
+            }
+            return [Math.sqrt(best), qx, qy, tx, ty];
+        };
+        const goldVel = (x, y) => {
+            const dx = A[0] - x, dy = A[1] - y, r = Math.hypot(dx, dy) + 1e-6;
+            let vx = dx / r, vy = dy / r;
+            const sw = 0.55 * Math.min(1, r / 180);
+            vx += -dy / r * sw; vy += dx / r * sw;
+            for (let k = 0; k < RIDGES.length; k++) {
+                const R = RIDGES[k][0], w = RIDGES[k][1], n = nearest(R, x, y), d = n[0];
+                const g = w * Math.exp(-d / (w > 0.9 ? 60 : w < 0.6 ? 34 : 40)), pull = Math.min(1, d / 40);
+                if (d > 1e-3) { vx += g * 2.2 * pull * (n[1] - x) / d; vy += g * 2.2 * pull * (n[2] - y) / d; }
+                vx += g * 3.0 * n[3]; vy += g * 3.0 * n[4];
+            }
+            const l = Math.hypot(vx, vy) + 1e-9; return [vx / l, vy / l];
+        };
+        const blueVel = (x, y) => {
+            let best = BLUE[0], bd = 1e9;
+            for (const b of BLUE) { const d = Math.hypot(b[0] - x, b[1] - y) / b[2]; if (d < bd) { bd = d; best = b; } }
+            const dx = best[0] - x, dy = best[1] - y, r = Math.hypot(dx, dy) + 1e-6, sw = 0.35;
+            const vx = dx / r - dy / r * sw, vy = dy / r + dx / r * sw, l = Math.hypot(vx, vy); return [vx / l, vy / l];
+        };
+        const trace = (x, y, kind) => {
+            const pts = [[x, y]], step = 4;
+            for (let s = 0; s < 360; s++) {
+                const v = kind === 0 ? goldVel(x, y) : blueVel(x, y);
+                x += v[0] * step; y += v[1] * step; pts.push([x, y]);
+                if (kind === 0) { if (Math.hypot(x - A[0], y - A[1]) < 4) break; }
+                else {
+                    if (inBlob(x, y)) { pts.pop(); break; }
+                    let hit = false; for (const b of BLUE) if (Math.hypot(x - b[0], y - b[1]) < 6) hit = true;
+                    if (hit) break;
+                }
+            }
+            return pts;
+        };
         const K = 64;
-        const evalCubicBezier = (p0, p1, p2, p3, K_pts) => {
-            const out = new Float32Array(K_pts * 2);
-            for (let k = 0; k < K_pts; k++) {
-                const u = k / (K_pts - 1), inv = 1 - u;
-                const b0 = inv * inv * inv, b1 = 3 * inv * inv * u, b2 = 3 * inv * u * u, b3 = u * u * u;
-                out[k * 2]     = b0 * p0[0] + b1 * p1[0] + b2 * p2[0] + b3 * p3[0];
-                out[k * 2 + 1] = b0 * p0[1] + b1 * p1[1] + b2 * p2[1] + b3 * p3[1];
+        const resample = (pts) => {
+            const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+            const total = cum[cum.length - 1] || 1, out = new Float32Array(K * 2); let j = 0;
+            for (let k = 0; k < K; k++) {
+                const tg = total * k / (K - 1);
+                while (j < pts.length - 2 && cum[j + 1] < tg) j++;
+                const seg = (cum[j + 1] - cum[j]) || 1, f = Math.min(1, Math.max(0, (tg - cum[j]) / seg));
+                out[k * 2] = pts[j][0] + (pts[j + 1][0] - pts[j][0]) * f; out[k * 2 + 1] = pts[j][1] + (pts[j + 1][1] - pts[j][1]) * f;
             }
             return out;
         };
 
-        const samplePolyline = (R, u) => {
-            const f = Math.min(Math.max(u, 0), 0.99999) * (R.length - 1);
-            const i = f | 0, fr = f - i;
-            return [
-                R[i][0] + (R[i + 1][0] - R[i][0]) * fr,
-                R[i][1] + (R[i + 1][1] - R[i][1]) * fr
-            ];
-        };
-
-        // ---- Build 1,250+ widescreen multi-sheet golden streamlines & 460 dendritic blue streamlines
-        const gold = [], goldMeta = [], blue = [];
-
-        // Sheet 1 (360 lines): Expansive Upper-Left & Left Widescreen Fan -> Caustic Ridge -> Cusp A(536, 464)
-        for (let i = 0; i < 360; i++) {
-            const uSpread = rnd();
-            const isTopEdge = uSpread < 0.45;
-            const p0 = isTopEdge
-                ? [-160 + rnd() * 680, 175 + rnd() * 195]
-                : [-180 + rnd() * 290, 260 + rnd() * 310];
-            if (!inBlob(p0[0], p0[1])) continue;
-
-            const joinU = 0.20 + 0.80 * Math.pow(rnd(), 0.75);
-            const cPt = samplePolyline(R_CAUSTIC, joinU);
-            const ribOff = gauss() * 8.0;
-            const p1 = [
-                p0[0] * 0.58 + cPt[0] * 0.42 + (rnd() - 0.5) * 42,
-                p0[1] * 0.65 + cPt[1] * 0.35 - 32 * Math.sin(uSpread * Math.PI)
-            ];
-            const p2 = [
-                cPt[0] * 0.65 + A[0] * 0.35 - 18,
-                cPt[1] * 0.65 + A[1] * 0.35 + ribOff
-            ];
-            const p3 = [A[0] + gauss() * 3.5, A[1] + gauss() * 3.5];
-            gold.push(evalCubicBezier(p0, p1, p2, p3, K));
-            goldMeta.push({ weight: 0.60 + rnd() * 0.62, alpha: 0.20 + Math.pow(rnd(), 1.35) * 0.38, warmth: rnd() });
+        // ---- build geometry once
+        const gold = [], blue = [];
+        let guard = 0;
+        while (gold.length < 760 && guard++ < 80000) {
+            const x = 60 + rnd() * 620, y = 240 + rnd() * 660;
+            if (!inBlob(x, y)) continue;
+            const dx = (x - 365) / 300, dy = (y - 570) / 325;
+            if (rnd() > Math.min(1, 0.2 + (dx * dx + dy * dy) * 0.95)) continue;
+            const p = trace(x, y, 0); if (p.length > 6) gold.push(resample(p));
+        }
+        guard = 0;
+        while (blue.length < 300 && guard++ < 80000) {
+            const x = -80 + rnd() * 990, y = -40 + rnd() * 1120;
+            if (inBlob(x, y) || inBlob((x - 365) * 0.95 + 365, (y - 570) * 0.95 + 570)) continue;
+            const p = trace(x, y, 1); if (p.length > 6) blue.push(resample(p));
         }
 
-        // Sheet 2 (290 lines): Draped Interior Valley Curtains (Lower-Left / Mid-Left -> Crossing into Caustic & Spine)
-        for (let i = 0; i < 290; i++) {
-            const s = rnd();
-            const p0 = [-120 + s * 510 + gauss() * 22, 535 + Math.pow(rnd(), 0.85) * 445];
-            if (!inBlob(p0[0], p0[1])) continue;
-
-            const toSpine = rnd() < 0.48;
-            if (toSpine) {
-                const spineU = 0.32 + 0.68 * rnd();
-                const sPt = samplePolyline(R_SPINE, spineU);
-                const p1 = [p0[0] + (sPt[0] - p0[0]) * 0.42 - 24, p0[1] + (sPt[1] - p0[1]) * 0.32];
-                const p2 = [sPt[0] - 14 + gauss() * 8, sPt[1] + gauss() * 12];
-                const p3 = [A[0] + gauss() * 4, A[1] + gauss() * 4];
-                gold.push(evalCubicBezier(p0, p1, p2, p3, K));
-            } else {
-                const cU = 0.28 + 0.68 * s;
-                const cPt = samplePolyline(R_CAUSTIC, cU);
-                const p1 = [p0[0] + 18 + gauss() * 22, p0[1] - (p0[1] - cPt[1]) * 0.48];
-                const p2 = [cPt[0] + gauss() * 10, cPt[1] + gauss() * 8];
-                const p3 = [A[0] + gauss() * 3.5, A[1] + gauss() * 3.5];
-                gold.push(evalCubicBezier(p0, p1, p2, p3, K));
-            }
-            goldMeta.push({ weight: 0.62 + rnd() * 0.68, alpha: 0.22 + Math.pow(rnd(), 1.3) * 0.42, warmth: rnd() });
-        }
-
-        // Sheet 3 (240 lines): Central S-Curved Spine Bundle & Lower Plume Spray (P -> A)
-        for (let i = 0; i < 240; i++) {
-            const out = new Float32Array(K * 2);
-            const latSpread = gauss() * 14.0;
-            const tailSpread = gauss() * 26.0;
-            const startFrac = rnd() < 0.65 ? (rnd() * 0.18) : (rnd() * 0.55);
-            for (let k = 0; k < K; k++) {
-                const u = startFrac + (1 - startFrac) * (k / (K - 1));
-                const pt = samplePolyline(R_SPINE, u);
-                const pinch = Math.sin(u * Math.PI) * (1 - 0.78 * Math.pow(u, 1.6));
-                const tail = Math.pow(1 - u, 2.4);
-                out[k * 2]     = pt[0] + latSpread * pinch + tailSpread * tail;
-                out[k * 2 + 1] = pt[1] + (tailSpread * 0.6) * tail;
-            }
-            gold.push(out);
-            goldMeta.push({ weight: 0.72 + rnd() * 0.70, alpha: 0.26 + Math.pow(rnd(), 1.15) * 0.44, warmth: 0.6 + 0.4 * rnd() });
-        }
-
-        // Sheet 4 (160 lines): Local Group / Milky Way Feeder Tendril & Secondary Plume Branch -> Spine -> Cusp
-        for (let i = 0; i < 160; i++) {
-            const isMW = i < 95;
-            const branch = isMW ? R_MILKY_WAY : R_PLUME_LEFT;
-            const spread = gauss() * (isMW ? 6.5 : 11.0);
-            const p0 = [branch[0][0] + spread * 0.9, branch[0][1] + gauss() * 6.5];
-            const pMid = branch[2];
-            const pJoin = isMW ? [484 + spread * 0.4, 885] : [502 + spread * 0.4, 825];
-            const pTop = [546 + spread * 0.3, 625];
-            const pEnd = [A[0] + gauss() * 3.0, A[1] + gauss() * 3.0];
-            const out = new Float32Array(K * 2);
-            const half = K >> 1;
-            const seg1 = evalCubicBezier(p0, [pMid[0] + spread * 0.6, pMid[1]], [pJoin[0] - 8, pJoin[1] + 15], pJoin, half);
-            const seg2 = evalCubicBezier(pJoin, [535 + spread * 0.4, 745], pTop, pEnd, K - half + 1);
-            out.set(seg1, 0);
-            out.set(seg2.subarray(2), half * 2);
-            gold.push(out);
-            goldMeta.push({ weight: isMW ? 0.90 : 0.72, alpha: isMW ? (0.38 + 0.38 * rnd()) : (0.26 + 0.35 * rnd()), warmth: 0.8 + 0.2 * rnd() });
-        }
-
-        // Sheet 5 (210 lines): Right-Flank Looping Ribs & Right Arch -> Great Attractor Cusp
-        for (let i = 0; i < 210; i++) {
-            const isUpperRight = rnd() < 0.44;
-            if (isUpperRight) {
-                const p0 = [545 + rnd() * 285, 295 + rnd() * 155];
-                const p1 = [p0[0] - 20, p0[1] + 38];
-                const p2 = [590 + gauss() * 14, 444 + gauss() * 7];
-                const p3 = [A[0] + gauss() * 3.5, A[1] + gauss() * 3.5];
-                gold.push(evalCubicBezier(p0, p1, p2, p3, K));
-            } else {
-                const startY = 505 + rnd() * 410;
-                const startX = 505 + rnd() * 275;
-                if (!inBlob(startX, startY)) continue;
-                const bowX = Math.min(820, startX + 42 + rnd() * 85);
-                const p0 = [startX, startY];
-                const p1 = [bowX, startY - (startY - A[1]) * 0.38];
-                const p2 = [A[0] + 48 + rnd() * 68, A[1] - 12 + gauss() * 14];
-                const p3 = [A[0] + gauss() * 3.5, A[1] + gauss() * 3.5];
-                gold.push(evalCubicBezier(p0, p1, p2, p3, K));
-            }
-            goldMeta.push({ weight: 0.58 + rnd() * 0.62, alpha: 0.20 + Math.pow(rnd(), 1.3) * 0.36, warmth: rnd() });
-        }
-
-        // Sheet 6 (460 lines): Full-Viewport Peripheral Dendritic Blue-White Cosmic Web
-        // 6a. Bottom dendritic fern spine & side ribs
-        for (let i = 0; i < 250; i++) {
-            const uSpine = rnd();
-            const spPt = samplePolyline(R_BLUE_BOT, uSpine);
-            if (i < 45) {
-                const out = new Float32Array(K * 2);
-                const offY = gauss() * 7.0;
-                for (let k = 0; k < K; k++) {
-                    const pt = samplePolyline(R_BLUE_BOT, k / (K - 1));
-                    out[k * 2] = pt[0];
-                    out[k * 2 + 1] = pt[1] + offY;
-                }
-                blue.push(out);
-            } else {
-                const side = (i & 1) ? 1 : -1;
-                const ribLen = 65 + rnd() * 175;
-                const angle = (side > 0 ? -1.15 : 1.25) + (rnd() - 0.5) * 0.45;
-                const p0 = [spPt[0] - Math.cos(angle) * ribLen, spPt[1] - Math.sin(angle) * ribLen];
-                if (inBlob(p0[0], p0[1])) continue;
-                const p1 = [(p0[0] + spPt[0]) * 0.5 - 18, (p0[1] + spPt[1]) * 0.5 + side * 14];
-                const uEnd = Math.min(0.99, uSpine + 0.08 + rnd() * 0.08);
-                const endPt = samplePolyline(R_BLUE_BOT, uEnd);
-                blue.push(evalCubicBezier(p0, p1, spPt, endPt, K));
-            }
-        }
-        // 6b. Left-flank & upper-left cosmic web dendritic spine (wraps around the left side of the website)
-        for (let i = 0; i < 110; i++) {
-            const uL = rnd();
-            const spPt = samplePolyline(R_BLUE_LEFT, uL);
-            const side = (i & 1) ? 1 : -1;
-            const ribLen = 60 + rnd() * 160;
-            const angle = (side > 0 ? -0.35 : 2.45) + (rnd() - 0.5) * 0.5;
-            const p0 = [spPt[0] + Math.cos(angle) * ribLen, spPt[1] + Math.sin(angle) * ribLen];
-            if (inBlob(p0[0], p0[1])) continue;
-            const p1 = [(p0[0] + spPt[0]) * 0.5, (p0[1] + spPt[1]) * 0.5 - 15];
-            const uEnd = Math.min(0.99, uL + 0.10);
-            const endPt = samplePolyline(R_BLUE_LEFT, uEnd);
-            blue.push(evalCubicBezier(p0, p1, spPt, endPt, K));
-        }
-        // 6c. Top-right & right-flank divergent cosmic web rays
-        for (let i = 0; i < 120; i++) {
-            const isTopRight = i < 75;
-            if (isTopRight) {
-                const ang = 1.55 + rnd() * 1.45;
-                const rad = 110 + rnd() * 340;
-                const sx0 = 840 + Math.cos(ang) * rad, sy0 = 65 + Math.sin(ang) * rad * 0.85;
-                const p1 = [sx0 * 0.6 + 840 * 0.4, sy0 * 0.5 + 65 * 0.5 - 14];
-                blue.push(evalCubicBezier([sx0, sy0], p1, [815, 75], [845, 65], K));
-            } else {
-                const sx0 = 680 + rnd() * 320, sy0 = 720 + rnd() * 480;
-                if (inBlob(sx0, sy0)) continue;
-                const p1 = [sx0 + 65, sy0 - 35];
-                const p2 = [sx0 + 130, sy0 - 55];
-                blue.push(evalCubicBezier([sx0, sy0], p1, p2, [880, 860], K));
-            }
-        }
-
-        // ---- 7,600+ Glowing Circular Galaxy Pearls
-        const stipples = [];
-        const lineAt = (L, u, out) => {
-            const f = Math.min(Math.max(u, 0), 0.99999) * (K - 1), i0 = f | 0, fr = f - i0, b = i0 * 2;
-            out[0] = L[b] + (L[b + 2] - L[b]) * fr;
-            out[1] = L[b + 1] + (L[b + 3] - L[b + 1]) * fr;
-        };
+        const stipples = [];  // {x,y,s,a,kind}
+        const lineAt = (L, u, out) => { const f = Math.min(Math.max(u, 0), 0.99999) * (K - 1), i0 = f | 0, fr = f - i0, b = i0 * 2; out[0] = L[b] + (L[b + 2] - L[b]) * fr; out[1] = L[b + 1] + (L[b + 3] - L[b + 1]) * fr; };
         {
             const t = [0, 0];
-            for (let i = 0; i < 4800; i++) {
-                const L = gold[(rnd() * gold.length) | 0];
-                const u = Math.pow(rnd(), 0.78);
-                lineAt(L, u, t);
-                const tight = rnd() < 0.72 ? (1.0 + rnd() * 5.8) : (5.5 + 24.0 * Math.pow(rnd(), 2));
-                stipples.push({
-                    x: t[0] + gauss() * tight * 0.45,
-                    y: t[1] + gauss() * tight * 0.45,
-                    s: 0.70 + Math.pow(rnd(), 1.65) * 1.55,
-                    a: 0.34 + rnd() * 0.62,
-                    k: rnd() < 0.25 ? 1 : 0
-                });
-            }
-            for (let i = 0; i < 900; i++) {
-                const nearMW = rnd() < 0.42;
-                const cxP = nearMW ? (M[0] + gauss() * 48) : (P[0] + gauss() * 34);
-                const cyP = nearMW ? (M[1] - 10 + gauss() * 38) : (P[1] - 15 + gauss() * 52);
-                stipples.push({
-                    x: cxP,
-                    y: cyP,
-                    s: 0.72 + rnd() * 1.40,
-                    a: 0.38 + rnd() * 0.56,
-                    k: rnd() < 0.32 ? 1 : 0
-                });
-            }
-            for (let i = 0; i < 3000; i++) {
-                const L = blue[(rnd() * blue.length) | 0];
-                lineAt(L, Math.pow(rnd(), 0.82), t);
-                const sc = 2.5 + 28.0 * Math.pow(rnd(), 2);
-                stipples.push({
-                    x: t[0] + gauss() * sc * 0.45,
-                    y: t[1] + gauss() * sc * 0.45,
-                    s: 0.65 + rnd() * 1.15,
-                    a: 0.28 + rnd() * 0.66,
-                    k: 2
-                });
-            }
+            for (let i = 0; i < 4600; i++) { const L = gold[(rnd() * gold.length) | 0]; lineAt(L, Math.pow(rnd(), 0.75), t); const sc = 3 + 40 * Math.pow(rnd(), 2); stipples.push({ x: t[0] + gauss() * sc * 0.5, y: t[1] + gauss() * sc * 0.5, s: 0.8 + rnd() * 1.4, a: 0.25 + rnd() * 0.7, k: rnd() < 0.3 ? 1 : 0 }); }
+            for (let i = 0; i < 700; i++) stipples.push({ x: S[0] + 8 + gauss() * 38, y: S[1] + 2 + gauss() * 15 + (gauss() * 8), s: 0.7 + rnd() * 1.2, a: 0.4 + rnd() * 0.6, k: 0 });
+            for (let i = 0; i < 2400; i++) { const L = blue[(rnd() * blue.length) | 0]; lineAt(L, Math.pow(rnd(), 0.8), t); const sc = 4 + 34 * Math.pow(rnd(), 2); stipples.push({ x: t[0] + gauss() * sc * 0.5, y: t[1] + gauss() * sc * 0.5, s: 0.6 + rnd() * 1.0, a: 0.2 + rnd() * 0.65, k: 2 }); }
+            for (let i = 0; i < 700; i++) stipples.push({ x: -60 + rnd() * 950, y: -40 + rnd() * 1120, s: 0.6 + rnd() * 0.9, a: 0.15 + rnd() * 0.45, k: 2 });
         }
-
-        // Pre-render circular radial-glow pearl sprites
-        const makePearlSprite = (rHalo, gHalo, bHalo) => {
-            const c = document.createElement("canvas");
-            c.width = 32; c.height = 32;
-            const g = c.getContext("2d");
-            const gr = g.createRadialGradient(16, 16, 0, 16, 16, 15);
-            gr.addColorStop(0.0, "rgba(255, 255, 255, 1.0)");
-            gr.addColorStop(0.16, "rgba(255, 253, 245, 0.92)");
-            gr.addColorStop(0.38, `rgba(${rHalo}, ${gHalo}, ${bHalo}, 0.40)`);
-            gr.addColorStop(0.72, `rgba(${rHalo}, ${gHalo}, ${bHalo}, 0.10)`);
-            gr.addColorStop(1.0, `rgba(${rHalo}, ${gHalo}, ${bHalo}, 0.0)`);
-            g.fillStyle = gr;
-            g.beginPath();
-            g.arc(16, 16, 15, 0, TAU);
-            g.fill();
-            return c;
-        };
-        const pearlGold = makePearlSprite(255, 232, 168);
-        const pearlIce  = makePearlSprite(195, 222, 255);
-        const pearlBlue = makePearlSprite(150, 188, 255);
-
         const goldTracers = [], blueTracers = [];
-        for (let i = 0; i < 1150; i++) goldTracers.push({ li: (rnd() * gold.length) | 0, t: rnd(), sp: 0.09 + rnd() * 0.16, len: 0.08 + rnd() * 0.10, b: 0.34 + rnd() * 0.58 });
-        for (let i = 0; i < 680; i++) blueTracers.push({ li: (rnd() * blue.length) | 0, t: rnd(), sp: 0.05 + rnd() * 0.09, len: 0.04 + rnd() * 0.06, b: 0.30 + rnd() * 0.68 });
-        const twinkle = [];
-        for (let i = 0; i < 380; i++) twinkle.push({ s: stipples[(rnd() * stipples.length) | 0], f: 0.8 + rnd() * 2.6, p: rnd() * TAU });
+        for (let i = 0; i < 1000; i++) goldTracers.push({ li: (rnd() * gold.length) | 0, t: rnd(), sp: 0.10 + rnd() * 0.18, len: 0.08 + rnd() * 0.10, b: 0.35 + rnd() * 0.65 });
+        for (let i = 0; i < 650; i++) blueTracers.push({ li: (rnd() * blue.length) | 0, t: rnd(), sp: 0.05 + rnd() * 0.09, len: 0.04 + rnd() * 0.06, b: 0.3 + rnd() * 0.7 });
+        const twinkle = []; for (let i = 0; i < 320; i++) twinkle.push({ s: stipples[(rnd() * stipples.length) | 0], f: 0.8 + rnd() * 2.6, p: rnd() * TAU });
 
-        // ---- Full-Viewport Widescreen Layout & Static High-Resolution Layer
+        // ---- layout + static layer
         let W = 0, H = 0, dpr = 1, k = 1, ox = 0, oy = 0, adx = 0, ady = 0;
         const stat = (typeof document !== "undefined") ? document.createElement("canvas") : opts.createCanvas();
         const sx = (px) => ox + px * k, sy = (py) => oy + py * k;
 
-        const radial = (c, x, y, r, stops) => {
-            const g = c.createRadialGradient(x, y, 0, x, y, r);
-            for (const s of stops) g.addColorStop(s[0], s[1]);
-            c.fillStyle = g;
-            c.beginPath();
-            c.arc(x, y, r, 0, TAU);
-            c.fill();
-        };
-        const strokeLine = (c, L, u0, u1) => {
-            const t = [0, 0];
-            const n = Math.max(2, Math.round((u1 - u0) * (K - 1)));
-            c.beginPath();
-            for (let i = 0; i <= n; i++) {
-                lineAt(L, u0 + (u1 - u0) * i / n, t);
-                if (i) c.lineTo(sx(t[0]), sy(t[1]));
-                else c.moveTo(sx(t[0]), sy(t[1]));
-            }
-            c.stroke();
-        };
-        const strokeRidge = (c, R) => {
-            c.beginPath();
-            c.moveTo(sx(R[0][0]), sy(R[0][1]));
-            for (let i = 1; i < R.length - 1; i++) {
-                const mx = (R[i][0] + R[i + 1][0]) / 2, my = (R[i][1] + R[i + 1][1]) / 2;
-                c.quadraticCurveTo(sx(R[i][0]), sy(R[i][1]), sx(mx), sy(my));
-            }
-            c.lineTo(sx(R[R.length - 1][0]), sy(R[R.length - 1][1]));
-            c.stroke();
-        };
+        const radial = (c, x, y, r, stops) => { const g = c.createRadialGradient(x, y, 0, x, y, r); for (const s of stops) g.addColorStop(s[0], s[1]); c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); };
+        const strokeLine = (c, L, u0, u1) => { const t = [0, 0]; const n = Math.max(2, Math.round((u1 - u0) * (K - 1))); c.beginPath(); for (let i = 0; i <= n; i++) { lineAt(L, u0 + (u1 - u0) * i / n, t); if (i) c.lineTo(sx(t[0]), sy(t[1])); else c.moveTo(sx(t[0]), sy(t[1])); } c.stroke(); };
+        const strokeRidge = (c, R) => { c.beginPath(); c.moveTo(sx(R[0][0]), sy(R[0][1])); for (let i = 1; i < R.length - 1; i++) { const mx = (R[i][0] + R[i + 1][0]) / 2, my = (R[i][1] + R[i + 1][1]) / 2; c.quadraticCurveTo(sx(R[i][0]), sy(R[i][1]), sx(mx), sy(my)); } c.lineTo(sx(R[R.length - 1][0]), sy(R[R.length - 1][1])); c.stroke(); };
 
         const buildStatic = () => {
-            stat.width = Math.round(W * dpr);
-            stat.height = Math.round(H * dpr);
+            stat.width = Math.round(W * dpr); stat.height = Math.round(H * dpr);
             const c = stat.getContext("2d");
-            c.setTransform(dpr, 0, 0, dpr, 0, 0);
-            c.clearRect(0, 0, W, H);
-            c.lineCap = "round";
-            c.lineJoin = "round";
+            c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+            c.lineCap = "round"; c.lineJoin = "round";
 
-            // 1. Deep midnight-indigo cosmic void backdrop
-            radial(c, sx(380), sy(640), 960 * k, [[0, "rgba(12,20,46,0.45)"], [0.65, "rgba(6,10,28,0.25)"], [1, "rgba(0,0,0,0)"]]);
-            for (const b of BLUE_SINKS) radial(c, sx(b[0]), sy(b[1]), 185 * k * b[2], [[0, "rgba(65,100,190,0.22)"], [1, "rgba(0,0,0,0)"]]);
+            // navy ambient haze
+            radial(c, sx(365), sy(570), 760 * k, [[0, "rgba(14,22,52,0.55)"], [0.6, "rgba(8,13,34,0.35)"], [1, "rgba(0,0,0,0)"]]);
+            // blue basin glows (neighbouring attractors)
+            for (const b of BLUE) radial(c, sx(b[0]), sy(b[1]), 150 * k * b[2], [[0, "rgba(70,100,190,0.28)"], [1, "rgba(0,0,0,0)"]]);
 
-            // 2. Subtle, Translucent Deep-Space Amber Basin Veil (reduced opacity so dark space & crisp filaments pop)
+            // amber basin
             const poly = BLOB;
-            const path = () => {
-                c.beginPath();
-                poly.forEach((p, i) => i ? c.lineTo(sx(p[0]), sy(p[1])) : c.moveTo(sx(p[0]), sy(p[1])));
-                c.closePath();
-            };
+            const path = () => { c.beginPath(); poly.forEach((p, i) => i ? c.lineTo(sx(p[0]), sy(p[1])) : c.moveTo(sx(p[0]), sy(p[1]))); c.closePath(); };
             c.save();
-            if ("filter" in c) c.filter = `blur(${(14.0 * k).toFixed(1)}px)`;
-            const g = c.createRadialGradient(sx(430), sy(565), 15 * k, sx(350), sy(610), 560 * k);
-            g.addColorStop(0.0, "rgba(195, 148, 52, 0.28)");
-            g.addColorStop(0.36, "rgba(162, 118, 38, 0.20)");
-            g.addColorStop(0.72, "rgba(112, 80, 24, 0.11)");
-            g.addColorStop(1.0, "rgba(45, 32, 8, 0.0)");
-            path();
-            c.fillStyle = g;
-            c.fill();
+            path(); c.shadowColor = "rgba(210,150,40,0.45)"; c.shadowBlur = 38 * k; c.fillStyle = "rgba(100,72,20,0.9)"; c.fill();
             c.restore();
+            c.save();
+            if ("filter" in c) c.filter = `blur(${(5 * k).toFixed(1)}px)`;
+            const g = c.createRadialGradient(sx(300), sy(470), 0, sx(300), sy(470), 520 * k);
+            g.addColorStop(0, "rgba(222,178,78,0.95)"); g.addColorStop(0.3, "rgba(184,140,48,0.92)"); g.addColorStop(0.7, "rgba(132,96,28,0.88)"); g.addColorStop(1, "rgba(84,60,16,0.85)");
+            path(); c.fillStyle = g; c.fill();
+            c.restore();
+            // dark rim on lower-left, light rim on upper-right (poster shading)
+            const lg = c.createLinearGradient(sx(60), sy(880), sx(560), sy(300));
+            lg.addColorStop(0, "rgba(40,28,6,0.45)"); lg.addColorStop(0.45, "rgba(0,0,0,0)"); lg.addColorStop(1, "rgba(255,225,140,0.10)");
+            c.save(); path(); c.clip(); c.fillStyle = lg; c.fillRect(0, 0, W, H); c.restore();
 
-            // 3. Peripheral Dendritic Blue-White Cosmic Web
             c.globalCompositeOperation = "lighter";
-            c.strokeStyle = "rgba(115, 150, 235, 0.05)";
-            c.lineWidth = 3.0 * k;
-            for (const L of blue) strokeLine(c, L, 0, 1);
-            c.strokeStyle = "rgba(170, 205, 255, 0.24)";
-            c.lineWidth = Math.max(0.75, 0.88 * k);
-            for (const L of blue) {
-                for (let j = 0; j < 4; j++) {
-                    c.globalAlpha = 0.42 + 0.58 * (j / 3);
-                    strokeLine(c, L, j / 4, (j + 1) / 4);
-                }
-            }
+            radial(c, sx(430), sy(450), 230 * k, [[0, "rgba(255,214,120,0.16)"], [1, "rgba(0,0,0,0)"]]);
+            radial(c, sx(330), sy(600), 200 * k, [[0, "rgba(255,200,100,0.07)"], [1, "rgba(0,0,0,0)"]]);
+            // blue streamlines
+            c.strokeStyle = "rgba(120,150,235,0.05)"; c.lineWidth = 3.2 * k; for (const L of blue) strokeLine(c, L, 0, 1);
+            c.strokeStyle = "rgba(170,198,255,0.20)"; c.lineWidth = Math.max(0.8, 0.9 * k);
+            for (const L of blue) { for (let j = 0; j < 4; j++) { c.globalAlpha = 0.45 + 0.55 * (j / 3); strokeLine(c, L, j / 4, (j + 1) / 4); } }
             c.globalAlpha = 1;
+            for (const b of BLUE) radial(c, sx(b[0]), sy(b[1]), 42 * k * b[2], [[0, "rgba(200,222,255,0.40)"], [0.4, "rgba(140,175,255,0.12)"], [1, "rgba(0,0,0,0)"]]);
 
-            // 4. Crisp, High-Definition Multi-Sheet Golden Streamlines (reduced glare, high strand definition)
-            c.strokeStyle = "rgba(245, 195, 95, 0.014)";
-            c.lineWidth = 3.2 * k;
-            for (let i = 0; i < gold.length; i += 2) strokeLine(c, gold[i], 0, 1);
+            // golden streamlines: glow pass then core, brightening toward the attractor
+            c.strokeStyle = "rgba(255,214,130,0.016)"; c.lineWidth = 5.0 * k; for (const L of gold) strokeLine(c, L, 0, 1);
+            c.lineWidth = Math.max(0.8, 0.85 * k);
+            for (const L of gold) { for (let j = 0; j < 6; j++) { const f = j / 5; c.strokeStyle = `rgba(255,238,188,${(0.035 + 0.11 * Math.pow(f, 1.6)).toFixed(3)})`; strokeLine(c, L, j / 6, (j + 1) / 6); } }
 
-            for (let i = 0; i < gold.length; i++) {
-                const L = gold[i];
-                const meta = goldMeta[i];
-                c.lineWidth = Math.max(0.60, 0.76 * k * meta.weight);
-                const gTint = (224 + meta.warmth * 22) | 0;
-                const bTint = (142 + meta.warmth * 62) | 0;
-
-                for (let j = 0; j < 4; j++) {
-                    const f = j / 3;
-                    const segAlpha = meta.alpha * (0.30 + 0.58 * Math.pow(f, 1.4));
-                    c.strokeStyle = `rgba(255, ${gTint}, ${bTint}, ${segAlpha.toFixed(3)})`;
-                    strokeLine(c, L, j / 4, (j + 1) / 4);
-                }
-            }
-
-            // 5. Refined Spine, Caustic Ridge, Right Arch & Milky Way Tendril Glows (controlled opacity, zero blowout)
-            const ridgeStyles = [
-                [R_SPINE,      0.85],
-                [R_CAUSTIC,    0.72],
-                [R_RIGHT_ARCH, 0.55],
-                [R_MILKY_WAY,  0.75],
-                [R_PLUME_LEFT, 0.55]
-            ];
+            // bright spine, local-sheet branch and cloud
+            const ridgeStyles = [[R1, 1.0], [R2, 0.8], [R3, 0.75]];
             for (const [R, w] of ridgeStyles) {
-                c.strokeStyle = `rgba(245, 188, 82, ${0.028 * w})`;
-                c.lineWidth = 15 * k;
-                strokeRidge(c, R);
-                c.strokeStyle = `rgba(255, 224, 150, ${0.075 * w})`;
-                c.lineWidth = 5.5 * k;
-                strokeRidge(c, R);
-                c.strokeStyle = `rgba(255, 246, 215, ${0.24 * w})`;
-                c.lineWidth = Math.max(0.9, 1.45 * k);
-                strokeRidge(c, R);
+                c.strokeStyle = `rgba(255,200,100,${0.035 * w})`; c.lineWidth = 20 * k; strokeRidge(c, R);
+                c.strokeStyle = `rgba(255,225,150,${0.08 * w})`; c.lineWidth = 7 * k; strokeRidge(c, R);
+                c.strokeStyle = `rgba(255,248,215,${0.38 * w})`; c.lineWidth = Math.max(1.0, 1.8 * k); strokeRidge(c, R);
             }
-            // Controlled focal blooms at Great Attractor Cusp & Lower Local Sheet Plume
-            radial(c, sx(A[0] - 8), sy(A[1] + 4), 72 * k, [[0, "rgba(255,248,220,0.42)"], [0.28, "rgba(255,218,135,0.18)"], [0.65, "rgba(225,155,48,0.06)"], [1, "rgba(0,0,0,0)"]]);
-            radial(c, sx(P[0]), sy(P[1]), 66 * k, [[0, "rgba(255,248,220,0.44)"], [0.30, "rgba(255,215,130,0.19)"], [0.7, "rgba(225,150,45,0.06)"], [1, "rgba(0,0,0,0)"]]);
-
-            // 6. Glowing Circular Galaxy Pearls
-            for (const d of stipples) {
-                const px = sx(d.x), py = sy(d.y);
-                const sprite = d.k === 0 ? pearlGold : d.k === 1 ? pearlIce : pearlBlue;
-                const rad = d.s * Math.max(2.4, k * 3.1);
-                c.globalAlpha = d.a * 0.88;
-                c.drawImage(sprite, px - rad, py - rad, rad * 2, rad * 2);
-            }
-            c.globalAlpha = 1.0;
+            radial(c, sx(S[0] + 6), sy(S[1] + 4), 80 * k, [[0, "rgba(255,248,220,0.55)"], [0.3, "rgba(255,222,140,0.24)"], [0.7, "rgba(235,160,50,0.10)"], [1, "rgba(0,0,0,0)"]]);
+            radial(c, sx(A[0]), sy(A[1]), 90 * k, [[0, "rgba(255,246,215,0.60)"], [0.2, "rgba(255,225,150,0.22)"], [0.6, "rgba(235,165,60,0.10)"], [1, "rgba(0,0,0,0)"]]);
             c.globalCompositeOperation = "source-over";
+
+            // stipple galaxies
+            for (const d of stipples) {
+                c.fillStyle = d.k === 0 ? `rgba(255,246,222,${d.a})` : d.k === 1 ? `rgba(205,222,255,${d.a})` : `rgba(190,208,255,${d.a})`;
+                const s = d.s * Math.max(1.0, k * 1.15); c.fillRect(sx(d.x) - s / 2, sy(d.y) - s / 2, s, s);
+            }
         };
 
         const resize = (w, h, ratio = 1) => {
-            dpr = Math.min(2, ratio || 1);
-            W = w; H = h;
-            canvas.width = Math.round(W * dpr);
-            canvas.height = Math.round(H * dpr);
+            dpr = Math.min(2, ratio || 1); W = w; H = h;
+            canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
             const mobile = W < 760;
-            // Scale expansively so the simulation wraps across the full widescreen website
-            k = mobile
-                ? Math.max(W / 760, H / 1180)
-                : Math.max(W / 1080, H / 960);
-            const cx = mobile ? 0.52 * W : 0.58 * W;
-            const cy = mobile ? 0.54 * H : 0.48 * H;
-            ox = cx - 395 * k;
-            oy = cy - 645 * k;
+            k = mobile ? Math.min(0.56 * H / 650, 0.92 * W / 600) : Math.min(0.90 * H / 650, 0.60 * W / 600);
+            const cx = mobile ? 0.5 * W : 0.60 * W, cy = mobile ? 0.62 * H : 0.52 * H;
+            ox = cx - 365 * k; oy = cy - 570 * k;
             buildStatic();
         };
 
@@ -2517,170 +2342,390 @@ const initNavSim = (c) => {
         const drawTracers = (list, table, rgb, accel, aMul, dt, lw) => {
             const buckets = [[], [], [], []];
             for (const tr of list) {
-                if (!reduced) {
-                    tr.t += tr.sp * dt * (accel ? 0.6 + tr.t : 1);
-                    if (tr.t >= 1) tr.t -= 1;
-                }
+                if (!reduced) { tr.t += tr.sp * dt * (accel ? 0.6 + tr.t : 1); if (tr.t >= 1) tr.t -= 1; }
                 const L = table[tr.li], u1 = tr.t, u0 = Math.max(0, u1 - tr.len);
                 const fade = Math.min(1, u1 * 10) * Math.min(1, (1 - u1) * 12);
-                const a = tr.b * fade;
-                if (a < 0.02) continue;
-                lineAt(L, u0, t2);
-                lineAt(L, (u0 + u1) / 2, t3);
+                const a = tr.b * fade; if (a < 0.02) continue;
+                lineAt(L, u0, t2); lineAt(L, (u0 + u1) / 2, t3);
                 const bi = Math.min(3, (a * 4) | 0), B = buckets[bi];
-                B.push(sx(t2[0]), sy(t2[1]), sx(t3[0]), sy(t3[1]));
-                lineAt(L, u1, t2);
-                B.push(sx(t2[0]), sy(t2[1]));
+                B.push(sx(t2[0]), sy(t2[1]), sx(t3[0]), sy(t3[1])); lineAt(L, u1, t2); B.push(sx(t2[0]), sy(t2[1]));
             }
             ctx.lineWidth = lw;
             for (let b = 0; b < 4; b++) {
-                const B = buckets[b];
-                if (!B.length) continue;
-                ctx.strokeStyle = `rgba(${rgb},${(aMul * (0.22 + 0.22 * b)).toFixed(3)})`;
-                ctx.beginPath();
-                for (let i = 0; i < B.length; i += 6) {
-                    ctx.moveTo(B[i], B[i + 1]);
-                    ctx.lineTo(B[i + 2], B[i + 3]);
-                    ctx.lineTo(B[i + 4], B[i + 5]);
-                }
+                const B = buckets[b]; if (!B.length) continue;
+                ctx.strokeStyle = `rgba(${rgb},${(aMul * (0.25 + 0.25 * b)).toFixed(3)})`; ctx.beginPath();
+                for (let i = 0; i < B.length; i += 6) { ctx.moveTo(B[i], B[i + 1]); ctx.lineTo(B[i + 2], B[i + 3]); ctx.lineTo(B[i + 4], B[i + 5]); }
                 ctx.stroke();
             }
         };
 
         let last = 0;
         const draw = (tSec) => {
-            const dt = last ? Math.min(0.05, tSec - last) : 0.016;
-            last = tSec;
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const dt = last ? Math.min(0.05, tSec - last) : 0.016; last = tSec;
+            ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.setTransform(dpr, 0, 0, dpr, adx * dpr, ady * dpr);
             ctx.drawImage(stat, 0, 0, W, H);
             ctx.lineCap = "round";
             ctx.globalCompositeOperation = "lighter";
-
-            const lwG = Math.max(0.70, 0.85 * k);
-            drawTracers(goldTracers, gold, "255,238,192", true, 0.26, dt, lwG);
-            drawTracers(blueTracers, blue, "175,208,255", false, 0.25, dt, Math.max(0.70, 0.85 * k));
-
-            // Twinkling circular galaxy pearls
-            for (const w of twinkle) {
-                const v = 0.5 + 0.5 * Math.sin(tSec * w.f + w.p);
-                const r = Math.max(0.9, 1.35 * k * (0.7 + v * 0.6));
-                ctx.fillStyle = `rgba(255, 255, 248, ${(0.14 + 0.52 * v * v).toFixed(3)})`;
-                ctx.beginPath();
-                ctx.arc(sx(w.s.x), sy(w.s.y), r, 0, TAU);
-                ctx.fill();
-            }
-
-            // Subtle breathing glow at Great Attractor Cusp and Lower Plume
+            const lwG = Math.max(0.8, 0.9 * k);
+            drawTracers(goldTracers, gold, "255,240,200", true, 0.30, dt, lwG);
+            drawTracers(blueTracers, blue, "175,200,255", false, 0.28, dt, Math.max(0.8, 0.9 * k));
+            // twinkling galaxies
+            for (const w of twinkle) { const v = 0.5 + 0.5 * Math.sin(tSec * w.f + w.p), s = Math.max(1.2, 1.8 * k * (0.7 + v * 0.6)); ctx.fillStyle = `rgba(255,255,245,${(0.12 + 0.55 * v * v).toFixed(3)})`; ctx.fillRect(sx(w.s.x) - s / 2, sy(w.s.y) - s / 2, s, s); }
+            // breathing glow at attractor and local-sheet cloud
             const br = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(tSec * 0.9);
-            radial(ctx, sx(A[0] - 6), sy(A[1] + 2), 28 * k, [[0, `rgba(255,248,220,${0.14 + 0.10 * br})`], [1, "rgba(0,0,0,0)"]]);
-            radial(ctx, sx(P[0]), sy(P[1]), 48 * k, [[0, `rgba(255,240,190,${0.13 + 0.09 * (1 - br)})`], [1, "rgba(0,0,0,0)"]]);
+            radial(ctx, sx(A[0]), sy(A[1]), 30 * k, [[0, `rgba(255,250,225,${0.22 + 0.14 * br})`], [1, "rgba(0,0,0,0)"]]);
+            radial(ctx, sx(S[0] + 6), sy(S[1] + 4), 60 * k, [[0, `rgba(255,240,190,${0.18 + 0.12 * (1 - br)})`], [1, "rgba(0,0,0,0)"]]);
             ctx.globalCompositeOperation = "source-over";
 
-            // Milky Way Beacon at (386, 967): ruby-red core, crisp white halo ring, and soft red bloom
+            // Milky Way beacon: red dot, white ring, soft red halo
             const mx = sx(M[0]), my = sy(M[1]), pulse = reduced ? 1 : 0.9 + 0.15 * Math.sin(tSec * 2.4);
-            radial(ctx, mx, my, 16 * pulse * Math.max(1, k), [[0, "rgba(255,40,50,0.55)"], [0.5, "rgba(255,30,45,0.18)"], [1, "rgba(255,0,0,0)"]]);
-            ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-            ctx.beginPath();
-            ctx.arc(mx, my, Math.max(4.5, 5.5 * k), 0, TAU);
-            ctx.fill();
-            ctx.fillStyle = "#ff1e2e";
-            ctx.beginPath();
-            ctx.arc(mx, my, Math.max(3.2, 3.8 * k), 0, TAU);
-            ctx.fill();
+            radial(ctx, mx, my, 16 * pulse * Math.max(1, k), [[0, "rgba(255,40,50,0.55)"], [0.5, "rgba(255,30,45,0.16)"], [1, "rgba(255,0,0,0)"]]);
+            ctx.strokeStyle = "rgba(255,255,255,0.92)"; ctx.lineWidth = Math.max(1.2, 1.5 * k); ctx.beginPath(); ctx.arc(mx, my, Math.max(7, 8.5 * k), 0, TAU); ctx.stroke();
+            ctx.fillStyle = "#ff2434"; ctx.beginPath(); ctx.arc(mx, my, Math.max(2.8, 3.4 * k), 0, TAU); ctx.fill();
         };
 
-        // Keep full-viewport widescreen framing centered and apply smooth pointer/stage parallax via nudgeTo
-        let baseAx = 0, baseAy = 0;
-        const layoutTo = (ax, ay) => { baseAx = ax; baseAy = ay; adx = 0; ady = 0; };
-        const nudgeTo = (ax, ay) => {
-            adx = Math.max(-48, Math.min(48, (ax - baseAx) * 0.45));
-            ady = Math.max(-36, Math.min(36, (ay - baseAy) * 0.45));
-        };
+        // Pin the artwork's Milky Way dot to a screen point (CSS px, relative to the canvas)
+        const layoutTo = (ax, ay) => { ox = ax - M[0] * k; oy = ay - M[1] * k; adx = 0; ady = 0; buildStatic(); };
+        const nudgeTo = (ax, ay) => { adx = ax - (ox + M[0] * k); ady = ay - (oy + M[1] * k); };
         return { resize, draw, layoutTo, nudgeTo };
     };
 
 
 
-    /* ---------- Full-Viewport Hero Stage: Laniakea Supercluster (poster-faithful Canvas 2D) ---------- */
-    const initHeroLaniakeaStage = () => {
-        const heroSec = document.querySelector('.snap-section[data-sim="hub:intro"], .snap-section.hero#hub-intro, .snap-section.hero[data-domain="hub"]');
-        if (!heroSec) return;
+    /* ---------- Full-Viewport Hero Stage: Laniakea Supercluster (reference-density map, Canvas 2D) ---------- */
 
-        let c = heroSec.querySelector("canvas.laniakea-hero-canvas");
+
+    /* ---------- Laniakea hero overlay: parallax deep-space backdrop, projected 3D labels, and the "you are here" HUD ---------- */
+    const createLaniakeaOverlay = (canvas, opts = {}) => {
+        const ctx = canvas.getContext("2d", { alpha: true });
+        const TAU = Math.PI * 2, reduced = !!opts.reducedMotion;
+        const clamp01 = (x) => Math.min(1, Math.max(0, x));
+        const sstep = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+        let W = 0, H = 0, dpr = 1, dwS = 0, vwS = 0, lastT = 0;
+        let seed = 0x5EED2026 >>> 0;
+        const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = Math.imul(seed ^ (seed >>> 15), seed | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+        const stars = [];
+        for (let i = 0; i < 560; i++) { const d = 0.15 + 0.85 * Math.pow(rnd(), 1.4); stars.push({ x: rnd(), y: rnd(), d, s: 0.35 + 0.95 * d * rnd(), a: 0.10 + 0.50 * rnd() * (0.4 + d), ph: rnd() * TAU, f: 0.4 + 1.8 * rnd(), c: rnd() }); }
+        const bright = stars.filter((s) => s.s > 0.95).slice(0, 36);
+        const acc = "255,96,64";
+        const fam = '"Space Grotesk","Inter","Helvetica Neue",system-ui,sans-serif', mono = '"JetBrains Mono",ui-monospace,Menlo,monospace';
+        const roundRect = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+        const radial = (x, y, r, stops) => { const g = ctx.createRadialGradient(x, y, 0, x, y, r); for (const s of stops) g.addColorStop(s[0], s[1]); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); };
+
+        const resize = (w, h, ratio = 1) => { dpr = Math.min(2, ratio || 1); W = w; H = h; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); };
+
+        const drawBackdrop = (t, yaw, pitch) => {
+            ctx.save(); ctx.globalCompositeOperation = "lighter";
+            // very faint colour depth, drifting at a different rate from the galaxy field
+            const dx = -yaw * 38, dy = pitch * 24;
+            radial(W * 0.64 + dx, H * 0.46 + dy, W * 0.52, [[0, "rgba(30,56,130,0.085)"], [0.6, "rgba(16,28,76,0.04)"], [1, "rgba(0,0,0,0)"]]);
+            radial(W * 0.18 + dx * 0.4, H * 0.82 + dy * 0.4, W * 0.34, [[0, "rgba(70,40,120,0.05)"], [1, "rgba(0,0,0,0)"]]);
+            for (const s of stars) {
+                let x = ((s.x * W - yaw * s.d * 90 + t * s.d * 1.5) % W + W) % W, y = ((s.y * H + pitch * s.d * 55) % H + H) % H;
+                const tw = reduced ? 1 : 0.75 + 0.25 * Math.sin(t * s.f + s.ph);
+                ctx.fillStyle = s.c < 0.6 ? `rgba(214,226,255,${(s.a * tw).toFixed(3)})` : s.c < 0.85 ? `rgba(255,244,226,${(s.a * tw).toFixed(3)})` : `rgba(170,196,255,${(s.a * tw).toFixed(3)})`;
+                ctx.beginPath(); ctx.arc(x, y, s.s, 0, TAU); ctx.fill();
+            }
+            for (const s of bright) { const x = ((s.x * W - yaw * s.d * 90) % W + W) % W, y = ((s.y * H + pitch * s.d * 55) % H + H) % H; radial(x, y, 7 * s.d + 2, [[0, `rgba(210,225,255,${0.22 * s.d})`], [1, "rgba(0,0,0,0)"]]); }
+            ctx.restore();
+        };
+
+        const SECTION_HERO_META = [
+            { sub: "LOCAL GROUP · MILKY WAY", locus: "● HERO PARTICLE LAUNCH POINT" },
+            { sub: "CALABI–YAU QUINTIC MANIFOLD", locus: "● BRANCH SEAM SINGULARITY" },
+            { sub: "KERR BLACK HOLE (a/M = 0.95)", locus: "● RELATIVISTIC ISCO ORBIT" },
+            { sub: "REVERSE-TIME DIFFUSION SDE", locus: "● ZERO-ENTROPY SCORE ATTRACTOR" },
+            { sub: "ROUGH BERGOMI VOLATILITY SURFACE", locus: "● STOCHASTIC LOCAL VOLATILITY APEX" },
+            { sub: "8-QUBIT HILBERT REGISTER", locus: "● GROVER / SHOR ORACLE PEAK" },
+            { sub: "CHENCINER–MONTGOMERY CHOREOGRAPHY", locus: "● THREE-BODY PRIMARY LOCUS" }
+        ];
+
+        const draw = (tSec, st = {}) => {
+            ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            const dtS = lastT ? Math.min(0.05, tSec - lastT) : 0.016; lastT = tSec;
+            const M = window.__LANIAKEA_MAP__, yaw = (M && M.yaw) || 0, pitch = (M && M.pitch) || 0;
+            const laniakeaAlpha = st.laniakeaAlpha === undefined ? 1 : st.laniakeaAlpha;
+            if (laniakeaAlpha > 0.01) {
+                ctx.save(); ctx.globalAlpha = laniakeaAlpha;
+                drawBackdrop(tSec, yaw, pitch);
+                ctx.restore();
+            }
+
+            const ox = st.ox || 0, oy = st.oy || 0, launch = st.launch || 0, lock = st.lock === undefined ? 1 : st.lock;
+            const unitPx = (M && M.unitPx) || Math.min(W, H), aspect = (M && M.aspect) || 1.316;
+            const L = unitPx * aspect, k = Math.max(0.85, Math.min(1.35, L / 900));
+
+            // Resolve Hero Particle screen coordinates across ALL sections
+            let mx = null, my = null;
+            if (st.hero && Number.isFinite(st.hero.x) && Number.isFinite(st.hero.y)) {
+                mx = st.hero.x; my = st.hero.y;
+            } else if (M && M.ready && M.projectUV) {
+                const lgp = M.projectUV(M.LG[0], M.LG[1], 0);
+                if (lgp) { mx = lgp.x - ox; my = lgp.y - oy; }
+            }
+            if (mx === null || my === null) return;
+
+            const trs = st.textRects || [];
+            const rectDist = (a, b) => Math.hypot(Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w), 0), Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h), 0));
+
+            // ---- HUD geometry (dynamically avoids DOM text rects on every section)
+            const pw = Math.min(W - 16, 248 * k), ph = 62 * k;
+            let side = (mx > W * 0.52) ? -1 : 1;
+            if (mx - 54 * k - pw < 12) side = 1;
+            if (mx + 54 * k + pw > W - 12) side = -1;
+            const cxp = mx + side * 54 * k, cyp = my - 46 * k;
+            const panel = { x: Math.max(10, Math.min(W - pw - 10, side < 0 ? cxp - pw : cxp)), y: Math.max(64, Math.min(H - ph - 16, cyp - ph)), w: pw, h: ph };
+            // If panel collides with active section's text copy, flip side or shift below reticle
+            for (const tr of trs) {
+                if (rectDist(panel, tr) < 16) {
+                    side = -side;
+                    const cxp2 = mx + side * 54 * k;
+                    panel.x = Math.max(10, Math.min(W - pw - 10, side < 0 ? cxp2 - pw : cxp2));
+                    if (rectDist(panel, tr) < 16) {
+                        panel.y = Math.min(H - ph - 16, my + 38 * k);
+                    }
+                    break;
+                }
+            }
+            const rects = [{ x: panel.x - 6, y: panel.y - 6, w: panel.w + 12, h: panel.h + 12 }, { x: mx - 44 * k, y: my - 44 * k, w: 88 * k, h: 88 * k }];
+            const hit = (r) => { for (const q of rects) if (!(r.x + r.w < q.x || r.x > q.x + q.w || r.y + r.h < q.y || r.y > q.y + q.h)) return true; return false; };
+
+            // ---- Laniakea Cluster & Void Labels (only drawn when Laniakea intro is visible)
+            if (laniakeaAlpha > 0.01 && M && M.ready && M.projectUV) {
+                const modeNow = M.mode || 0; dwS += ((modeNow === 1 ? 1 : 0) - dwS) * Math.min(1, dtS * 6); vwS += ((modeNow === 2 ? 1 : 0) - vwS) * Math.min(1, dtS * 6);
+                const curRaw = M.cursor && M.cursor.active ? M.cursor : null, cur = curRaw ? { x: curRaw.x - ox, y: curRaw.y - oy } : null;
+                let ru = M.LG[0], rv = M.LG[1];
+                if (curRaw) { const q = M.uvFromScreen(curRaw.x, curRaw.y); if (q && q.u > -0.02 && q.u < 1.02 && q.v > -0.02 && q.v < 1.02) { ru = q.u; rv = q.v; } }
+                const fmt = (x, d) => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(d);
+                const hudX = W - 22, hudY = H - 150 * Math.min(1.1, k);
+                rects.push({ x: hudX - 250 * k, y: hudY - 14, w: 252 * k, h: 62 * k });
+
+                const fs = Math.max(9.5, Math.min(15, L * 0.0128)); ctx.textBaseline = "middle";
+                const MAJOR = new Set(["Virgo Cluster", "Centaurus Cluster", "Hydra Cluster", "Fornax Cluster", "Pavo Cluster", "Pegasus Cluster", "Antlia Cluster", "Cancer Cluster"]);
+                const NODES = ["Virgo Cluster", "Centaurus Cluster", "Hydra Cluster"], byName = {}; M.labels.forEach((l) => { byName[l[1]] = l; });
+                const rank = (l) => l[0] === "super" ? 0 : l[0] === "grp" ? (MAJOR.has(l[1]) ? 1 : 2) : l[0] === "void" ? 3 : 9;
+                const order = M.labels.map((l, i) => i).sort((a, b) => rank(M.labels[a]) - rank(M.labels[b]));
+                const revealR = Math.max(90, 0.17 * L);
+                ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = 5;
+                for (const idx of order) {
+                    const l = M.labels[idx], kind = l[0], name = l[1], suf = l[2], u0 = l[3], v = l[4], u1 = l[5];
+                    if (kind === "lg") continue;
+                    const p = M.projectUV(kind === "grp" ? u0 : (u0 + u1) / 2, v, 0.02); if (!p) continue;
+                    const x = p.x - ox, y = p.y - oy;
+                    if (x < -40 || x > W + 40 || y < 10 || y > H - 10) continue;
+                    let vis = 1;
+                    if (kind === "grp" && !MAJOR.has(name)) vis = cur ? sstep(revealR, revealR * 0.5, Math.hypot(x - cur.x, y - cur.y)) : 0;
+                    if (vis < 0.03) continue;
+                    const depth = clamp01((p.z + 0.32) / 0.64), f = fs * (0.94 + 0.12 * depth) * (kind === "grp" && !MAJOR.has(name) ? 0.94 : 1);
+                    let a = (0.28 + 0.72 * M.vig((u0 + u1) / 2, v)) * (0.62 + 0.38 * depth) * vis * laniakeaAlpha;
+                    const isNode = NODES.indexOf(name) >= 0;
+                    if (dwS > 0.001) a *= kind === "void" ? 1 - 0.8 * dwS : isNode ? 1 + 0.25 * dwS : 1 - 0.65 * dwS;
+                    let w, parts = null;
+                    if (kind === "super") { parts = name.split("|"); ctx.font = `400 ${f * 1.05}px ${fam}`; w = Math.max(...parts.map((t) => ctx.measureText(t).width)); }
+                    else if (kind === "void") { ctx.font = `italic 300 ${f * 1.02}px ${fam}`; w = ctx.measureText(name).width; }
+                    else { ctx.font = `400 ${f}px ${fam}`; w = ctx.measureText(name).width + (suf ? ctx.measureText(" " + suf + "MLY").width * 0.62 : 0); }
+                    const hh = parts ? parts.length * f * 1.2 : f * 1.3, r = { x: kind === "grp" ? x : x - w / 2, y: y - hh / 2, w, h: hh };
+                    let near = 1; for (const tr of trs) near = Math.min(near, sstep(0, 46, rectDist(r, tr)));
+                    a *= near; if (a < 0.05) continue;
+                    if (hit(r)) continue; rects.push(r);
+                    ctx.globalAlpha = Math.min(1, a);
+                    if (kind === "super") { ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,255,255,0.94)"; ctx.font = `400 ${f * 1.05}px ${fam}`; parts.forEach((t, i) => ctx.fillText(t, x, y + (i - (parts.length - 1) / 2) * f * 1.2)); }
+                    else if (kind === "void") { ctx.textAlign = "center"; ctx.fillStyle = "rgba(190,205,235,0.55)"; ctx.font = `italic 300 ${f * 1.02}px ${fam}`; ctx.fillText(name, x, y); }
+                    else { ctx.textAlign = "left"; ctx.font = `400 ${f}px ${fam}`; ctx.fillStyle = "rgba(255,255,255,0.88)"; ctx.fillText(name, x, y); if (suf) { const tw = ctx.measureText(name).width; ctx.font = `400 ${f * 0.62}px ${fam}`; ctx.fillStyle = "rgba(168,118,255,0.95)"; ctx.fillText(" " + suf + "MLY", x + tw, y + f * 0.08); } }
+                }
+                ctx.restore(); ctx.globalAlpha = 1;
+
+                if (dwS > 0.01) {
+                    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineWidth = 1.2;
+                    for (const n of NODES) {
+                        const l = byName[n]; if (!l) continue; const p = M.projectUV(l[3] - 0.011, l[4], 0.02); if (!p) continue;
+                        const x = p.x - ox, y = p.y - oy;
+                        for (let i = 0; i < 2; i++) { const ph = ((tSec * 0.8 + i * 0.5) % 1); ctx.strokeStyle = `rgba(255,205,130,${(0.55 * (1 - ph) * dwS * laniakeaAlpha).toFixed(3)})`; ctx.beginPath(); ctx.arc(x, y, (10 + 34 * ph) * k, 0, TAU); ctx.stroke(); }
+                        ctx.fillStyle = `rgba(255,225,170,${(0.85 * dwS * laniakeaAlpha).toFixed(3)})`; ctx.font = `600 ${Math.max(9, 9.5 * k)}px ${mono}`; ctx.textAlign = "left"; ctx.fillText("δ " + fmt(M.densityAt(l[3] - 0.011, l[4]), 1), x + 16 * k, y - 16 * k);
+                    }
+                    ctx.restore();
+                }
+                if (vwS > 0.01) {
+                    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
+                    for (let gy = 0; gy < 10; gy++) for (let gx = 0; gx < 17; gx++) {
+                        const u = 0.14 + gx * 0.052, v = 0.09 + gy * 0.085; if (M.vig(u, v) < 0.3) continue;
+                        const vel = M.velocityAt(u, v); if (vel.mag < 25) continue;
+                        const du = vel.vx / vel.mag * 0.022 / M.aspect, dv = vel.vy / vel.mag * 0.022, p = M.projectUV(u, v, 0.01), q = M.projectUV(u + du, v + dv, 0.01); if (!p || !q) continue;
+                        const ax = p.x - ox, ay = p.y - oy, bx = q.x - ox, by = q.y - oy, ang = Math.atan2(by - ay, bx - ax), len = Math.hypot(bx - ax, by - ay);
+                        const sp = Math.min(1, vel.mag / 700), ph = (tSec * 1.4 - u * 3) % 1, al = vwS * (0.18 + 0.55 * sp) * (0.6 + 0.4 * Math.sin(ph * TAU)) * laniakeaAlpha;
+                        ctx.strokeStyle = `rgba(150,205,255,${al.toFixed(3)})`; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(bx - Math.cos(ang - 0.5) * len * 0.3, by - Math.sin(ang - 0.5) * len * 0.3); ctx.moveTo(bx, by); ctx.lineTo(bx - Math.cos(ang + 0.5) * len * 0.3, by - Math.sin(ang + 0.5) * len * 0.3); ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+                if (M.lens) {
+                    const lx = M.lens.x - ox, ly = M.lens.y - oy, r = M.lens.r;
+                    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = `rgba(190,215,255,${((0.10 + 0.30 * M.lens.k) * laniakeaAlpha).toFixed(3)})`; ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.arc(lx, ly, r, 0, TAU); ctx.stroke(); ctx.setLineDash([2, 5]); ctx.beginPath(); ctx.arc(lx, ly, r * 1.55, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+                    ctx.restore();
+                }
+            }
+
+            // ---- PERSISTENT "YOU ARE HERE" RETICLE & CALLOUT ACROSS ALL SECTIONS (0..6)
+            const secIdx = st.sectionIndex || 0;
+            const meta = SECTION_HERO_META[secIdx] || SECTION_HERO_META[0];
+            const inTransit = launch > 0.03 && launch < 0.96;
+            const flash = Math.sin(launch * Math.PI);
+
+            ctx.save(); ctx.lineCap = "round";
+            if (!reduced) {
+                for (let i = 0; i < 2; i++) {
+                    const ph2 = ((tSec + i * 1.4) % 2.8) / 2.8;
+                    ctx.strokeStyle = `rgba(${acc},${(0.52 * (1 - ph2)).toFixed(3)})`;
+                    ctx.lineWidth = 1.3;
+                    ctx.beginPath(); ctx.arc(mx, my, (9 + 38 * ph2) * k, 0, TAU); ctx.stroke();
+                }
+            }
+            ctx.globalCompositeOperation = "lighter";
+            radial(mx, my, 28 * k, [[0, `rgba(${acc},${0.55 + 0.25 * flash})`], [0.45, `rgba(${acc},0.16)`], [1, "rgba(255,0,0,0)"]]);
+            ctx.globalCompositeOperation = "source-over";
+
+            // Rotating tick ring + dashed range ring
+            const rot = reduced ? 0 : tSec * (0.25 + 1.8 * flash), ringK = 0.85 + 0.15 * lock;
+            ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = 1;
+            for (let i = 0; i < 48; i++) {
+                const a = rot + i / 48 * TAU, r0 = 24 * k * ringK, r1 = r0 + (i % 4 === 0 ? 5 : 2.4) * k;
+                ctx.beginPath(); ctx.moveTo(mx + Math.cos(a) * r0, my + Math.sin(a) * r0); ctx.lineTo(mx + Math.cos(a) * r1, my + Math.sin(a) * r1); ctx.stroke();
+            }
+            ctx.setLineDash([3 * k, 5 * k]); ctx.strokeStyle = "rgba(160,190,255,0.25)"; ctx.lineDashOffset = -rot * 40;
+            ctx.beginPath(); ctx.arc(mx, my, 36 * k * ringK, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+
+            // Lock-on brackets
+            const br = (15 + 2 * (reduced ? 0 : Math.sin(tSec * 2.2)) + 12 * flash) * k, bl = 6 * k;
+            ctx.strokeStyle = "rgba(255,255,255,0.92)"; ctx.lineWidth = Math.max(1.2, 1.4 * k);
+            for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+                const x = mx + sx * br, y = my + sy * br;
+                ctx.beginPath(); ctx.moveTo(x - sx * bl, y); ctx.lineTo(x, y); ctx.lineTo(x, y - sy * bl); ctx.stroke();
+            }
+            ctx.strokeStyle = "rgba(255,255,255,0.95)"; ctx.lineWidth = Math.max(1, 1.2 * k);
+            ctx.beginPath(); ctx.arc(mx, my, 7.5 * k, 0, TAU); ctx.stroke();
+            ctx.fillStyle = `rgb(${acc})`; ctx.beginPath(); ctx.arc(mx, my, 3.4 * k, 0, TAU); ctx.fill();
+            ctx.fillStyle = "rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.arc(mx - 0.8 * k, my - 0.9 * k, 1.1 * k, 0, TAU); ctx.fill();
+
+            // Persistent "YOU ARE HERE" callout panel across all 7 sections
+            {
+                const { x, y, w, h } = panel, r = 8 * k, pad = 12 * k;
+                const ex = side < 0 ? x + w : x, ey = y + h * 0.85;
+                const a0 = Math.atan2(ey - my, ex - mx);
+                ctx.strokeStyle = `rgba(${acc},0.9)`; ctx.lineWidth = Math.max(1, 1.2 * k);
+                ctx.beginPath(); ctx.moveTo(mx + Math.cos(a0) * 12 * k, my + Math.sin(a0) * 12 * k); ctx.lineTo(ex, ey); ctx.stroke();
+                ctx.fillStyle = `rgb(${acc})`; ctx.beginPath(); ctx.arc(ex, ey, 2.2 * k, 0, TAU); ctx.fill();
+
+                ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 18 * k; ctx.shadowOffsetY = 6 * k;
+                roundRect(ctx, x, y, w, h, r); ctx.fillStyle = "rgba(10,16,34,0.82)"; ctx.fill(); ctx.restore();
+
+                const gg = ctx.createLinearGradient(x, y, x, y + h);
+                gg.addColorStop(0, "rgba(255,255,255,0.10)"); gg.addColorStop(0.5, "rgba(255,255,255,0.02)"); gg.addColorStop(1, "rgba(255,255,255,0)");
+                roundRect(ctx, x, y, w, h, r); ctx.fillStyle = gg; ctx.fill();
+                roundRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, r); ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineWidth = 1; ctx.stroke();
+                ctx.fillStyle = `rgb(${acc})`; roundRect(ctx, x + pad * 0.6, y + h * 0.5 - 14 * k, 2.4 * k, 28 * k, 1.2 * k); ctx.fill();
+
+                ctx.textAlign = "left"; ctx.textBaseline = "middle";
+                const tx = x + pad + 4 * k, f1 = Math.max(11, 12.2 * k), f2 = Math.max(8.2, 9.0 * k);
+                ctx.fillStyle = "#fff"; ctx.font = `700 ${f1}px ${fam}`;
+                ctx.fillText(inTransit ? "WARPING SPACETIME" : "YOU ARE HERE", tx, y + h * 0.27);
+                ctx.fillStyle = "rgba(220,230,255,0.82)"; ctx.font = `500 ${f2}px ${mono}`;
+                ctx.fillText(inTransit ? "EINSTEIN–ROSEN WORMHOLE BRIDGE" : meta.sub, tx, y + h * 0.52);
+                ctx.fillStyle = `rgba(${acc},1)`;
+                ctx.fillText(inTransit ? `▸ GEODESIC TRANSIT ${Math.round(launch * 100)}%` : meta.locus, tx, y + h * 0.74);
+
+                const rx = tx, rw = w - (tx - x) - pad, ry = y + h - 5.5 * k;
+                ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.fillRect(rx, ry, rw, 1.6 * k);
+                ctx.fillStyle = `rgb(${acc})`; ctx.fillRect(rx, ry, rw * (inTransit ? clamp01(launch) : 1.0), 1.6 * k);
+            }
+            ctx.restore();
+        };
+        return { resize, draw };
+    };
+
+    /* ---------- Full-Viewport Hero Stage & Persistent Cross-Section "YOU ARE HERE" HUD ---------- */
+    const initHeroLaniakeaStage = () => {
+        const heroSec = document.querySelector('.snap-section[data-sim="hub:intro"], .snap-section.hero#hub-intro, .snap-section.hero[data-domain="hub"]') || document.querySelector(".snap-section");
+        if (!heroSec) return;
+        let c = document.querySelector("canvas.laniakea-hero-canvas");
         if (!c) {
-            c = document.createElement("canvas");
-            c.className = "laniakea-hero-canvas";
-            c.setAttribute("aria-hidden", "true");
-            c.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;";
-            if (getComputedStyle(heroSec).position === "static") heroSec.style.position = "relative";
-            heroSec.insertBefore(c, heroSec.firstChild);
+            c = document.createElement("canvas"); c.className = "laniakea-hero-canvas"; c.setAttribute("aria-hidden", "true");
+            document.body.appendChild(c);
         }
+        c.style.cssText = "position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:2;";
         if (c.__dispose) c.__dispose();
 
-        // Keep hero copy above the canvas
-        Array.from(heroSec.children).forEach((el) => {
-            if (el === c) return;
-            if (getComputedStyle(el).position === "static") { el.style.position = "relative"; el.style.zIndex = "1"; }
-        });
-
         const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const poster = createLaniakeaPoster(c, { reducedMotion: reduced });
+        const overlay = createLaniakeaOverlay(c, { reducedMotion: reduced });
         const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * t * (t * (t * 6 - 15) + 10); };
-
-        // The WebGL stage launches the hero particle from the Milky Way dot; pin the artwork's dot to that exact point
-        let anchored = false;
-        const anchorPoint = () => {
-            const S = window.THREAD_STAGE;
-            if (!S || !S.supported || S.currentFormation !== "hub:intro" && !S.isTransitioning) return null;
-            const p = S.heroScreen;
-            if (!p) return null;
-            const r = heroSec.getBoundingClientRect();
-            return { x: p.x - r.left, y: p.y - r.top };
-        };
-        const fit = () => {
-            const r = heroSec.getBoundingClientRect();
-            if (r.width <= 0 || r.height <= 0) return;
-            poster.resize(r.width, r.height, window.devicePixelRatio || 1);
-            anchored = false;
-        };
+        const fit = () => { overlay.resize(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1); };
         fit();
 
-        // Artwork follows the origin simulation through the flight: dims as the hero detaches, blossoms back on return
-        const visibility = () => {
+        const handle = (window.__LANIAKEA_MAP__ = window.__LANIAKEA_MAP__ || { ready: false, yaw: 0, pitch: 0, unitPx: 600, portrait: false });
+        handle.mode = 0; handle.cursor = handle.cursor || { x: 0, y: 0, down: false, active: false };
+        const cur = handle.cursor;
+        const onMove = (e) => {
+            cur.x = e.clientX; cur.y = e.clientY;
+            const k = e.target && e.target.closest ? e.target.closest(".katex") : null;
+            let mode = 0;
+            if (k) {
+                const integ = k.querySelector(".op-symbol, .mop"), ix = integ ? integ.getBoundingClientRect().left : k.getBoundingClientRect().left + k.getBoundingClientRect().width * 0.55;
+                mode = e.clientX < ix ? 2 : 1;
+            }
+            handle.mode = mode;
             const S = window.THREAD_STAGE;
-            if (!S || !S.supported) return 1;
+            cur.active = !k && e.pointerType !== "touch" && (!S || S.currentIndex === 0);
+        };
+        const onDown = () => { cur.down = true; }, onUp = () => { cur.down = false; }, onLeave = () => { cur.active = false; cur.down = false; handle.mode = 0; };
+        window.addEventListener("pointermove", onMove, { passive: true }); window.addEventListener("pointerdown", onDown, { passive: true });
+        window.addEventListener("pointerup", onUp, { passive: true }); document.documentElement.addEventListener("pointerleave", onLeave);
+        window.addEventListener("resize", fit, { passive: true });
+
+        let rectsCache = [], rectsAt = 0;
+        const textRects = (now) => {
+            if (now - rectsAt < 180) return rectsCache; rectsAt = now;
+            const S = window.THREAD_STAGE;
+            const idx = (S && S.supported) ? S.currentIndex : 0;
+            const secs = document.querySelectorAll(".snap-section");
+            const activeSec = secs[idx] || heroSec;
+            const els = Array.from(activeSec.querySelectorAll("h1,h2,p,.snap-overview-card,.contact-card,.card")), kx = activeSec.querySelector(".katex");
+            if (kx) els.push(kx.closest('[class*="formula"],[class*="equation"],[class*="eq"]') || (kx.parentElement && kx.parentElement.parentElement) || kx);
+            rectsCache = els.map((el) => { const r = el.getBoundingClientRect(); return { x: r.left - 8, y: r.top - 6, w: r.width + 16, h: r.height + 12 }; }).filter((r) => r.w > 8 && r.h > 8);
+            return rectsCache;
+        };
+
+        const laniakeaVisibility = () => {
+            const S = window.THREAD_STAGE; if (!S || !S.supported) return 1;
             const T = S.trans;
             if (T && T.active) {
-                const u = T.u;
-                if (T.fromIndex === 0 && T.toIndex !== 0) return (0.12 + 0.88 * (1 - sm(0.02, 0.30, u))) * (1 - sm(0.38, 0.49, u));
-                if (T.toIndex === 0 && T.fromIndex !== 0) return sm(0.72, 1.0, u);
+                if (T.fromIndex === 0 && T.toIndex !== 0) return (0.12 + 0.88 * (1 - sm(0.02, 0.30, T.u))) * (1 - sm(0.38, 0.49, T.u));
+                if (T.toIndex === 0 && T.fromIndex !== 0) return sm(0.72, 1.0, T.u);
                 return 0;
             }
             return S.currentIndex === 0 ? 1 : 0;
         };
 
-        let visible = true, raf = 0, lastOp = -1;
+        let raf = 0;
         const loop = (now) => {
             raf = requestAnimationFrame(loop);
-            if (!visible || document.hidden) return;
-            const a = anchorPoint();
-            if (a) {
-                if (!anchored) { poster.layoutTo(a.x, a.y); anchored = true; }
-                else poster.nudgeTo(a.x, a.y);
-            }
-            const op = visibility();
-            if (Math.abs(op - lastOp) > 0.004) { c.style.opacity = op.toFixed(3); lastOp = op; }
-            if (op > 0.003) poster.draw(now * 0.001);
+            if (document.hidden) return;
+            const S = window.THREAD_STAGE, T = S && S.trans;
+            const hs = S && S.supported ? S.heroScreen : null;
+            const activeIdx = (T && T.active) ? (T.u > 0.5 ? T.toIndex : T.fromIndex) : ((S && S.currentIndex) || 0);
+            overlay.draw(now * 0.001, {
+                ox: 0, oy: 0,
+                laniakeaAlpha: laniakeaVisibility(),
+                sectionIndex: activeIdx,
+                textRects: textRects(now),
+                hero: hs ? { x: hs.x, y: hs.y } : null,
+                launch: T && T.active ? T.u : 0,
+                lock: T && T.active ? sm(0.75, 1.0, T.u) : 1
+            });
         };
         raf = requestAnimationFrame(loop);
-
-        const ro = new ResizeObserver(fit); ro.observe(heroSec);
-        const io = new IntersectionObserver((e) => { visible = e[0].isIntersecting; }, { threshold: 0 }); io.observe(heroSec);
-        c.__dispose = () => { cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); };
+        c.__dispose = () => { cancelAnimationFrame(raf); window.removeEventListener("resize", fit); window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerdown", onDown); window.removeEventListener("pointerup", onUp); document.documentElement.removeEventListener("pointerleave", onLeave); };
     };
-
 
     const initPage = () => {
         const u = new URL(location.href);

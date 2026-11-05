@@ -152,7 +152,7 @@ h1, h2, h3, h4,
 .contact-title,
 .paper-title {
     font-family: var(--heading-font, var(--sans));
-    font-weight: 400;
+    font-weight: 350;
     color: var(--fg);
     line-height: 1.15;
     letter-spacing: -0.03em;
@@ -547,7 +547,7 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     font-size: clamp(2.35rem, 5.8vw, 5.25rem);
     line-height: 1.08;
     letter-spacing: -0.035em;
-    font-weight: 700;
+    font-weight: 300;
     margin: 8px 0 12px;
     color: var(--fg);
     text-shadow: 0 2px 14px rgba(var(--bg-rgb), 0.85);
@@ -558,7 +558,7 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     font-size: clamp(1.75rem, 3.8vw, 3.25rem);
     line-height: 1.15;
     letter-spacing: -0.03em;
-    font-weight: 700;
+    font-weight: 400;
     color: var(--fg);
     text-shadow: 0 1px 12px rgba(var(--bg-rgb), 0.85);
     margin: 0;
@@ -1752,7 +1752,6 @@ a.contact-value:hover {
 }
 
 html[data-life-mode="simple"] .stage-canvas,
-html[data-life-mode="simple"] .laniakea-hero-canvas,
 html[data-life-mode="simple"] .nav-live,
 html[data-life-mode="simple"] .sim-tag,
 html[data-life-mode="simple"] .snap-cue {

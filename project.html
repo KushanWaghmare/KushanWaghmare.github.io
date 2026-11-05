@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Project · Kushan Waghmare</title>
     <meta name="description" content="Project deep-dive: architecture and mathematics." />
+    <meta name="author" content="Kushan Waghmare" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>" />
     <script>try{document.documentElement.dataset.theme="dark";localStorage.setItem("theme","dark");const q=new URLSearchParams(location.search);const f=q.get("font")||localStorage.getItem("kw_font")||"space";document.documentElement.dataset.font=f;if(q.get("font"))localStorage.setItem("kw_font",f);}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.font="space";}</script>
     <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -15,31 +18,34 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-    <script defer src="shared/data.js?v=61"></script>
-    <script defer src="shared/lib/diffusion-math.js?v=61"></script>
-    <script defer src="shared/lib/mobius-math.js?v=61"></script>
-    <script defer src="shared/lib/qsim-math.js?v=61"></script>
-    <script defer src="shared/gpu/gpu-qsim-shaders.js?v=61"></script>
-    <script defer src="shared/gpu/gpu-qsim.js?v=61"></script>
-    <script defer src="shared/lib/copula-math.js?v=61"></script>
-    <script defer src="shared/gpu/gpu-copula-shaders.js?v=61"></script>
-    <script defer src="shared/gpu/gpu-copula.js?v=61"></script>
-    <script defer src="shared/lib/lattice-math.js?v=61"></script>
-    <script defer src="shared/gpu/gpu-crystal-shaders.js?v=61"></script>
-    <script defer src="shared/gpu/gpu-crystal.js?v=61"></script>
-    <script defer src="shared/lib/cy-math.js?v=61"></script>
-    <script defer src="shared/blackhole-physics.js?v=61"></script>
-    <script defer src="shared/blackhole-shaders.js?v=61"></script>
-    <script defer src="shared/blackhole-lite.js?v=61"></script>
-    <script defer src="shared/blackhole.js?v=61"></script>
-    <script defer src="shared/gfx.js?v=61"></script>
-    <script defer src="shared/engines.js?v=61"></script>
-    <script defer src="shared/slides.js?v=61"></script>
-    <script defer src="shared/lib/thread-math.js?v=61"></script>
-    <script defer src="shared/gpu/gpu-thread-shaders.js?v=61"></script>
-    <script defer src="shared/gpu/gpu-thread-formations.js?v=61"></script>
-    <script defer src="shared/gpu/gpu-thread.js?v=61"></script>
-    <script defer src="shared/app.js?v=61"></script>
+    <script defer src="shared/data.js?v=65"></script>
+    <!-- Simulations: Mathematical Foundations -->
+    <script defer src="shared/simulations/math/diffusion-math.js?v=65"></script>
+    <script defer src="shared/simulations/math/mobius-math.js?v=65"></script>
+    <script defer src="shared/simulations/math/lattice-math.js?v=65"></script>
+    <script defer src="shared/simulations/math/cy-math.js?v=65"></script>
+    <!-- Simulations: Quantum -->
+    <script defer src="shared/simulations/quantum/qsim-math.js?v=65"></script>
+    <script defer src="shared/simulations/quantum/gpu-qsim-shaders.js?v=65"></script>
+    <script defer src="shared/simulations/quantum/gpu-qsim.js?v=65"></script>
+    <!-- Simulations: Black Hole Relativistic Raytracer -->
+    <script defer src="shared/simulations/blackhole/blackhole-physics.js?v=65"></script>
+    <script defer src="shared/simulations/blackhole/blackhole-shaders.js?v=65"></script>
+    <script defer src="shared/simulations/blackhole/blackhole-lite.js?v=65"></script>
+    <script defer src="shared/simulations/blackhole/blackhole.js?v=65"></script>
+    <!-- Simulations: 2D Canvas & Slides -->
+    <script defer src="shared/simulations/canvas2d/gfx.js?v=65"></script>
+    <script defer src="shared/simulations/canvas2d/engines.js?v=65"></script>
+    <script defer src="shared/simulations/canvas2d/slides.js?v=65"></script>
+    <!-- Simulations: Datasets -->
+    <script defer src="shared/simulations/datasets/laniakea-data.js?v=65"></script>
+    <!-- Simulations: Unified Particle Engine (Core Stage) -->
+    <script defer src="shared/simulations/core/thread-math.js?v=65"></script>
+    <script defer src="shared/simulations/core/gpu-thread-shaders.js?v=65"></script>
+    <script defer src="shared/simulations/core/gpu-thread-formations.js?v=65"></script>
+    <script defer src="shared/simulations/core/gpu-thread.js?v=65"></script>
+    <!-- App Controller -->
+    <script defer src="shared/app.js?v=65"></script>
 
 </head>
 <body>

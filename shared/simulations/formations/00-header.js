@@ -31,3 +31,4 @@
         registry.set(key, Ctor);
     };
 
+}

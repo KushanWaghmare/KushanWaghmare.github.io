@@ -31,6 +31,8 @@ uniform vec3 uFogTint;
 uniform float uInside;     // insideness: 0 = outside the dimension, 1 = deep inside
 uniform float uHeroScale;  // hero screen-size multiplier (shrinks as local world scale grows)
 uniform float uWorldGrow;  // swarm size multiplier (structures look huge when passed)
+uniform float uTwinkle;     // 1 = seed-driven twinkle, 0 = steady light
+uniform float uPixelArt;    // 1 = pixel-art mode: hard squares on a global pixel grid, flat colours (formation.pixelArt)
 
 out vec3 vColour;
 out float vAlpha;
@@ -59,15 +61,25 @@ void main() {
 
     float baseSize = clamp(aSize * seedVar * perspectiveScale * uDpr * heroScale, 1.35 * uDpr, 44.0 * uDpr);
 
+    // Pixel-art mode: aSize is the cell size in CSS px; snap the particle to the global device-pixel grid
+    if (uPixelArt > 0.5 && clipCurr.w > 0.0) {
+        baseSize = max(1.0, floor(aSize * uDpr + 0.5));
+        vec2 vpPx = max(vec2(1.0), uViewport * uDpr);
+        vec2 ndcPx = clipCurr.xy / clipCurr.w;
+        vec2 ppx = (ndcPx * 0.5 + 0.5) * vpPx;
+        ppx = (floor(ppx / baseSize) + 0.5) * baseSize;
+        clipCurr.xy = ((ppx / vpPx) * 2.0 - 1.0) * clipCurr.w;
+    }
+
     // Velocity-aligned ribbon stretch with 3 parallax depth layers (near, mid, far)
     float layerFactor = isHero ? 1.85 : ((dist < 7.5) ? 1.35 : ((dist < 17.0) ? 1.0 : 0.68));
     float worldStep = length(aPosition - aPrevPosition);
     // Allow hero particle to streak up to 350 world units during hyperdrive punch
-    float maxStep = isHero ? 350.0 : 12.0;
+    float maxStep = isHero ? 350.0 : 95.0;
     float streakLen = 0.0;
     vec2 dirNdc = vec2(1.0, 0.0);
 
-    if (clipCurr.w > 0.15 && clipPrev.w > 0.15 && worldStep < maxStep && uStreakScale > 0.001) {
+    if (clipCurr.w > 0.15 && clipPrev.w > 0.15 && worldStep < maxStep && uStreakScale > 0.001 && uPixelArt < 0.5) {
         vec2 ndcCurr = clipCurr.xy / clipCurr.w;
         vec2 ndcPrev = clipPrev.xy / clipPrev.w;
         vec2 rawDeltaPx = (ndcCurr - ndcPrev) * 0.5 * uViewport * uDpr * uStreakScale * layerFactor;
@@ -100,13 +112,15 @@ void main() {
     }
 
     float depthAlpha = clamp(19.0 / (dist + 6.5), 0.16, 1.0) * (1.0 - fogFactor * 0.45);
-    float twinkle = 0.84 + 0.16 * sin(uTime * (1.6 + 2.5 * aSeed.z) + aSeed.w * 6.2831853);
+    float twinkle = mix(1.0, 0.84 + 0.16 * sin(uTime * (1.6 + 2.5 * aSeed.z) + aSeed.w * 6.2831853), uTwinkle);
 
     // Conserve energy when stretched into a long streak so thin fast streaks stay crisp, not blown out
     float energyNorm = clamp(baseSize / max(1.0, baseSize + streakLen * 0.35), 0.28, 1.0);
     vAlpha = depthAlpha * twinkle * energyNorm * uTrailGain * (isHero ? (1.0 + uHeroBoost * 0.8) : 1.0);
     vColour = col;
     vIsHero = isHero ? uHeroBoost : 0.0;
+
+    if (uPixelArt > 0.5) { vColour = aColour; vAlpha = 1.0; vIsHero = 0.0; }
 }
 `;
 
@@ -122,9 +136,11 @@ in float vHalfSeg;
 in float vCapRad;
 
 uniform float uIsLight;
+uniform float uPixelArt;
 out vec4 fragColor;
 
 void main() {
+    if (uPixelArt > 0.5) { fragColor = vec4(vColour, 1.0); return; }   // pixel art: flat hard-edged square
     vec2 p = gl_PointCoord - 0.5;
     float proj = dot(p, vUvDir);
     float clampedProj = clamp(proj, -vHalfSeg, vHalfSeg);
@@ -845,6 +861,7 @@ uniform float uInside;
 uniform vec3 uInnerTint;
 uniform float uIsLight;
 uniform int uDebugMode;
+uniform float uPixelArt;
 out vec4 fragColor;
 
 vec3 acesFilm(vec3 x) {
@@ -876,6 +893,17 @@ void main() {
         return;
     }
 
+    // Pixel-art path: exact texel fetch, flat navy background, no bloom / tone-map / grain / scanlines
+    vec3 pixOut = vec3(0.0);
+    if (uPixelArt > 0.001) {
+        ivec2 tsz = textureSize(uSceneTex, 0);
+        ivec2 tc = clamp(ivec2(vUV * vec2(tsz)), ivec2(0), tsz - ivec2(1));
+        vec3 ps = texelFetch(uSceneTex, tc, 0).rgb;
+        float cov = step(0.08, max(ps.r, max(ps.g, ps.b)));
+        pixOut = mix(vec3(34.0, 32.0, 53.0) / 255.0, clamp(ps, 0.0, 1.0), cov);
+        if (uPixelArt > 0.999) { fragColor = vec4(pixOut, 1.0); return; }
+    }
+
     vec2 baseUV = vUV;
     if (uShockwave > 0.0005) {
         vec2 sc = vUV - vec2(0.5);
@@ -896,13 +924,18 @@ void main() {
         vec3 accS = vec3(0.0);
         vec3 accB = vec3(0.0);
         float wSum = 0.0;
-        float ca = uCaStrength + uWarpStrength * 0.014;
-        for (int i = 0; i < 8; i++) {
-            float fi = float(i) / 7.0;
-            float scale = 1.0 - fi * uWarpStrength * 0.22;
+        float rDist = length(centred);
+        float ca = uCaStrength + uWarpStrength * 0.018;
+        for (int i = 0; i < 10; i++) {
+            float fi = float(i) / 9.0;
+            // Morris-Thorne spacetime throat pinch + frame-dragging twist
+            float pinch = 1.0 - fi * uWarpStrength * (0.28 / (1.0 + rDist * 1.6));
+            float twist = (fi - 0.5) * uWarpStrength * 0.16 * exp(-rDist * 2.2);
+            float cs = cos(twist), sn = sin(twist);
+            vec2 rotC = vec2(centred.x * cs - centred.y * sn, centred.x * sn + centred.y * cs);
+            vec2 sampleUV = uWarpCentre + rotC * pinch;
+            vec2 caOff = rotC * (ca * (0.3 + fi));
             float w = 1.0 - fi * 0.55;
-            vec2 sampleUV = uWarpCentre + centred * scale;
-            vec2 caOff = centred * (ca * (0.35 + fi));
             float r = texture(uSceneTex, clamp(sampleUV + caOff, 0.001, 0.999)).r;
             float g = texture(uSceneTex, clamp(sampleUV, 0.001, 0.999)).g;
             float b = texture(uSceneTex, clamp(sampleUV - caOff, 0.001, 0.999)).b;
@@ -971,7 +1004,7 @@ void main() {
         srgb += vec3(0.12, 0.35, 0.85) * warpGlow;
     }
 
-    fragColor = vec4(srgb, 1.0);
+    fragColor = vec4(mix(srgb, pixOut, clamp(uPixelArt, 0.0, 1.0)), 1.0);
 }
 `;
 

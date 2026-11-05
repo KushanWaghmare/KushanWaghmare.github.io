@@ -10,7 +10,7 @@
 }(typeof self !== "undefined" ? self : this, function (root) {
     "use strict";
 
-    const TM = root.THREAD_MATH || (typeof require === "function" ? require("../lib/thread-math.js") : null);
+    const TM = root.THREAD_MATH || (typeof require === "function" ? require("./thread-math.js") : null);
     const TS = root.THREAD_SHADERS || (typeof require === "function" ? require("./gpu-thread-shaders.js") : null);
     const TF = root.THREAD_FORMATIONS || (typeof require === "function" ? require("./gpu-thread-formations.js") : null);
 
@@ -344,7 +344,7 @@
         pointUniforms = getUniforms(pointProg, [
             "uViewProj", "uCamPos", "uViewport", "uDpr", "uTime",
             "uHeroBoost", "uIsLight", "uStreakScale", "uMaxStreakPx", "uTrailGain", "uFogTint",
-            "uInside", "uHeroScale", "uWorldGrow"
+            "uInside", "uHeroScale", "uWorldGrow", "uTwinkle", "uPixelArt"
         ]);
         starUniforms = getUniforms(starProg, [
             "uRes", "uBhScreenCentre", "uBhScale", "uTilt", "uTime", "uIsLight", "uBrightness"
@@ -370,7 +370,7 @@
         compositeUniforms = getUniforms(compositeProg, [
             "uSceneTex", "uBloomTex", "uRes", "uTime", "uBloomStrength", "uBloomTint",
             "uVignette", "uGrain", "uCaStrength", "uWarpStrength", "uWarpCentre", "uFogTint",
-            "uShockwave", "uShockwaveRadius", "uIsLight", "uDebugMode", "uInside", "uInnerTint"
+            "uShockwave", "uShockwaveRadius", "uIsLight", "uDebugMode", "uInside", "uInnerTint", "uPixelArt"
         ]);
 
         // 1. Single Shared Swarm VAO
@@ -510,6 +510,80 @@
         targetPointerY: 0,
         isMobile: isMobileDevice(),
         isLight: false
+    };
+
+    // World -> viewport CSS px (uses the previous frame's matrices); lets formations fit themselves to the live camera
+    ctxState.project = (x, y, z) => {
+        const e = camera.viewProjectionMatrix.elements;
+        const w = e[3] * x + e[7] * y + e[11] * z + e[15];
+        if (!(w > 1e-6)) return null;
+        const nx = (e[0] * x + e[4] * y + e[8] * z + e[12]) / w, ny = (e[1] * x + e[5] * y + e[9] * z + e[13]) / w;
+        return [(nx * 0.5 + 0.5) * window.innerWidth, (1.0 - (ny * 0.5 + 0.5)) * window.innerHeight];
+    };
+    ctxState.transActive = false;
+    ctxState.camera = camera; // lets formations (Earth & Moon) size sprites from the live camera distance / fov
+
+    // Shared cursor-lens state & allocation-free Jacobian solve (LENS_PX = 54)
+    const LENS_PX = 54;
+    const lensState = { wx: 0, wy: 0, wz: 0, thE: 0, thE2: 0, k: 0.38, active: false, x: 0, y: 0, r: LENS_PX };
+    Object.defineProperty(ctxState, "dpr", { get: () => dpr, configurable: true });   // device pixel ratio, for pixel-grid formations
+    ctxState.cursorLens = (ox, oy, oz) => {
+        lensState.active = false;
+        const cur = (typeof window !== "undefined") && (window.__CURSOR__ || (window.__LANIAKEA_MAP__ && window.__LANIAKEA_MAP__.cursor));
+        if (!cur || !cur.active || ctxState.transActive) return lensState;
+        const e = camera.viewProjectionMatrix.elements;
+        const w0 = e[3] * ox + e[7] * oy + e[11] * oz + e[15];
+        const wx = w0 + e[3], wy = w0 + e[7];
+        if (!(w0 > 1e-6 && wx > 1e-6 && wy > 1e-6)) return lensState;
+        const W = window.innerWidth, H = window.innerHeight;
+        const cx0 = e[0] * ox + e[4] * oy + e[8] * oz + e[12];
+        const cy0 = e[1] * ox + e[5] * oy + e[9] * oz + e[13];
+        const p0x = (cx0 / w0 * 0.5 + 0.5) * W, p0y = (0.5 - cy0 / w0 * 0.5) * H;
+        const pxx = ((cx0 + e[0]) / wx * 0.5 + 0.5) * W, pxy = (0.5 - (cy0 + e[1]) / wx * 0.5) * H;
+        const pyx = ((cx0 + e[4]) / wy * 0.5 + 0.5) * W, pyy = (0.5 - (cy0 + e[5]) / wy * 0.5) * H;
+        const ax = pxx - p0x, ay = pxy - p0y, bx = pyx - p0x, by = pyy - p0y;
+        const det = ax * by - ay * bx;
+        if (Math.abs(det) <= 1e-9) return lensState;
+        const ex = cur.x - p0x, ey = cur.y - p0y;
+        lensState.wx = ox + (ex * by - ey * bx) / det;
+        lensState.wy = oy + (ax * ey - ay * ex) / det;
+        lensState.wz = oz;
+        const pxPerUnit = 0.5 * (Math.hypot(ax, ay) + Math.hypot(bx, by));
+        if (pxPerUnit <= 1e-6) return lensState;
+        const thE = LENS_PX / pxPerUnit;
+        lensState.thE = thE;
+        lensState.thE2 = thE * thE;
+        lensState.k = typeof cur.strength === "number" ? cur.strength : (cur.down ? 1.0 : 0.38);
+        lensState.x = cur.x;
+        lensState.y = cur.y;
+        lensState.active = true;
+        return lensState;
+    };
+    ctxState.applyLens = (point, i3, lens) => {
+        if (!lens) { lens = i3; i3 = -1; }
+        if (!lens || !lens.active) return;
+        const thE2 = lens.thE2;
+        if (i3 >= 0) {
+            const rx = point[i3] - lens.wx, ry = point[i3 + 1] - lens.wy;
+            const k = Math.min(1.3, (thE2 * lens.k * 0.95) / (rx * rx + ry * ry + thE2 * 0.25));
+            point[i3] += rx * k;
+            point[i3 + 1] += ry * k;
+        } else if (point) {
+            const rx = point.x - lens.wx, ry = point.y - lens.wy;
+            const k = Math.min(1.3, (thE2 * lens.k * 0.95) / (rx * rx + ry * ry + thE2 * 0.25));
+            point.x += rx * k;
+            point.y += ry * k;
+        }
+    };
+
+    // 1 while the Laniakea hero owns the screen, fading through flights (drives the legacy-backdrop dimming and the wide-field optics)
+    const heroWeight = () => {
+        if (trans.active) {
+            if (trans.fromIndex === 0 && trans.toIndex !== 0) return 1.0 - smoothstep(0.05, 0.45, trans.u);
+            if (trans.toIndex === 0 && trans.fromIndex !== 0) return smoothstep(0.55, 1.0, trans.u);
+            return 0.0;
+        }
+        return currentIndex === 0 ? 1.0 : 0.0;
     };
 
     const insideOrbit = {
@@ -1047,18 +1121,20 @@
     };
     /* FLIGHT_V2 helpers end */
 
-    // Smoothed per-section post parameters
+    // Smoothed per-section post parameters (initialised from clean LOOK defaults)
+    const LOOK = (TM && TM.LOOK) || { bloomStrength: 0.65, bloomThreshold: 0.95, trailDecay: 0.55, streakScale: 1.0, particleSizeRange: [0.85, 2.25], brightnessBudget: [0.17, 0.53], backgroundTone: [0.006, 0.012, 0.03], celestialBrightness: 0.18 };
     const postState = {
-        bloomStrength: 0.92,
-        bloomThreshold: 0.78,
+        bloomStrength: LOOK.bloomStrength,
+        bloomThreshold: LOOK.bloomThreshold,
         bloomTint: [1.0, 1.0, 1.0],
-        fogTint: [0.022, 0.056, 0.145],
+        fogTint: LOOK.backgroundTone.slice(),
         fogDensity: 0.0035,
         shockwave: 0.0,
         shockwaveRadius: 0.0,
         caExtra: 0.0,
-        trailDecay: 0.82,
-        streakScale: 1.65
+        trailDecay: LOOK.trailDecay,
+        streakScale: LOOK.streakScale,
+        celestialBrightness: (LOOK && LOOK.celestialBrightness) || 0.18
     };
 
     const getPhaseName = (u) => {
@@ -2042,11 +2118,13 @@
                     camera.target.copy(poseB);
                     if (curSim && curSim.immersiveCamera) camera.fov = curSim.immersiveCamera.fov;
                     else camera.fov = prof.fov;
-                    anchorWorld(currentDimIndex, currentSimIndex, "INSIDE", poseAnchor);
-                    sampleIdle(currentDimIndex, currentSimIndex, idleVec);
-                    positions[0] = poseAnchor.x + idleVec.x;
-                    positions[1] = poseAnchor.y + idleVec.y;
-                    positions[2] = poseAnchor.z + idleVec.z;
+                    if (!active.preserveHeroPosition) {
+                        anchorWorld(currentDimIndex, currentSimIndex, "INSIDE", poseAnchor);
+                        sampleIdle(currentDimIndex, currentSimIndex, idleVec);
+                        positions[0] = poseAnchor.x + idleVec.x;
+                        positions[1] = poseAnchor.y + idleVec.y;
+                        positions[2] = poseAnchor.z + idleVec.z;
+                    }
                     camera.near = 0.05;
                     camera.far = 450.0;
                 } else {
@@ -2593,10 +2671,11 @@
         postState.shockwave = 0.0;
         postState.shockwaveRadius = 0.0;
         diveBoost = 0.0;
+        // Inside idleFrame() in shared/gpu/gpu-thread.js:
         const activeFormIdle = formations[currentIndex];
-        if (isInside && !(activeFormIdle && activeFormIdle.kerrOverlay)) {
+        if (isInside && !(activeFormIdle && (activeFormIdle.kerrOverlay || activeFormIdle.preserveHeroPosition))) {
             // Inside: the hero rests near the sim anchor and eases through its idle sway
-            // (Except on Kerr Black Hole where hero particle 0 natively orbits the relativistic inner disc)
+            // (Except on Kerr Black Hole or EarthMoonContactFormation where hero particle 0 is natively bound)
             anchorWorld(dimIdx, currentSimIndex, "INSIDE", poseAnchor);
             sampleIdle(dimIdx, currentSimIndex, idleVec);
             positions[0] = poseAnchor.x + idleVec.x;
@@ -2629,6 +2708,38 @@
     const curveLutX = new Float32Array(LUT_STEPS + 1);
     const curveLutY = new Float32Array(LUT_STEPS + 1);
     const curveLutZ = new Float32Array(LUT_STEPS + 1);
+    const curveTanX = new Float32Array(LUT_STEPS + 1);
+    const curveTanY = new Float32Array(LUT_STEPS + 1);
+    const curveTanZ = new Float32Array(LUT_STEPS + 1);
+    const curveNormX = new Float32Array(LUT_STEPS + 1);
+    const curveNormY = new Float32Array(LUT_STEPS + 1);
+    const curveNormZ = new Float32Array(LUT_STEPS + 1);
+    const curveBinX = new Float32Array(LUT_STEPS + 1);
+    const curveBinY = new Float32Array(LUT_STEPS + 1);
+    const curveBinZ = new Float32Array(LUT_STEPS + 1);
+
+    const sampleWormholeFrame = () => {
+        for (let k = 0; k <= LUT_STEPS; k++) {
+            const s = k / LUT_STEPS;
+            evalFlightPath(s, tanTmpA);
+            evalFlightTangent(s, tanTmpB);
+            curveLutX[k] = tanTmpA.x; curveLutY[k] = tanTmpA.y; curveLutZ[k] = tanTmpA.z;
+            let tx = tanTmpB.x, ty = tanTmpB.y, tz = tanTmpB.z;
+            const tl = Math.hypot(tx, ty, tz) || 1.0;
+            tx /= tl; ty /= tl; tz /= tl;
+            curveTanX[k] = tx; curveTanY[k] = ty; curveTanZ[k] = tz;
+            // Orthonormal basis perpendicular to tangent
+            const ux = Math.abs(ty) < 0.92 ? 0.0 : 1.0;
+            const uy = Math.abs(ty) < 0.92 ? 1.0 : 0.0;
+            let nx = uy * tz, ny = -ux * tz, nz = ux * ty - uy * tx;
+            const nl = Math.hypot(nx, ny, nz) || 1.0;
+            nx /= nl; ny /= nl; nz /= nl;
+            curveNormX[k] = nx; curveNormY[k] = ny; curveNormZ[k] = nz;
+            curveBinX[k] = ty * nz - tz * ny;
+            curveBinY[k] = tz * nx - tx * nz;
+            curveBinZ[k] = tx * ny - ty * nx;
+        }
+    };
 
     const evalFlightPath = (s, out) => {
         if (trans.waypoints && trans.waypoints.length > 2) {
@@ -2724,29 +2835,50 @@
                 colours[2] = fromColours[2] + (nextColours[2] - fromColours[2]) * ease;
                 sizes[0] = Math.max(fromSizes[0], nextSizes[0]) * (1.0 + 0.6 * Math.sin(Math.PI * u));
 
-                const oFade = (0.15 + 0.85 * (1.0 - smootherstep(0.02, 0.28, u))) * (1.0 - smootherstep(0.30, 0.46, u));
+                sampleWormholeFrame();
+                const vEx = flightSpeed(u, 0.0);
+                const wormholeW = exploreMorph.simple ? 0.0 : (smoothstep(0.05, 0.22, u) * (1.0 - smoothstep(0.72, 0.94, u)));
+                const destReveal = smoothstep(0.58, 0.96, u);
                 for (let i = 1; i < N; i++) {
-                    const i3 = i * 3;
-                    if (u < 0.5) {
-                        positions[i3]     = fromPositions[i3];
-                        positions[i3 + 1] = fromPositions[i3 + 1];
-                        positions[i3 + 2] = fromPositions[i3 + 2];
-                        colours[i3]       = fromColours[i3] * oFade;
-                        colours[i3 + 1]   = fromColours[i3 + 1] * oFade;
-                        colours[i3 + 2]   = fromColours[i3 + 2] * oFade;
-                        sizes[i]          = fromSizes[i] * oFade;
-                    } else {
-                        const rk = particleRanks[i];
-                        const rs = 0.60 + 0.22 * rk;
-                        const wIn = smootherstep(rs, Math.min(1.0, rs + 0.18), u);
-                        positions[i3]     = nextPositions[i3];
-                        positions[i3 + 1] = nextPositions[i3 + 1];
-                        positions[i3 + 2] = nextPositions[i3 + 2];
-                        colours[i3]       = nextColours[i3] * wIn;
-                        colours[i3 + 1]   = nextColours[i3 + 1] * wIn;
-                        colours[i3 + 2]   = nextColours[i3 + 2] * wIn;
-                        sizes[i]          = nextSizes[i] * wIn;
+                    const i3 = i * 3, i4 = i * 4;
+                    const sP = ((seeds[i4] - simTime * (1.5 + 2.2 * vEx)) % 1.0 + 1.0) % 1.0;
+                    const kIdx = Math.min(LUT_STEPS, (sP * LUT_STEPS) | 0);
+                    const ds = sP - sH;
+                    const rThroat = 2.0 + 7.2 * ds * ds + 1.4 * seeds[i4 + 1];
+                    const ang = seeds[i4 + 2] * 6.2831853 + sP * 16.0 - simTime * (5.2 * vEx + 1.2);
+                    const csA = Math.cos(ang), snA = Math.sin(ang);
+                    const wx = curveLutX[kIdx] + (curveNormX[kIdx] * csA + curveBinX[kIdx] * snA) * rThroat;
+                    const wy = curveLutY[kIdx] + (curveNormY[kIdx] * csA + curveBinY[kIdx] * snA) * rThroat;
+                    const wz = curveLutZ[kIdx] + (curveNormZ[kIdx] * csA + curveBinZ[kIdx] * snA) * rThroat;
+
+                    const basePx = fromPositions[i3] + (nextPositions[i3] - fromPositions[i3]) * destReveal;
+                    const basePy = fromPositions[i3 + 1] + (nextPositions[i3 + 1] - fromPositions[i3 + 1]) * destReveal;
+                    const basePz = fromPositions[i3 + 2] + (nextPositions[i3 + 2] - fromPositions[i3 + 2]) * destReveal;
+
+                    positions[i3]     = basePx + (wx - basePx) * wormholeW;
+                    positions[i3 + 1] = basePy + (wy - basePy) * wormholeW;
+                    positions[i3 + 2] = basePz + (wz - basePz) * wormholeW;
+
+                    if (wormholeW > 0.04) {
+                        const streakLag = (0.42 + 1.65 * vEx) * wormholeW;
+                        prevPositions[i3]     = positions[i3] - curveTanX[kIdx] * streakLag;
+                        prevPositions[i3 + 1] = positions[i3 + 1] - curveTanY[kIdx] * streakLag;
+                        prevPositions[i3 + 2] = positions[i3 + 2] - curveTanZ[kIdx] * streakLag;
                     }
+
+                    const doppler = clamp(0.5 + ds * 1.8, 0.0, 1.0);
+                    const wColR = 1.15 * (1.0 - doppler) + 0.38 * doppler;
+                    const wColG = 0.45 * (1.0 - doppler) + 0.82 * doppler;
+                    const wColB = 0.85 * (1.0 - doppler) + 1.48 * doppler;
+
+                    const baseCr = fromColours[i3] * (1.0 - destReveal) + nextColours[i3] * destReveal;
+                    const baseCg = fromColours[i3 + 1] * (1.0 - destReveal) + nextColours[i3 + 1] * destReveal;
+                    const baseCb = fromColours[i3 + 2] * (1.0 - destReveal) + nextColours[i3 + 2] * destReveal;
+
+                    colours[i3]     = baseCr * (1.0 - wormholeW) + wColR * wormholeW;
+                    colours[i3 + 1] = baseCg * (1.0 - wormholeW) + wColG * wormholeW;
+                    colours[i3 + 2] = baseCb * (1.0 - wormholeW) + wColB * wormholeW;
+                    sizes[i]        = (fromSizes[i] * (1.0 - destReveal) + nextSizes[i] * destReveal) * (1.0 - 0.25 * wormholeW) + (1.45 * wormholeW);
                 }
             }
             const swirl = Math.sin(u * Math.PI) * 1.5;
@@ -2798,16 +2930,7 @@
                 postState.trailDecay = 0.88;
                 heroBoost = 1.0 + 3.0 * vX;
 
-                if (u >= 0.38 && u <= 0.72) {
-                    ringOpacity = smoothstep(0.38, 0.48, u) * (1.0 - smoothstep(0.64, 0.72, u));
-                    ringRadiusDraw = 3.6 + 1.2 * (1.0 - vX);
-                    ringNoiseDraw = 1.0 + 3.2 * vX;
-                    const sRing = flightParam(0.55);
-                    evalFlightPath(sRing, tmpThresholdPos);
-                    evalFlightTangent(sRing, tmpThresholdTan);
-                } else {
-                    ringOpacity = 0.0;
-                }
+                ringOpacity = 0.0;
 
                 if (u >= 0.52 && u <= 0.68) {
                     const shockProg = clamp((u - 0.54) / 0.12, 0.0, 1.0);
@@ -2920,6 +3043,7 @@
                     inside.value = intraHop.ins0 + (intraHop.insT - intraHop.ins0) * smoothstep(0.30, 0.70, intraHop.u);
                 }
                 active.insideness = inside.value;
+                ctxState.transActive = !!trans.active;
                 active.update(dt, simTime, sharedBuffer, ctxState);
                 formHero.set(positions[0], positions[1], positions[2]);
 
@@ -2939,25 +3063,37 @@
                         colours[0] = colours[0] * 0.35 + curProf.heroColour[0] * 0.65;
                         colours[1] = colours[1] * 0.35 + curProf.heroColour[1] * 0.65;
                         colours[2] = colours[2] * 0.35 + curProf.heroColour[2] * 0.65;
-                        sizes[0] = Math.max(sizes[0], curProf.heroSize * 0.78);
                     }
                 }
+                const heroPulse = 1.0 + 0.14 * Math.sin(simTime * 3.2);
+                const heroLum = Math.max(colours[0], colours[1], colours[2], 0.1);
+                if (heroLum < 1.65) {
+                    const boostH = 1.75 / heroLum;
+                    colours[0] *= boostH; colours[1] *= boostH; colours[2] *= boostH;
+                }
+                sizes[0] = Math.max(sizes[0], 5.8) * heroPulse;
                 innerTint(dimIdx, inside.tint);
 
-                // Smoothly converge post-processing parameters to active section profile (or formation override)
-                const targetBloomStr = (typeof active.bloomStrength === "number") ? active.bloomStrength : curProf.bloomStrength;
-                const targetBloomThr = (typeof active.bloomThreshold === "number") ? active.bloomThreshold : curProf.bloomThreshold;
+                // Smoothly converge post-processing parameters to shared LOOK (or documented active.lookOverride)
+                const ov = active.lookOverride || null;
+                const targetBloomStr = (ov && typeof ov.bloomStrength === "number") ? ov.bloomStrength : ((typeof active.bloomStrength === "number") ? active.bloomStrength : LOOK.bloomStrength);
+                const targetBloomThr = (ov && typeof ov.bloomThreshold === "number") ? ov.bloomThreshold : ((typeof active.bloomThreshold === "number") ? active.bloomThreshold : LOOK.bloomThreshold);
+                const targetTrailDec = (ov && typeof ov.trailDecay === "number") ? ov.trailDecay : ((typeof active.trailDecay === "number") ? active.trailDecay : LOOK.trailDecay);
+                const targetStreakSc = (ov && typeof ov.streakScale === "number") ? ov.streakScale : ((typeof active.streakScale === "number") ? active.streakScale : LOOK.streakScale);
+                const targetBgTone = (ov && ov.backgroundTone) || active.fogTint || LOOK.backgroundTone;
+                const targetCelestial = (ov && typeof ov.celestialBrightness === "number") ? ov.celestialBrightness : ((typeof active.celestialBrightness === "number") ? active.celestialBrightness : (LOOK.celestialBrightness || 0.18));
                 postState.bloomStrength += (targetBloomStr - postState.bloomStrength) * pLerp;
                 postState.bloomThreshold += (targetBloomThr - postState.bloomThreshold) * pLerp;
                 postState.bloomTint[0] += (curProf.bloomTint[0] - postState.bloomTint[0]) * pLerp;
                 postState.bloomTint[1] += (curProf.bloomTint[1] - postState.bloomTint[1]) * pLerp;
                 postState.bloomTint[2] += (curProf.bloomTint[2] - postState.bloomTint[2]) * pLerp;
-                postState.fogTint[0] += (curProf.fogColour[0] - postState.fogTint[0]) * pLerp;
-                postState.fogTint[1] += (curProf.fogColour[1] - postState.fogTint[1]) * pLerp;
-                postState.fogTint[2] += (curProf.fogColour[2] - postState.fogTint[2]) * pLerp;
+                postState.fogTint[0] += (targetBgTone[0] - postState.fogTint[0]) * pLerp;
+                postState.fogTint[1] += (targetBgTone[1] - postState.fogTint[1]) * pLerp;
+                postState.fogTint[2] += (targetBgTone[2] - postState.fogTint[2]) * pLerp;
                 postState.fogDensity += (curProf.fogDensity - postState.fogDensity) * pLerp;
-                postState.trailDecay += ((active.trailDecay || 0.68) - postState.trailDecay) * pLerp;
-                postState.streakScale += ((active.streakScale || 1.25) - postState.streakScale) * pLerp;
+                postState.trailDecay += (targetTrailDec - postState.trailDecay) * pLerp;
+                postState.streakScale += (targetStreakSc - postState.streakScale) * pLerp;
+                postState.celestialBrightness += (targetCelestial - postState.celestialBrightness) * pLerp;
 
                 if (typeof window !== "undefined" && window.SOUND && typeof window.SOUND.setDimensionAmbient === "function") {
                     window.SOUND.setDimensionAmbient(curProf.audio, curProf.audio, 1.0);
@@ -2993,6 +3129,10 @@
             if (typeof window !== "undefined" && window.SOUND && typeof window.SOUND.setDimensionAmbient === "function") {
                 window.SOUND.setDimensionAmbient(fromProf.audio, toProf.audio, dimBlend);
             }
+            if (typeof window !== "undefined" && window.SOUND && typeof window.SOUND.updateWormhole === "function") {
+                const liveSpeed = FLIGHT_V2 ? flightSpeed(u, trans.v0 || 0.0) : 1.0;
+                window.SOUND.updateWormhole(u, liveSpeed, 0.0);
+            }
 
             const fromForm = formations[trans.fromIndex];
             const toForm = formations[trans.toIndex];
@@ -3010,7 +3150,8 @@
                 const toSimReveal = smoothstep(0.72, 1.00, u);
                 if (typeof toForm.setIntensity === "function") toForm.setIntensity(Math.max(0.25, toSimReveal));
                 if (typeof toForm.setReveal === "function") toForm.setReveal(toSimReveal);
-                toForm.update(dt, simTime, nextScratchBuffer, ctxState);
+                ctxState.transActive = true;
+            toForm.update(dt, simTime, nextScratchBuffer, ctxState);
             }
 
             if (!trans.domScrolledToTarget && u >= 0.70) {
@@ -3059,16 +3200,13 @@
 
             const reduced = isReducedMotion();
 
-            // Non-hero particles (i = 1..N-1) never travel along the flight curve:
-            // - u < 0.22: origin simulation fades out in place as hero particle detaches
-            // - 0.22 <= u < 0.72: completely invisible (sizes[i] = 0) so ONLY the 1 hero particle is seen travelling
-            // - u >= 0.72: destination simulation blossoms radially around the arriving hero particle at its live coordinates
-            // V2: the origin simulation dims to a faint backdrop and recedes with the camera, then is released once far away
-            const originFade = FLIGHT_V2
-                ? (0.15 + 0.85 * (1.0 - smootherstep(0.02, 0.30, u))) * (1.0 - smootherstep(0.38, 0.49, u))
-                : 1.0 - smootherstep(0.02, 0.22, u);
+            const vS = FLIGHT_V2 ? flightSpeed(u, trans.v0 || 0.0) : 0.0;
+            sampleWormholeFrame();
+            const wormholeW = reduced ? 0.0 : (smoothstep(0.05, 0.24, u) * (1.0 - smoothstep(0.72, 0.94, u)));
+            const originHold = 1.0 - smootherstep(0.04, 0.36, u);
+
             for (let i = 1; i < N; i++) {
-                const i3 = i * 3;
+                const i3 = i * 3, i4 = i * 4;
 
                 if (reduced) {
                     const m = smootherstep(0.0, 1.0, u);
@@ -3082,56 +3220,64 @@
                     continue;
                 }
 
-                if (u < 0.50) {
-                    positions[i3]     = fromPositions[i3];
-                    positions[i3 + 1] = fromPositions[i3 + 1];
-                    positions[i3 + 2] = fromPositions[i3 + 2];
-                    colours[i3]       = fromColours[i3] * originFade;
-                    colours[i3 + 1]   = fromColours[i3 + 1] * originFade;
-                    colours[i3 + 2]   = fromColours[i3 + 2] * originFade;
-                    sizes[i]          = fromSizes[i] * originFade;
-                } else {
-                    // Pre-position at destination while invisible (u in [0.50, 0.72]) so prevPositions velocity is clean on reveal
-                    positions[i3]     = nextPositions[i3];
-                    positions[i3 + 1] = nextPositions[i3 + 1];
-                    positions[i3 + 2] = nextPositions[i3 + 2];
-                    if (u < 0.72) {
-                        colours[i3]     = 0.0;
-                        colours[i3 + 1] = 0.0;
-                        colours[i3 + 2] = 0.0;
-                        sizes[i]        = 0.0;
-                    } else {
-                        const rank = particleRanks[i];
-                        // V2: grows outward from the landing point (rank = distance from it) as the hero brakes in
-                        const revealStart = FLIGHT_V2 ? 0.76 + 0.12 * rank : 0.72 + 0.16 * rank;
-                        const revealEnd = Math.min(1.0, revealStart + (FLIGHT_V2 ? 0.16 : 0.12));
-                        const wIn = smootherstep(revealStart, revealEnd, u);
-                        colours[i3]     = nextColours[i3] * wIn;
-                        colours[i3 + 1] = nextColours[i3 + 1] * wIn;
-                        colours[i3 + 2] = nextColours[i3 + 2] * wIn;
-                        sizes[i]        = nextSizes[i] * wIn;
-                    }
+                // 3D Lorentzian Wormhole (Einstein-Rosen bridge) wrapping around the flight spline
+                const sP = ((seeds[i4] - simTime * (1.6 + 2.4 * vS)) % 1.0 + 1.0) % 1.0;
+                const kIdx = Math.min(LUT_STEPS, (sP * LUT_STEPS) | 0);
+                const ds = sP - sHero;
+                // Morris-Thorne hyperbolic throat profile: tightest near the hero particle, flaring at ends
+                const rThroat = 2.1 + 7.8 * ds * ds + 1.35 * seeds[i4 + 1];
+                const ang = seeds[i4 + 2] * 6.2831853 + sP * 18.0 - simTime * (5.8 * vS + 1.4);
+                const csA = Math.cos(ang), snA = Math.sin(ang);
+
+                const wx = curveLutX[kIdx] + (curveNormX[kIdx] * csA + curveBinX[kIdx] * snA) * rThroat;
+                const wy = curveLutY[kIdx] + (curveNormY[kIdx] * csA + curveBinY[kIdx] * snA) * rThroat;
+                const wz = curveLutZ[kIdx] + (curveNormZ[kIdx] * csA + curveBinZ[kIdx] * snA) * rThroat;
+
+                const rank = particleRanks[i];
+                const revealStart = 0.64 + 0.16 * rank;
+                const destW = smootherstep(revealStart, Math.min(1.0, revealStart + 0.20), u);
+
+                const basePx = fromPositions[i3] * originHold + nextPositions[i3] * (1.0 - originHold);
+                const basePy = fromPositions[i3 + 1] * originHold + nextPositions[i3 + 1] * (1.0 - originHold);
+                const basePz = fromPositions[i3 + 2] * originHold + nextPositions[i3 + 2] * (1.0 - originHold);
+
+                positions[i3]     = basePx * (1.0 - wormholeW) + wx * wormholeW;
+                positions[i3 + 1] = basePy * (1.0 - wormholeW) + wy * wormholeW;
+                positions[i3 + 2] = basePz * (1.0 - wormholeW) + wz * wormholeW;
+
+                if (u >= 0.64) {
+                    positions[i3]     = positions[i3] * (1.0 - destW) + nextPositions[i3] * destW;
+                    positions[i3 + 1] = positions[i3 + 1] * (1.0 - destW) + nextPositions[i3 + 1] * destW;
+                    positions[i3 + 2] = positions[i3 + 2] * (1.0 - destW) + nextPositions[i3 + 2] * destW;
                 }
+
+                if (wormholeW > 0.04) {
+                    const streakLag = (0.45 + 1.85 * vS) * wormholeW;
+                    prevPositions[i3]     = positions[i3] - curveTanX[kIdx] * streakLag;
+                    prevPositions[i3 + 1] = positions[i3 + 1] - curveTanY[kIdx] * streakLag;
+                    prevPositions[i3 + 2] = positions[i3 + 2] - curveTanZ[kIdx] * streakLag;
+                }
+
+                // Relativistic Doppler shift along the wormhole throat
+                const doppler = clamp(0.5 + ds * 1.9, 0.0, 1.0);
+                const wColR = (1.18 * (1.0 - doppler) + 0.36 * doppler) * (0.75 + 0.5 * vS);
+                const wColG = (0.44 * (1.0 - doppler) + 0.80 * doppler) * (0.75 + 0.5 * vS);
+                const wColB = (0.88 * (1.0 - doppler) + 1.52 * doppler) * (0.75 + 0.5 * vS);
+
+                const origCr = fromColours[i3] * originHold + nextColours[i3] * destW;
+                const origCg = fromColours[i3 + 1] * originHold + nextColours[i3 + 1] * destW;
+                const origCb = fromColours[i3 + 2] * originHold + nextColours[i3 + 2] * destW;
+
+                colours[i3]     = origCr * (1.0 - wormholeW) + wColR * wormholeW;
+                colours[i3 + 1] = origCg * (1.0 - wormholeW) + wColG * wormholeW;
+                colours[i3 + 2] = origCb * (1.0 - wormholeW) + wColB * wormholeW;
+
+                const origSz = fromSizes[i] * originHold + nextSizes[i] * destW;
+                sizes[i] = origSz * (1.0 - wormholeW) + (1.35 + 0.65 * seeds[i4 + 3]) * wormholeW;
             }
 
-            const vS = FLIGHT_V2 ? flightSpeed(u, trans.v0 || 0.0) : 0.0;
-
-            // Threshold rift ring appears ahead along flight path during cruise (u in [0.38, 0.72])
-            if (!reduced && u >= 0.38 && u <= 0.72) {
-                ringOpacity = smoothstep(0.38, 0.48, u) * (1.0 - smoothstep(0.64, 0.72, u));
-                ringRadiusDraw = 3.6 + 1.2 * (1.0 - vS); // Contracts under relativistic dilation
-                ringNoiseDraw = 1.0 + 3.2 * vS;
-
-                const sRing = FLIGHT_V2 ? flightParam(0.55) : 0.55;
-                evalFlightPath(sRing, tmpThresholdPos);
-                evalFlightTangent(sRing, tmpThresholdTan);
-
-                tmpRingColour[0] = fromProf.heroColour[0] * (1.0 - dimBlend) + toProf.heroColour[0] * dimBlend;
-                tmpRingColour[1] = fromProf.heroColour[1] * (1.0 - dimBlend) + toProf.heroColour[1] * dimBlend;
-                tmpRingColour[2] = fromProf.heroColour[2] * (1.0 - dimBlend) + toProf.heroColour[2] * dimBlend;
-            } else {
-                ringOpacity = 0.0;
-            }
+            // Never render flat 2D ring quad
+            ringOpacity = 0.0;
 
             // Dimensional breakthrough shockwave when bursting through the threshold (u in [0.52, 0.68])
             if (!reduced && u >= 0.52 && u <= 0.68) {
@@ -3234,6 +3380,10 @@
             const fD = (fromForm && fromForm.trailDecay) || 0.68;
             const tD = (toForm && toForm.trailDecay) || 0.68;
             postState.trailDecay = (fD + (tD - fD) * dimBlend) * 0.72;
+
+            const fC = (fromForm && fromForm.lookOverride && typeof fromForm.lookOverride.celestialBrightness === "number") ? fromForm.lookOverride.celestialBrightness : ((fromForm && typeof fromForm.celestialBrightness === "number") ? fromForm.celestialBrightness : ((LOOK && LOOK.celestialBrightness) || 0.18));
+            const tC = (toForm && toForm.lookOverride && typeof toForm.lookOverride.celestialBrightness === "number") ? toForm.lookOverride.celestialBrightness : ((toForm && typeof toForm.celestialBrightness === "number") ? toForm.celestialBrightness : ((LOOK && LOOK.celestialBrightness) || 0.18));
+            postState.celestialBrightness = fC + (tC - fC) * dimBlend;
 
             const isToKerr = !!(toForm && toForm.kerrOverlay);
             trans.auxOpacity = isToKerr ? smoothstep(0.58, 0.94, u) : smoothstep(0.86, 1.00, u);
@@ -3388,6 +3538,14 @@
         gl.uniform1f(pointUniforms.uInside, inside.value);
         gl.uniform1f(pointUniforms.uHeroScale, inside.heroScale);
         gl.uniform1f(pointUniforms.uWorldGrow, inside.worldGrow);
+        gl.uniform1f(pointUniforms.uTwinkle, (activeRenderForm && activeRenderForm.disableTwinkle) ? 0.0 : 1.0);
+        {
+            // Pixel-art sections (formation.pixelArt): eased 0..1 blend for the composite, hard switch at 0.5 for the point shader
+            const pxTarget = (!isLight && activeRenderForm && activeRenderForm.pixelArt) ? 1.0 : 0.0;
+            const pxCur = ctxState.pixelMix || 0.0;
+            ctxState.pixelMix = Math.abs(pxTarget - pxCur) < 0.004 ? pxTarget : pxCur + (pxTarget - pxCur) * 0.14;
+            gl.uniform1f(pointUniforms.uPixelArt, ctxState.pixelMix > 0.5 ? 1.0 : 0.0);
+        }
 
         gl.bindVertexArray(sharedVAO);
 
@@ -3443,7 +3601,8 @@
             gl.uniform1f(starUniforms.uTilt, currentTilt);
             gl.uniform1f(starUniforms.uTime, simTime);
             gl.uniform1f(starUniforms.uIsLight, isLight ? 1.0 : 0.0);
-            gl.uniform1f(starUniforms.uBrightness, inside.starBright);
+            // Per-section celestial starfield depth cues (modulated smoothly through postState.celestialBrightness)
+            gl.uniform1f(starUniforms.uBrightness, inside.starBright * (postState.celestialBrightness !== undefined ? postState.celestialBrightness : 0.18));
             drawQuad();
 
             gl.enable(gl.BLEND);
@@ -3646,13 +3805,14 @@
         gl.uniform3f(compositeUniforms.uInnerTint, inside.tint[0], inside.tint[1], inside.tint[2]);
         gl.uniform1f(compositeUniforms.uVignette, 0.36 + 0.26 * inside.value);
         gl.uniform1f(compositeUniforms.uGrain, 0.020);
-        gl.uniform1f(compositeUniforms.uCaStrength, isReducedMotion() ? 0.0 : (0.002 + 0.018 * liveVs + postState.caExtra));
+        gl.uniform1f(compositeUniforms.uCaStrength, isReducedMotion() ? 0.0 : (0.002 + 0.018 * liveVs + postState.caExtra + 0.0048 * heroWeight()));
         gl.uniform1f(compositeUniforms.uShockwave, isReducedMotion() ? 0.0 : postState.shockwave);
         gl.uniform1f(compositeUniforms.uShockwaveRadius, postState.shockwaveRadius);
         gl.uniform1f(compositeUniforms.uWarpStrength, isReducedMotion() ? 0.0 : trans.warpStrength);
         gl.uniform2f(compositeUniforms.uWarpCentre, heroScreenX, heroScreenY);
         gl.uniform3f(compositeUniforms.uFogTint, postState.fogTint[0], postState.fogTint[1], postState.fogTint[2]);
         gl.uniform1f(compositeUniforms.uIsLight, isLight ? 1.0 : 0.0);
+        gl.uniform1f(compositeUniforms.uPixelArt, ctxState.pixelMix || 0.0);
         gl.uniform1i(compositeUniforms.uDebugMode, debugMode);
 
         drawQuad();

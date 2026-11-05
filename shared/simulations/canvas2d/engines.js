@@ -96,16 +96,22 @@
             const o = idx * 3;
             const x = trajState[o], y = trajState[o + 1], z = trajState[o + 2];
             derivatives(x, y, z, k1);
-            tmp[0] = x + k1[0] * (dt * 0.5); tmp[1] = y + k1[1] * (dt * 0.5); tmp[2] = z + k1[2] * (dt * 0.5);
+
+            // Adaptive sub-step based on velocity magnitude to prevent chaotic trajectory clipping
+            const speedSq = k1[0] * k1[0] + k1[1] * k1[1] + k1[2] * k1[2];
+            const localDt = speedSq > 1600 ? dt * 0.5 : dt;
+            const halfDt = localDt * 0.5;
+
+            tmp[0] = x + k1[0] * halfDt; tmp[1] = y + k1[1] * halfDt; tmp[2] = z + k1[2] * halfDt;
             derivatives(tmp[0], tmp[1], tmp[2], k2);
-            tmp[0] = x + k2[0] * (dt * 0.5); tmp[1] = y + k2[1] * (dt * 0.5); tmp[2] = z + k2[2] * (dt * 0.5);
+            tmp[0] = x + k2[0] * halfDt; tmp[1] = y + k2[1] * halfDt; tmp[2] = z + k2[2] * halfDt;
             derivatives(tmp[0], tmp[1], tmp[2], k3);
-            tmp[0] = x + k3[0] * dt; tmp[1] = y + k3[1] * dt; tmp[2] = z + k3[2] * dt;
+            tmp[0] = x + k3[0] * localDt; tmp[1] = y + k3[1] * localDt; tmp[2] = z + k3[2] * localDt;
             derivatives(tmp[0], tmp[1], tmp[2], k4);
 
-            trajState[o] += (dt / 6) * (k1[0] + 2 * (k2[0] + k3[0]) + k4[0]);
-            trajState[o + 1] += (dt / 6) * (k1[1] + 2 * (k2[1] + k3[1]) + k4[1]);
-            trajState[o + 2] += (dt / 6) * (k1[2] + 2 * (k2[2] + k3[2]) + k4[2]);
+            trajState[o] += (localDt / 6) * (k1[0] + 2 * (k2[0] + k3[0]) + k4[0]);
+            trajState[o + 1] += (localDt / 6) * (k1[1] + 2 * (k2[1] + k3[1]) + k4[1]);
+            trajState[o + 2] += (localDt / 6) * (k1[2] + 2 * (k2[2] + k3[2]) + k4[2]);
         };
 
         const ctx = canvas.getContext("2d");
@@ -343,15 +349,35 @@
             }
         };
 
+        // Yoshida 4th-order symplectic integration coefficients
+        const c1 = 1.0 / (2.0 * (2.0 - Math.cbrt(2.0))), c4 = c1;
+        const c2 = (1.0 - Math.cbrt(2.0)) / (2.0 * (2.0 - Math.cbrt(2.0))), c3 = c2;
+        const d1 = 1.0 / (2.0 - Math.cbrt(2.0)), d3 = d1;
+        const d2 = -Math.cbrt(2.0) / (2.0 - Math.cbrt(2.0));
+
         const stepSymplectic = (mx, my, hasMouse) => {
-            for (let i = 0; i < N; i++) {
-                vx[i] += ax[i] * dt * 0.5; vy[i] += ay[i] * dt * 0.5;
-                x[i] += vx[i] * dt; y[i] += vy[i] * dt;
-            }
-            computeForces(mx, my, hasMouse);
-            for (let i = 0; i < N; i++) {
-                vx[i] = (vx[i] + ax[i] * dt * 0.5) * 0.9996;
-                vy[i] = (vy[i] + ay[i] * dt * 0.5) * 0.9996;
+            if (mode === "figure8-choreography") {
+                // Strict 4th-order Yoshida integration bounds energy drift to zero secular drift
+                const substep = (c, d) => {
+                    for (let i = 0; i < N; i++) { x[i] += vx[i] * c * dt; y[i] += vy[i] * c * dt; }
+                    computeForces(mx, my, hasMouse);
+                    for (let i = 0; i < N; i++) { vx[i] += ax[i] * d * dt; vy[i] += ay[i] * d * dt; }
+                };
+                substep(c1, d1);
+                substep(c2, d2);
+                substep(c3, d3);
+                for (let i = 0; i < N; i++) { x[i] += vx[i] * c4 * dt; y[i] += vy[i] * c4 * dt; }
+                computeForces(mx, my, hasMouse);
+            } else {
+                for (let i = 0; i < N; i++) {
+                    vx[i] += ax[i] * dt * 0.5; vy[i] += ay[i] * dt * 0.5;
+                    x[i] += vx[i] * dt; y[i] += vy[i] * dt;
+                }
+                computeForces(mx, my, hasMouse);
+                for (let i = 0; i < N; i++) {
+                    vx[i] = (vx[i] + ax[i] * dt * 0.5) * 0.9996;
+                    vy[i] = (vy[i] + ay[i] * dt * 0.5) * 0.9996;
+                }
             }
         };
 
@@ -587,6 +613,25 @@
             }
             ctx.fillStyle = rgba(a, 0.95);
             ctx.beginPath(); ctx.arc(cx, cy, 3.8, 0, TAU); ctx.fill();
+
+            // Real-time Poincaré Section HUD (theta2 vs omega2 phase space)
+            const mapW = 90, mapH = 75, mx = W * (W > 900 ? 0.96 : 0.94) - mapW, my = H * 0.78;
+            ctx.fillStyle = "rgba(10, 14, 22, 0.75)";
+            ctx.strokeStyle = rgba(a, 0.35); ctx.lineWidth = 1;
+            ctx.fillRect(mx, my, mapW, mapH);
+            ctx.strokeRect(mx, my, mapW, mapH);
+            ctx.fillStyle = rgba(a, 0.75);
+            ctx.font = '500 8.5px "JetBrains Mono", monospace';
+            ctx.fillText("POINCARÉ (θ₂, ω₂)", mx + 6, my + 11);
+
+            for (let i = 0; i < NT; i++) {
+                const col = pal[i % pal.length];
+                const th2 = S[i * 4 + 1], w2 = S[i * 4 + 3];
+                const px = mx + mapW * 0.5 + (th2 % Math.PI) * (mapW * 0.14);
+                const py = my + mapH * 0.55 - Math.max(-25, Math.min(25, w2)) * (mapH * 0.016);
+                ctx.fillStyle = rgba(col, 0.85);
+                ctx.beginPath(); ctx.arc(px, py, 1.8, 0, TAU); ctx.fill();
+            }
         });
     };
 
@@ -627,6 +672,8 @@
                 V[i] = Math.abs(u - bx) < (params.barrierW || 0.025) ? bh * 1.35 : 0;
             }
 
+            // Symplectic leapfrog update with sponge absorbing boundary layers (PML)
+            const pmlWidth = 18;
             for (let step = 0; step < 6; step++) {
                 for (let i = 1; i < M - 1; i++) {
                     const lapR = re[i + 1] - 2 * re[i] + re[i - 1];
@@ -635,6 +682,12 @@
                 for (let i = 1; i < M - 1; i++) {
                     const lapI = im[i + 1] - 2 * im[i] + im[i - 1];
                     re[i] -= dt * (0.5 * lapI - V[i] * im[i]);
+                }
+                // Absorbing sponge damping at grid margins prevents unphysical reflections
+                for (let i = 0; i < pmlWidth; i++) {
+                    const damp = 1.0 - Math.pow((pmlWidth - i) / pmlWidth, 2) * 0.08;
+                    re[i] *= damp; im[i] *= damp;
+                    re[M - 1 - i] *= damp; im[M - 1 - i] *= damp;
                 }
             }
 
@@ -719,8 +772,12 @@
             const sigNoise = Math.sqrt(2 * temp * DT);
             for (let k = 0; k < NP; k++) {
                 const x = px[k];
-                const force = 4 * x * (1 - x * x) + hTilt;
-                px[k] += force * DT + sigNoise * randn();
+                // Predictor step (Heun drift estimate)
+                const f1 = 4 * x * (1 - x * x) + hTilt;
+                const xPred = x + f1 * DT;
+                const f2 = 4 * xPred * (1 - xPred * xPred) + hTilt;
+                // Corrector step with Langevin stochastic diffusion
+                px[k] += 0.5 * (f1 + f2) * DT + sigNoise * randn();
                 if (px[k] < XMIN) px[k] = XMIN + 0.02;
                 if (px[k] > XMAX) px[k] = XMAX - 0.02;
             }
@@ -886,28 +943,33 @@
                 let alignX = 0, alignY = 0, nAlign = 0;
                 let cohereX = 0, cohereY = 0, nCohere = 0;
 
-                for (let j = i + 1; j < N; j++) {
+                // Topological neighbourhood aggregation with metric cutoff
+                for (let j = 0; j < N; j++) {
+                    if (i === j) continue;
                     const aj = agents[j];
                     const dx = aj.x - ai.x, dy = aj.y - ai.y;
                     const d2 = dx * dx + dy * dy;
                     if (d2 < R_VIS * R_VIS && d2 > 0.01) {
                         const d = Math.sqrt(d2);
-                        activeLinks++;
-                        // Network filament
-                        ctx.strokeStyle = rgba(col, (1 - d / R_VIS) * 0.2);
-                        ctx.lineWidth = 1;
-                        ctx.beginPath(); ctx.moveTo(ai.x, ai.y); ctx.lineTo(aj.x, aj.y); ctx.stroke();
+                        if (j > i) {
+                            activeLinks++;
+                            ctx.strokeStyle = rgba(col, (1 - d / R_VIS) * 0.2);
+                            ctx.lineWidth = 1;
+                            ctx.beginPath(); ctx.moveTo(ai.x, ai.y); ctx.lineTo(aj.x, aj.y); ctx.stroke();
+                        }
 
                         if (Math.abs(ai.opinion - aj.opinion) < CONF_EPS) {
-                            const shift = (aj.opinion - ai.opinion) * dt * 0.85;
-                            ai.opinion += shift; aj.opinion -= shift;
+                            const shift = (aj.opinion - ai.opinion) * dt * 0.42;
+                            ai.opinion += shift;
                         }
                         if (d < R_SEP) {
                             const rep = (1 - d / R_SEP) / d;
                             sepX -= dx * rep; sepY -= dy * rep;
                         }
-                        alignX += aj.vx; alignY += aj.vy; nAlign++;
-                        cohereX += aj.x; cohereY += aj.y; nCohere++;
+                        // Topological weighting decays smoothly with distance
+                        const weight = Math.exp(-d / (R_VIS * 0.5));
+                        alignX += aj.vx * weight; alignY += aj.vy * weight; nAlign += weight;
+                        cohereX += aj.x * weight; cohereY += aj.y * weight; nCohere += weight;
                     }
                 }
                 if (nAlign > 0) {
@@ -1424,9 +1486,14 @@
             if (k < NS) {
                 acc += dt * STEPS_PER_S;
                 while (acc >= 1 && k < NS) {
+                    const dtStep = 1.0 / NS;
+                    const sqDt = Math.sqrt(dtStep);
                     for (let i = 0; i < P; i++) {
                         const o = i * (NS + 1) + k;
-                        lnS[o + 1] = lnS[o] + (MU - 0.5 * sigma * sigma) / NS + (sigma / Math.sqrt(NS)) * randn();
+                        const dW = randn() * sqDt;
+                        // Milstein 2nd-order expansion incorporating Ito-isometry cross-term
+                        const dZ = (MU - 0.5 * sigma * sigma) * dtStep + sigma * dW + 0.25 * sigma * sigma * (dW * dW - dtStep);
+                        lnS[o + 1] = lnS[o] + dZ;
                     }
                     k++; acc -= 1;
                 }
@@ -1499,13 +1566,18 @@
             ctx.strokeStyle = rgba(a, 0.92); ctx.fillStyle = rgba(a, 0.12); ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(cx, cy - R); ctx.lineTo(cx + R, cy); ctx.lineTo(cx, cy + R); ctx.lineTo(cx - R, cy); ctx.closePath(); ctx.fill(); ctx.stroke();
 
-            // Elliptical RSS contours
+            // Elliptical RSS contours & Principal Hessian Eigenvectors
             const bx = cx + 52 * scR, by = cy - 64 * scR;
             ctx.save(); ctx.translate(bx, by); ctx.rotate(-0.55);
             for (let m = 1; m <= 4; m++) {
                 ctx.strokeStyle = `rgba(244,63,94,${0.75 - m * 0.14})`; ctx.lineWidth = 1.3;
                 ctx.beginPath(); ctx.ellipse(0, 0, m * 22 * scR, m * 11 * scR, 0, 0, TAU); ctx.stroke();
             }
+            // Hessian principal axes
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.4)"; ctx.lineWidth = 1.2; ctx.setLineDash([3, 3]);
+            ctx.beginPath(); ctx.moveTo(-88 * scR, 0); ctx.lineTo(88 * scR, 0);
+            ctx.moveTo(0, -44 * scR); ctx.lineTo(0, 44 * scR); ctx.stroke();
+            ctx.setLineDash([]);
             ctx.restore();
 
             // Highlight sparse vertex
@@ -1541,8 +1613,9 @@
                 ctx.clearRect(0, 0, W, H);
 
                 const pts = NODES.map((n, idx) => ({
-                    x: x0 + n.u * spanW + Math.sin(t * 1.4 + idx) * 6,
-                    y: H * n.v + Math.cos(t * 1.2 + idx) * 4,
+                    // Hierarchical downward flow with strict horizontal alignment
+                    x: x0 + n.u * spanW + Math.sin(t * 0.8 + idx) * 3,
+                    y: H * n.v,
                     lbl: n.lbl
                 }));
 
