@@ -304,17 +304,29 @@
         }
     }
 
+    /* ---------- Shared Visual Consistency Standards (Laniakea Gold Standard) ---------- */
+    const LOOK = Object.freeze({
+        bloomStrength: 1.05,
+        bloomThreshold: 1.0,
+        trailDecay: 0.84,
+        streakScale: 3.0,
+        particleSizeRange: [0.85, 2.25],
+        brightnessBudget: [0.17, 0.53],
+        backgroundTone: [0.006, 0.012, 0.03],
+        celestialBrightness: 0.18
+    });
+
     /* ---------- Formation Base Interface ---------- */
     class Formation {
         constructor(origin = new Vector3(0, 0, 0), id = "formation") {
             this.origin = origin instanceof Vector3 ? origin : new Vector3(origin.x || 0, origin.y || 0, origin.z || 0);
             this.id = id;
             this.initialized = false;
-            this.bloomStrength = 0.78;
-            this.bloomThreshold = 0.80;
-            this.trailDecay = 0.68;
-            this.streakScale = 1.25;
-            this.fogTint = [0.025, 0.045, 0.11];
+            this.bloomStrength = LOOK.bloomStrength;
+            this.bloomThreshold = LOOK.bloomThreshold;
+            this.trailDecay = LOOK.trailDecay;
+            this.streakScale = LOOK.streakScale;
+            this.fogTint = LOOK.backgroundTone.slice();
             this.intensity = 1.0;
             this.reveal = 1.0;
         }
@@ -681,6 +693,7 @@
         evalWaypointSpline,
         curlNoise3D,
         mortonCode3D,
-        computeSpatialMatching
+        computeSpatialMatching,
+        LOOK
     };
 }));

@@ -1122,7 +1122,7 @@
     /* FLIGHT_V2 helpers end */
 
     // Smoothed per-section post parameters (initialised from clean LOOK defaults)
-    const LOOK = (TM && TM.LOOK) || { bloomStrength: 0.65, bloomThreshold: 0.95, trailDecay: 0.55, streakScale: 1.0, particleSizeRange: [0.85, 2.25], brightnessBudget: [0.17, 0.53], backgroundTone: [0.006, 0.012, 0.03], celestialBrightness: 0.18 };
+    const LOOK = (TM && TM.LOOK) || { bloomStrength: 1.05, bloomThreshold: 1.0, trailDecay: 0.84, streakScale: 3.0, particleSizeRange: [0.85, 2.25], brightnessBudget: [0.17, 0.53], backgroundTone: [0.006, 0.012, 0.03], celestialBrightness: 0.18 };
     const postState = {
         bloomStrength: LOOK.bloomStrength,
         bloomThreshold: LOOK.bloomThreshold,

@@ -2559,12 +2559,19 @@ const initNavSim = (c) => {
                     }
                     ctx.restore();
                 }
-                if (M.lens) {
-                    const lx = M.lens.x - ox, ly = M.lens.y - oy, r = M.lens.r;
-                    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = `rgba(190,215,255,${((0.10 + 0.30 * M.lens.k) * laniakeaAlpha).toFixed(3)})`; ctx.lineWidth = 1;
-                    ctx.beginPath(); ctx.arc(lx, ly, r, 0, TAU); ctx.stroke(); ctx.setLineDash([2, 5]); ctx.beginPath(); ctx.arc(lx, ly, r * 1.55, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
-                    ctx.restore();
-                }
+            }
+
+            // Shared cursor-lens overlay ring (solid 54px + dashed 1.55x ring, visible across all sections)
+            const C = (typeof window !== "undefined") && (window.__CURSOR__ || (M && M.cursor));
+            if (C && C.active) {
+                const lx = C.x - ox, ly = C.y - oy, r = 54;
+                const str = typeof C.strength === "number" ? C.strength : (C.down ? 1.0 : 0.38);
+                ctx.save(); ctx.globalCompositeOperation = "lighter";
+                ctx.strokeStyle = `rgba(190,215,255,${(0.10 + 0.30 * str).toFixed(3)})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.arc(lx, ly, r, 0, TAU); ctx.stroke();
+                ctx.setLineDash([2, 5]); ctx.beginPath(); ctx.arc(lx, ly, r * 1.55, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+                ctx.restore();
             }
 
             // ---- PERSISTENT "YOU ARE HERE" RETICLE & CALLOUT ACROSS ALL SECTIONS (0..6)
@@ -2663,8 +2670,8 @@ const initNavSim = (c) => {
         fit();
 
         const handle = (window.__LANIAKEA_MAP__ = window.__LANIAKEA_MAP__ || { ready: false, yaw: 0, pitch: 0, unitPx: 600, portrait: false });
-        handle.mode = 0; handle.cursor = handle.cursor || { x: 0, y: 0, down: false, active: false };
-        const cur = handle.cursor;
+        const cur = (window.__CURSOR__ = window.__CURSOR__ || { x: 0, y: 0, down: false, active: false, strength: 0.38 });
+        handle.mode = 0; handle.cursor = cur;
         const onMove = (e) => {
             cur.x = e.clientX; cur.y = e.clientY;
             const k = e.target && e.target.closest ? e.target.closest(".katex") : null;
@@ -2674,10 +2681,11 @@ const initNavSim = (c) => {
                 mode = e.clientX < ix ? 2 : 1;
             }
             handle.mode = mode;
-            const S = window.THREAD_STAGE;
-            cur.active = !k && e.pointerType !== "touch" && (!S || S.currentIndex === 0);
+            cur.active = !k && e.pointerType !== "touch";
         };
-        const onDown = () => { cur.down = true; }, onUp = () => { cur.down = false; }, onLeave = () => { cur.active = false; cur.down = false; handle.mode = 0; };
+        const onDown = (e) => { if (e.pointerType !== "touch") cur.down = true; };
+        const onUp = () => { cur.down = false; };
+        const onLeave = () => { cur.active = false; cur.down = false; handle.mode = 0; };
         window.addEventListener("pointermove", onMove, { passive: true }); window.addEventListener("pointerdown", onDown, { passive: true });
         window.addEventListener("pointerup", onUp, { passive: true }); document.documentElement.addEventListener("pointerleave", onLeave);
         window.addEventListener("resize", fit, { passive: true });
@@ -2710,6 +2718,8 @@ const initNavSim = (c) => {
         const loop = (now) => {
             raf = requestAnimationFrame(loop);
             if (document.hidden) return;
+            const targetStr = cur.down ? 1.0 : 0.38;
+            cur.strength = cur.strength !== undefined ? cur.strength + (targetStr - cur.strength) * 0.12 : targetStr;
             const S = window.THREAD_STAGE, T = S && S.trans;
             const hs = S && S.supported ? S.heroScreen : null;
             const activeIdx = (T && T.active) ? (T.u > 0.5 ? T.toIndex : T.fromIndex) : ((S && S.currentIndex) || 0);
