@@ -893,14 +893,14 @@ void main() {
         return;
     }
 
-    // Pixel-art path: exact texel fetch, flat navy background, no bloom / tone-map / grain / scanlines
+    // Pixel-art path: exact texel fetch, pitch black background, no bloom / tone-map / grain / scanlines
     vec3 pixOut = vec3(0.0);
     if (uPixelArt > 0.001) {
         ivec2 tsz = textureSize(uSceneTex, 0);
         ivec2 tc = clamp(ivec2(vUV * vec2(tsz)), ivec2(0), tsz - ivec2(1));
         vec3 ps = texelFetch(uSceneTex, tc, 0).rgb;
         float cov = step(0.08, max(ps.r, max(ps.g, ps.b)));
-        pixOut = mix(vec3(34.0, 32.0, 53.0) / 255.0, clamp(ps, 0.0, 1.0), cov);
+        pixOut = mix(vec3(0.0, 0.0, 0.0), clamp(ps, 0.0, 1.0), cov);
         if (uPixelArt > 0.999) { fragColor = vec4(pixOut, 1.0); return; }
     }
 

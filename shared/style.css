@@ -2036,3 +2036,75 @@ html[data-life-mode="simple"] .academic-masthead-actions {
         animation: none;
     }
 }
+
+/* =====================================================================
+   Enhancement layer (appended): typography, perf, accessibility, polish
+   ===================================================================== */
+html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none; /* no rubber-banding over the fixed WebGL stage */
+}
+h1, h2, h3, h4 { text-wrap: balance; }
+p, li { text-wrap: pretty; }
+
+/* Tactile press feedback on primary controls (transform only: compositor-cheap) */
+.pill:active,
+.snap-cta-btn:active,
+.copy-btn:active {
+    transform: translate3d(0, 1px, 0) scale(0.985);
+    transition-duration: 0.08s;
+}
+
+/* Blur is the costliest paint on the page: halve it on touch / small screens */
+@media (max-width: 860px), (hover: none) {
+    .glass,
+    .snap-overview-card,
+    .paper-abstract-card,
+    .paper-eq-card,
+    .contact-card,
+    .course-card,
+    .math-block {
+        -webkit-backdrop-filter: blur(8px) saturate(120%);
+        backdrop-filter: blur(8px) saturate(120%);
+    }
+}
+
+/* Browsers without backdrop-filter get an opaque surface so text stays legible */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass,
+    .snap-overview-card,
+    .paper-abstract-card,
+    .paper-eq-card,
+    .contact-card,
+    .course-card,
+    .math-block { background: var(--glass-solid); }
+}
+
+/* Respect OS-level transparency / contrast preferences */
+@media (prefers-reduced-transparency: reduce) {
+    .glass,
+    .snap-overview-card,
+    .paper-abstract-card,
+    .paper-eq-card,
+    .contact-card,
+    .course-card,
+    .math-block {
+        background: var(--glass-solid);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+@media (prefers-contrast: more) {
+    :root { --fg-muted: var(--fg); --fg-faint: var(--fg); --glass-line: rgba(255, 255, 255, 0.4); }
+    a:focus-visible,
+    button:focus-visible { outline-width: 3px; }
+}
+@media (forced-colors: active) {
+    a:focus-visible,
+    button:focus-visible,
+    [tabindex]:focus-visible { outline: 2px solid Highlight; box-shadow: none; }
+}

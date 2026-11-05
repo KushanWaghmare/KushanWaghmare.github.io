@@ -2580,7 +2580,7 @@
                 trailDecay: 0.001,         // no motion trails: crisp pixels
                 streakScale: 0.001,
                 celestialBrightness: 0.0,  // the pixel art draws its own stars
-                backgroundTone: [34 / 255, 32 / 255, 53 / 255]
+                backgroundTone: [0.0, 0.0, 0.0]
             };
             this.bloomStrength = this.lookOverride.bloomStrength;
             this.bloomThreshold = this.lookOverride.bloomThreshold;

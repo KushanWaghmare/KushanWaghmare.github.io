@@ -38,11 +38,19 @@
         computeSpatialMatching
     } = TM;
 
-    const isMobileDevice = () =>
-        window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "");
+    // UA never changes at runtime: test once, not on every call (called per frame).
+    const UA_IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "");
+    const isMobileDevice = () => window.innerWidth <= 768 || UA_IS_MOBILE;
 
-    const isReducedMotion = () =>
-        window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Cached media query: previously matchMedia() was re-evaluated at ~14 call sites, several per frame.
+    const reducedMotionMQ = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+    let reducedMotionNow = !!(reducedMotionMQ && reducedMotionMQ.matches);
+    if (reducedMotionMQ) {
+        const onRM = (e) => { reducedMotionNow = e.matches; };
+        if (reducedMotionMQ.addEventListener) reducedMotionMQ.addEventListener("change", onRM);
+        else if (reducedMotionMQ.addListener) reducedMotionMQ.addListener(onRM);
+    }
+    const isReducedMotion = () => reducedMotionNow;
 
     const INITIAL_N = isMobileDevice() ? 30000 : 90000;
     const MIN_ADAPTIVE_N = isMobileDevice() ? 15000 : 36000;
@@ -186,7 +194,12 @@
         camera.aspect = width / height;
     };
     resizeStage();
-    window.addEventListener("resize", resizeStage, { passive: true });
+    let resizeQueued = false;
+    window.addEventListener("resize", () => {
+        if (resizeQueued) return;
+        resizeQueued = true;
+        requestAnimationFrame(() => { resizeQueued = false; resizeStage(); });
+    }, { passive: true });
 
     /* ---------- Shader Compilation, VAO/VBOs & HDR Render Targets ---------- */
     const compileShader = (type, src) => {
@@ -621,6 +634,7 @@
 
     window.addEventListener("pointerup", () => { isPointerDragging = false; });
     window.addEventListener("pointercancel", () => { isPointerDragging = false; });
+    window.addEventListener("blur", () => { isPointerDragging = false; });
 
     let isNavigatingExplore = false;
     let handoff = null;
@@ -2766,10 +2780,12 @@
         gl.bindVertexArray(null);
     };
 
+    let framesSinceStart = 0;
     const tick = (now) => {
         requestAnimationFrame(tick);
         if (contextLost || document.hidden) {
             lastTime = now;
+            framesSinceStart = Math.min(framesSinceStart, 60); // re-warm after returning to tab
             return;
         }
 
@@ -2783,7 +2799,9 @@
         fps = fps * 0.92 + instFps * 0.08;
 
         // Adaptive particle count & post quality if frame time > 20 ms sustained (never reallocates buffer)
-        if (rawDt > 0.0205) {
+        // Warm-up: shader compile, texture upload and tab-return hitches must not permanently cut particle count.
+        framesSinceStart++;
+        if (rawDt > 0.0205 && framesSinceStart > 120 && rawDt < 0.25) {
             slowFrames++;
             if (slowFrames > 30) {
                 if (sharedBuffer.count > MIN_ADAPTIVE_N) {
@@ -2837,6 +2855,7 @@
 
                 sampleWormholeFrame();
                 const vEx = flightSpeed(u, 0.0);
+                trans.vS = vEx;
                 const wormholeW = exploreMorph.simple ? 0.0 : (smoothstep(0.05, 0.22, u) * (1.0 - smoothstep(0.72, 0.94, u)));
                 const destReveal = smoothstep(0.58, 0.96, u);
                 for (let i = 1; i < N; i++) {
@@ -3201,6 +3220,7 @@
             const reduced = isReducedMotion();
 
             const vS = FLIGHT_V2 ? flightSpeed(u, trans.v0 || 0.0) : 0.0;
+            trans.vS = vS;
             sampleWormholeFrame();
             const wormholeW = reduced ? 0.0 : (smoothstep(0.05, 0.24, u) * (1.0 - smoothstep(0.72, 0.94, u)));
             const originHold = 1.0 - smootherstep(0.04, 0.36, u);

@@ -2432,13 +2432,13 @@ const initNavSim = (c) => {
         };
 
         const SECTION_HERO_META = [
-            { sub: "LOCAL GROUP · MILKY WAY", locus: "● HERO PARTICLE LAUNCH POINT" },
-            { sub: "CALABI–YAU QUINTIC MANIFOLD", locus: "● BRANCH SEAM SINGULARITY" },
-            { sub: "KERR BLACK HOLE (a/M = 0.95)", locus: "● RELATIVISTIC ISCO ORBIT" },
-            { sub: "REVERSE-TIME DIFFUSION SDE", locus: "● ZERO-ENTROPY SCORE ATTRACTOR" },
-            { sub: "ROUGH BERGOMI VOLATILITY SURFACE", locus: "● STOCHASTIC LOCAL VOLATILITY APEX" },
-            { sub: "8-QUBIT HILBERT REGISTER", locus: "● GROVER / SHOR ORACLE PEAK" },
-            { sub: "CHENCINER–MONTGOMERY CHOREOGRAPHY", locus: "● THREE-BODY PRIMARY LOCUS" }
+            { sub: "LOCAL GROUP · MILKY WAY", locus: "● HERO PARTICLE LAUNCH POINT", coords: "RA 12h · −27°" },
+            { sub: "CALABI–YAU QUINTIC MANIFOLD", locus: "● BRANCH SEAM SINGULARITY", coords: "c₁ = 0 · h¹¹ = 1" },
+            { sub: "KERR BLACK HOLE (a/M = 0.95)", locus: "● RELATIVISTIC ISCO ORBIT", coords: "r_isco = 1.94M" },
+            { sub: "REVERSE-TIME DIFFUSION SDE", locus: "● ZERO-ENTROPY SCORE ATTRACTOR", coords: "∇_x log p_t(x)" },
+            { sub: "ROUGH BERGOMI VOLATILITY SURFACE", locus: "● STOCHASTIC LOCAL VOLATILITY APEX", coords: "H ≈ 0.10 · η = 1.9" },
+            { sub: "8-QUBIT HILBERT REGISTER", locus: "● GROVER / SHOR ORACLE PEAK", coords: "dim(ℋ) = 256" },
+            { sub: "CHENCINER–MONTGOMERY CHOREOGRAPHY", locus: "● THREE-BODY PRIMARY LOCUS", coords: "T = 6.326 · E = −1.29" }
         ];
 
         const draw = (tSec, st = {}) => {
@@ -2470,25 +2470,11 @@ const initNavSim = (c) => {
             const trs = st.textRects || [];
             const rectDist = (a, b) => Math.hypot(Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w), 0), Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h), 0));
 
-            // ---- HUD geometry (dynamically avoids DOM text rects on every section)
-            const pw = Math.min(W - 16, 248 * k), ph = 62 * k;
-            let side = (mx > W * 0.52) ? -1 : 1;
-            if (mx - 54 * k - pw < 12) side = 1;
-            if (mx + 54 * k + pw > W - 12) side = -1;
-            const cxp = mx + side * 54 * k, cyp = my - 46 * k;
-            const panel = { x: Math.max(10, Math.min(W - pw - 10, side < 0 ? cxp - pw : cxp)), y: Math.max(64, Math.min(H - ph - 16, cyp - ph)), w: pw, h: ph };
-            // If panel collides with active section's text copy, flip side or shift below reticle
-            for (const tr of trs) {
-                if (rectDist(panel, tr) < 16) {
-                    side = -side;
-                    const cxp2 = mx + side * 54 * k;
-                    panel.x = Math.max(10, Math.min(W - pw - 10, side < 0 ? cxp2 - pw : cxp2));
-                    if (rectDist(panel, tr) < 16) {
-                        panel.y = Math.min(H - ph - 16, my + 38 * k);
-                    }
-                    break;
-                }
-            }
+            // ---- HUD geometry (frameless callout anchored to the right of hero particle)
+            const pw = Math.min(W - 16, 260 * k), ph = 52 * k;
+            let side = 1; // Always branch rightwards from the hero particle
+            const cxp = mx + 46 * k, cyp = my - 34 * k;
+            const panel = { x: Math.max(10, Math.min(W - pw - 10, cxp)), y: Math.max(48, Math.min(H - ph - 16, cyp)), w: pw, h: ph };
             const rects = [{ x: panel.x - 6, y: panel.y - 6, w: panel.w + 12, h: panel.h + 12 }, { x: mx - 44 * k, y: my - 44 * k, w: 88 * k, h: 88 * k }];
             const hit = (r) => { for (const q of rects) if (!(r.x + r.w < q.x || r.x > q.x + q.w || r.y + r.h < q.y || r.y > q.y + q.h)) return true; return false; };
 
@@ -2579,8 +2565,20 @@ const initNavSim = (c) => {
             const meta = SECTION_HERO_META[secIdx] || SECTION_HERO_META[0];
             const inTransit = launch > 0.03 && launch < 0.96;
             const flash = Math.sin(launch * Math.PI);
+            const DOMAIN_ACCENTS = [
+                "96,156,255",   // 0: hub (intro)
+                "255,92,112",   // 1: math
+                "34,211,238",   // 2: physics
+                "245,166,35",   // 3: datascience
+                "32,201,145",   // 4: quant
+                "172,132,255",  // 5: cs
+                "36,200,182"    // 6: contact
+            ];
+            const domAcc = DOMAIN_ACCENTS[secIdx] || DOMAIN_ACCENTS[0];
+            const isContact = st.simKey === "hub:contact" || secIdx === 6;
+            const isHoverHero = C && C.active && Math.hypot(C.x - mx, C.y - my) < 32 * k;
 
-            ctx.save(); ctx.lineCap = "round";
+            ctx.save(); ctx.lineCap = isContact ? "butt" : "round";
             if (!reduced) {
                 for (let i = 0; i < 2; i++) {
                     const ph2 = ((tSec + i * 1.4) % 2.8) / 2.8;
@@ -2590,61 +2588,108 @@ const initNavSim = (c) => {
                 }
             }
             ctx.globalCompositeOperation = "lighter";
-            radial(mx, my, 28 * k, [[0, `rgba(${acc},${0.55 + 0.25 * flash})`], [0.45, `rgba(${acc},0.16)`], [1, "rgba(255,0,0,0)"]]);
+            const glowR = (isHoverHero ? 42 : 28) * k;
+            radial(mx, my, glowR, [[0, `rgba(${acc},${(isHoverHero ? 0.85 : 0.55) + 0.25 * flash})`], [0.45, `rgba(${domAcc},${isHoverHero ? 0.35 : 0.16})`], [1, "rgba(255,0,0,0)"]]);
             ctx.globalCompositeOperation = "source-over";
 
-            // Rotating tick ring + dashed range ring
+            // Rotating tick ring + dashed range ring (tinted to active domain)
             const rot = reduced ? 0 : tSec * (0.25 + 1.8 * flash), ringK = 0.85 + 0.15 * lock;
-            ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = 1;
+            ctx.strokeStyle = `rgba(${domAcc},0.40)`; ctx.lineWidth = 1;
             for (let i = 0; i < 48; i++) {
                 const a = rot + i / 48 * TAU, r0 = 24 * k * ringK, r1 = r0 + (i % 4 === 0 ? 5 : 2.4) * k;
                 ctx.beginPath(); ctx.moveTo(mx + Math.cos(a) * r0, my + Math.sin(a) * r0); ctx.lineTo(mx + Math.cos(a) * r1, my + Math.sin(a) * r1); ctx.stroke();
             }
-            ctx.setLineDash([3 * k, 5 * k]); ctx.strokeStyle = "rgba(160,190,255,0.25)"; ctx.lineDashOffset = -rot * 40;
+            ctx.setLineDash([3 * k, 5 * k]); ctx.strokeStyle = `rgba(${domAcc},0.32)`; ctx.lineDashOffset = -rot * 40;
             ctx.beginPath(); ctx.arc(mx, my, 36 * k * ringK, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
 
-            // Lock-on brackets
+            // Lock-on brackets (90° pixel-stepped box ticks on Contact section)
             const br = (15 + 2 * (reduced ? 0 : Math.sin(tSec * 2.2)) + 12 * flash) * k, bl = 6 * k;
-            ctx.strokeStyle = "rgba(255,255,255,0.92)"; ctx.lineWidth = Math.max(1.2, 1.4 * k);
+            ctx.strokeStyle = isContact ? `rgba(${domAcc},0.95)` : "rgba(255,255,255,0.92)"; ctx.lineWidth = Math.max(1.2, 1.4 * k);
             for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
                 const x = mx + sx * br, y = my + sy * br;
-                ctx.beginPath(); ctx.moveTo(x - sx * bl, y); ctx.lineTo(x, y); ctx.lineTo(x, y - sy * bl); ctx.stroke();
+                ctx.beginPath();
+                if (isContact) {
+                    ctx.rect(x - sx * bl * 0.5 - 1.5, y - sy * bl * 0.5 - 1.5, bl, bl);
+                } else {
+                    ctx.moveTo(x - sx * bl, y); ctx.lineTo(x, y); ctx.lineTo(x, y - sy * bl);
+                }
+                ctx.stroke();
             }
-            ctx.strokeStyle = "rgba(255,255,255,0.95)"; ctx.lineWidth = Math.max(1, 1.2 * k);
+            ctx.strokeStyle = `rgba(${domAcc},0.95)`; ctx.lineWidth = Math.max(1, 1.2 * k);
             ctx.beginPath(); ctx.arc(mx, my, 7.5 * k, 0, TAU); ctx.stroke();
             ctx.fillStyle = `rgb(${acc})`; ctx.beginPath(); ctx.arc(mx, my, 3.4 * k, 0, TAU); ctx.fill();
             ctx.fillStyle = "rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.arc(mx - 0.8 * k, my - 0.9 * k, 1.1 * k, 0, TAU); ctx.fill();
 
-            // Persistent "YOU ARE HERE" callout panel across all 7 sections
+            // Frameless astrophysical callout: 45° elbow leader -> horizontal underline rule, text floating on a soft veil
             {
-                const { x, y, w, h } = panel, r = 8 * k, pad = 12 * k;
-                const ex = side < 0 ? x + w : x, ey = y + h * 0.85;
-                const a0 = Math.atan2(ey - my, ex - mx);
-                ctx.strokeStyle = `rgba(${acc},0.9)`; ctx.lineWidth = Math.max(1, 1.2 * k);
-                ctx.beginPath(); ctx.moveTo(mx + Math.cos(a0) * 12 * k, my + Math.sin(a0) * 12 * k); ctx.lineTo(ex, ey); ctx.stroke();
-                ctx.fillStyle = `rgb(${acc})`; ctx.beginPath(); ctx.arc(ex, ey, 2.2 * k, 0, TAU); ctx.fill();
+                const pad = 4 * k;
+                // Leader geometry: starts right at the hero particle reticle, rises diagonally at 45° to the right, then extends into horizontal rule
+                const liftY = 32 * k; // elevation above hero particle
+                const ry = my - liftY; // rule Y level
+                const elbowDx = liftY; // 45° slope: dx = dy
+                const sx0 = mx + 9 * k, sy0 = my - 2 * k; // start point on reticle edge
+                const jx = mx + elbowDx; // joint node X
+                const ruleW = Math.max(160 * k, Math.min(260 * k, W - jx - 20));
+                const rx1 = jx + ruleW;
 
-                ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 18 * k; ctx.shadowOffsetY = 6 * k;
-                roundRect(ctx, x, y, w, h, r); ctx.fillStyle = "rgba(10,16,34,0.82)"; ctx.fill(); ctx.restore();
+                ctx.save();
+                // Leader: 45° line from hero particle up-right to joint
+                ctx.strokeStyle = `rgba(${domAcc},0.85)`; ctx.lineWidth = Math.max(1, 1.4 * k);
+                ctx.beginPath();
+                ctx.moveTo(sx0, sy0);
+                ctx.lineTo(jx, ry);
+                ctx.stroke();
 
-                const gg = ctx.createLinearGradient(x, y, x, y + h);
-                gg.addColorStop(0, "rgba(255,255,255,0.10)"); gg.addColorStop(0.5, "rgba(255,255,255,0.02)"); gg.addColorStop(1, "rgba(255,255,255,0)");
-                roundRect(ctx, x, y, w, h, r); ctx.fillStyle = gg; ctx.fill();
-                roundRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, r); ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineWidth = 1; ctx.stroke();
-                ctx.fillStyle = `rgb(${acc})`; roundRect(ctx, x + pad * 0.6, y + h * 0.5 - 14 * k, 2.4 * k, 28 * k, 1.2 * k); ctx.fill();
+                // Joint node beacon ●
+                ctx.fillStyle = `rgb(${domAcc})`;
+                ctx.beginPath(); ctx.arc(jx, ry, 2.6 * k, 0, TAU); ctx.fill();
 
-                ctx.textAlign = "left"; ctx.textBaseline = "middle";
-                const tx = x + pad + 4 * k, f1 = Math.max(11, 12.2 * k), f2 = Math.max(8.2, 9.0 * k);
+                // Horizontal underline rule ─── fading out towards the right
+                const rg = ctx.createLinearGradient(jx, ry, rx1, ry);
+                rg.addColorStop(0, `rgb(${domAcc})`);
+                rg.addColorStop(0.65, `rgba(${domAcc},0.45)`);
+                rg.addColorStop(1, `rgba(${domAcc},0)`);
+                ctx.strokeStyle = rg; ctx.lineWidth = Math.max(1, 1.2 * k);
+                ctx.beginPath(); ctx.moveTo(jx, ry); ctx.lineTo(rx1, ry); ctx.stroke();
+
+                // Soft radial veil behind text for high-contrast legibility over WebGL
+                const vcx = jx + ruleW * 0.4, vcy = ry;
+                ctx.save(); ctx.translate(vcx, vcy); ctx.scale(ruleW / (40 * k) * 0.55, 1);
+                const vg = ctx.createRadialGradient(0, 0, 0, 0, 0, 36 * k);
+                vg.addColorStop(0, "rgba(0,0,0,0.65)"); vg.addColorStop(1, "rgba(0,0,0,0)");
+                ctx.fillStyle = vg; ctx.fillRect(-70 * k, -36 * k, 140 * k, 72 * k); ctx.restore();
+
+                // Typography & Telemetry
+                const f1 = Math.max(11, 12.5 * k), f2 = Math.max(8.5, 9.6 * k), f3 = Math.max(8.2, 9.2 * k);
+                const tx = jx + pad + 6 * k;
+                ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+                ctx.shadowColor = "rgba(0,0,0,0.95)"; ctx.shadowBlur = 8 * k; ctx.shadowOffsetY = 1 * k;
+
+                // Line 1 (Above rule): Title + Coordinates / Timestamp
+                const title = inTransit ? "WARPING SPACETIME" : "YOU ARE HERE";
+                const coordsLabel = inTransit ? `[00:${Math.round(launch * 60).toString().padStart(2, "0")}.0]` : (meta.coords || "RA 12h · −27°");
                 ctx.fillStyle = "#fff"; ctx.font = `700 ${f1}px ${fam}`;
-                ctx.fillText(inTransit ? "WARPING SPACETIME" : "YOU ARE HERE", tx, y + h * 0.27);
-                ctx.fillStyle = "rgba(220,230,255,0.82)"; ctx.font = `500 ${f2}px ${mono}`;
-                ctx.fillText(inTransit ? "EINSTEIN–ROSEN WORMHOLE BRIDGE" : meta.sub, tx, y + h * 0.52);
-                ctx.fillStyle = `rgba(${acc},1)`;
-                ctx.fillText(inTransit ? `▸ GEODESIC TRANSIT ${Math.round(launch * 100)}%` : meta.locus, tx, y + h * 0.74);
+                const titleW = ctx.measureText(title).width;
+                ctx.fillText(title, tx, ry - 6 * k);
+                ctx.fillStyle = `rgba(${domAcc},0.9)`; ctx.font = `600 ${f3}px ${mono}`;
+                ctx.fillText(coordsLabel, tx + titleW + 10 * k, ry - 6 * k);
 
-                const rx = tx, rw = w - (tx - x) - pad, ry = y + h - 5.5 * k;
-                ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.fillRect(rx, ry, rw, 1.6 * k);
-                ctx.fillStyle = `rgb(${acc})`; ctx.fillRect(rx, ry, rw * (inTransit ? clamp01(launch) : 1.0), 1.6 * k);
+                // Line 2 (Directly below rule): Domain Subtitle / Geodesic locus
+                ctx.fillStyle = "rgba(220,230,255,0.85)"; ctx.font = `500 ${f2}px ${mono}`;
+                ctx.fillText(inTransit ? "EINSTEIN–ROSEN WORMHOLE BRIDGE" : meta.sub, tx, ry + 13 * k);
+
+                // Line 3: Hero particle launch point + Live relativistic telemetry (v/c, γ)
+                const vS = typeof st.vS === "number" ? st.vS : Math.sin(launch * Math.PI);
+                const vNum = inTransit ? Math.min(0.999, 0.45 + 0.54 * vS) : 0.00;
+                const gamma = (1 / Math.sqrt(Math.max(0.001, 1 - vNum * vNum))).toFixed(2);
+                const statusText = inTransit
+                    ? `v = ${vNum.toFixed(2)}c · γ = ${gamma} · ${Math.round(launch * 100)}%`
+                    : `${meta.locus} · v = ${vNum.toFixed(2)}c · γ = ${gamma}`;
+                ctx.fillStyle = `rgb(${domAcc})`; ctx.font = `600 ${f2}px ${mono}`;
+                const off = 9 * k;
+                ctx.beginPath(); ctx.arc(tx + 2.5 * k, ry + 26 * k - 3 * k, 2.2 * k, 0, TAU); ctx.fill();
+                ctx.fillText(statusText, tx + off, ry + 26 * k);
+                ctx.restore();
             }
             ctx.restore();
         };
@@ -2683,7 +2728,17 @@ const initNavSim = (c) => {
             handle.mode = mode;
             cur.active = !k && e.pointerType !== "touch";
         };
-        const onDown = (e) => { if (e.pointerType !== "touch") cur.down = true; };
+        const onDown = (e) => {
+            if (e.pointerType !== "touch") {
+                cur.down = true;
+                const S = window.THREAD_STAGE, hs = S && S.supported ? S.heroScreen : null;
+                if (hs && Math.hypot(e.clientX - hs.x, e.clientY - hs.y) < 36) {
+                    const secs = document.querySelectorAll(".snap-section");
+                    const nextIdx = ((S.currentIndex || 0) + 1) % Math.max(1, secs.length);
+                    if (typeof S.goToSection === "function") S.goToSection(nextIdx);
+                }
+            }
+        };
         const onUp = () => { cur.down = false; };
         const onLeave = () => { cur.active = false; cur.down = false; handle.mode = 0; };
         window.addEventListener("pointermove", onMove, { passive: true }); window.addEventListener("pointerdown", onDown, { passive: true });
@@ -2723,10 +2778,15 @@ const initNavSim = (c) => {
             const S = window.THREAD_STAGE, T = S && S.trans;
             const hs = S && S.supported ? S.heroScreen : null;
             const activeIdx = (T && T.active) ? (T.u > 0.5 ? T.toIndex : T.fromIndex) : ((S && S.currentIndex) || 0);
+            const secs = document.querySelectorAll(".snap-section");
+            const activeSec = (secs && secs[activeIdx]) || null;
+            const simKey = (activeSec && activeSec.dataset && activeSec.dataset.sim) || "";
             overlay.draw(now * 0.001, {
                 ox: 0, oy: 0,
                 laniakeaAlpha: laniakeaVisibility(),
                 sectionIndex: activeIdx,
+                simKey,
+                vS: (T && typeof T.vS === "number") ? T.vS : 0,
                 textRects: textRects(now),
                 hero: hs ? { x: hs.x, y: hs.y } : null,
                 launch: T && T.active ? T.u : 0,
