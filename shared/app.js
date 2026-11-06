@@ -2378,11 +2378,11 @@ const initNavSim = (c) => {
             radial(ctx, sx(S[0] + 6), sy(S[1] + 4), 60 * k, [[0, `rgba(255,240,190,${0.18 + 0.12 * (1 - br)})`], [1, "rgba(0,0,0,0)"]]);
             ctx.globalCompositeOperation = "source-over";
 
-            // Milky Way beacon: red dot, white ring, soft red halo
+            // Milky Way beacon: matching hero accent dot, white ring, soft matching accent halo
             const mx = sx(M[0]), my = sy(M[1]), pulse = reduced ? 1 : 0.9 + 0.15 * Math.sin(tSec * 2.4);
-            radial(ctx, mx, my, 16 * pulse * Math.max(1, k), [[0, "rgba(255,40,50,0.55)"], [0.5, "rgba(255,30,45,0.16)"], [1, "rgba(255,0,0,0)"]]);
+            radial(ctx, mx, my, 16 * pulse * Math.max(1, k), [[0, "rgba(96,156,255,0.55)"], [0.5, "rgba(96,156,255,0.16)"], [1, "rgba(96,156,255,0)"]]);
             ctx.strokeStyle = "rgba(255,255,255,0.92)"; ctx.lineWidth = Math.max(1.2, 1.5 * k); ctx.beginPath(); ctx.arc(mx, my, Math.max(7, 8.5 * k), 0, TAU); ctx.stroke();
-            ctx.fillStyle = "#ff2434"; ctx.beginPath(); ctx.arc(mx, my, Math.max(2.8, 3.4 * k), 0, TAU); ctx.fill();
+            ctx.fillStyle = "rgb(96,156,255)"; ctx.beginPath(); ctx.arc(mx, my, Math.max(2.8, 3.4 * k), 0, TAU); ctx.fill();
         };
 
         // Pin the artwork's Milky Way dot to a screen point (CSS px, relative to the canvas)
@@ -2612,7 +2612,7 @@ const initNavSim = (c) => {
             }
             ctx.globalCompositeOperation = "lighter";
             const glowR = (isHoverHero ? 42 : 28) * k;
-            radial(mx, my, glowR, [[0, `rgba(${heroAcc},${(isHoverHero ? 0.85 : 0.55) + 0.25 * flash})`], [0.45, `rgba(${domAcc},${isHoverHero ? 0.35 : 0.16})`], [1, "rgba(255,0,0,0)"]]);
+            radial(mx, my, glowR, [[0, `rgba(${heroAcc},${(isHoverHero ? 0.85 : 0.55) + 0.25 * flash})`], [0.45, `rgba(${domAcc},${isHoverHero ? 0.35 : 0.16})`], [1, `rgba(${domAcc},0)`]]);
             ctx.globalCompositeOperation = "source-over";
 
             // Rotating tick ring + dashed range ring (tinted to active domain)
