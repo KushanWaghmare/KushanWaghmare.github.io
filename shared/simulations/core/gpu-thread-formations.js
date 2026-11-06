@@ -74,7 +74,7 @@
             this.trailDecay = LOOK.trailDecay;
             this.streakScale = LOOK.streakScale;       // point shader stretches sprites along (pos - prevPos); see anisotropic sprites below
             this.fogTint = LOOK.backgroundTone.slice();
-            this.preserveHeroColour = true;
+            this.preserveHeroColour = false;
             this.milkyWayIndex = 0;
             this.auxPositions = new Float32Array(8192 * 3);
             this.auxColours = new Float32Array(8192 * 4);
@@ -178,7 +178,7 @@
             const l = [0, 0, 0];
             for (let i = 0; i < N; i++) {
                 const i4 = i * 4, i3 = i * 3, h = (i * 0.6180339887) % 1.0;
-                if (i === 0) { this.role[0] = 3; this.baseCol[0] = 1.5; this.baseCol[1] = 1.15; this.baseCol[2] = 0.95; this.baseSize[0] = 5.0; continue; }
+                if (i === 0) { this.role[0] = 3; this.baseCol[0] = 0.60; this.baseCol[1] = 0.98; this.baseCol[2] = 1.60; this.baseSize[0] = 5.0; continue; }
                 if (i < 48) { this.role[i] = 3; const a = lkHash(i, 1) * 6.2832, r = 0.004 + 0.016 * lkHash(i, 2); this.loc[i3] = Math.cos(a) * r; this.loc[i3 + 1] = Math.sin(a) * r; this.loc[i3 + 2] = (lkHash(i, 3) - 0.5) * 0.02; this.baseCol[i3] = 0.9; this.baseCol[i3 + 1] = 0.55; this.baseCol[i3 + 2] = 0.4; this.baseSize[i] = 2.2; continue; }
                 if (h < 0.06) { // velocity-field tracer
                     this.role[i] = 2; this.tu[i] = 0.1 + 0.88 * seeds[i4]; this.tv[i] = 0.08 + 0.87 * seeds[i4 + 1];
@@ -2572,6 +2572,7 @@
             this.params = params || {};
             this.sectionIndex = sectionIndex;
             this.cameraDistance = 13.5;
+            this.pixelDensity = 50;        // cells across the Earth's RADIUS: 25 = chunky like the reference, 50 = fine (half-size pixels), 75 = very fine
             this.pixelArt = true;          // point shader: hard squares on a global pixel grid, flat colours; composite: flat navy, no bloom/ACES/grain
             this.disableTwinkle = true;
             this.lookOverride = {
@@ -2580,7 +2581,7 @@
                 trailDecay: 0.001,         // no motion trails: crisp pixels
                 streakScale: 0.001,
                 celestialBrightness: 0.0,  // the pixel art draws its own stars
-                backgroundTone: [0.0, 0.0, 0.0]
+                backgroundTone: [34 / 255, 32 / 255, 53 / 255]
             };
             this.bloomStrength = this.lookOverride.bloomStrength;
             this.bloomThreshold = this.lookOverride.bloomThreshold;
@@ -2620,7 +2621,9 @@
             this._N = N;
             const rgb = (r, g, b) => [r / 255, g / 255, b / 255];
             // palette indices: 1 ocean 2 dark ocean 3 green 4 teal 5 lilac 6 cyan 7 white 8 light blue 9 star 10 moon 11 crater 12-14 hero
-            const P = [[0, 0, 0], rgb(100, 155, 255), rgb(90, 110, 225), rgb(107, 190, 48), rgb(56, 148, 111), rgb(203, 219, 252), rgb(95, 205, 228), rgb(255, 255, 255), rgb(77, 170, 235), rgb(244, 198, 160), rgb(249, 241, 58), rgb(237, 196, 150), rgb(255, 255, 255), rgb(255, 160, 60), rgb(235, 70, 70)];
+            const P = [[0, 0, 0], rgb(100, 155, 255), rgb(90, 110, 225), rgb(107, 190, 48), rgb(56, 148, 111), rgb(203, 219, 252), rgb(95, 205, 228), rgb(255, 255, 255), rgb(77, 170, 235), rgb(244, 198, 160), rgb(249, 241, 58), rgb(237, 196, 150), rgb(255, 255, 255), rgb(255, 160, 60), rgb(235, 70, 70),
+                // 15 limb glow, 16 city light, 17 sun glint, 18 moon shade, 19 crater shade, 20 star dim, 21 star bright, 22 desert, 23 forest, 24 orbit dot
+                rgb(66, 112, 196), rgb(255, 218, 120), rgb(200, 232, 255), rgb(214, 198, 46), rgb(196, 152, 108), rgb(138, 116, 120), rgb(255, 244, 226), rgb(206, 172, 98), rgb(72, 158, 44), rgb(62, 58, 98)];
             this.PAL = new Float32Array(P.length * 3);
             P.forEach((c, i) => { this.PAL[i * 3] = c[0]; this.PAL[i * 3 + 1] = c[1]; this.PAL[i * 3 + 2] = c[2]; });
             this.LM = EM.landMask();
@@ -2647,10 +2650,10 @@
             const dpr = Math.max(1, (ctx && ctx.dpr) || Math.min(window.devicePixelRatio || 1, 2));
             const mob = (ctx && ctx.isMobile) || W < 820;
             const base = mob ? Math.min(W * 0.30, H * 0.19) : H * 0.285;
-            const cellDev = Math.max(3, Math.round(base * dpr / 25));
+            const cellDev = Math.max(2, Math.round(base * dpr / this.pixelDensity));
             const cell = cellDev / dpr;
             this._cell = cell; this._cellDev = cellDev; this._dpr = dpr; this._mob = mob;
-            this._Rc = Math.round(25 + 9 * ins);
+            this._Rc = Math.round(this.pixelDensity * (1 + 0.36 * ins));
             const tx = (mob ? 0.5 : 0.62 - 0.12 * ins) * W, ty = (mob ? 0.42 : 0.5) * H;
             this._ci = Math.round(tx / cell - 0.5); this._cj = Math.round((H - ty) / cell - 0.5);
             const sx = (this._ci + 0.5) * cell, sy = H - (this._cj + 0.5) * cell;
@@ -2703,6 +2706,8 @@
             if (!this._grid || this._gridW !== gw || this._gridH !== gh) { this._grid = new Uint8Array(gw * gh); this._out = new Uint8Array(gw * gh); this._gridW = gw; this._gridH = gh; }
             const G = this._grid; G.fill(0);
             const put = (i, j, v) => { if (i >= 0 && j >= 0 && i < gw && j < gh) G[j * gw + i] = v; };
+            const sc = Math.max(1, Math.round(this.pixelDensity / 25)), sh = sc >> 1;          // star / marker block size in cells
+            const putB = (i, j, v) => { for (let b = 0; b < sc; b++) for (let a = 0; a < sc; a++) put(i + a - sh, j + b - sh, v); };
 
             // Earth frame: v_cam = Re * v_earth, Re = Rz(tilt) * Ry(spin)
             const spin = this.baseSpin + t * this.spinRate;
@@ -2710,32 +2715,53 @@
             const e0 = cT * cS, e1 = -sT, e2 = cT * sS, e3 = sT * cS, e4 = cT, e5 = sT * sS, e6 = -sS, e7 = 0, e8 = cS;
             const L = this.light, LM = this.LM, fbm = EM.fbm, D2R = EM.D2R;
             const drift = t * 0.03;
+            const BAY = this._bay || (this._bay = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + 0.5) / 16));
+            const bay = (i, j) => BAY[((j & 3) << 2) | (i & 3)];
+            const sstep = (a, b, x) => { const q = Math.max(0, Math.min(1, (x - a) / (b - a))); return q * q * (3 - 2 * q); };
+            const hvx = L[0], hvy = L[1], hvz = L[2] + 1.0, hvl = Math.hypot(hvx, hvy, hvz), hnx = hvx / hvl, hny = hvy / hvl, hnz = hvz / hvl;
 
             /* ---- stars (screen-fixed, one cell each) ---- */
-            const nStars = Math.min(160, Math.round(gw * gh * 0.002));
-            for (let k = 0; k < nStars; k++) put(Math.floor(this.stars[k * 2] * gw), Math.floor(this.stars[k * 2 + 1] * gh), 9);
+            const nStars = Math.min(160, Math.round(gw * gh * 0.002 / (sc * sc)));
+            for (let k = 0; k < nStars; k++) {
+                const si = Math.floor(this.stars[k * 2] * gw), sj = Math.floor(this.stars[k * 2 + 1] * gh);
+                const ph = (k * 0.6180339) % 1, tw = Math.sin(t * (0.9 + 2.2 * ph) + ph * 6.283);
+                const sv = tw > 0.82 ? 21 : (tw < -0.78 ? 20 : 9);
+                putB(si, sj, sv);
+                if (k % 9 === 0 && tw > -0.3) { const arm = sc * 2; for (let a = 1; a <= arm; a++) { const av = a > sc ? 20 : 9; put(si + a, sj, av); put(si - a, sj, av); put(si, sj + a, av); put(si, sj - a, av); } }   // plus-shaped sparkle
+            }
 
             /* ---- Moon ---- */
             const Rpx = Rc * cell;
+            { const dots = 72;
+              for (let q = 0; q < dots; q++) { const tv = this._moonRel((q / dots) * 6.2831853, this._mob, Rpx, W); put(Math.round(ci + tv[0] * Rc), Math.round(cj + tv[1] * Rc), 24); } }
             const theta = this.moonTheta0 + t * this.moonRate;
             const mv = this._moonRel(theta, this._mob, Rpx, W);
             const mox = mv[0], moy = mv[1], moz = mv[2];
             const mci = Math.round(ci + mox * Rc), mcj = Math.round(cj + moy * Rc);
-            const MR = 4.55, psi = Math.atan2(moz, -mox), mcs = Math.cos(psi), msn = Math.sin(psi);
+            const MR = 4.55 * (this.pixelDensity / 25), MRi = Math.ceil(MR) + 1, psi = Math.atan2(moz, -mox), mcs = Math.cos(psi), msn = Math.sin(psi);
             const drawMoon = () => {
                 const cr = this.craters;
-                for (let dj = -5; dj <= 5; dj++) for (let di = -5; di <= 5; di++) {
+                for (let dj = -MRi; dj <= MRi; dj++) for (let di = -MRi; di <= MRi; di++) {
                     const d2 = di * di + dj * dj; if (d2 > MR * MR) continue;
                     const nx = di / MR, ny = dj / MR, nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
                     const lx = nx * mcs - nz * msn, lz = nx * msn + nz * mcs;      // into the Moon's locked frame
                     let v = 10;
                     for (let c = 0; c < cr.length; c++) { if (Math.acos(Math.min(1, lx * cr[c][0] + ny * cr[c][1] + lz * cr[c][2])) < cr[c][3]) { v = 11; break; } }
+                    const lm = nx * L[0] + ny * L[1] + nz * L[2];
+                    if (sstep(0.34, 0.08, lm) > bay(mci + di, mcj + dj)) v = (v === 10) ? 18 : 19;                  // dithered night side
                     put(mci + di, mcj + dj, v);
                 }
             };
             if (moz < 0) drawMoon();                                              // behind the Earth: painted first, then covered
 
-            /* ---- Earth: per-cell sphere shading in flat palette tones, plus cloud shell past the limb ---- */
+            /* ---- Earth layer (cached: it only changes when the globe has turned by a fraction of a pixel) ---- */
+            if (!this._E || this._E.length !== gw * gh) { this._E = new Uint8Array(gw * gh); this._eSpin = 1e9; }
+            const E = this._E;
+            const eKey = Rc * 1e6 + ci * 1e3 + cj + gw * 7;
+            const needE = Math.abs(spin - this._eSpin) > 0.0035 || this._eKey !== eKey;
+            const putE = (i, j, v) => { if (i >= 0 && j >= 0 && i < gw && j < gh) E[j * gw + i] = v; };
+            if (needE) {
+                this._eSpin = spin; this._eKey = eKey; E.fill(0);
             const R2 = Rc * Rc, shellR = 1.12;
             for (let dj = -Rc - 5; dj <= Rc + 5; dj++) {
                 for (let di = -Rc - 5; di <= Rc + 5; di++) {
@@ -2751,31 +2777,41 @@
                     let cn = fbm(ex * 3.1 + 7 + drift, ey * 3.1 + 2, ez * 3.1 + 4, 3);
                     cn += 0.22 * Math.max(0, Math.min(1, (al - 68) / 18));         // polar cloud caps
                     const cthr = inside ? 0.645 : 0.715;
+                    const bv = bay(ci + di, cj + dj);
                     if (!inside) {                                                 // floating cloud puffs beyond the limb: low-frequency noise -> chunky blobs
-                        if (fbm(ex * 1.7 + 3 + drift, ey * 1.7, ez * 1.7 + 9, 2) > 0.62 && fbm(ex * 4 + 1, ey * 4, ez * 4, 2) > 0.45) put(ci + di, cj + dj, lit > 0.3 ? 7 : 5);
+                        if (fbm(ex * 1.7 + 3 + drift, ey * 1.7, ez * 1.7 + 9, 2) > 0.62 && fbm(ex * 4 + 1, ey * 4, ez * 4, 2) > 0.45) { putE(ci + di, cj + dj, lit > 0.3 ? 7 : 5); continue; }
+                        const rr = Math.sqrt(rho2);                                // atmosphere glow just outside the lit limb, fading out with dither
+                        if (rr < 1.065 && lit > 0.0) { const pg = ((1.065 - rr) / 0.065) * sstep(0.0, 0.45, lit); if (pg > bv) putE(ci + di, cj + dj, 15); }
                         continue;
                     }
-                    if (cn > cthr) { put(ci + di, cj + dj, (cn > cthr + 0.045 && lit > 0.45) ? 7 : 5); continue; }
+                    if (cn > cthr) { putE(ci + di, cj + dj, (cn > cthr + 0.045 && lit > 0.45) ? 7 : 5); continue; }
                     const xi = ((Math.floor((lon + 180) / 360 * 720) % 720) + 720) % 720, yi = Math.min(359, Math.max(0, Math.floor((90 - lat) / 180 * 360)));
                     const land = LM.m[yi * 720 + xi], sf = LM.s[yi * 720 + xi];
-                    const hf = fbm(ex * 9 + 1, ey * 9, ez * 9 + 3, 2);
                     let v;
+                    const dk = sstep(0.42, 0.24, lit) > bv;                         // dithered shading boundary
                     if (land) {
                         if (al > 68) v = 5;
-                        else if (hf > 0.78) v = 8;                                  // lakes / rivers
-                        else v = lit < 0.36 ? 4 : 3;
+                        else if (fbm(ex * 9 + 1, ey * 9, ez * 9 + 3, 2) > 0.78) v = 8;   // lakes / rivers
+                        else {
+                            const dz = (al > 14 && al < 34) ? fbm(ex * 3.6 + 5, ey * 3.6, ez * 3.6 + 1, 2) : 0;
+                            v = dk ? 4 : ((dz > 0.56) ? 22 : ((al < 22 && fbm(ex * 6 + 9, ey * 6, ez * 6, 2) > 0.52) ? 23 : 3));   // deserts and rain forest
+                            if (lit < 0.14 && fbm(ex * 15 + 2, ey * 15, ez * 15 + 6, 2) > 0.66) v = 16;                         // city lights on the dark side
+                        }
                     } else {
-                        if (al > 74 && hf > 0.45) v = 6;
+                        if (al > 74 && fbm(ex * 9 + 1, ey * 9, ez * 9 + 3, 2) > 0.45) v = 6;
                         else if (sf > 0.20) v = 6;                                  // shallows
                         else if (sf > 0.10) v = 8;
-                        else if (lit < 0.36) v = 2;
+                        else if (dk) v = 2;
+                        else if (px * hnx + py * hny + pz * hnz > 0.9885) v = 17;   // sun glint
                         else if (fbm(ex * 6, ey * 24, ez * 6, 2) > 0.74) v = 6;     // wave streaks
                         else v = 1;
                     }
-                    if (rho2 > 0.67 && lit > 0.30 && v !== 5 && v !== 7) v = 6;     // cyan atmosphere rim on the lit limb
-                    put(ci + di, cj + dj, v);
+                    if (rho2 > 0.64 && lit > 0.30 && v !== 5 && v !== 7 && v !== 17 && sstep(0.64, 0.72, rho2) > bv) v = 6;     // cyan atmosphere rim (dithered inner edge)
+                    putE(ci + di, cj + dj, v);
                 }
             }
+            }
+            for (let dj = -Rc - 6; dj <= Rc + 6; dj++) { const jj = cj + dj; if (jj < 0 || jj >= gh) continue; const row = jj * gw; for (let di = -Rc - 6; di <= Rc + 6; di++) { const ii = ci + di; if (ii < 0 || ii >= gw) continue; const ev = E[row + ii]; if (ev) G[row + ii] = ev; } }
             if (moz >= 0) drawMoon();                                             // in front of the Earth
 
             /* ---- Hero Particle 0 + pixel radar ring, pinned to India ---- */
@@ -2790,9 +2826,9 @@
                     let oi, oj;
                     if (r < 8) { const a = [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]][r]; oi = a[0]; oj = a[1]; if (!ringOn && (r & 1)) continue; }
                     else { const q = r - 8, side = Math.floor(q / 4), s = q % 4; if (side === 0) { oi = -2 + s; oj = -2; } else if (side === 1) { oi = 2; oj = -2 + s; } else if (side === 2) { oi = 2 - s; oj = 2; } else { oi = -2; oj = 2 - s; } if (!ringOn) continue; }
-                    put(hi + oi, hj + oj, r < 8 ? 13 : 14);
+                    putB(hi + oi * sc, hj + oj * sc, r < 8 ? 13 : 14);
                 }
-                put(hi, hj, 12);
+                putB(hi, hj, 12);
             }
 
             /* ---- Cursor lens (inverse-mapped on the pixel grid) ---- */
@@ -2816,27 +2852,35 @@
             const CEx = this.origin.x + this.shift.x, CEy = this.origin.y + this.shift.y, CEz = this.origin.z;
             this._CE = [CEx, CEy, CEz];
             const J = this._jac, det = J[0] * J[3] - J[1] * J[2], P0x = this._cx, P0y = this._cy;
-            const wmap = (sx, sy) => { const ex = sx - P0x, ey = sy - P0y; return [CEx + (ex * J[3] - ey * J[1]) / det, CEy + (J[0] * ey - J[2] * ex) / det]; };
-            for (let g = 0; g < N; g++) { const raw = slot ? slot[g] : g; szb[raw] = 0; }
+            const wmap = (sx, sy) => { const ex = sx - P0x, ey = sy - P0y; wmx = CEx + (ex * J[3] - ey * J[1]) / det; wmy = CEy + (J[0] * ey - J[2] * ex) / det; };
+            let wmx = 0, wmy = 0;
+            // Clear sizes: everything after a gap in updates (buffer may hold another formation's data), otherwise only what we used last frame
+            const nowMs = (typeof performance !== "undefined" ? performance.now() : Date.now());
+            const fullClear = !this._lastMs || nowMs - this._lastMs > 150 || this._lastBuf !== buffer;
+            const clearTo = fullClear ? N : Math.min(N, (this._prevUsed || 0) + 8);
+            for (let g = 0; g < clearTo; g++) { const raw = slot ? slot[g] : g; szb[raw] = 0; }
+            this._lastMs = nowMs; this._lastBuf = buffer;
             const nHero = this.nHeroBeacon;
             // hero particle 0 anchor (kept at India even when hidden so HUD labels follow it)
-            { const wp = wmap((hi + 0.5) * cell, H - (hj + 0.5) * cell), raw0 = slot ? slot[0] : 0;
-              pos[raw0 * 3] = wp[0]; pos[raw0 * 3 + 1] = wp[1]; pos[raw0 * 3 + 2] = CEz;
-              col[raw0 * 3] = 1; col[raw0 * 3 + 1] = 1; col[raw0 * 3 + 2] = 1; tgt[0] = wp[0]; tgt[1] = wp[1]; tgt[2] = CEz; }
+            { wmap((hi + 0.5) * cell, H - (hj + 0.5) * cell); const raw0 = slot ? slot[0] : 0;
+              pos[raw0 * 3] = wmx; pos[raw0 * 3 + 1] = wmy; pos[raw0 * 3 + 2] = CEz;
+              col[raw0 * 3] = 1; col[raw0 * 3 + 1] = 1; col[raw0 * 3 + 2] = 1; tgt[0] = wmx; tgt[1] = wmy; tgt[2] = CEz; }
+            const heroIdx = hj * gw + hi;
             let g = nHero, used = 0;                                                // slots 0..24 belong to the hero; one particle per lit cell after that
             const total = gw * gh;
             for (let idx = 0; idx < total && g < N; idx++) {
-                const v = Gout[idx]; if (!v || v === 12) continue;                  // v === 12 is the hero's own cell (particle 0)
+                const v = Gout[idx]; if (!v || (v === 12 && idx === heroIdx)) continue;   // the hero's own cell is particle 0
                 const i = idx % gw, j = (idx / gw) | 0;
-                const wp = wmap((i + 0.5) * cell, H - (j + 0.5) * cell);
+                wmap((i + 0.5) * cell, H - (j + 0.5) * cell);
                 const gi = g;
                 const raw = slot ? slot[gi] : gi, p3 = raw * 3;
-                pos[p3] = wp[0]; pos[p3 + 1] = wp[1]; pos[p3 + 2] = CEz;
+                pos[p3] = wmx; pos[p3 + 1] = wmy; pos[p3 + 2] = CEz;
                 col[p3] = PAL[v * 3]; col[p3 + 1] = PAL[v * 3 + 1]; col[p3 + 2] = PAL[v * 3 + 2];
                 szb[raw] = cell;
-                tgt[gi * 3] = wp[0]; tgt[gi * 3 + 1] = wp[1]; tgt[gi * 3 + 2] = CEz;
+                tgt[gi * 3] = wmx; tgt[gi * 3 + 1] = wmy; tgt[gi * 3 + 2] = CEz;
                 g = gi + 1; used++;
             }
+            this._prevUsed = g;
             // hero centre cell is particle 0 (drawn as a hero-coloured pixel)
             if (heroVis) { const raw0 = slot ? slot[0] : 0; szb[raw0] = cell; }
             // park unused particles (incl. spare beacon slots) at the Earth centre (transitions read targetFor)

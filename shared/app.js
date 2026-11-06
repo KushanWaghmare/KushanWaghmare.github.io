@@ -2575,6 +2575,7 @@ const initNavSim = (c) => {
                 "36,200,182"    // 6: contact
             ];
             const domAcc = DOMAIN_ACCENTS[secIdx] || DOMAIN_ACCENTS[0];
+            const heroAcc = domAcc; // Hero particle colour always matches domain accent
             const isContact = st.simKey === "hub:contact" || secIdx === 6;
             const isHoverHero = C && C.active && Math.hypot(C.x - mx, C.y - my) < 32 * k;
 
@@ -2582,14 +2583,14 @@ const initNavSim = (c) => {
             if (!reduced) {
                 for (let i = 0; i < 2; i++) {
                     const ph2 = ((tSec + i * 1.4) % 2.8) / 2.8;
-                    ctx.strokeStyle = `rgba(${acc},${(0.52 * (1 - ph2)).toFixed(3)})`;
+                    ctx.strokeStyle = `rgba(${heroAcc},${(0.52 * (1 - ph2)).toFixed(3)})`;
                     ctx.lineWidth = 1.3;
                     ctx.beginPath(); ctx.arc(mx, my, (9 + 38 * ph2) * k, 0, TAU); ctx.stroke();
                 }
             }
             ctx.globalCompositeOperation = "lighter";
             const glowR = (isHoverHero ? 42 : 28) * k;
-            radial(mx, my, glowR, [[0, `rgba(${acc},${(isHoverHero ? 0.85 : 0.55) + 0.25 * flash})`], [0.45, `rgba(${domAcc},${isHoverHero ? 0.35 : 0.16})`], [1, "rgba(255,0,0,0)"]]);
+            radial(mx, my, glowR, [[0, `rgba(${heroAcc},${(isHoverHero ? 0.85 : 0.55) + 0.25 * flash})`], [0.45, `rgba(${domAcc},${isHoverHero ? 0.35 : 0.16})`], [1, "rgba(255,0,0,0)"]]);
             ctx.globalCompositeOperation = "source-over";
 
             // Rotating tick ring + dashed range ring (tinted to active domain)
@@ -2617,7 +2618,7 @@ const initNavSim = (c) => {
             }
             ctx.strokeStyle = `rgba(${domAcc},0.95)`; ctx.lineWidth = Math.max(1, 1.2 * k);
             ctx.beginPath(); ctx.arc(mx, my, 7.5 * k, 0, TAU); ctx.stroke();
-            ctx.fillStyle = `rgb(${acc})`; ctx.beginPath(); ctx.arc(mx, my, 3.4 * k, 0, TAU); ctx.fill();
+            ctx.fillStyle = `rgb(${heroAcc})`; ctx.beginPath(); ctx.arc(mx, my, 3.4 * k, 0, TAU); ctx.fill();
             ctx.fillStyle = "rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.arc(mx - 0.8 * k, my - 0.9 * k, 1.1 * k, 0, TAU); ctx.fill();
 
             // Frameless astrophysical callout: 45° elbow leader -> horizontal underline rule, text floating on a soft veil

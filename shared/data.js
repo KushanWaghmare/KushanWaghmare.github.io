@@ -604,7 +604,7 @@ SITE.dimensions = [
             fog: { colour: [0.015, 0.038, 0.095], density: 0.0035 },
             fov: 52.0,
             cameraDamping: 0.08,
-            hero: { colour: [1.00, 0.22, 0.25], size: 5.5 },
+            hero: { colour: [0.38, 0.61, 1.00], size: 5.5 },
             sim: { mass: "10^17" },
             audio: { rootFreq: 110.0, harmonicRatios: [1.0, 1.5, 2.0, 2.5], filterCutoff: 480, q: 3.2 }
         },
