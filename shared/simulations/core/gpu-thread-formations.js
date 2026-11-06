@@ -236,8 +236,8 @@
             if (!portrait) {
                 if (centred) {
                     unitPx = Math.min(1.08 * H, (W * 0.82) / A);
-                    tx = W * 0.50 - 0.088 * unitPx;
-                    ty = H * 0.50 + 0.140 * unitPx;
+                    tx = W * 0.50;
+                    ty = H * 0.50;
                 } else {
                     unitPx = Math.min(1.0 * H, (W * 0.93) / A);
                     const top = Math.max(0.05 * H, (H - unitPx) * 0.5 + 0.015 * H);

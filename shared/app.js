@@ -2563,9 +2563,9 @@ const initNavSim = (c) => {
                 }
             }
 
-            // Shared cursor-lens overlay ring (solid 54px + dashed 1.55x ring); suppressed near edges/nav in callout mode so it never leaves an unlabelled corner artefact
+            // Shared cursor-lens overlay ring (solid 54px + dashed 1.55x ring); only active on user mouse drag/press
             const C = (typeof window !== "undefined") && (window.__CURSOR__ || (M && M.cursor));
-            if (C && C.active && (!isCalloutLayout || (C.x > 110 && C.x < W - 110 && C.y > 96 && C.y < H - 80))) {
+            if (C && C.active && C.down && (!isCalloutLayout || (C.x > 110 && C.x < W - 110 && C.y > 96 && C.y < H - 80))) {
                 const lx = C.x - ox, ly = C.y - oy, r = 54;
                 const str = typeof C.strength === "number" ? C.strength : (C.down ? 1.0 : 0.38);
                 ctx.save(); ctx.globalCompositeOperation = "lighter";
