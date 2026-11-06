@@ -2819,7 +2819,7 @@
         }
 
         ctxState.isMobile = isMobileDevice();
-        ctxState.centred = (typeof document === "undefined" || document.documentElement.dataset.layout !== "classic");
+        ctxState.centred = (typeof document !== "undefined" && document.documentElement.dataset.layout === "callout");
         ctxState.isLight = document.documentElement.dataset.theme === "light";
         if (ctxState.isLight !== lastThemeLight) {
             lastThemeLight = ctxState.isLight;
@@ -3755,7 +3755,7 @@
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, sceneRT.tex);
             gl.uniform1i(brightPassUniforms.uSceneTex, 0);
-            gl.uniform1f(brightPassUniforms.uThreshold, postState.bloomThreshold);
+            gl.uniform1f(brightPassUniforms.uThreshold, ctxState.centred ? postState.bloomThreshold + 0.35 : postState.bloomThreshold);
             drawQuad();
 
             const bw = bloomPingRT.width, bh = bloomPingRT.height;

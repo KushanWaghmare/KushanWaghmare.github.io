@@ -2469,9 +2469,20 @@ const initNavSim = (c) => {
 
             const trs = st.textRects || [];
             const rectDist = (a, b) => Math.hypot(Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w), 0), Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h), 0));
+            const segRectDist = (ax, ay, bx, by, r) => {
+                const cx = r.x + r.w * 0.5, cy = r.y + r.h * 0.5;
+                const vx = bx - ax, vy = by - ay, l2 = vx * vx + vy * vy;
+                const t = l2 > 1 ? Math.max(0, Math.min(1, ((cx - ax) * vx + (cy - ay) * vy) / l2)) : 0;
+                const px = ax + t * vx, py = ay + t * vy;
+                const dx = Math.max(r.x - px, 0, px - (r.x + r.w));
+                const dy = Math.max(r.y - py, 0, py - (r.y + r.h));
+                return Math.hypot(dx, dy);
+            };
+            const isCalloutLayout = document.documentElement.dataset.layout === "callout";
+            const leaderSegs = (isCalloutLayout && window.__CALLOUT_LINES__ && window.__CALLOUT_LINES__[st.sectionIndex || 0]) || [];
 
             // ---- HUD geometry (frameless callout anchored to the right of hero particle)
-            const pw = Math.min(W - 16, 260 * k), ph = 52 * k;
+            const pw = Math.min(W - 16, (isCalloutLayout ? 205 : 260) * k), ph = 52 * k;
             let side = 1; // Always branch rightwards from the hero particle
             const cxp = mx + 46 * k, cyp = my - 34 * k;
             const panel = { x: Math.max(10, Math.min(W - pw - 10, cxp)), y: Math.max(48, Math.min(H - ph - 16, cyp)), w: pw, h: ph };
@@ -2500,7 +2511,7 @@ const initNavSim = (c) => {
                     if (kind === "lg") continue;
                     const p = M.projectUV(kind === "grp" ? u0 : (u0 + u1) / 2, v, 0.02); if (!p) continue;
                     const x = p.x - ox, y = p.y - oy;
-                    if (x < -40 || x > W + 40 || y < 10 || y > H - 10) continue;
+                    if (x < -40 || x > W + 40 || y < (isCalloutLayout ? 78 : 10) || y > H - (isCalloutLayout ? 68 : 10)) continue;
                     let vis = 1;
                     if (kind === "grp" && !MAJOR.has(name)) vis = cur ? sstep(revealR, revealR * 0.5, Math.hypot(x - cur.x, y - cur.y)) : 0;
                     if (vis < 0.03) continue;
@@ -2514,6 +2525,11 @@ const initNavSim = (c) => {
                     else { ctx.font = `400 ${f}px ${fam}`; w = ctx.measureText(name).width + (suf ? ctx.measureText(" " + suf + "MLY").width * 0.62 : 0); }
                     const hh = parts ? parts.length * f * 1.2 : f * 1.3, r = { x: kind === "grp" ? x : x - w / 2, y: y - hh / 2, w, h: hh };
                     let near = 1; for (const tr of trs) near = Math.min(near, sstep(0, 46, rectDist(r, tr)));
+                    // Dim galaxy-name labels when a callout leader line crosses over them
+                    for (const seg of leaderSegs) {
+                        const dSeg = segRectDist(seg[0], seg[1], seg[2], seg[3], r);
+                        if (dSeg < 22) near = Math.min(near, 0.22 + 0.78 * (dSeg / 22));
+                    }
                     a *= near; if (a < 0.05) continue;
                     if (hit(r)) continue; rects.push(r);
                     ctx.globalAlpha = Math.min(1, a);
@@ -2547,9 +2563,9 @@ const initNavSim = (c) => {
                 }
             }
 
-            // Shared cursor-lens overlay ring (solid 54px + dashed 1.55x ring, visible across all sections)
+            // Shared cursor-lens overlay ring (solid 54px + dashed 1.55x ring); suppressed near edges/nav in callout mode so it never leaves an unlabelled corner artefact
             const C = (typeof window !== "undefined") && (window.__CURSOR__ || (M && M.cursor));
-            if (C && C.active) {
+            if (C && C.active && (!isCalloutLayout || (C.x > 110 && C.x < W - 110 && C.y > 96 && C.y < H - 80))) {
                 const lx = C.x - ox, ly = C.y - oy, r = 54;
                 const str = typeof C.strength === "number" ? C.strength : (C.down ? 1.0 : 0.38);
                 ctx.save(); ctx.globalCompositeOperation = "lighter";
@@ -2557,6 +2573,12 @@ const initNavSim = (c) => {
                 ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.arc(lx, ly, r, 0, TAU); ctx.stroke();
                 ctx.setLineDash([2, 5]); ctx.beginPath(); ctx.arc(lx, ly, r * 1.55, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+                if (isCalloutLayout) {
+                    ctx.fillStyle = `rgba(190,215,255,${(0.32 + 0.25 * str).toFixed(3)})`;
+                    ctx.font = `500 8px ${mono}`;
+                    ctx.textAlign = "center";
+                    ctx.fillText("LENS · θ_E", lx, ly - r - 6);
+                }
                 ctx.restore();
             }
 
@@ -2676,7 +2698,7 @@ const initNavSim = (c) => {
                 ctx.stroke();
 
                 // Horizontal solid rule under title
-                const ruleSolidW = 120 * k;
+                const ruleSolidW = (isCalloutLayout ? 96 : 120) * k;
                 ctx.beginPath();
                 ctx.moveTo(jx, ry);
                 ctx.lineTo(jx + ruleSolidW, ry);
@@ -2694,28 +2716,30 @@ const initNavSim = (c) => {
                 ctx.setLineDash([4 * k, 3 * k, 1.5 * k, 3 * k]);
                 ctx.beginPath();
                 ctx.moveTo(jx + ruleSolidW + 4 * k, ry);
-                ctx.lineTo(jx + ruleSolidW + 55 * k, ry);
+                ctx.lineTo(jx + ruleSolidW + (isCalloutLayout ? 38 : 55) * k, ry);
                 ctx.stroke();
                 ctx.setLineDash([]);
 
                 // Futuristic telemetry chevrons » » » along rule
-                const chvx0 = jx + ruleSolidW + 62 * k;
+                const chvx0 = jx + ruleSolidW + (isCalloutLayout ? 44 : 62) * k;
                 for (let c = 0; c < 3; c++) {
                     const cx = chvx0 + c * 7 * k;
                     ctx.beginPath();
                     ctx.moveTo(cx, ry - 3 * k); ctx.lineTo(cx + 3 * k, ry); ctx.lineTo(cx, ry + 3 * k);
                     ctx.stroke();
                 }
-                const chvx1 = chvx0 + 32 * k;
-                for (let c = 0; c < 3; c++) {
-                    const cx = chvx1 + c * 6 * k;
-                    ctx.beginPath();
-                    ctx.moveTo(cx, ry - 2.5 * k); ctx.lineTo(cx + 2.5 * k, ry); ctx.lineTo(cx, ry + 2.5 * k);
-                    ctx.stroke();
+                if (!isCalloutLayout) {
+                    const chvx1 = chvx0 + 32 * k;
+                    for (let c = 0; c < 3; c++) {
+                        const cx = chvx1 + c * 6 * k;
+                        ctx.beginPath();
+                        ctx.moveTo(cx, ry - 2.5 * k); ctx.lineTo(cx + 2.5 * k, ry); ctx.lineTo(cx, ry + 2.5 * k);
+                        ctx.stroke();
+                    }
                 }
 
                 // Typography & Telemetry
-                const f1 = Math.max(13, 14.5 * k), f2 = Math.max(9.8, 11.0 * k), f3 = Math.max(9.5, 10.5 * k);
+                const f1 = Math.max(12, (isCalloutLayout ? 13.0 : 14.5) * k), f2 = Math.max(9.2, (isCalloutLayout ? 10.0 : 11.0) * k), f3 = Math.max(9.0, (isCalloutLayout ? 9.6 : 10.5) * k);
                 const tx = jx + 6 * k;
                 ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
                 ctx.shadowColor = "rgba(0,0,0,1.0)"; ctx.shadowBlur = 10 * k; ctx.shadowOffsetY = 1.5 * k;
@@ -2753,15 +2777,16 @@ const initNavSim = (c) => {
 
                 // Locus name in vibrant domain accent
                 ctx.font = `700 ${f2}px ${mono}`;
-                const locusLabel = inTransit ? "WARP STAGE ACTIVE" : meta.locus.replace(/^●\s*/, "");
+                const rawLocus = inTransit ? "WARP STAGE ACTIVE" : meta.locus.replace(/^●\s*/, "");
+                const locusLabel = (isCalloutLayout && !inTransit && rawLocus === "HERO PARTICLE LAUNCH POINT") ? "LAUNCH ORIGIN" : rawLocus;
                 ctx.fillText(locusLabel, tx + 18 * k, ry + 32 * k);
 
                 // Telemetry separated with right offset: "v = 0.00c | γ = 1.00"
                 const locusW = ctx.measureText(locusLabel).width;
                 const telemText = inTransit
-                    ? `v = ${vNum.toFixed(2)}c | γ = ${gamma} [${Math.round(launch * 100)}%]`
+                    ? `v = ${vNum.toFixed(2)}c | γ = ${gamma}`
                     : `v = ${vNum.toFixed(2)}c | γ = ${gamma}`;
-                ctx.fillText(telemText, tx + 18 * k + locusW + 18 * k, ry + 32 * k);
+                ctx.fillText(telemText, tx + 18 * k + locusW + (isCalloutLayout ? 10 : 18) * k, ry + 32 * k);
 
                 ctx.restore();
             }
@@ -3139,7 +3164,7 @@ const initNavSim = (c) => {
 
 /* =====================================================================
    Callout layout: simulation centred, content as small labelled boxes
-   joined to a centre ring by leader lines.
+   joined to real formation features and a concentric hero ring by leader lines.
    Opt-out:  ?layout=classic   (persisted)   |   ?layout=callout to restore.
    Active only on viewports >= 1100px wide.
    ===================================================================== */
@@ -3156,6 +3181,7 @@ const initNavSim = (c) => {
     } catch (e) {}
 
     const mq = window.matchMedia("(min-width: 1100px)");
+    const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const apply = () => {
         root.dataset.layout = (pref !== "classic" && mq.matches) ? "callout" : "classic";
     };
@@ -3170,8 +3196,56 @@ const initNavSim = (c) => {
         [".snap-math-grid, .hero-eq, .snap-eq, .math-block", "FORMULATION"],
         [".snap-actions, .snap-arch-grid, .tags, .contact-card", "SPECTRUM"],
         [".snap-jump-pills", "INDEX"],
-        [".edu", "RECORD"]
+        [".edu", "RECORD"],
+        [".kw-extra-callout", "TELEMETRY"]
     ];
+
+    // Real 3D / UV feature anchors per section so each corner box points at a meaningful structure:
+    // Order: [0: upper-left, 1: lower-left, 2: upper-right, 3: lower-right]
+    const SECTION_FEATURES = {
+        "hub:intro": [
+            { name: "LOCAL GROUP · 0 MLY", uv: [0.511, 0.562, 0.02], scale: "1.0× · ORIGIN" },
+            { name: "CENTAURUS · 170 MLY", uv: [0.351, 0.873, 0.02], scale: "2.4× · ATTRACTOR" },
+            { name: "VIRGO CLUSTER · 54 MLY", uv: [0.556, 0.674, 0.02], scale: "2.1× · CORE LOBE" },
+            { name: "HYDRA–ANTLIA · 158 MLY", uv: [0.585, 0.779, 0.02], scale: "1.9× · FILAMENT" }
+        ],
+        "hub:domain-math": [
+            { name: "LORENZ LOBE α⁻", world: [-1.15, 0.72, 0.15], scale: "2.2× · MANIFOLD" },
+            { name: "HOPF TORUS FIBER", world: [-0.95, -0.78, -0.20], scale: "1.8× · S³→S²" },
+            { name: "LORENZ LOBE α⁺", world: [1.15, 0.72, -0.15], scale: "2.2× · ATTRACTOR" },
+            { name: "SADDLE BIFURCATION", world: [0.85, -0.72, 0.25], scale: "2.6× · LYAPUNOV" }
+        ],
+        "hub:domain-physics": [
+            { name: "PHOTON RING r_ph", world: [-0.92, 0.55, 0.10], scale: "3.0× · GEODESIC" },
+            { name: "ERGOSPHERE S⁺", world: [-1.25, -0.58, 0.25], scale: "2.1× · FRAME DRAG" },
+            { name: "RELATIVISTIC JET", world: [0.45, 1.15, 0.0], scale: "2.4× · POLAR AXIS" },
+            { name: "ISCO DISK r_ms", world: [1.35, -0.42, -0.18], scale: "2.5× · DOPPLER" }
+        ],
+        "hub:domain-datascience": [
+            { name: "SCORE FIELD ∇log p", world: [-1.18, 0.68, 0.12], scale: "2.0× · LANGEVIN" },
+            { name: "LATENT WELL μ₁", world: [-0.92, -0.74, -0.18], scale: "2.3× · ATTRACTOR" },
+            { name: "FOKKER–PLANCK FLUX", world: [1.14, 0.66, -0.12], scale: "1.9× · DRIFT" },
+            { name: "SPECTRAL GAP λ₂", world: [0.98, -0.70, 0.20], scale: "2.2× · EIGENMODE" }
+        ],
+        "hub:domain-quant": [
+            { name: "IMPLIED VOL SMILE", world: [-1.22, 0.64, 0.20], scale: "2.1× · DUPIRÉ" },
+            { name: "BID DEPTH TIER L₂", world: [-1.05, -0.68, -0.15], scale: "2.4× · MICROSTR." },
+            { name: "CONVEXITY WING σ_T", world: [1.22, 0.64, -0.20], scale: "2.1× · SURFACE" },
+            { name: "ASK QUEUE IMBALANCE", world: [1.05, -0.68, 0.15], scale: "2.4× · ORDER FLOW" }
+        ],
+        "hub:domain-cs": [
+            { name: "BLOCH NORTH |0⟩", world: [-0.88, 0.86, 0.10], scale: "2.2× · STATEVEC" },
+            { name: "SIMD LANE CLUSTER", world: [-1.18, -0.64, -0.20], scale: "1.9× · REGISTER" },
+            { name: "HADAMARD EQUATOR", world: [1.12, 0.58, 0.18], scale: "2.5× · COHERENCE" },
+            { name: "ENTANGLED BELL PAIR", world: [0.92, -0.78, -0.15], scale: "2.3× · UNITARY" }
+        ],
+        "hub:contact": [
+            { name: "ORBITAL SHELL n=1", world: [-0.95, 0.68, 0.12], scale: "2.0× · NODE 01" },
+            { name: "PHASE LATTICE A", world: [-0.85, -0.68, -0.12], scale: "1.8× · CHANNEL" },
+            { name: "HARMONIC SHELL n=2", world: [0.95, 0.68, -0.12], scale: "2.0× · NODE 02" },
+            { name: "RESONANCE WELL Ω", world: [0.85, -0.68, 0.12], scale: "2.2× · TERMINAL" }
+        ]
+    };
 
     const labelFor = (el, n) => {
         let base = "VECTOR";
@@ -3184,8 +3258,6 @@ const initNavSim = (c) => {
         return base + "_" + String(n).padStart(2, "0");
     };
 
-    const weight = (el) => (el.textContent || "").length + el.querySelectorAll("li, .math-block, .card").length * 40 + 60;
-
     // Offset of el inside sec from layout (offset*) values, so reveal / warp transforms don't skew the lines.
     const posIn = (el, sec) => {
         let x = 0, y = 0, o = el;
@@ -3197,34 +3269,176 @@ const initNavSim = (c) => {
         return { x, y, w: el.offsetWidth, h: el.offsetHeight };
     };
 
-    const build = (inner) => {
+    const decorateBox = (b, idx, total, feat) => {
+        b.style.setProperty("--kw-idx", idx);
+        const label = b.dataset.label || labelFor(b, idx + 1);
+        b.dataset.label = label;
+        const idxStr = String(idx + 1).padStart(2, "0") + "/" + String(total).padStart(2, "0");
+
+        let hdr = b.querySelector(":scope > .kw-hdr");
+        if (!hdr) {
+            hdr = document.createElement("div");
+            hdr.className = "kw-hdr";
+            hdr.setAttribute("aria-hidden", "true");
+            hdr.innerHTML = `<span class="kw-hdr-left"><span class="kw-hdr-dot"></span><span class="kw-hdr-title">${label}</span></span><span class="kw-hdr-idx">${idxStr}</span>`;
+            b.insertBefore(hdr, b.firstChild);
+        }
+
+        // Restyle identity box (#intro h1) with a clean mono role subtitle underneath
+        const h1 = b.querySelector("h1");
+        if (h1 && !b.querySelector(".kw-role-sub")) {
+            const sub = document.createElement("div");
+            sub.className = "kw-role-sub";
+            sub.textContent = "IIT MADRAS · DATA SCIENCE & QUANTITATIVE SYSTEMS";
+            h1.insertAdjacentElement("afterend", sub);
+        }
+
+        // Live magnified crop canvas (samples #stage-canvas around this box's target)
+        if (!b.querySelector(":scope > .kw-crop-wrap")) {
+            const wrap = document.createElement("div");
+            wrap.className = "kw-crop-wrap";
+            wrap.setAttribute("aria-hidden", "true");
+            wrap.dataset.target = (feat && feat.name) || "LOCUS LOCK";
+            const cv = document.createElement("canvas");
+            cv.className = "kw-crop";
+            cv.width = 220;
+            cv.height = 68;
+            wrap.appendChild(cv);
+            hdr.insertAdjacentElement("afterend", wrap);
+        }
+
+        // Tabular mono metadata line updated at 4 Hz
+        if (!b.querySelector(":scope > .kw-meta")) {
+            const meta = document.createElement("div");
+            meta.className = "kw-meta";
+            meta.setAttribute("aria-hidden", "true");
+            const scaleTxt = (feat && feat.scale) || "2.0× · LOCK";
+            meta.innerHTML = `<span class="kw-meta-coord">XY 000·000</span><span class="kw-meta-scale">${scaleTxt}</span><span class="kw-meta-live">60 FPS · 0.00c</span>`;
+            b.appendChild(meta);
+        }
+    };
+
+    const build = (inner, sec) => {
         if (inner.querySelector(":scope > .kw-col")) return;
         const blocks = Array.from(inner.children).filter((c) => c.nodeType === 1 && !/^(SCRIPT|STYLE)$/.test(c.tagName));
         if (!blocks.length) return;
         inner.classList.add("hud-inset-grid");
+
+        // If a section only has 3 natural blocks (e.g. intro or contact), add a 4th telemetry card so all 4 corners are balanced
+        if (blocks.length === 3) {
+            const extra = document.createElement("div");
+            extra.className = "kw-extra-callout";
+            const isIntro = sec.id === "intro" || sec.dataset.sim === "hub:intro";
+            extra.innerHTML = isIntro
+                ? `<div class="kw-telem-grid"><div><span>SUPERCLUSTER</span><strong>LANIAKEA · 520 MLY</strong></div><div><span>ATTRACTOR FLOW</span><strong>v_p = 630 KM/S</strong></div><div><span>PARTICLE FIELD</span><strong>65,536 NODES</strong></div><div><span>METRIC FRAME</span><strong>SGX · J2000</strong></div></div>`
+                : `<div class="kw-telem-grid"><div><span>INSTITUTION</span><strong>IIT MADRAS</strong></div><div><span>DISCIPLINE</span><strong>DS · QUANT · CS</strong></div><div><span>AVAILABILITY</span><strong>RESEARCH & QUANT</strong></div><div><span>CHANNEL STATUS</span><strong>DIRECT LINK READY</strong></div></div>`;
+            inner.appendChild(extra);
+            blocks.push(extra);
+        }
+
         const L = document.createElement("div"), R = document.createElement("div");
         L.className = "kw-col l";
         R.className = "kw-col r";
-        let wl = 0, wr = 0;
+
+        const simKey = (sec && sec.dataset && sec.dataset.sim) || "hub:intro";
+        const feats = SECTION_FEATURES[simKey] || SECTION_FEATURES["hub:intro"];
+        const total = blocks.length;
+
+        // Distribute evenly across the 4 corners: first half on left (upper-left, lower-left), second half on right (upper-right, lower-right)
+        const half = Math.ceil(total / 2);
         blocks.forEach((b, i) => {
             b.style.order = i;
             b.classList.add("kw-callout", "hud-inset-card");
+            b.dataset.boxIdx = String(i);
             b.dataset.label = labelFor(b, i + 1);
-            const w = weight(b);
-            if (wl <= wr) {
-                L.appendChild(b);
-                wl += w;
-            } else {
-                R.appendChild(b);
-                wr += w;
+            const feat = feats[i % feats.length];
+            decorateBox(b, i, total, feat);
+            if (i < half) L.appendChild(b);
+            else R.appendChild(b);
+
+            if (!b.__kwHover) {
+                b.__kwHover = true;
+                b.addEventListener("pointerenter", () => {
+                    sec.dataset.hoverBox = String(i);
+                    b.classList.add("is-hovered");
+                    const g = sec.querySelector(`.kw-leader-group[data-box-idx="${i}"]`);
+                    if (g) g.classList.add("is-hovered");
+                });
+                b.addEventListener("pointerleave", () => {
+                    delete sec.dataset.hoverBox;
+                    b.classList.remove("is-hovered");
+                    sec.querySelectorAll(".kw-leader-group.is-hovered").forEach((g) => g.classList.remove("is-hovered"));
+                });
             }
         });
         inner.appendChild(L);
         if (R.children.length) inner.appendChild(R);
     };
 
+    // Smoothed hero screen centre so .kw-ring and leader targets stay locked to the real hero particle
+    const smoothHero = { x: 0, y: 0, init: false };
+    const getHeroInSec = (sec, W, H) => {
+        const S = window.THREAD_STAGE;
+        const hs = (S && S.supported && S.heroScreen) ? S.heroScreen : (window.__HUD_FOCAL__ || null);
+        let tx = W * 0.5, ty = H * 0.5;
+        if (hs && Number.isFinite(hs.x) && Number.isFinite(hs.y)) {
+            const sr = sec.getBoundingClientRect();
+            // Convert viewport heroScreen to section-local coordinates when section is near viewport
+            if (sr.bottom > 0 && sr.top < window.innerHeight) {
+                tx = Math.max(W * 0.28, Math.min(W * 0.72, hs.x - sr.left));
+                ty = Math.max(H * 0.24, Math.min(H * 0.76, hs.y - sr.top));
+            } else {
+                tx = Math.max(W * 0.28, Math.min(W * 0.72, hs.x));
+                ty = Math.max(H * 0.24, Math.min(H * 0.76, hs.y));
+            }
+        }
+        if (!smoothHero.init) {
+            smoothHero.x = tx;
+            smoothHero.y = ty;
+            smoothHero.init = true;
+        } else {
+            smoothHero.x += (tx - smoothHero.x) * 0.22;
+            smoothHero.y += (ty - smoothHero.y) * 0.22;
+        }
+        return { cx: smoothHero.x, cy: smoothHero.y };
+    };
+
+    // Project a feature descriptor to section-local (x, y) coordinates, with fallback to ring angle
+    const resolveTarget = (feat, sgn, slotIdx, slotCount, cx, cy, ring, W, H, sec) => {
+        const sr = sec.getBoundingClientRect();
+        const inView = sr.bottom > 40 && sr.top < window.innerHeight - 40;
+        if (feat && inView) {
+            if (feat.uv && window.__LANIAKEA_MAP__ && typeof window.__LANIAKEA_MAP__.projectUV === "function") {
+                const p = window.__LANIAKEA_MAP__.projectUV(feat.uv[0], feat.uv[1], feat.uv[2] || 0.02);
+                if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+                    const lx = p.x - sr.left, ly = p.y - sr.top;
+                    if (lx > W * 0.24 && lx < W * 0.76 && ly > 82 && ly < H - 72) {
+                        return { x: lx, y: ly, name: feat.name };
+                    }
+                }
+            }
+            if (feat.world && window.THREAD_STAGE && typeof window.THREAD_STAGE.project === "function") {
+                const p = window.THREAD_STAGE.project(feat.world[0], feat.world[1], feat.world[2]);
+                if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+                    const lx = p.x - sr.left, ly = p.y - sr.top;
+                    if (lx > W * 0.24 && lx < W * 0.76 && ly > 82 && ly < H - 72) {
+                        return { x: lx, y: ly, name: feat.name };
+                    }
+                }
+            }
+        }
+        const ang = slotCount === 1 ? 0 : (((slotIdx + 0.5) / slotCount) - 0.5) * Math.PI * 0.62;
+        return {
+            x: cx + sgn * ring * Math.cos(ang),
+            y: cy + ring * Math.sin(ang),
+            name: (feat && feat.name) || "LOCUS"
+        };
+    };
+
     const SVGNS = "http://www.w3.org/2000/svg";
-    const draw = (sec) => {
+    const allSecs = () => Array.from(document.querySelectorAll(".snap-section"));
+
+    const draw = (sec, secIdx) => {
         if (root.dataset.layout !== "callout") return;
         const W = sec.clientWidth, H = sec.clientHeight;
         if (!W || !H) return;
@@ -3235,51 +3449,86 @@ const initNavSim = (c) => {
             svg.setAttribute("aria-hidden", "true");
             sec.insertBefore(svg, sec.firstChild);
         }
-        const cx = W / 2, cy = H / 2, ring = Math.min(W, H) * 0.3, innerRing = ring * 0.76;
-        let out = `<circle class="kw-ring" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${ring.toFixed(1)}"/>` +
-            `<circle class="kw-ring-dashed" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${innerRing.toFixed(1)}"/>` +
-            `<g class="kw-orbit" style="transform-origin:${cx.toFixed(1)}px ${cy.toFixed(1)}px"><circle class="kw-orbit-dot" cx="${(cx - ring).toFixed(1)}" cy="${cy.toFixed(1)}" r="3.2"/></g>`;
 
-        // Angular degree ticks (0°, 90°, 180°, 270°) along diagnostic circumference
-        [["0°", -Math.PI / 2], ["90°", 0], ["180°", Math.PI / 2], ["270°", Math.PI]].forEach(([deg, a]) => {
-            const x0 = cx + Math.cos(a) * (ring - 4), y0 = cy + Math.sin(a) * (ring - 4);
-            const x1 = cx + Math.cos(a) * (ring + 4), y1 = cy + Math.sin(a) * (ring + 4);
-            const lx = cx + Math.cos(a) * (ring + 14), ly = cy + Math.sin(a) * (ring + 14);
-            out += `<line class="kw-line" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/>` +
-                   `<text class="kw-deg" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle">${deg}</text>`;
-        });
+        const { cx, cy } = getHeroInSec(sec, W, H);
+        const ring = Math.min(W, H) * 0.265;
+        let out = "";
 
-        [["l", -1], ["r", 1]].forEach(([side, sgn]) => {
+        const simKey = (sec && sec.dataset && sec.dataset.sim) || "hub:intro";
+        const feats = SECTION_FEATURES[simKey] || SECTION_FEATURES["hub:intro"];
+        const hoveredIdx = sec.dataset.hoverBox;
+        const segs = [];
+
+        // Gather all box rects in section space to avoid routing leader lines through sibling boxes
+        const allBoxes = Array.from(sec.querySelectorAll(".kw-callout")).map((el) => ({ el, r: posIn(el, sec) }));
+
+        [["l", -1, 0], ["r", 1, 2]].forEach(([side, sgn, featOffset]) => {
             const items = Array.from(sec.querySelectorAll(`.kw-col.${side} > .kw-callout`));
             const n = items.length;
             items.forEach((el, i) => {
                 const p = posIn(el, sec);
-                const ax = sgn < 0 ? p.x + p.w : p.x, ay = p.y + 9;
-                const ang = n === 1 ? 0 : (((i + 0.5) / n) - 0.5) * Math.PI * 0.65;
-                const tx = cx + sgn * ring * Math.cos(ang), ty = cy + ring * Math.sin(ang);
-                const dx = tx - ax;
-                // Avoid drawing lines if box overlaps the ring
-                if (sgn < 0 && dx <= 0) return;
-                if (sgn > 0 && dx >= 0) return;
-                const ex = ax + dx * 0.45;
-                out += `<path class="kw-line" d="M${ax.toFixed(1)} ${ay.toFixed(1)} L${ex.toFixed(1)} ${ty.toFixed(1)} L${tx.toFixed(1)} ${ty.toFixed(1)}"/>` +
+                const boxIdx = el.dataset.boxIdx || String(featOffset + i);
+                const feat = feats[(featOffset + i) % feats.length];
+                const tgt = resolveTarget(feat, sgn, i, n, cx, cy, ring, W, H, sec);
+
+                // Anchor at the inner edge of the header bar (y = p.y + 9)
+                const ax = sgn < 0 ? p.x + p.w : p.x;
+                const ay = p.y + 9;
+                let tx = tgt.x, ty = tgt.y;
+
+                // Ensure target sits inward from the box edge
+                if (sgn < 0 && tx <= ax + 18) tx = Math.max(ax + 28, cx - ring * 0.65);
+                if (sgn > 0 && tx >= ax - 18) tx = Math.min(ax - 28, cx + ring * 0.65);
+
+                // Route line: diagonal from box header edge (ax, ay) to elbow (ex, ey), then horizontal to target (tx, ty)
+                const dy = ty - ay;
+                const diagSpan = Math.min(Math.abs(tx - ax) * 0.52, Math.max(26, Math.abs(dy) * 0.85));
+                let ex = ax + sgn * diagSpan;
+                let ey = ty;
+
+                // If horizontal segment at ey would clip another box on the same flank, nudge elbow outside the box
+                for (const other of allBoxes) {
+                    if (other.el === el) continue;
+                    const or = other.r;
+                    const minX = Math.min(ax, tx), maxX = Math.max(ax, tx);
+                    if (maxX > or.x - 6 && minX < or.x + or.w + 6 && ey > or.y - 8 && ey < or.y + or.h + 8) {
+                        ex = sgn < 0 ? Math.max(ex, or.x + or.w + 16) : Math.min(ex, or.x - 16);
+                    }
+                }
+
+                // Store target coordinates on the element for live crop sampling & 4 Hz metadata
+                el.__kwTarget = { x: tx, y: ty, name: tgt.name, scale: (feat && feat.scale) || "2.0× · LOCK" };
+                segs.push([ax, ay, ex, ey], [ex, ey, tx, ty]);
+
+                const isHov = hoveredIdx !== undefined && String(hoveredIdx) === String(boxIdx);
+                const cls = "kw-leader-group" + (isHov ? " is-hovered" : "");
+                out += `<g class="${cls}" data-box-idx="${boxIdx}" style="--kw-idx:${boxIdx}">` +
+                       `<path class="kw-line" d="M${ax.toFixed(1)} ${ay.toFixed(1)} L${ex.toFixed(1)} ${ey.toFixed(1)} L${tx.toFixed(1)} ${ty.toFixed(1)}"/>` +
                        `<circle class="kw-node-halo" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="2.6"/>` +
-                       `<circle class="kw-node" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="2.6"/>`;
+                       `<circle class="kw-node" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="2.6"/>` +
+                       `</g>`;
             });
         });
+
+        window.__CALLOUT_LINES__ = window.__CALLOUT_LINES__ || {};
+        if (typeof secIdx === "number") {
+            window.__CALLOUT_LINES__[secIdx] = segs;
+        }
         svg.innerHTML = out;
     };
 
     const ro = window.ResizeObserver ? new ResizeObserver((es) => {
         const secs = new Set(es.map((e) => e.target.closest(".snap-section")).filter(Boolean));
-        secs.forEach((s) => requestAnimationFrame(() => draw(s)));
+        const list = allSecs();
+        secs.forEach((s) => requestAnimationFrame(() => draw(s, list.indexOf(s))));
     }) : null;
 
     const process = () => {
-        document.querySelectorAll(".snap-section").forEach((sec) => {
+        const list = allSecs();
+        list.forEach((sec, idx) => {
             const inner = sec.querySelector(":scope > .snap-inner");
             if (!inner) return;
-            build(inner);
+            build(inner, sec);
             if (!sec.__kwObs) {
                 sec.__kwObs = true;
                 if (ro) {
@@ -3295,7 +3544,7 @@ const initNavSim = (c) => {
                     }
                 });
             }
-            draw(sec);
+            draw(sec, idx);
         });
     };
 
@@ -3309,8 +3558,117 @@ const initNavSim = (c) => {
         });
     };
 
+    // Live zoom crops & dynamic leader tracking synced with the WebGL render frame (~12 fps throttled)
+    let lastCropAt = 0;
+    let lastLeaderAt = 0;
+    let fpsSmooth = 60;
+    let lastFrameTs = performance.now();
+
+    window.__ON_STAGE_FRAME__ = (stageCanvas, dpr) => {
+        if (root.dataset.layout !== "callout" || document.hidden) return;
+        const now = performance.now();
+        const dt = Math.max(1, now - lastFrameTs);
+        lastFrameTs = now;
+        fpsSmooth = fpsSmooth * 0.9 + (1000 / dt) * 0.1;
+
+        const S = window.THREAD_STAGE;
+        const activeIdx = (S && S.supported && typeof S.currentIndex === "number") ? S.currentIndex : 0;
+        const secs = allSecs();
+        const activeSec = secs[activeIdx];
+        if (!activeSec) return;
+
+        // Keep active section's ring and leader targets smoothly locked to heroScreen (~24 fps)
+        if (now - lastLeaderAt > 42) {
+            lastLeaderAt = now;
+            draw(activeSec, activeIdx);
+        }
+
+        // Throttle live 2D canvas crop blits to ~12 fps (84 ms); skip if frame rate drops below 28 fps
+        if (now - lastCropAt < 84 || fpsSmooth < 28) return;
+        lastCropAt = now;
+
+        const sr = activeSec.getBoundingClientRect();
+        if (sr.bottom < 0 || sr.top > window.innerHeight) return;
+
+        const laniakeaCanvas = document.querySelector("canvas.laniakea-hero-canvas");
+        const boxes = activeSec.querySelectorAll(".kw-callout");
+        boxes.forEach((b) => {
+            const cv = b.querySelector("canvas.kw-crop");
+            const tgt = b.__kwTarget;
+            if (!cv || !tgt) return;
+            const ctx2d = cv.getContext("2d");
+            if (!ctx2d) return;
+
+            const vx = tgt.x + sr.left;
+            const vy = tgt.y + sr.top;
+            const sw = 132 * dpr, sh = 42 * dpr;
+            const sx = Math.max(0, Math.min(stageCanvas.width - sw, vx * dpr - sw * 0.5));
+            const sy = Math.max(0, Math.min(stageCanvas.height - sh, vy * dpr - sh * 0.5));
+
+            try {
+                ctx2d.clearRect(0, 0, cv.width, cv.height);
+                ctx2d.drawImage(stageCanvas, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+                if (activeIdx === 0 && laniakeaCanvas && laniakeaCanvas.width > 0) {
+                    ctx2d.drawImage(laniakeaCanvas, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+                }
+                // Crosshair reticle at crop centre
+                ctx2d.strokeStyle = "rgba(255,255,255,0.28)";
+                ctx2d.lineWidth = 1;
+                const mcx = cv.width * 0.5, mcy = cv.height * 0.5;
+                ctx2d.beginPath();
+                ctx2d.moveTo(mcx - 8, mcy); ctx2d.lineTo(mcx - 2, mcy);
+                ctx2d.moveTo(mcx + 2, mcy); ctx2d.lineTo(mcx + 8, mcy);
+                ctx2d.moveTo(mcx, mcy - 8); ctx2d.lineTo(mcx, mcy - 2);
+                ctx2d.moveTo(mcx, mcy + 2); ctx2d.lineTo(mcx, mcy + 8);
+                ctx2d.stroke();
+            } catch (e) {}
+        });
+    };
+
+    // 4 Hz tabular mono metadata updater (coordinates, scale, live fps and v/c)
+    setInterval(() => {
+        if (root.dataset.layout !== "callout" || document.hidden) return;
+        const S = window.THREAD_STAGE;
+        const activeIdx = (S && S.supported && typeof S.currentIndex === "number") ? S.currentIndex : 0;
+        const T = S && S.trans;
+        const vNum = (T && T.active) ? Math.min(0.99, 0.45 + 0.54 * Math.sin((T.u || 0) * Math.PI)) : 0.00;
+        const fpsTxt = Math.round(Math.min(120, Math.max(24, fpsSmooth))).toString().padStart(2, "0");
+        const secs = allSecs();
+        const activeSec = secs[activeIdx];
+        if (!activeSec) return;
+
+        activeSec.querySelectorAll(".kw-callout").forEach((b) => {
+            const tgt = b.__kwTarget;
+            if (!tgt) return;
+            const cEl = b.querySelector(".kw-meta-coord");
+            const sEl = b.querySelector(".kw-meta-scale");
+            const lEl = b.querySelector(".kw-meta-live");
+            if (cEl) cEl.textContent = `XY ${Math.round(tgt.x).toString().padStart(3, "0")}·${Math.round(tgt.y).toString().padStart(3, "0")}`;
+            if (sEl && tgt.scale) sEl.textContent = tgt.scale;
+            if (lEl) lEl.textContent = `${fpsTxt} FPS · ${vNum.toFixed(2)}c`;
+        });
+    }, 250);
+
+    // Subtle pointer parallax (<= 6px) on callout boxes, disabled under prefers-reduced-motion
+    if (!reducedMotion) {
+        window.addEventListener("pointermove", (e) => {
+            if (root.dataset.layout !== "callout") return;
+            const nx = (e.clientX / Math.max(1, window.innerWidth)) - 0.5;
+            const ny = (e.clientY / Math.max(1, window.innerHeight)) - 0.5;
+            const S = window.THREAD_STAGE;
+            const activeIdx = (S && S.supported && typeof S.currentIndex === "number") ? S.currentIndex : 0;
+            const activeSec = allSecs()[activeIdx];
+            if (!activeSec) return;
+            activeSec.querySelectorAll(".kw-callout").forEach((b, i) => {
+                const factor = (i % 2 === 0 ? 4.5 : 6.0);
+                b.style.setProperty("--px", (nx * factor).toFixed(2) + "px");
+                b.style.setProperty("--py", (ny * factor).toFixed(2) + "px");
+            });
+        }, { passive: true });
+    }
+
     new MutationObserver((ms) => {
-        if (ms.some((m) => !(m.target.closest && m.target.closest(".kw-leaders")))) {
+        if (ms.some((m) => !(m.target.closest && (m.target.closest(".kw-leaders") || m.target.closest(".kw-meta") || m.target.closest(".kw-crop-wrap") || m.target.closest(".kw-hdr"))))) {
             schedule();
         }
     }).observe(document.body || root, { childList: true, subtree: true });

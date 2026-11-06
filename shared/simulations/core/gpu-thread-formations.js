@@ -231,15 +231,23 @@
 
         _layout() {
             const W = window.innerWidth, H = window.innerHeight, portrait = W < 760 || W < H * 0.95, A = LK_ASPECT;
+            const centred = Boolean(this._ctx && this._ctx.centred);
             let unitPx, tx, ty;
             if (!portrait) {
-                unitPx = Math.min(1.0 * H, (W * 0.93) / A);
-                ty = H * 0.5 + (LK_LG[1] - 0.5) * unitPx;
-                tx = W * 0.5 + (LK_LG[0] - 0.5) * A * unitPx;
+                if (centred) {
+                    unitPx = Math.min(1.08 * H, (W * 0.82) / A);
+                    tx = W * 0.50 - 0.088 * unitPx;
+                    ty = H * 0.50 + 0.140 * unitPx;
+                } else {
+                    unitPx = Math.min(1.0 * H, (W * 0.93) / A);
+                    const top = Math.max(0.05 * H, (H - unitPx) * 0.5 + 0.015 * H);
+                    ty = top + LK_LG[1] * unitPx + 45;
+                    tx = W + 110 - (1 - LK_LG[0]) * A * unitPx;
+                }
             } else {
                 unitPx = Math.min(0.97 * W, (0.80 * H) / A);
-                tx = W * 0.5 - (0.5 - LK_LG[1]) * unitPx;
-                ty = H * 0.5 + (LK_LG[0] - 0.5) * A * unitPx;
+                tx = W * 0.57 - (0.5 - LK_LG[1]) * unitPx;
+                ty = 0.62 * H + (LK_LG[0] - 0.5) * A * unitPx;
             }
             this.layout = { unitPx, portrait, tx, ty };
             return portrait;
@@ -331,7 +339,7 @@
                     if (r === 1) {
                         const tw = 0.88 + 0.12 * Math.sin(t * (0.8 + seeds[i * 4 + 2] * 2.2) + seeds[i * 4] * 6.283), dd = dens[i];
                         const hv = dw > 0.001 ? (1 - dw) + dw * (0.16 + 2.0 * Math.min(1, dd * 2.2)) : 1;
-                        const m = dep * tw * hv; cr = bc[i3] * m; cg = bc[i3 + 1] * m; cb = bc[i3 + 2] * m; ps = bs[i] * (0.85 + 0.3 * dep) * (0.8 + 0.2 * hv);
+                        const m = dep * tw * hv * ((ctx && ctx.centred) ? 0.68 : 1.0); cr = bc[i3] * m; cg = bc[i3 + 1] * m; cb = bc[i3 + 2] * m; ps = bs[i] * (0.85 + 0.3 * dep) * (0.8 + 0.2 * hv);
                     } else { cr = bc[i3]; cg = bc[i3 + 1]; cb = bc[i3 + 2]; ps = bs[i]; }
                 }
                 const x = lx * s, y = ly * s, z = lz * s;
@@ -540,7 +548,7 @@
 
             const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
             const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
-            const offsetX = 0.0;
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 3.22) * (1.0 - 0.85 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             for (let i = 0; i < N; i++) {
@@ -849,7 +857,7 @@
             const cosA = Math.cos(this.alpha), sinA = Math.sin(this.alpha);
             const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
             const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
-            const offsetX = 0.0;
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.15) * (1.0 - 0.85 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             for (let i = 0; i < N; i++) {
@@ -1372,15 +1380,16 @@
             const ins = this.insideness || 0;
             const sinObs = Math.sin(this.tilt);
             const cosObs = Math.cos(this.tilt);
-            const offsetX = 0.0;
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.35) * (1.0 - 0.35 * ins);
 
             const isMob = (ctx && ctx.isMobile) || (typeof window !== "undefined" && window.innerWidth <= 768);
-            const targetScreenX = 0.50;
-            this.kerrOverlay.screenX = targetScreenX;
+            const targetScreenX = (isMob || (ctx && ctx.centred)) ? 0.50 : (0.66 - ptrX * 0.015);
+            const centreScreenX = (ctx && ctx.centred) ? 0.50 : 0.58;
+            this.kerrOverlay.screenX = targetScreenX * (1.0 - 0.25 * ins) + centreScreenX * (0.25 * ins);
             this.kerrOverlay.screenY = isMob ? 0.62 : (0.50 + ptrY * 0.02);
 
-            // Never zoom closer than 26.0 so the full accretion disk & photon ring stay framed inside the viewport!
-            const baseScale = isMob ? 44.0 : 34.0;
+            // Accretion disk & photon ring scale: enlarged when centred in callout mode
+            const baseScale = isMob ? 44.0 : ((ctx && ctx.centred) ? 42.0 : 34.0);
             const insideScale = isMob ? 34.0 : 26.0;
             this.kerrOverlay.scale = (dbg && dbg.scale !== undefined && dbg.scale !== null)
                 ? dbg.scale
@@ -1470,7 +1479,7 @@
             const pitch = 0.52 + 0.16 * Math.sin(t * 0.083 + 1.0) + ptrY * 0.30;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = 0.0;
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 1.65) * (1.0 - 0.45 * (this.insideness || 0));
             const scale = 1.18 * (1.0 + 0.25 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
@@ -1532,7 +1541,7 @@
             const pitch = 0.42 + 0.16 * Math.sin(t * 0.083 + 1.0) + ptrY * 0.30;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = 0.0;
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 1.65) * (1.0 - 0.45 * (this.insideness || 0));
             const scale = 1.22 * (1.0 + 0.25 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
@@ -1799,7 +1808,7 @@
             const pitch = -0.28 + 0.16 * Math.sin(t * 0.083 + 1.0) + ptrY * 0.30;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = 0.0;
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.15) * (1.0 - 0.85 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             const N = buffer.count;
@@ -2017,7 +2026,7 @@
             const pitch = 0.36 + 0.16 * Math.sin(t * 0.083 + 1.0) + ptrY * 0.30;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = 0.0;
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 1.45) * (1.0 - 0.45 * (this.insideness || 0));
             const scale = 1.35 * (1.0 + 0.25 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
@@ -2424,7 +2433,7 @@
             const pitch = 0.42 + 0.16 * Math.sin(t * 0.083 + 1.0) + ptrY * 0.30;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = 0.0;
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.15) * (1.0 - 0.85 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             const N = buffer.count;

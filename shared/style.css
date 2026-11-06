@@ -470,19 +470,22 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
-/* Ambient radial dark vignette centred on the viewport */
+/* Ambient horizontal atmospheric falloff for left-column text */
 .hero::after,
 .snap-section::after,
-.about-contact-section::after,
-#domain-physics::after,
-#domain-intro[data-domain="physics"]::after {
+.about-contact-section::after {
     content: "";
     position: absolute;
     inset: 0;
     z-index: 1;
     pointer-events: none;
     opacity: var(--ui-veil, 1);
-    background: radial-gradient(ellipse at center, transparent 42%, rgba(var(--bg-rgb), 0.58) 100%);
+    background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.68) 0%, rgba(var(--bg-rgb), 0.34) 38%, rgba(var(--bg-rgb), 0.0) 68%);
+}
+
+#domain-physics::after,
+#domain-intro[data-domain="physics"]::after {
+    background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.88) 0%, rgba(var(--bg-rgb), 0.70) 32%, rgba(var(--bg-rgb), 0.25) 52%, transparent 72%);
 }
 
 .snap-inner {
@@ -2109,15 +2112,20 @@ p, li { text-wrap: pretty; }
 /* =====================================================================
    Callout / Diagnostic HUD Inset Layout (html[data-layout="callout"], >=1100px)
    Simulation sits dead centre; content becomes diagnostic inspection
-   insets on the perimeter flanks, joined to the centre ring by dogleg lines.
+   insets on the perimeter flanks, joined to real features by leader lines.
    Classic layout is untouched: wrappers collapse via display: contents.
    ===================================================================== */
 html:not([data-layout="callout"]) .kw-col { display: contents; }
-html:not([data-layout="callout"]) .kw-leaders { display: none; }
+html:not([data-layout="callout"]) .kw-leaders,
+html:not([data-layout="callout"]) .kw-hdr,
+html:not([data-layout="callout"]) .kw-crop-wrap,
+html:not([data-layout="callout"]) .kw-meta,
+html:not([data-layout="callout"]) .kw-role-sub,
+html:not([data-layout="callout"]) .kw-extra-callout { display: none !important; }
 
 html[data-layout="callout"] {
-    --kw-flank: clamp(240px, 24vw, 350px);
-    --kw-line: rgba(var(--a, 96, 156, 255), 0.58);
+    --kw-flank: clamp(238px, 23.5vw, 338px);
+    --kw-line: rgba(var(--a, 96, 156, 255), 0.72);
 }
 
 /* Ambient radial dark vignette + faint technical grid that fades to the edges */
@@ -2128,9 +2136,9 @@ html[data-layout="callout"] #domain-physics::after,
 html[data-layout="callout"] #domain-intro[data-domain="physics"]::after {
     background-color: transparent;
     background-image:
-        radial-gradient(ellipse at center, transparent 42%, rgba(var(--bg-rgb), 0.55) 100%),
-        linear-gradient(color-mix(in srgb, var(--fg) 5%, transparent) 1px, transparent 1px),
-        linear-gradient(90deg, color-mix(in srgb, var(--fg) 5%, transparent) 1px, transparent 1px);
+        radial-gradient(ellipse at center, transparent 44%, rgba(var(--bg-rgb), 0.56) 100%),
+        linear-gradient(color-mix(in srgb, var(--fg) 4.5%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--fg) 4.5%, transparent) 1px, transparent 1px);
     background-size: 100% 100%, 56px 56px, 56px 56px;
     background-position: center center;
 }
@@ -2142,9 +2150,11 @@ html[data-layout="callout"] #domain-intro[data-domain="physics"] .snap-inner::be
 
 html[data-layout="callout"] .snap-section {
     justify-content: center;
-    align-items: stretch;
-    padding-left: clamp(24px, 3.2vw, 48px);
-    padding-right: clamp(24px, 3.2vw, 48px);
+    align-items: center;
+    padding-top: max(84px, 9.5vh) !important;
+    padding-bottom: max(76px, 8.5vh) !important;
+    padding-left: clamp(22px, 3vw, 46px);
+    padding-right: clamp(22px, 3vw, 46px);
 }
 
 html[data-layout="callout"] .snap-inner,
@@ -2165,13 +2175,20 @@ html[data-layout="callout"] .kw-col {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 16px;
+    min-height: min(64vh, 540px);
+    gap: clamp(16px, 2.4vh, 28px);
     min-width: 0;
-    max-width: calc(50vw - min(100vw, 100vh) * 0.3 - 28px);
+    max-width: calc(50vw - min(100vw, 100vh) * 0.25 - 18px);
     pointer-events: none;
 }
-html[data-layout="callout"] .kw-col.l { grid-column: 1; }
-html[data-layout="callout"] .kw-col.r { grid-column: 3; }
+html[data-layout="callout"] .kw-col.l { grid-column: 1; align-items: flex-start; }
+html[data-layout="callout"] .kw-col.r { grid-column: 3; align-items: flex-end; }
+
+/* Subtle width variation across the 4 corners so boxes feel naturally composed */
+html[data-layout="callout"] .kw-col.l > .kw-callout:nth-child(odd)  { width: 94%; }
+html[data-layout="callout"] .kw-col.l > .kw-callout:nth-child(even) { width: 100%; }
+html[data-layout="callout"] .kw-col.r > .kw-callout:nth-child(odd)  { width: 96%; }
+html[data-layout="callout"] .kw-col.r > .kw-callout:nth-child(even) { width: 90%; }
 
 html[data-layout="callout"] .kw-callout,
 .hud-inset-card {
@@ -2179,37 +2196,90 @@ html[data-layout="callout"] .kw-callout,
     pointer-events: auto;
     margin: 0 !important;
     max-width: none !important;
-    padding: 28px 14px 12px;
-    border: 1px solid rgba(var(--a, 96, 156, 255), 0.38);
+    padding: 25px 12px 10px;
+    border: 1px solid rgba(var(--a, 96, 156, 255), 0.34);
     border-radius: 0;
-    background: color-mix(in srgb, var(--bg) 78%, transparent);
-    -webkit-backdrop-filter: blur(10px) saturate(125%);
-    backdrop-filter: blur(10px) saturate(125%);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
-    font-size: 0.84rem;
-    line-height: 1.52;
+    /* Translucent glass (~55% --bg) + subtle top-down gradient + soft radial vignette behind box */
+    background:
+        linear-gradient(180deg, rgba(var(--a, 96, 156, 255), 0.08) 0%, rgba(var(--a, 96, 156, 255), 0.015) 100%),
+        color-mix(in srgb, var(--bg) 55%, transparent);
+    -webkit-backdrop-filter: blur(12px) saturate(130%);
+    backdrop-filter: blur(12px) saturate(130%);
+    box-shadow:
+        0 0 68px 26px rgba(var(--bg-rgb), 0.54),
+        0 6px 20px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    font-size: 0.80rem;
+    line-height: 1.48;
     box-sizing: border-box;
+    transform: translate3d(var(--px, 0px), var(--py, 0px), 0);
+    transition: opacity 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.16s ease-out;
 }
 
-/* Header ribbon bar */
-html[data-layout="callout"] .kw-callout::before,
+html[data-layout="callout"] .kw-callout:hover {
+    border-color: rgba(var(--a, 96, 156, 255), 0.72);
+}
+
+/* Hover interaction: dim sibling boxes and non-hovered leader lines */
+html[data-layout="callout"] .snap-section[data-hover-box] .kw-callout {
+    opacity: 0.45;
+}
+html[data-layout="callout"] .snap-section[data-hover-box] .kw-callout.is-hovered {
+    opacity: 1;
+}
+
+/* Soft accent gradient header bar with status dot + label + 01/04 index */
+html[data-layout="callout"] .kw-callout::before {
+    display: none !important;
+}
+
+html[data-layout="callout"] .kw-hdr,
 .hud-inset-header {
-    content: attr(data-label);
     position: absolute;
     top: -1px;
     left: -1px;
     right: -1px;
     height: 18px;
     padding: 0 8px;
-    background: rgba(var(--a, 96, 156, 255), 0.78);
-    color: var(--on-accent, #050811);
-    font: 700 9.5px/18px var(--mono);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    background: linear-gradient(90deg, rgba(var(--a, 96, 156, 255), 0.34) 0%, rgba(var(--a, 96, 156, 255), 0.14) 65%, rgba(var(--a, 96, 156, 255), 0.24) 100%);
+    border-bottom: 1px solid rgba(var(--a, 96, 156, 255), 0.36);
+    color: var(--fg);
+    font: 600 9px/18px var(--mono);
     letter-spacing: 0.14em;
     text-transform: uppercase;
     box-sizing: border-box;
     white-space: nowrap;
     overflow: hidden;
+    transform-origin: left center;
+    animation: kw-hdr-wipe 0.48s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(var(--kw-idx, 0) * 90ms);
+}
+.kw-hdr-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
     text-overflow: ellipsis;
+}
+.kw-hdr-dot {
+    width: 4.5px;
+    height: 4.5px;
+    border-radius: 50%;
+    background: rgb(var(--a, 96, 156, 255));
+    box-shadow: 0 0 6px rgb(var(--a, 96, 156, 255));
+    flex-shrink: 0;
+}
+.kw-hdr-idx {
+    font: 500 8.5px/18px var(--mono);
+    font-variant-numeric: tabular-nums;
+    color: color-mix(in srgb, var(--fg) 68%, transparent);
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
 }
 
 .hud-inset-header {
@@ -2220,6 +2290,60 @@ html[data-layout="callout"] .kw-callout::before,
     padding: 10px 12px;
     font-size: 12.5px;
     color: var(--fg);
+}
+
+/* Live magnified stage crop inside callout box (reference detail crop look) */
+html[data-layout="callout"] .kw-crop-wrap {
+    position: relative;
+    width: 100%;
+    height: 44px;
+    margin: 0 0 7px;
+    border: 1px solid rgba(var(--a, 96, 156, 255), 0.26);
+    background: rgba(var(--bg-rgb), 0.65);
+    overflow: hidden;
+}
+html[data-layout="callout"] .kw-crop {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(0.58) contrast(1.12);
+}
+html[data-layout="callout"] .kw-crop-wrap::after {
+    content: attr(data-target);
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 2px 6px;
+    background:
+        linear-gradient(180deg, rgba(var(--a, 96, 156, 255), 0.14), rgba(var(--bg-rgb), 0.35)),
+        radial-gradient(circle at 50% 50%, transparent 10px, rgba(var(--a, 96, 156, 255), 0.12) 11px, transparent 12px);
+    color: color-mix(in srgb, var(--fg) 78%, rgb(var(--a, 96, 156, 255)));
+    font: 500 8px/1.2 var(--mono);
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    pointer-events: none;
+}
+
+/* Tabular mono metadata line updating at 4 Hz */
+html[data-layout="callout"] .kw-meta {
+    margin-top: 7px;
+    padding-top: 5px;
+    border-top: 1px solid rgba(var(--a, 96, 156, 255), 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font: 500 8.5px/1.25 var(--mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--fg) 68%, rgb(var(--a, 96, 156, 255)));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* 90-degree outer corner anchor ticks on every diagnostic inset card */
@@ -2240,24 +2364,56 @@ html[data-layout="callout"] .kw-callout::after,
         linear-gradient(rgb(var(--a, 96, 156, 255)), rgb(var(--a, 96, 156, 255))) bottom right / 1.5px 6px no-repeat;
 }
 
+/* Identity box & section headings: site heading font (--sans) at a sensible size, mono role below */
 html[data-layout="callout"] .kw-callout h1,
 html[data-layout="callout"] .kw-callout h2 {
-    font-size: clamp(22px, 2.3vw, 34px) !important;
-    line-height: 1.1 !important;
+    font-family: var(--sans) !important;
+    font-weight: 600 !important;
+    font-size: clamp(18px, 1.55vw, 23px) !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.15 !important;
     margin: 0;
+}
+
+html[data-layout="callout"] .kw-role-sub {
+    margin-top: 5px;
+    font: 500 9.5px/1.35 var(--mono);
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--fg) 76%, rgb(var(--a, 96, 156, 255)));
 }
 
 html[data-layout="callout"] .kw-callout p,
 html[data-layout="callout"] .kw-callout.lead {
     max-width: none;
-    font-size: 0.84rem !important;
+    font-size: 0.79rem !important;
+    line-height: 1.46 !important;
     margin: 0;
 }
 
 html[data-layout="callout"] .kw-callout .eq {
-    font-size: 0.82em;
+    font-size: 0.78em;
     overflow-x: auto;
     max-width: 100%;
+}
+
+/* Compact telemetry rows inside synthetic 4th corner card */
+html[data-layout="callout"] .kw-telem-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px 10px;
+    font: 500 9.5px/1.35 var(--mono);
+    font-variant-numeric: tabular-nums;
+}
+html[data-layout="callout"] .kw-telem-grid span {
+    color: var(--muted);
+    font-size: 8.5px;
+    letter-spacing: 0.08em;
+    display: block;
+}
+html[data-layout="callout"] .kw-telem-grid strong {
+    color: var(--fg);
+    font-weight: 600;
 }
 
 /* Grids inside a callout stack in one column; their own cards go flat */
@@ -2267,14 +2423,14 @@ html[data-layout="callout"] .two-col,
 html[data-layout="callout"] .contact-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 6px;
     list-style: none;
 }
 
 html[data-layout="callout"] .edu {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 html[data-layout="callout"] .kw-callout .glass,
@@ -2285,12 +2441,12 @@ html[data-layout="callout"] .kw-callout .contact-card {
     backdrop-filter: none;
     border: 1px solid rgba(var(--a, 96, 156, 255), 0.18);
     border-radius: 0;
-    padding: 8px 10px;
+    padding: 6px 8px;
     box-shadow: none;
 }
 
 html[data-layout="callout"] .snap-overview-card.kw-callout {
-    padding: 28px 14px 12px;
+    padding: 25px 12px 10px;
 }
 
 /* Leader lines, concentric diagnostic reticles and orbiting marker */
@@ -2306,34 +2462,59 @@ html[data-layout="callout"] .snap-overview-card.kw-callout {
 .kw-line {
     fill: none;
     stroke: var(--kw-line);
-    stroke-width: 1;
+    stroke-width: 1.15;
     vector-effect: non-scaling-stroke;
+    stroke-dasharray: 900;
+    stroke-dashoffset: 0;
+    animation: kw-line-draw 0.75s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(var(--kw-idx, 0) * 110ms + 120ms);
+    transition: opacity 0.22s ease, stroke-width 0.22s ease, stroke 0.22s ease;
 }
 .kw-node {
     fill: rgb(var(--a, 96, 156, 255));
+    transition: opacity 0.22s ease, r 0.22s ease;
 }
 .kw-node-halo {
     fill: none;
-    stroke: rgba(var(--a, 96, 156, 255), 0.45);
-    stroke-width: 1;
+    stroke: rgba(var(--a, 96, 156, 255), 0.55);
+    stroke-width: 1.1;
     animation: kw-pulse 2.6s ease-out infinite;
+    transition: opacity 0.22s ease;
+}
+.kw-target-tag {
+    fill: color-mix(in srgb, var(--fg) 75%, rgb(var(--a, 96, 156, 255)));
+    font: 600 8px var(--mono);
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    transition: opacity 0.22s ease;
+}
+html[data-layout="callout"] .snap-section[data-hover-box] .kw-leader-group {
+    opacity: 0.24;
+}
+html[data-layout="callout"] .snap-section[data-hover-box] .kw-leader-group.is-hovered {
+    opacity: 1;
+}
+html[data-layout="callout"] .snap-section[data-hover-box] .kw-leader-group.is-hovered .kw-line {
+    stroke: rgb(var(--a, 96, 156, 255));
+    stroke-width: 1.65;
 }
 .kw-ring {
     fill: none;
-    stroke: rgba(240, 131, 74, 0.38);
+    stroke: rgba(240, 131, 74, 0.36);
     stroke-width: 1;
     vector-effect: non-scaling-stroke;
 }
 .kw-ring-dashed {
     fill: none;
-    stroke: rgba(var(--a, 96, 156, 255), 0.25);
+    stroke: rgba(var(--a, 96, 156, 255), 0.22);
     stroke-width: 1;
     stroke-dasharray: 4 6;
     vector-effect: non-scaling-stroke;
 }
 .kw-deg {
-    fill: rgba(var(--a, 96, 156, 255), 0.55);
+    fill: rgba(var(--a, 96, 156, 255), 0.52);
     font: 500 8.5px var(--mono);
+    font-variant-numeric: tabular-nums;
     letter-spacing: 0.08em;
 }
 .kw-orbit {
@@ -2346,9 +2527,18 @@ html[data-layout="callout"] .snap-overview-card.kw-callout {
     to { transform: rotate(360deg); }
 }
 @keyframes kw-pulse {
-    0% { r: 2.6px; opacity: 0.85; }
-    100% { r: 9px; opacity: 0; }
+    0% { r: 2.6px; opacity: 0.9; }
+    100% { r: 9.5px; opacity: 0; }
+}
+@keyframes kw-hdr-wipe {
+    from { transform: scaleX(0); opacity: 0; }
+    to { transform: scaleX(1); opacity: 1; }
+}
+@keyframes kw-line-draw {
+    from { stroke-dashoffset: 900; opacity: 0.2; }
+    to { stroke-dashoffset: 0; opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .kw-orbit, .kw-node-halo { animation: none; }
+    .kw-orbit, .kw-node-halo, .kw-hdr, .kw-line { animation: none !important; }
+    html[data-layout="callout"] .kw-callout { transform: none !important; }
 }
