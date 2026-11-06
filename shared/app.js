@@ -3418,10 +3418,14 @@ const initNavSim = (c) => {
                 }
             }
             if (feat.world && window.THREAD_STAGE && typeof window.THREAD_STAGE.project === "function") {
-                const p = window.THREAD_STAGE.project(feat.world[0], feat.world[1], feat.world[2]);
-                if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
-                    const lx = p.x - sr.left, ly = p.y - sr.top;
-                    if (lx > W * 0.24 && lx < W * 0.76 && ly > 82 && ly < H - 72) {
+                const S = window.THREAD_STAGE;
+                const f = S.formations && S.formations[S.currentIndex || 0];
+                const base = f && f.origin ? f.origin : { x: 0, y: 0, z: 0 };
+                // Offset world coordinates relative to active formation origin so features always track the active simulation
+                const p = S.project(base.x + feat.world[0], base.y + feat.world[1], base.z + feat.world[2]);
+                if (p && Number.isFinite(p[0]) && Number.isFinite(p[1])) {
+                    const lx = p[0] - sr.left, ly = p[1] - sr.top;
+                    if (lx > W * 0.20 && lx < W * 0.80 && ly > 72 && ly < H - 64) {
                         return { x: lx, y: ly, name: feat.name };
                     }
                 }

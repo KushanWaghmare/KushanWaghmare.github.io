@@ -3839,6 +3839,9 @@
 
         drawQuad();
         gl.activeTexture(gl.TEXTURE0);
+        if (typeof window !== "undefined" && typeof window.__ON_STAGE_FRAME__ === "function") {
+            window.__ON_STAGE_FRAME__(stageCanvas, dpr);
+        }
     };
 
     requestAnimationFrame(tick);
@@ -3851,6 +3854,8 @@
         scene,
         camera,
         points,
+        stageCanvas,
+        project: ctxState.project,
         buffer: sharedBuffer,
         get bufferReallocations() { return bufferReallocations; },
         get currentIndex() { return currentIndex; },
