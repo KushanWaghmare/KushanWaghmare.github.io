@@ -2819,7 +2819,7 @@
         }
 
         ctxState.isMobile = isMobileDevice();
-        ctxState.centred = (typeof document !== "undefined" && document.documentElement.dataset.layout === "callout");
+        ctxState.centred = (typeof document === "undefined" || document.documentElement.dataset.layout !== "classic");
         ctxState.isLight = document.documentElement.dataset.theme === "light";
         if (ctxState.isLight !== lastThemeLight) {
             lastThemeLight = ctxState.isLight;

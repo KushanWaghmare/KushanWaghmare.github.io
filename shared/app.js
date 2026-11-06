@@ -2616,9 +2616,16 @@ const initNavSim = (c) => {
                 ctx.beginPath(); ctx.arc(mx, my, 40 * k * ringK, aStart, aStart + 1.2); ctx.stroke();
             }
 
-            // High-tech dashed range ring
+            // High-tech dashed range ring + angular degree ticks (0°, 90°, 180°, 270°)
             ctx.setLineDash([3 * k, 4 * k]); ctx.strokeStyle = `rgba(${domAcc},0.45)`; ctx.lineDashOffset = -rot * 32;
             ctx.beginPath(); ctx.arc(mx, my, 36 * k * ringK, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = `rgba(${domAcc},0.62)`; ctx.font = `600 ${Math.max(8, 8.5 * k)}px ${mono}`;
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            for (const [deg, ang] of [["0°", -Math.PI / 2], ["90°", 0], ["180°", Math.PI / 2], ["270°", Math.PI]]) {
+                const dr = 52 * k * ringK;
+                ctx.fillText(deg, mx + Math.cos(ang) * dr, my + Math.sin(ang) * dr);
+            }
+            window.__HUD_FOCAL__ = { x: mx, y: my, secIdx };
 
             // Lock-on brackets (90° pixel-stepped box ticks on Contact section, clean high-tech corner brackets elsewhere)
             const br = (17 + 2 * (reduced ? 0 : Math.sin(tSec * 2.2)) + 12 * flash) * k, bl = 7 * k;
@@ -3158,15 +3165,11 @@ const initNavSim = (c) => {
 
     const LABELS = [
         [".crumbs", "PATH"],
-        ["h1, h2, .snap-title, .section-head", "TITLE"],
-        [".lead, .snap-lead", "BRIEF"],
-        [".tags", "TAGS"],
+        ["h1, h2, .snap-title, .section-head", "VECTOR"],
+        [".lead, .snap-lead, .snap-overview-card, .two-col", "METRIC"],
+        [".snap-math-grid, .hero-eq, .snap-eq, .math-block", "FORMULATION"],
+        [".snap-actions, .snap-arch-grid, .tags, .contact-card", "SPECTRUM"],
         [".snap-jump-pills", "INDEX"],
-        [".snap-actions", "ACTION"],
-        [".snap-overview-card, .two-col", "CONTEXT"],
-        [".snap-arch-grid", "PIPELINE"],
-        [".snap-math-grid, .hero-eq, .snap-eq, .math-block", "MATH"],
-        [".contact-card", "CONTACT"],
         [".edu", "RECORD"]
     ];
 
@@ -3198,13 +3201,14 @@ const initNavSim = (c) => {
         if (inner.querySelector(":scope > .kw-col")) return;
         const blocks = Array.from(inner.children).filter((c) => c.nodeType === 1 && !/^(SCRIPT|STYLE)$/.test(c.tagName));
         if (!blocks.length) return;
+        inner.classList.add("hud-inset-grid");
         const L = document.createElement("div"), R = document.createElement("div");
         L.className = "kw-col l";
         R.className = "kw-col r";
         let wl = 0, wr = 0;
         blocks.forEach((b, i) => {
             b.style.order = i;
-            b.classList.add("kw-callout");
+            b.classList.add("kw-callout", "hud-inset-card");
             b.dataset.label = labelFor(b, i + 1);
             const w = weight(b);
             if (wl <= wr) {
@@ -3231,9 +3235,19 @@ const initNavSim = (c) => {
             svg.setAttribute("aria-hidden", "true");
             sec.insertBefore(svg, sec.firstChild);
         }
-        const cx = W / 2, cy = H / 2, ring = Math.min(W, H) * 0.3;
+        const cx = W / 2, cy = H / 2, ring = Math.min(W, H) * 0.3, innerRing = ring * 0.76;
         let out = `<circle class="kw-ring" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${ring.toFixed(1)}"/>` +
+            `<circle class="kw-ring-dashed" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${innerRing.toFixed(1)}"/>` +
             `<g class="kw-orbit" style="transform-origin:${cx.toFixed(1)}px ${cy.toFixed(1)}px"><circle class="kw-orbit-dot" cx="${(cx - ring).toFixed(1)}" cy="${cy.toFixed(1)}" r="3.2"/></g>`;
+
+        // Angular degree ticks (0°, 90°, 180°, 270°) along diagnostic circumference
+        [["0°", -Math.PI / 2], ["90°", 0], ["180°", Math.PI / 2], ["270°", Math.PI]].forEach(([deg, a]) => {
+            const x0 = cx + Math.cos(a) * (ring - 4), y0 = cy + Math.sin(a) * (ring - 4);
+            const x1 = cx + Math.cos(a) * (ring + 4), y1 = cy + Math.sin(a) * (ring + 4);
+            const lx = cx + Math.cos(a) * (ring + 14), ly = cy + Math.sin(a) * (ring + 14);
+            out += `<line class="kw-line" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/>` +
+                   `<text class="kw-deg" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle">${deg}</text>`;
+        });
 
         [["l", -1], ["r", 1]].forEach(([side, sgn]) => {
             const items = Array.from(sec.querySelectorAll(`.kw-col.${side} > .kw-callout`));
@@ -3249,6 +3263,7 @@ const initNavSim = (c) => {
                 if (sgn > 0 && dx >= 0) return;
                 const ex = ax + dx * 0.45;
                 out += `<path class="kw-line" d="M${ax.toFixed(1)} ${ay.toFixed(1)} L${ex.toFixed(1)} ${ty.toFixed(1)} L${tx.toFixed(1)} ${ty.toFixed(1)}"/>` +
+                       `<circle class="kw-node-halo" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="2.6"/>` +
                        `<circle class="kw-node" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="2.6"/>`;
             });
         });

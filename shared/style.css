@@ -470,22 +470,19 @@ html[data-domain="physics"] .nav-live { height: 48px; margin-top: -6px; margin-b
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
-/* Ambient horizontal atmospheric falloff for left-column text */
+/* Ambient radial dark vignette centred on the viewport */
 .hero::after,
 .snap-section::after,
-.about-contact-section::after {
+.about-contact-section::after,
+#domain-physics::after,
+#domain-intro[data-domain="physics"]::after {
     content: "";
     position: absolute;
     inset: 0;
     z-index: 1;
     pointer-events: none;
     opacity: var(--ui-veil, 1);
-    background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.68) 0%, rgba(var(--bg-rgb), 0.34) 38%, rgba(var(--bg-rgb), 0.0) 68%);
-}
-
-#domain-physics::after,
-#domain-intro[data-domain="physics"]::after {
-    background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.88) 0%, rgba(var(--bg-rgb), 0.70) 32%, rgba(var(--bg-rgb), 0.25) 52%, transparent 72%);
+    background: radial-gradient(ellipse at center, transparent 42%, rgba(var(--bg-rgb), 0.58) 100%);
 }
 
 .snap-inner {
@@ -2110,36 +2107,41 @@ p, li { text-wrap: pretty; }
 }
 
 /* =====================================================================
-   Callout layout (html[data-layout="callout"], >=1100px)
-   Simulation sits dead centre; content becomes small labelled boxes
-   on either flank, joined to the centre ring by leader lines.
+   Callout / Diagnostic HUD Inset Layout (html[data-layout="callout"], >=1100px)
+   Simulation sits dead centre; content becomes diagnostic inspection
+   insets on the perimeter flanks, joined to the centre ring by dogleg lines.
    Classic layout is untouched: wrappers collapse via display: contents.
    ===================================================================== */
 html:not([data-layout="callout"]) .kw-col { display: contents; }
 html:not([data-layout="callout"]) .kw-leaders { display: none; }
 
 html[data-layout="callout"] {
-    --kw-flank: clamp(250px, 25vw, 380px);
-    --kw-line: rgba(var(--a, 96, 156, 255), 0.55);
+    --kw-flank: clamp(240px, 24vw, 350px);
+    --kw-line: rgba(var(--a, 96, 156, 255), 0.58);
 }
 
-/* Replace the left-hand text veil with a faint technical grid that fades to the edges */
+/* Ambient radial dark vignette + faint technical grid that fades to the edges */
 html[data-layout="callout"] .snap-section::after,
 html[data-layout="callout"] .hero::after,
 html[data-layout="callout"] .about-contact-section::after,
 html[data-layout="callout"] #domain-physics::after,
 html[data-layout="callout"] #domain-intro[data-domain="physics"]::after {
-    background: transparent;
+    background-color: transparent;
     background-image:
+        radial-gradient(ellipse at center, transparent 42%, rgba(var(--bg-rgb), 0.55) 100%),
         linear-gradient(color-mix(in srgb, var(--fg) 5%, transparent) 1px, transparent 1px),
         linear-gradient(90deg, color-mix(in srgb, var(--fg) 5%, transparent) 1px, transparent 1px);
-    background-size: 56px 56px;
+    background-size: 100% 100%, 56px 56px, 56px 56px;
     background-position: center center;
-    -webkit-mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.85) 35%, transparent 85%);
-    mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.85) 35%, transparent 85%);
+}
+
+html[data-layout="callout"] #domain-physics .snap-inner::before,
+html[data-layout="callout"] #domain-intro[data-domain="physics"] .snap-inner::before {
+    display: none;
 }
 
 html[data-layout="callout"] .snap-section {
+    justify-content: center;
     align-items: stretch;
     padding-left: clamp(24px, 3.2vw, 48px);
     padding-right: clamp(24px, 3.2vw, 48px);
@@ -2147,21 +2149,23 @@ html[data-layout="callout"] .snap-section {
 
 html[data-layout="callout"] .snap-inner,
 html[data-layout="callout"] .project-snap .snap-inner,
-html[data-layout="callout"] .about-contact-section .snap-inner {
+html[data-layout="callout"] .about-contact-section .snap-inner,
+.hud-inset-grid {
     display: grid;
-    grid-template-columns: var(--kw-flank) minmax(0, 1fr) var(--kw-flank);
+    grid-template-columns: var(--kw-flank, 280px) minmax(0, 1fr) var(--kw-flank, 280px);
     align-items: center;
     width: 100%;
     max-width: none !important;
     max-height: none !important;
     gap: 0;
-    pointer-events: none; /* the centre stays free for the simulation */
+    pointer-events: none; /* the central 50-60vw stays free for the 3D simulation */
 }
 
 html[data-layout="callout"] .kw-col {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    justify-content: space-between;
+    gap: 16px;
     min-width: 0;
     max-width: calc(50vw - min(100vw, 100vh) * 0.3 - 28px);
     pointer-events: none;
@@ -2169,24 +2173,27 @@ html[data-layout="callout"] .kw-col {
 html[data-layout="callout"] .kw-col.l { grid-column: 1; }
 html[data-layout="callout"] .kw-col.r { grid-column: 3; }
 
-html[data-layout="callout"] .kw-callout {
+html[data-layout="callout"] .kw-callout,
+.hud-inset-card {
     position: relative;
     pointer-events: auto;
     margin: 0 !important;
     max-width: none !important;
     padding: 28px 14px 12px;
-    border: 1px solid rgba(var(--a, 96, 156, 255), 0.42);
+    border: 1px solid rgba(var(--a, 96, 156, 255), 0.38);
     border-radius: 0;
-    background: color-mix(in srgb, var(--bg) 64%, transparent);
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
     -webkit-backdrop-filter: blur(10px) saturate(125%);
     backdrop-filter: blur(10px) saturate(125%);
-    box-shadow: none;
-    font-size: 0.86rem;
-    line-height: 1.55;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
+    font-size: 0.84rem;
+    line-height: 1.52;
     box-sizing: border-box;
 }
 
-html[data-layout="callout"] .kw-callout::before {
+/* Header ribbon bar */
+html[data-layout="callout"] .kw-callout::before,
+.hud-inset-header {
     content: attr(data-label);
     position: absolute;
     top: -1px;
@@ -2194,15 +2201,43 @@ html[data-layout="callout"] .kw-callout::before {
     right: -1px;
     height: 18px;
     padding: 0 8px;
-    background: rgba(var(--a, 96, 156, 255), 0.62);
-    color: var(--on-accent, #fff);
-    font: 500 9.5px/18px var(--mono);
+    background: rgba(var(--a, 96, 156, 255), 0.78);
+    color: var(--on-accent, #050811);
+    font: 700 9.5px/18px var(--mono);
     letter-spacing: 0.14em;
     text-transform: uppercase;
     box-sizing: border-box;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.hud-inset-header {
+    position: relative;
+    top: 0; left: 0; right: 0;
+}
+.hud-inset-body {
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--fg);
+}
+
+/* 90-degree outer corner anchor ticks on every diagnostic inset card */
+html[data-layout="callout"] .kw-callout::after,
+.hud-inset-card::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    pointer-events: none;
+    background:
+        linear-gradient(rgb(var(--a, 96, 156, 255)), rgb(var(--a, 96, 156, 255))) top left / 6px 1.5px no-repeat,
+        linear-gradient(rgb(var(--a, 96, 156, 255)), rgb(var(--a, 96, 156, 255))) top left / 1.5px 6px no-repeat,
+        linear-gradient(rgb(var(--a, 96, 156, 255)), rgb(var(--a, 96, 156, 255))) top right / 6px 1.5px no-repeat,
+        linear-gradient(rgb(var(--a, 96, 156, 255)), rgb(var(--a, 96, 156, 255))) top right / 1.5px 6px no-repeat,
+        linear-gradient(rgb(var(--a, 96, 156, 255)), rgb(var(--a, 96, 156, 255))) bottom left / 6px 1.5px no-repeat,
+        linear-gradient(rgb(var(--a, 96, 156, 255)), rgb(var(--a, 96, 156, 255))) bottom left / 1.5px 6px no-repeat,
+        linear-gradient(rgb(var(--a, 96, 156, 255)), rgb(var(--a, 96, 156, 255))) bottom right / 6px 1.5px no-repeat,
+        linear-gradient(rgb(var(--a, 96, 156, 255)), rgb(var(--a, 96, 156, 255))) bottom right / 1.5px 6px no-repeat;
 }
 
 html[data-layout="callout"] .kw-callout h1,
@@ -2215,7 +2250,7 @@ html[data-layout="callout"] .kw-callout h2 {
 html[data-layout="callout"] .kw-callout p,
 html[data-layout="callout"] .kw-callout.lead {
     max-width: none;
-    font-size: 0.86rem !important;
+    font-size: 0.84rem !important;
     margin: 0;
 }
 
@@ -2258,7 +2293,7 @@ html[data-layout="callout"] .snap-overview-card.kw-callout {
     padding: 28px 14px 12px;
 }
 
-/* Leader lines, centre ring and orbiting marker */
+/* Leader lines, concentric diagnostic reticles and orbiting marker */
 .kw-leaders {
     position: absolute;
     inset: 0;
@@ -2277,11 +2312,29 @@ html[data-layout="callout"] .snap-overview-card.kw-callout {
 .kw-node {
     fill: rgb(var(--a, 96, 156, 255));
 }
+.kw-node-halo {
+    fill: none;
+    stroke: rgba(var(--a, 96, 156, 255), 0.45);
+    stroke-width: 1;
+    animation: kw-pulse 2.6s ease-out infinite;
+}
 .kw-ring {
     fill: none;
     stroke: rgba(240, 131, 74, 0.38);
     stroke-width: 1;
     vector-effect: non-scaling-stroke;
+}
+.kw-ring-dashed {
+    fill: none;
+    stroke: rgba(var(--a, 96, 156, 255), 0.25);
+    stroke-width: 1;
+    stroke-dasharray: 4 6;
+    vector-effect: non-scaling-stroke;
+}
+.kw-deg {
+    fill: rgba(var(--a, 96, 156, 255), 0.55);
+    font: 500 8.5px var(--mono);
+    letter-spacing: 0.08em;
 }
 .kw-orbit {
     animation: kw-spin 70s linear infinite;
@@ -2292,6 +2345,10 @@ html[data-layout="callout"] .snap-overview-card.kw-callout {
 @keyframes kw-spin {
     to { transform: rotate(360deg); }
 }
+@keyframes kw-pulse {
+    0% { r: 2.6px; opacity: 0.85; }
+    100% { r: 9px; opacity: 0; }
+}
 @media (prefers-reduced-motion: reduce) {
-    .kw-orbit { animation: none; }
+    .kw-orbit, .kw-node-halo { animation: none; }
 }
