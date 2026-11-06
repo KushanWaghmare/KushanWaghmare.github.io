@@ -2595,17 +2595,34 @@ const initNavSim = (c) => {
 
             // Rotating tick ring + dashed range ring (tinted to active domain)
             const rot = reduced ? 0 : tSec * (0.25 + 1.8 * flash), ringK = 0.85 + 0.15 * lock;
-            ctx.strokeStyle = `rgba(${domAcc},0.40)`; ctx.lineWidth = 1;
-            for (let i = 0; i < 48; i++) {
-                const a = rot + i / 48 * TAU, r0 = 24 * k * ringK, r1 = r0 + (i % 4 === 0 ? 5 : 2.4) * k;
+
+            // Multi-layered sci-fi reticle rings with chromatic fringes
+            ctx.strokeStyle = `rgba(${domAcc},0.35)`; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(mx, my, 42 * k * ringK, 0, TAU); ctx.stroke();
+            ctx.strokeStyle = `rgba(180,210,255,0.22)`; ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.arc(mx, my, 31 * k * ringK, 0, TAU); ctx.stroke();
+
+            // Inner dense tick wheel (72 ticks with 6-tick major intervals)
+            ctx.strokeStyle = `rgba(${domAcc},0.55)`; ctx.lineWidth = 1;
+            for (let i = 0; i < 72; i++) {
+                const a = rot + i / 72 * TAU, r0 = 24 * k * ringK, r1 = r0 + (i % 6 === 0 ? 5.5 : 2.2) * k;
                 ctx.beginPath(); ctx.moveTo(mx + Math.cos(a) * r0, my + Math.sin(a) * r0); ctx.lineTo(mx + Math.cos(a) * r1, my + Math.sin(a) * r1); ctx.stroke();
             }
-            ctx.setLineDash([3 * k, 5 * k]); ctx.strokeStyle = `rgba(${domAcc},0.32)`; ctx.lineDashOffset = -rot * 40;
+
+            // Outer segmented tactical arcs
+            ctx.strokeStyle = `rgba(${domAcc},0.75)`; ctx.lineWidth = 1.8 * k;
+            for (let i = 0; i < 3; i++) {
+                const aStart = -rot * 0.8 + (i * TAU / 3) + 0.15;
+                ctx.beginPath(); ctx.arc(mx, my, 40 * k * ringK, aStart, aStart + 1.2); ctx.stroke();
+            }
+
+            // High-tech dashed range ring
+            ctx.setLineDash([3 * k, 4 * k]); ctx.strokeStyle = `rgba(${domAcc},0.45)`; ctx.lineDashOffset = -rot * 32;
             ctx.beginPath(); ctx.arc(mx, my, 36 * k * ringK, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
 
-            // Lock-on brackets (90° pixel-stepped box ticks on Contact section)
-            const br = (15 + 2 * (reduced ? 0 : Math.sin(tSec * 2.2)) + 12 * flash) * k, bl = 6 * k;
-            ctx.strokeStyle = isContact ? `rgba(${domAcc},0.95)` : "rgba(255,255,255,0.92)"; ctx.lineWidth = Math.max(1.2, 1.4 * k);
+            // Lock-on brackets (90° pixel-stepped box ticks on Contact section, clean high-tech corner brackets elsewhere)
+            const br = (17 + 2 * (reduced ? 0 : Math.sin(tSec * 2.2)) + 12 * flash) * k, bl = 7 * k;
+            ctx.strokeStyle = isContact ? `rgba(${domAcc},0.95)` : "rgba(255,255,255,0.95)"; ctx.lineWidth = Math.max(1.4, 1.6 * k);
             for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
                 const x = mx + sx * br, y = my + sy * br;
                 ctx.beginPath();
@@ -2616,80 +2633,129 @@ const initNavSim = (c) => {
                 }
                 ctx.stroke();
             }
-            ctx.strokeStyle = `rgba(${domAcc},0.95)`; ctx.lineWidth = Math.max(1, 1.2 * k);
-            ctx.beginPath(); ctx.arc(mx, my, 7.5 * k, 0, TAU); ctx.stroke();
-            ctx.fillStyle = `rgb(${heroAcc})`; ctx.beginPath(); ctx.arc(mx, my, 3.4 * k, 0, TAU); ctx.fill();
-            ctx.fillStyle = "rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.arc(mx - 0.8 * k, my - 0.9 * k, 1.1 * k, 0, TAU); ctx.fill();
+            ctx.strokeStyle = `rgba(${domAcc},0.95)`; ctx.lineWidth = Math.max(1.2, 1.4 * k);
+            ctx.beginPath(); ctx.arc(mx, my, 8 * k, 0, TAU); ctx.stroke();
+            ctx.fillStyle = `rgb(${heroAcc})`; ctx.beginPath(); ctx.arc(mx, my, 3.8 * k, 0, TAU); ctx.fill();
+            ctx.fillStyle = "rgba(255,255,255,0.98)"; ctx.beginPath(); ctx.arc(mx - 0.8 * k, my - 0.9 * k, 1.2 * k, 0, TAU); ctx.fill();
 
-            // Frameless astrophysical callout: 45° elbow leader -> horizontal underline rule, text floating on a soft veil
+            // Frameless astrophysical callout: starts with 45° leader from bracket -> bends straight horizontal -> data chevron ticker
             {
                 const pad = 4 * k;
-                // Leader geometry: starts right at the hero particle reticle, rises diagonally at 45° to the right, then extends into horizontal rule
-                const liftY = 32 * k; // elevation above hero particle
-                const ry = my - liftY; // rule Y level
-                const elbowDx = liftY; // 45° slope: dx = dy
-                const sx0 = mx + 9 * k, sy0 = my - 2 * k; // start point on reticle edge
-                const jx = mx + elbowDx; // joint node X
-                const ruleW = Math.max(160 * k, Math.min(260 * k, W - jx - 20));
+                // Leader geometry starts precisely from the upper-right corner bracket of reticle
+                const sx0 = mx + br * 0.85, sy0 = my - br * 0.45;
+                const liftY = 22 * k; // elevation to rule level
+                const ry = sy0 - liftY; // rule Y level
+                const jx = sx0 + liftY * 1.15; // 45° dogleg corner
+                const ruleW = Math.max(220 * k, Math.min(360 * k, W - jx - 20));
                 const rx1 = jx + ruleW;
 
                 ctx.save();
-                // Leader: 45° line from hero particle up-right to joint
-                ctx.strokeStyle = `rgba(${domAcc},0.85)`; ctx.lineWidth = Math.max(1, 1.4 * k);
+
+                // Subtle, gentle radial veil behind text (reduced opacity to prevent dark halo)
+                const vcx = jx + ruleW * 0.40, vcy = ry + 10 * k;
+                ctx.save(); ctx.translate(vcx, vcy); ctx.scale(ruleW / (50 * k) * 0.58, 1);
+                const vg = ctx.createRadialGradient(0, 0, 0, 0, 0, 45 * k);
+                vg.addColorStop(0, "rgba(2,4,8,0.42)");
+                vg.addColorStop(0.55, "rgba(2,4,8,0.40)");
+                vg.addColorStop(1, "rgba(2,4,8,0)");
+                ctx.fillStyle = vg; ctx.fillRect(-80 * k, -45 * k, 160 * k, 90 * k); ctx.restore();
+
+                // Leader: 45° angled line from reticle bracket up-right to joint
+                ctx.shadowColor = `rgba(${domAcc},0.75)`; ctx.shadowBlur = 9 * k;
+                ctx.strokeStyle = `rgb(${domAcc})`; ctx.lineWidth = Math.max(1.6, 2.0 * k);
                 ctx.beginPath();
                 ctx.moveTo(sx0, sy0);
                 ctx.lineTo(jx, ry);
                 ctx.stroke();
 
-                // Joint node beacon ●
+                // Horizontal solid rule under title
+                const ruleSolidW = 120 * k;
+                ctx.beginPath();
+                ctx.moveTo(jx, ry);
+                ctx.lineTo(jx + ruleSolidW, ry);
+                ctx.stroke();
+
+                // Joint vertex node ●
                 ctx.fillStyle = `rgb(${domAcc})`;
-                ctx.beginPath(); ctx.arc(jx, ry, 2.6 * k, 0, TAU); ctx.fill();
+                ctx.beginPath(); ctx.arc(jx, ry, 3.2 * k, 0, TAU); ctx.fill();
 
-                // Horizontal underline rule ─── fading out towards the right
-                const rg = ctx.createLinearGradient(jx, ry, rx1, ry);
-                rg.addColorStop(0, `rgb(${domAcc})`);
-                rg.addColorStop(0.65, `rgba(${domAcc},0.45)`);
-                rg.addColorStop(1, `rgba(${domAcc},0)`);
-                ctx.strokeStyle = rg; ctx.lineWidth = Math.max(1, 1.2 * k);
-                ctx.beginPath(); ctx.moveTo(jx, ry); ctx.lineTo(rx1, ry); ctx.stroke();
+                // Sci-fi data ticker along the rule (dash pattern + telemetry chevrons » » »)
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = `rgba(${domAcc},0.85)`;
+                ctx.strokeStyle = `rgba(${domAcc},0.75)`;
+                ctx.lineWidth = 1.4 * k;
+                ctx.setLineDash([4 * k, 3 * k, 1.5 * k, 3 * k]);
+                ctx.beginPath();
+                ctx.moveTo(jx + ruleSolidW + 4 * k, ry);
+                ctx.lineTo(jx + ruleSolidW + 55 * k, ry);
+                ctx.stroke();
+                ctx.setLineDash([]);
 
-                // Soft radial veil behind text for high-contrast legibility over WebGL
-                const vcx = jx + ruleW * 0.4, vcy = ry;
-                ctx.save(); ctx.translate(vcx, vcy); ctx.scale(ruleW / (40 * k) * 0.55, 1);
-                const vg = ctx.createRadialGradient(0, 0, 0, 0, 0, 36 * k);
-                vg.addColorStop(0, "rgba(0,0,0,0.65)"); vg.addColorStop(1, "rgba(0,0,0,0)");
-                ctx.fillStyle = vg; ctx.fillRect(-70 * k, -36 * k, 140 * k, 72 * k); ctx.restore();
+                // Futuristic telemetry chevrons » » » along rule
+                const chvx0 = jx + ruleSolidW + 62 * k;
+                for (let c = 0; c < 3; c++) {
+                    const cx = chvx0 + c * 7 * k;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, ry - 3 * k); ctx.lineTo(cx + 3 * k, ry); ctx.lineTo(cx, ry + 3 * k);
+                    ctx.stroke();
+                }
+                const chvx1 = chvx0 + 32 * k;
+                for (let c = 0; c < 3; c++) {
+                    const cx = chvx1 + c * 6 * k;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, ry - 2.5 * k); ctx.lineTo(cx + 2.5 * k, ry); ctx.lineTo(cx, ry + 2.5 * k);
+                    ctx.stroke();
+                }
 
                 // Typography & Telemetry
-                const f1 = Math.max(11, 12.5 * k), f2 = Math.max(8.5, 9.6 * k), f3 = Math.max(8.2, 9.2 * k);
-                const tx = jx + pad + 6 * k;
+                const f1 = Math.max(13, 14.5 * k), f2 = Math.max(9.8, 11.0 * k), f3 = Math.max(9.5, 10.5 * k);
+                const tx = jx + 6 * k;
                 ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-                ctx.shadowColor = "rgba(0,0,0,0.95)"; ctx.shadowBlur = 8 * k; ctx.shadowOffsetY = 1 * k;
+                ctx.shadowColor = "rgba(0,0,0,1.0)"; ctx.shadowBlur = 10 * k; ctx.shadowOffsetY = 1.5 * k;
 
-                // Line 1 (Above rule): Title + Coordinates / Timestamp
+                // Line 1 (Above rule): Bold "YOU ARE HERE", vertical pill separator ▯, and cyan coordinates "RA 12h · -27°"
                 const title = inTransit ? "WARPING SPACETIME" : "YOU ARE HERE";
-                const coordsLabel = inTransit ? `[00:${Math.round(launch * 60).toString().padStart(2, "0")}.0]` : (meta.coords || "RA 12h · −27°");
-                ctx.fillStyle = "#fff"; ctx.font = `700 ${f1}px ${fam}`;
+                ctx.fillStyle = "#ffffff"; ctx.font = `800 ${f1}px ${fam}`;
                 const titleW = ctx.measureText(title).width;
-                ctx.fillText(title, tx, ry - 6 * k);
-                ctx.fillStyle = `rgba(${domAcc},0.9)`; ctx.font = `600 ${f3}px ${mono}`;
-                ctx.fillText(coordsLabel, tx + titleW + 10 * k, ry - 6 * k);
+                ctx.fillText(title, tx, ry - 7 * k);
 
-                // Line 2 (Directly below rule): Domain Subtitle / Geodesic locus
-                ctx.fillStyle = "rgba(220,230,255,0.85)"; ctx.font = `500 ${f2}px ${mono}`;
-                ctx.fillText(inTransit ? "EINSTEIN–ROSEN WORMHOLE BRIDGE" : meta.sub, tx, ry + 13 * k);
+                // Vertical pill badge ▯
+                const pillX = tx + titleW + 8 * k, pillY = ry - 17 * k, pillH = 11 * k, pillW = 3.5 * k;
+                ctx.strokeStyle = `rgb(${domAcc})`; ctx.lineWidth = 1.2;
+                ctx.strokeRect(pillX, pillY, pillW, pillH);
 
-                // Line 3: Hero particle launch point + Live relativistic telemetry (v/c, γ)
+                // Coordinates in electric accent
+                const coordsLabel = inTransit ? `[00:${Math.round(launch * 60).toString().padStart(2, "0")}.0]` : (meta.coords || "RA 12h · -27°");
+                ctx.fillStyle = `rgb(${domAcc})`; ctx.font = `700 ${f3}px ${mono}`;
+                ctx.fillText(coordsLabel, pillX + pillW + 8 * k, ry - 7 * k);
+
+                // Line 2 (Directly below rule): "LOCAL GROUP · MILKY WAY" in crisp off-white/muted blue
+                ctx.fillStyle = "rgba(225,236,255,0.96)"; ctx.font = `600 ${f2}px ${mono}`;
+                ctx.fillText(inTransit ? "EINSTEIN–ROSEN WORMHOLE BRIDGE" : meta.sub, tx, ry + 15 * k);
+
+                // Line 3: Double neon status beacons ●● + "HERO PARTICLE LAUNCH POINT" + live telemetry "v = 0.00c | γ = 1.00"
                 const vS = typeof st.vS === "number" ? st.vS : Math.sin(launch * Math.PI);
                 const vNum = inTransit ? Math.min(0.999, 0.45 + 0.54 * vS) : 0.00;
                 const gamma = (1 / Math.sqrt(Math.max(0.001, 1 - vNum * vNum))).toFixed(2);
-                const statusText = inTransit
-                    ? `v = ${vNum.toFixed(2)}c · γ = ${gamma} · ${Math.round(launch * 100)}%`
-                    : `${meta.locus} · v = ${vNum.toFixed(2)}c · γ = ${gamma}`;
-                ctx.fillStyle = `rgb(${domAcc})`; ctx.font = `600 ${f2}px ${mono}`;
-                const off = 9 * k;
-                ctx.beginPath(); ctx.arc(tx + 2.5 * k, ry + 26 * k - 3 * k, 2.2 * k, 0, TAU); ctx.fill();
-                ctx.fillText(statusText, tx + off, ry + 26 * k);
+
+                // Double cyan beacon dots ● ●
+                const dotY = ry + 32 * k - 3.5 * k;
+                ctx.fillStyle = `rgb(${domAcc})`;
+                ctx.beginPath(); ctx.arc(tx + 2.5 * k, dotY, 2.6 * k, 0, TAU); ctx.fill();
+                ctx.beginPath(); ctx.arc(tx + 9.5 * k, dotY, 2.6 * k, 0, TAU); ctx.fill();
+
+                // Locus name in vibrant domain accent
+                ctx.font = `700 ${f2}px ${mono}`;
+                const locusLabel = inTransit ? "WARP STAGE ACTIVE" : meta.locus.replace(/^●\s*/, "");
+                ctx.fillText(locusLabel, tx + 18 * k, ry + 32 * k);
+
+                // Telemetry separated with right offset: "v = 0.00c | γ = 1.00"
+                const locusW = ctx.measureText(locusLabel).width;
+                const telemText = inTransit
+                    ? `v = ${vNum.toFixed(2)}c | γ = ${gamma} [${Math.round(launch * 100)}%]`
+                    : `v = ${vNum.toFixed(2)}c | γ = ${gamma}`;
+                ctx.fillText(telemText, tx + 18 * k + locusW + 18 * k, ry + 32 * k);
+
                 ctx.restore();
             }
             ctx.restore();
