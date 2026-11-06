@@ -3129,3 +3129,183 @@ const initNavSim = (c) => {
         }
     }, { passive: true });
 })();
+
+/* =====================================================================
+   Callout layout: simulation centred, content as small labelled boxes
+   joined to a centre ring by leader lines.
+   Opt-out:  ?layout=classic   (persisted)   |   ?layout=callout to restore.
+   Active only on viewports >= 1100px wide.
+   ===================================================================== */
+(() => {
+    const root = document.documentElement;
+    let pref = null;
+    try {
+        pref = new URLSearchParams(location.search).get("layout");
+        if (pref) {
+            localStorage.setItem("kw-layout", pref);
+        } else {
+            pref = localStorage.getItem("kw-layout");
+        }
+    } catch (e) {}
+
+    const mq = window.matchMedia("(min-width: 1100px)");
+    const apply = () => {
+        root.dataset.layout = (pref !== "classic" && mq.matches) ? "callout" : "classic";
+    };
+    apply();
+    if (mq.addEventListener) mq.addEventListener("change", apply);
+    else if (mq.addListener) mq.addListener(apply);
+
+    const LABELS = [
+        [".crumbs", "PATH"],
+        ["h1, h2, .snap-title, .section-head", "TITLE"],
+        [".lead, .snap-lead", "BRIEF"],
+        [".tags", "TAGS"],
+        [".snap-jump-pills", "INDEX"],
+        [".snap-actions", "ACTION"],
+        [".snap-overview-card, .two-col", "CONTEXT"],
+        [".snap-arch-grid", "PIPELINE"],
+        [".snap-math-grid, .hero-eq, .snap-eq, .math-block", "MATH"],
+        [".contact-card", "CONTACT"],
+        [".edu", "RECORD"]
+    ];
+
+    const labelFor = (el, n) => {
+        let base = "VECTOR";
+        for (const [sel, name] of LABELS) {
+            if (el.matches && (el.matches(sel) || el.querySelector(sel))) {
+                base = name;
+                break;
+            }
+        }
+        return base + "_" + String(n).padStart(2, "0");
+    };
+
+    const weight = (el) => (el.textContent || "").length + el.querySelectorAll("li, .math-block, .card").length * 40 + 60;
+
+    // Offset of el inside sec from layout (offset*) values, so reveal / warp transforms don't skew the lines.
+    const posIn = (el, sec) => {
+        let x = 0, y = 0, o = el;
+        while (o && o !== sec) {
+            x += o.offsetLeft;
+            y += o.offsetTop;
+            o = o.offsetParent;
+        }
+        return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+    };
+
+    const build = (inner) => {
+        if (inner.querySelector(":scope > .kw-col")) return;
+        const blocks = Array.from(inner.children).filter((c) => c.nodeType === 1 && !/^(SCRIPT|STYLE)$/.test(c.tagName));
+        if (!blocks.length) return;
+        const L = document.createElement("div"), R = document.createElement("div");
+        L.className = "kw-col l";
+        R.className = "kw-col r";
+        let wl = 0, wr = 0;
+        blocks.forEach((b, i) => {
+            b.style.order = i;
+            b.classList.add("kw-callout");
+            b.dataset.label = labelFor(b, i + 1);
+            const w = weight(b);
+            if (wl <= wr) {
+                L.appendChild(b);
+                wl += w;
+            } else {
+                R.appendChild(b);
+                wr += w;
+            }
+        });
+        inner.appendChild(L);
+        if (R.children.length) inner.appendChild(R);
+    };
+
+    const SVGNS = "http://www.w3.org/2000/svg";
+    const draw = (sec) => {
+        if (root.dataset.layout !== "callout") return;
+        const W = sec.clientWidth, H = sec.clientHeight;
+        if (!W || !H) return;
+        let svg = sec.querySelector(":scope > .kw-leaders");
+        if (!svg) {
+            svg = document.createElementNS(SVGNS, "svg");
+            svg.setAttribute("class", "kw-leaders");
+            svg.setAttribute("aria-hidden", "true");
+            sec.insertBefore(svg, sec.firstChild);
+        }
+        const cx = W / 2, cy = H / 2, ring = Math.min(W, H) * 0.3;
+        let out = `<circle class="kw-ring" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${ring.toFixed(1)}"/>` +
+            `<g class="kw-orbit" style="transform-origin:${cx.toFixed(1)}px ${cy.toFixed(1)}px"><circle class="kw-orbit-dot" cx="${(cx - ring).toFixed(1)}" cy="${cy.toFixed(1)}" r="3.2"/></g>`;
+
+        [["l", -1], ["r", 1]].forEach(([side, sgn]) => {
+            const items = Array.from(sec.querySelectorAll(`.kw-col.${side} > .kw-callout`));
+            const n = items.length;
+            items.forEach((el, i) => {
+                const p = posIn(el, sec);
+                const ax = sgn < 0 ? p.x + p.w : p.x, ay = p.y + 9;
+                const ang = n === 1 ? 0 : (((i + 0.5) / n) - 0.5) * Math.PI * 0.65;
+                const tx = cx + sgn * ring * Math.cos(ang), ty = cy + ring * Math.sin(ang);
+                const dx = tx - ax;
+                // Avoid drawing lines if box overlaps the ring
+                if (sgn < 0 && dx <= 0) return;
+                if (sgn > 0 && dx >= 0) return;
+                const ex = ax + dx * 0.45;
+                out += `<path class="kw-line" d="M${ax.toFixed(1)} ${ay.toFixed(1)} L${ex.toFixed(1)} ${ty.toFixed(1)} L${tx.toFixed(1)} ${ty.toFixed(1)}"/>` +
+                       `<circle class="kw-node" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="2.6"/>`;
+            });
+        });
+        svg.innerHTML = out;
+    };
+
+    const ro = window.ResizeObserver ? new ResizeObserver((es) => {
+        const secs = new Set(es.map((e) => e.target.closest(".snap-section")).filter(Boolean));
+        secs.forEach((s) => requestAnimationFrame(() => draw(s)));
+    }) : null;
+
+    const process = () => {
+        document.querySelectorAll(".snap-section").forEach((sec) => {
+            const inner = sec.querySelector(":scope > .snap-inner");
+            if (!inner) return;
+            build(inner);
+            if (!sec.__kwObs) {
+                sec.__kwObs = true;
+                if (ro) {
+                    ro.observe(sec);
+                    ro.observe(inner);
+                }
+            }
+            if (ro) {
+                inner.querySelectorAll(".kw-col").forEach((c) => {
+                    if (!c.__kwObs) {
+                        c.__kwObs = true;
+                        ro.observe(c);
+                    }
+                });
+            }
+            draw(sec);
+        });
+    };
+
+    let queued = false;
+    const schedule = () => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => {
+            queued = false;
+            process();
+        });
+    };
+
+    new MutationObserver((ms) => {
+        if (ms.some((m) => !(m.target.closest && m.target.closest(".kw-leaders")))) {
+            schedule();
+        }
+    }).observe(document.body || root, { childList: true, subtree: true });
+
+    if (mq.addEventListener) mq.addEventListener("change", schedule);
+    else if (mq.addListener) mq.addListener(schedule);
+    window.addEventListener("load", schedule);
+    window.addEventListener("resize", schedule, { passive: true });
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(schedule);
+    }
+    schedule();
+})();

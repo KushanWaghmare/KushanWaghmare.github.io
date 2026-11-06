@@ -2108,3 +2108,190 @@ p, li { text-wrap: pretty; }
     button:focus-visible,
     [tabindex]:focus-visible { outline: 2px solid Highlight; box-shadow: none; }
 }
+
+/* =====================================================================
+   Callout layout (html[data-layout="callout"], >=1100px)
+   Simulation sits dead centre; content becomes small labelled boxes
+   on either flank, joined to the centre ring by leader lines.
+   Classic layout is untouched: wrappers collapse via display: contents.
+   ===================================================================== */
+html:not([data-layout="callout"]) .kw-col { display: contents; }
+html:not([data-layout="callout"]) .kw-leaders { display: none; }
+
+html[data-layout="callout"] {
+    --kw-flank: clamp(250px, 25vw, 380px);
+    --kw-line: rgba(var(--a, 96, 156, 255), 0.55);
+}
+
+/* Replace the left-hand text veil with a faint technical grid that fades to the edges */
+html[data-layout="callout"] .snap-section::after,
+html[data-layout="callout"] .hero::after,
+html[data-layout="callout"] .about-contact-section::after,
+html[data-layout="callout"] #domain-physics::after,
+html[data-layout="callout"] #domain-intro[data-domain="physics"]::after {
+    background: transparent;
+    background-image:
+        linear-gradient(color-mix(in srgb, var(--fg) 5%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--fg) 5%, transparent) 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: center center;
+    -webkit-mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.85) 35%, transparent 85%);
+    mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.85) 35%, transparent 85%);
+}
+
+html[data-layout="callout"] .snap-section {
+    align-items: stretch;
+    padding-left: clamp(24px, 3.2vw, 48px);
+    padding-right: clamp(24px, 3.2vw, 48px);
+}
+
+html[data-layout="callout"] .snap-inner,
+html[data-layout="callout"] .project-snap .snap-inner,
+html[data-layout="callout"] .about-contact-section .snap-inner {
+    display: grid;
+    grid-template-columns: var(--kw-flank) minmax(0, 1fr) var(--kw-flank);
+    align-items: center;
+    width: 100%;
+    max-width: none !important;
+    max-height: none !important;
+    gap: 0;
+    pointer-events: none; /* the centre stays free for the simulation */
+}
+
+html[data-layout="callout"] .kw-col {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+    max-width: calc(50vw - min(100vw, 100vh) * 0.3 - 28px);
+    pointer-events: none;
+}
+html[data-layout="callout"] .kw-col.l { grid-column: 1; }
+html[data-layout="callout"] .kw-col.r { grid-column: 3; }
+
+html[data-layout="callout"] .kw-callout {
+    position: relative;
+    pointer-events: auto;
+    margin: 0 !important;
+    max-width: none !important;
+    padding: 28px 14px 12px;
+    border: 1px solid rgba(var(--a, 96, 156, 255), 0.42);
+    border-radius: 0;
+    background: color-mix(in srgb, var(--bg) 64%, transparent);
+    -webkit-backdrop-filter: blur(10px) saturate(125%);
+    backdrop-filter: blur(10px) saturate(125%);
+    box-shadow: none;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    box-sizing: border-box;
+}
+
+html[data-layout="callout"] .kw-callout::before {
+    content: attr(data-label);
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    height: 18px;
+    padding: 0 8px;
+    background: rgba(var(--a, 96, 156, 255), 0.62);
+    color: var(--on-accent, #fff);
+    font: 500 9.5px/18px var(--mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+html[data-layout="callout"] .kw-callout h1,
+html[data-layout="callout"] .kw-callout h2 {
+    font-size: clamp(22px, 2.3vw, 34px) !important;
+    line-height: 1.1 !important;
+    margin: 0;
+}
+
+html[data-layout="callout"] .kw-callout p,
+html[data-layout="callout"] .kw-callout.lead {
+    max-width: none;
+    font-size: 0.86rem !important;
+    margin: 0;
+}
+
+html[data-layout="callout"] .kw-callout .eq {
+    font-size: 0.82em;
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+/* Grids inside a callout stack in one column; their own cards go flat */
+html[data-layout="callout"] .snap-arch-grid,
+html[data-layout="callout"] .snap-math-grid,
+html[data-layout="callout"] .two-col,
+html[data-layout="callout"] .contact-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    list-style: none;
+}
+
+html[data-layout="callout"] .edu {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+html[data-layout="callout"] .kw-callout .glass,
+html[data-layout="callout"] .kw-callout .math-block,
+html[data-layout="callout"] .kw-callout .contact-card {
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border: 1px solid rgba(var(--a, 96, 156, 255), 0.18);
+    border-radius: 0;
+    padding: 8px 10px;
+    box-shadow: none;
+}
+
+html[data-layout="callout"] .snap-overview-card.kw-callout {
+    padding: 28px 14px 12px;
+}
+
+/* Leader lines, centre ring and orbiting marker */
+.kw-leaders {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4;
+    pointer-events: none;
+    overflow: visible;
+}
+.kw-line {
+    fill: none;
+    stroke: var(--kw-line);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+.kw-node {
+    fill: rgb(var(--a, 96, 156, 255));
+}
+.kw-ring {
+    fill: none;
+    stroke: rgba(240, 131, 74, 0.38);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+.kw-orbit {
+    animation: kw-spin 70s linear infinite;
+}
+.kw-orbit-dot {
+    fill: #f0834a;
+}
+@keyframes kw-spin {
+    to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .kw-orbit { animation: none; }
+}

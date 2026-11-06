@@ -517,6 +517,7 @@
 
     /* ---------- Pointer, Keyboard & Interaction Context ---------- */
     const ctxState = {
+        centred: false,
         pointerX: 0,
         pointerY: 0,
         targetPointerX: 0,
@@ -2818,6 +2819,7 @@
         }
 
         ctxState.isMobile = isMobileDevice();
+        ctxState.centred = (typeof document !== "undefined" && document.documentElement.dataset.layout === "callout");
         ctxState.isLight = document.documentElement.dataset.theme === "light";
         if (ctxState.isLight !== lastThemeLight) {
             lastThemeLight = ctxState.isLight;
@@ -3603,7 +3605,7 @@
         if (starProg) {
             const isMob = isMobileDevice();
             const ins = (activeRenderForm && activeRenderForm.insideness) || inside.value || 0.0;
-            const targetScreenX = isMob ? 0.50 : (0.66 - ctxState.pointerX * 0.015);
+            const targetScreenX = (isMob || ctxState.centred) ? 0.50 : (0.66 - ctxState.pointerX * 0.015);
             const baseScreenX = targetScreenX * (1.0 - 0.65 * ins) + 0.50 * (0.65 * ins);
             const baseScreenY = isMob ? (0.68 * (1.0 - 0.36 * ins) + 0.50 * (0.36 * ins)) : (0.50 + ctxState.pointerY * 0.02);
             const baseScale = isMob ? 44.0 : 34.0;
