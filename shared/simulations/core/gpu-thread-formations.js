@@ -1964,6 +1964,15 @@
                 ptr++;
             };
 
+            // Ground plane grid lines
+            const yG = -2.35;
+            for (let x = -2.8; x <= 2.8; x += 0.8) {
+                addLine(x, yG, -2.0, x, yG, 2.0, 0.08);
+            }
+            for (let z = -2.0; z <= 2.0; z += 0.8) {
+                addLine(-2.8, yG, z, 2.8, yG, z, 0.08);
+            }
+
             // Bounding strike and maturity ruler axes
             addLine(-2.8, yG, -2.0, 2.8, yG, -2.0, 0.16); // Strike axis
             addLine(-2.8, yG, -2.0, -2.8, yG, 2.0, 0.16); // Maturity axis

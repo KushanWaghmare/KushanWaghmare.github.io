@@ -1168,7 +1168,6 @@
             const inner = sec.querySelector(".snap-inner");
             const tag = sec.querySelector(".sim-tag");
             const cue = sec.querySelector(".snap-cue");
-            const leaders = sec.querySelector(".kw-leaders");
 
             let alpha = 0.0;
             let shiftY = 0.0;
@@ -1192,9 +1191,6 @@
                 inner.style.opacity = opStr;
                 inner.style.transform = trStr;
                 inner.style.pointerEvents = alpha > 0.5 ? "auto" : "none";
-            }
-            if (leaders) {
-                leaders.style.opacity = opStr;
             }
             if (tag) tag.style.opacity = opStr;
             if (cue) {
@@ -2285,7 +2281,7 @@
             debugEl.innerHTML = `
                 <div style="font-weight:700;letter-spacing:0.06em;color:#7cb8ff;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
                     <span>DIMENSION TELEMETRY</span>
-                    <span id="dbg-fps-tag" style="color:#8af;">60 FPS</span>
+                    <span id="dbg-fps-tag" style="color:#8af;">90 FPS</span>
                 </div>
                 <div style="margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid rgba(255,255,255,0.08);">
                     <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:10px;color:#8aa2c2;">
@@ -2714,7 +2710,7 @@
 
     /* ---------- Main Simulation, Transition & HDR Post-Processing Loop ---------- */
     let lastTime = performance.now();
-    let fps = 60;
+    let fps = 90;
     let slowFrames = 0;
     let lastThemeLight = document.documentElement.dataset.theme === "light";
 

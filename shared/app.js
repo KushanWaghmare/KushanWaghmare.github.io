@@ -69,7 +69,7 @@
         const tick = (now) => {
             if (dead) return;
             if (!c.isConnected) { if (c.__dispose) c.__dispose(); return; }
-            const dt = Math.min((now - last) / 1000, 0.033); last = now;
+            const dt = Math.min((now - last) / 1000, 0.012); last = now;
             if (visible && !document.hidden) { step(now / 1000, dt); frames++; }
             if (!dead && !(REDUCED && frames > 200)) requestAnimationFrame(tick);
         };
@@ -2126,276 +2126,6 @@ const initNavSim = (c) => {
         try { initNavSim(navCanvas); } catch (e) { console.warn("Nav sim:", e); }
     }
 
-
-
-    /* ---------- Laniakea hero renderer (poster-faithful, Canvas 2D) ---------- */
-    const createLaniakeaPoster = (canvas, opts = {}) => {
-        const ctx = canvas.getContext("2d", { alpha: true });
-        const TAU = Math.PI * 2;
-        const reduced = !!opts.reducedMotion;
-
-        // ---- deterministic RNG
-        let seed = 0x1A71A2026 >>> 0;
-        const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = Math.imul(seed ^ (seed >>> 15), seed | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-        const gauss = () => (rnd() + rnd() + rnd() - 1.5) / 0.5;
-
-        // ---- flow field in poster-pixel space (828 x 1035, y down)
-        const A = [270, 425], M = [572, 520], S = [565, 468];
-        const R1 = [[618, 482], [565, 468], [520, 452], [470, 433], [400, 421], [330, 422], [272, 425]];
-        const R2 = [[440, 770], [400, 700], [350, 620], [312, 540], [285, 470], [272, 432]];
-        const R3 = [[582, 534], [552, 497], [522, 458]];
-        const R4 = [[648, 470], [622, 385], [556, 318], [470, 276], [378, 262], [304, 290], [272, 350], [270, 422]];
-        const R5 = [[575, 720], [535, 640], [490, 560], [440, 490], [385, 442], [330, 424]];
-        const RIDGES = [[R1, 1.0], [R2, 0.85], [R3, 0.7], [R4, 0.55], [R5, 0.5]];
-        const BLUE = [[55, 250, 1], [505, 165, 1], [770, 690, 1], [330, 985, 0.8], [740, 270, 0.6]];
-
-        const BLOB_CTRL = [[68, 610], [92, 500], [150, 385], [215, 305], [275, 258], [340, 252], [420, 268], [510, 320], [585, 385], [638, 450], [656, 520], [645, 600], [605, 690], [535, 770], [440, 835], [330, 880], [235, 888], [160, 845], [105, 765], [74, 690]];
-        const BLOB = (() => {
-            const P = BLOB_CTRL, n = P.length, out = [];
-            for (let i = 0; i < n; i++) {
-                const p0 = P[(i + n - 1) % n], p1 = P[i], p2 = P[(i + 1) % n], p3 = P[(i + 2) % n];
-                for (let j = 0; j < 12; j++) {
-                    const t = j / 12, t2 = t * t, t3 = t2 * t;
-                    out.push([0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
-                              0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)]);
-                }
-            }
-            return out;
-        })();
-        const inBlob = (x, y) => {
-            let inside = false;
-            for (let i = 0, j = BLOB.length - 1; i < BLOB.length; j = i++) {
-                const xi = BLOB[i][0], yi = BLOB[i][1], xj = BLOB[j][0], yj = BLOB[j][1];
-                if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
-            }
-            return inside;
-        };
-
-        const nearest = (R, x, y) => {
-            let best = 1e9, qx = 0, qy = 0, tx = 0, ty = 0;
-            for (let i = 0; i < R.length - 1; i++) {
-                const ax = R[i][0], ay = R[i][1], ex = R[i + 1][0] - ax, ey = R[i + 1][1] - ay, l2 = ex * ex + ey * ey;
-                let t = ((x - ax) * ex + (y - ay) * ey) / l2; t = t < 0 ? 0 : t > 1 ? 1 : t;
-                const px = ax + t * ex, py = ay + t * ey, d = (x - px) ** 2 + (y - py) ** 2;
-                if (d < best) { best = d; qx = px; qy = py; const l = Math.sqrt(l2); tx = ex / l; ty = ey / l; }
-            }
-            return [Math.sqrt(best), qx, qy, tx, ty];
-        };
-        const goldVel = (x, y) => {
-            const dx = A[0] - x, dy = A[1] - y, r = Math.hypot(dx, dy) + 1e-6;
-            let vx = dx / r, vy = dy / r;
-            const sw = 0.55 * Math.min(1, r / 180);
-            vx += -dy / r * sw; vy += dx / r * sw;
-            for (let k = 0; k < RIDGES.length; k++) {
-                const R = RIDGES[k][0], w = RIDGES[k][1], n = nearest(R, x, y), d = n[0];
-                const g = w * Math.exp(-d / (w > 0.9 ? 60 : w < 0.6 ? 34 : 40)), pull = Math.min(1, d / 40);
-                if (d > 1e-3) { vx += g * 2.2 * pull * (n[1] - x) / d; vy += g * 2.2 * pull * (n[2] - y) / d; }
-                vx += g * 3.0 * n[3]; vy += g * 3.0 * n[4];
-            }
-            const l = Math.hypot(vx, vy) + 1e-9; return [vx / l, vy / l];
-        };
-        const blueVel = (x, y) => {
-            let best = BLUE[0], bd = 1e9;
-            for (const b of BLUE) { const d = Math.hypot(b[0] - x, b[1] - y) / b[2]; if (d < bd) { bd = d; best = b; } }
-            const dx = best[0] - x, dy = best[1] - y, r = Math.hypot(dx, dy) + 1e-6, sw = 0.35;
-            const vx = dx / r - dy / r * sw, vy = dy / r + dx / r * sw, l = Math.hypot(vx, vy); return [vx / l, vy / l];
-        };
-        const trace = (x, y, kind) => {
-            const pts = [[x, y]], step = 4;
-            for (let s = 0; s < 360; s++) {
-                const v = kind === 0 ? goldVel(x, y) : blueVel(x, y);
-                x += v[0] * step; y += v[1] * step; pts.push([x, y]);
-                if (kind === 0) { if (Math.hypot(x - A[0], y - A[1]) < 4) break; }
-                else {
-                    if (inBlob(x, y)) { pts.pop(); break; }
-                    let hit = false; for (const b of BLUE) if (Math.hypot(x - b[0], y - b[1]) < 6) hit = true;
-                    if (hit) break;
-                }
-            }
-            return pts;
-        };
-        const K = 64;
-        const resample = (pts) => {
-            const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
-            const total = cum[cum.length - 1] || 1, out = new Float32Array(K * 2); let j = 0;
-            for (let k = 0; k < K; k++) {
-                const tg = total * k / (K - 1);
-                while (j < pts.length - 2 && cum[j + 1] < tg) j++;
-                const seg = (cum[j + 1] - cum[j]) || 1, f = Math.min(1, Math.max(0, (tg - cum[j]) / seg));
-                out[k * 2] = pts[j][0] + (pts[j + 1][0] - pts[j][0]) * f; out[k * 2 + 1] = pts[j][1] + (pts[j + 1][1] - pts[j][1]) * f;
-            }
-            return out;
-        };
-
-        // ---- build geometry once
-        const gold = [], blue = [];
-        let guard = 0;
-        while (gold.length < 760 && guard++ < 80000) {
-            const x = 60 + rnd() * 620, y = 240 + rnd() * 660;
-            if (!inBlob(x, y)) continue;
-            const dx = (x - 365) / 300, dy = (y - 570) / 325;
-            if (rnd() > Math.min(1, 0.2 + (dx * dx + dy * dy) * 0.95)) continue;
-            const p = trace(x, y, 0); if (p.length > 6) gold.push(resample(p));
-        }
-        guard = 0;
-        while (blue.length < 300 && guard++ < 80000) {
-            const x = -80 + rnd() * 990, y = -40 + rnd() * 1120;
-            if (inBlob(x, y) || inBlob((x - 365) * 0.95 + 365, (y - 570) * 0.95 + 570)) continue;
-            const p = trace(x, y, 1); if (p.length > 6) blue.push(resample(p));
-        }
-
-        const stipples = [];  // {x,y,s,a,kind}
-        const lineAt = (L, u, out) => { const f = Math.min(Math.max(u, 0), 0.99999) * (K - 1), i0 = f | 0, fr = f - i0, b = i0 * 2; out[0] = L[b] + (L[b + 2] - L[b]) * fr; out[1] = L[b + 1] + (L[b + 3] - L[b + 1]) * fr; };
-        {
-            const t = [0, 0];
-            for (let i = 0; i < 4600; i++) { const L = gold[(rnd() * gold.length) | 0]; lineAt(L, Math.pow(rnd(), 0.75), t); const sc = 3 + 40 * Math.pow(rnd(), 2); stipples.push({ x: t[0] + gauss() * sc * 0.5, y: t[1] + gauss() * sc * 0.5, s: 0.8 + rnd() * 1.4, a: 0.25 + rnd() * 0.7, k: rnd() < 0.3 ? 1 : 0 }); }
-            for (let i = 0; i < 700; i++) stipples.push({ x: S[0] + 8 + gauss() * 38, y: S[1] + 2 + gauss() * 15 + (gauss() * 8), s: 0.7 + rnd() * 1.2, a: 0.4 + rnd() * 0.6, k: 0 });
-            for (let i = 0; i < 2400; i++) { const L = blue[(rnd() * blue.length) | 0]; lineAt(L, Math.pow(rnd(), 0.8), t); const sc = 4 + 34 * Math.pow(rnd(), 2); stipples.push({ x: t[0] + gauss() * sc * 0.5, y: t[1] + gauss() * sc * 0.5, s: 0.6 + rnd() * 1.0, a: 0.2 + rnd() * 0.65, k: 2 }); }
-            for (let i = 0; i < 700; i++) stipples.push({ x: -60 + rnd() * 950, y: -40 + rnd() * 1120, s: 0.6 + rnd() * 0.9, a: 0.15 + rnd() * 0.45, k: 2 });
-        }
-        const goldTracers = [], blueTracers = [];
-        for (let i = 0; i < 1000; i++) goldTracers.push({ li: (rnd() * gold.length) | 0, t: rnd(), sp: 0.10 + rnd() * 0.18, len: 0.08 + rnd() * 0.10, b: 0.35 + rnd() * 0.65 });
-        for (let i = 0; i < 650; i++) blueTracers.push({ li: (rnd() * blue.length) | 0, t: rnd(), sp: 0.05 + rnd() * 0.09, len: 0.04 + rnd() * 0.06, b: 0.3 + rnd() * 0.7 });
-        const twinkle = []; for (let i = 0; i < 320; i++) twinkle.push({ s: stipples[(rnd() * stipples.length) | 0], f: 0.8 + rnd() * 2.6, p: rnd() * TAU });
-
-        // ---- layout + static layer
-        let W = 0, H = 0, dpr = 1, k = 1, ox = 0, oy = 0, adx = 0, ady = 0;
-        const stat = (typeof document !== "undefined") ? document.createElement("canvas") : opts.createCanvas();
-        const sx = (px) => ox + px * k, sy = (py) => oy + py * k;
-
-        const radial = (c, x, y, r, stops) => { const g = c.createRadialGradient(x, y, 0, x, y, r); for (const s of stops) g.addColorStop(s[0], s[1]); c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); };
-        const strokeLine = (c, L, u0, u1) => { const t = [0, 0]; const n = Math.max(2, Math.round((u1 - u0) * (K - 1))); c.beginPath(); for (let i = 0; i <= n; i++) { lineAt(L, u0 + (u1 - u0) * i / n, t); if (i) c.lineTo(sx(t[0]), sy(t[1])); else c.moveTo(sx(t[0]), sy(t[1])); } c.stroke(); };
-        const strokeRidge = (c, R) => { c.beginPath(); c.moveTo(sx(R[0][0]), sy(R[0][1])); for (let i = 1; i < R.length - 1; i++) { const mx = (R[i][0] + R[i + 1][0]) / 2, my = (R[i][1] + R[i + 1][1]) / 2; c.quadraticCurveTo(sx(R[i][0]), sy(R[i][1]), sx(mx), sy(my)); } c.lineTo(sx(R[R.length - 1][0]), sy(R[R.length - 1][1])); c.stroke(); };
-
-        const buildStatic = () => {
-            stat.width = Math.round(W * dpr); stat.height = Math.round(H * dpr);
-            const c = stat.getContext("2d");
-            c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
-            c.lineCap = "round"; c.lineJoin = "round";
-
-            // navy ambient haze
-            radial(c, sx(365), sy(570), 760 * k, [[0, "rgba(14,22,52,0.55)"], [0.6, "rgba(8,13,34,0.35)"], [1, "rgba(0,0,0,0)"]]);
-            // blue basin glows (neighbouring attractors)
-            for (const b of BLUE) radial(c, sx(b[0]), sy(b[1]), 150 * k * b[2], [[0, "rgba(70,100,190,0.28)"], [1, "rgba(0,0,0,0)"]]);
-
-            // amber basin
-            const poly = BLOB;
-            const path = () => { c.beginPath(); poly.forEach((p, i) => i ? c.lineTo(sx(p[0]), sy(p[1])) : c.moveTo(sx(p[0]), sy(p[1]))); c.closePath(); };
-            c.save();
-            path(); c.shadowColor = "rgba(210,150,40,0.45)"; c.shadowBlur = 38 * k; c.fillStyle = "rgba(100,72,20,0.9)"; c.fill();
-            c.restore();
-            c.save();
-            if ("filter" in c) c.filter = `blur(${(5 * k).toFixed(1)}px)`;
-            const g = c.createRadialGradient(sx(300), sy(470), 0, sx(300), sy(470), 520 * k);
-            g.addColorStop(0, "rgba(222,178,78,0.95)"); g.addColorStop(0.3, "rgba(184,140,48,0.92)"); g.addColorStop(0.7, "rgba(132,96,28,0.88)"); g.addColorStop(1, "rgba(84,60,16,0.85)");
-            path(); c.fillStyle = g; c.fill();
-            c.restore();
-            // dark rim on lower-left, light rim on upper-right (poster shading)
-            const lg = c.createLinearGradient(sx(60), sy(880), sx(560), sy(300));
-            lg.addColorStop(0, "rgba(40,28,6,0.45)"); lg.addColorStop(0.45, "rgba(0,0,0,0)"); lg.addColorStop(1, "rgba(255,225,140,0.10)");
-            c.save(); path(); c.clip(); c.fillStyle = lg; c.fillRect(0, 0, W, H); c.restore();
-
-            c.globalCompositeOperation = "lighter";
-            radial(c, sx(430), sy(450), 230 * k, [[0, "rgba(255,214,120,0.16)"], [1, "rgba(0,0,0,0)"]]);
-            radial(c, sx(330), sy(600), 200 * k, [[0, "rgba(255,200,100,0.07)"], [1, "rgba(0,0,0,0)"]]);
-            // blue streamlines
-            c.strokeStyle = "rgba(120,150,235,0.05)"; c.lineWidth = 3.2 * k; for (const L of blue) strokeLine(c, L, 0, 1);
-            c.strokeStyle = "rgba(170,198,255,0.20)"; c.lineWidth = Math.max(0.8, 0.9 * k);
-            for (const L of blue) { for (let j = 0; j < 4; j++) { c.globalAlpha = 0.45 + 0.55 * (j / 3); strokeLine(c, L, j / 4, (j + 1) / 4); } }
-            c.globalAlpha = 1;
-            for (const b of BLUE) radial(c, sx(b[0]), sy(b[1]), 42 * k * b[2], [[0, "rgba(200,222,255,0.40)"], [0.4, "rgba(140,175,255,0.12)"], [1, "rgba(0,0,0,0)"]]);
-
-            // golden streamlines: glow pass then core, brightening toward the attractor
-            c.strokeStyle = "rgba(255,214,130,0.016)"; c.lineWidth = 5.0 * k; for (const L of gold) strokeLine(c, L, 0, 1);
-            c.lineWidth = Math.max(0.8, 0.85 * k);
-            for (const L of gold) { for (let j = 0; j < 6; j++) { const f = j / 5; c.strokeStyle = `rgba(255,238,188,${(0.035 + 0.11 * Math.pow(f, 1.6)).toFixed(3)})`; strokeLine(c, L, j / 6, (j + 1) / 6); } }
-
-            // bright spine, local-sheet branch and cloud
-            const ridgeStyles = [[R1, 1.0], [R2, 0.8], [R3, 0.75]];
-            for (const [R, w] of ridgeStyles) {
-                c.strokeStyle = `rgba(255,200,100,${0.035 * w})`; c.lineWidth = 20 * k; strokeRidge(c, R);
-                c.strokeStyle = `rgba(255,225,150,${0.08 * w})`; c.lineWidth = 7 * k; strokeRidge(c, R);
-                c.strokeStyle = `rgba(255,248,215,${0.38 * w})`; c.lineWidth = Math.max(1.0, 1.8 * k); strokeRidge(c, R);
-            }
-            radial(c, sx(S[0] + 6), sy(S[1] + 4), 80 * k, [[0, "rgba(255,248,220,0.55)"], [0.3, "rgba(255,222,140,0.24)"], [0.7, "rgba(235,160,50,0.10)"], [1, "rgba(0,0,0,0)"]]);
-            radial(c, sx(A[0]), sy(A[1]), 90 * k, [[0, "rgba(255,246,215,0.60)"], [0.2, "rgba(255,225,150,0.22)"], [0.6, "rgba(235,165,60,0.10)"], [1, "rgba(0,0,0,0)"]]);
-            c.globalCompositeOperation = "source-over";
-
-            // stipple galaxies
-            for (const d of stipples) {
-                c.fillStyle = d.k === 0 ? `rgba(255,246,222,${d.a})` : d.k === 1 ? `rgba(205,222,255,${d.a})` : `rgba(190,208,255,${d.a})`;
-                const s = d.s * Math.max(1.0, k * 1.15); c.fillRect(sx(d.x) - s / 2, sy(d.y) - s / 2, s, s);
-            }
-        };
-
-        const resize = (w, h, ratio = 1) => {
-            dpr = Math.min(2, ratio || 1); W = w; H = h;
-            canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-            const mobile = W < 760;
-            k = mobile ? Math.min(0.56 * H / 650, 0.92 * W / 600) : Math.min(0.90 * H / 650, 0.60 * W / 600);
-            const cx = mobile ? 0.5 * W : 0.60 * W, cy = mobile ? 0.62 * H : 0.52 * H;
-            ox = cx - 365 * k; oy = cy - 570 * k;
-            buildStatic();
-        };
-
-        const t2 = [0, 0], t3 = [0, 0];
-        const drawTracers = (list, table, rgb, accel, aMul, dt, lw) => {
-            const buckets = [[], [], [], []];
-            for (const tr of list) {
-                if (!reduced) { tr.t += tr.sp * dt * (accel ? 0.6 + tr.t : 1); if (tr.t >= 1) tr.t -= 1; }
-                const L = table[tr.li], u1 = tr.t, u0 = Math.max(0, u1 - tr.len);
-                const fade = Math.min(1, u1 * 10) * Math.min(1, (1 - u1) * 12);
-                const a = tr.b * fade; if (a < 0.02) continue;
-                lineAt(L, u0, t2); lineAt(L, (u0 + u1) / 2, t3);
-                const bi = Math.min(3, (a * 4) | 0), B = buckets[bi];
-                B.push(sx(t2[0]), sy(t2[1]), sx(t3[0]), sy(t3[1])); lineAt(L, u1, t2); B.push(sx(t2[0]), sy(t2[1]));
-            }
-            ctx.lineWidth = lw;
-            for (let b = 0; b < 4; b++) {
-                const B = buckets[b]; if (!B.length) continue;
-                ctx.strokeStyle = `rgba(${rgb},${(aMul * (0.25 + 0.25 * b)).toFixed(3)})`; ctx.beginPath();
-                for (let i = 0; i < B.length; i += 6) { ctx.moveTo(B[i], B[i + 1]); ctx.lineTo(B[i + 2], B[i + 3]); ctx.lineTo(B[i + 4], B[i + 5]); }
-                ctx.stroke();
-            }
-        };
-
-        let last = 0;
-        const draw = (tSec) => {
-            const dt = last ? Math.min(0.05, tSec - last) : 0.016; last = tSec;
-            ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.setTransform(dpr, 0, 0, dpr, adx * dpr, ady * dpr);
-            ctx.drawImage(stat, 0, 0, W, H);
-            ctx.lineCap = "round";
-            ctx.globalCompositeOperation = "lighter";
-            const lwG = Math.max(0.8, 0.9 * k);
-            drawTracers(goldTracers, gold, "255,240,200", true, 0.30, dt, lwG);
-            drawTracers(blueTracers, blue, "175,200,255", false, 0.28, dt, Math.max(0.8, 0.9 * k));
-            // twinkling galaxies
-            for (const w of twinkle) { const v = 0.5 + 0.5 * Math.sin(tSec * w.f + w.p), s = Math.max(1.2, 1.8 * k * (0.7 + v * 0.6)); ctx.fillStyle = `rgba(255,255,245,${(0.12 + 0.55 * v * v).toFixed(3)})`; ctx.fillRect(sx(w.s.x) - s / 2, sy(w.s.y) - s / 2, s, s); }
-            // breathing glow at attractor and local-sheet cloud
-            const br = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(tSec * 0.9);
-            radial(ctx, sx(A[0]), sy(A[1]), 30 * k, [[0, `rgba(255,250,225,${0.22 + 0.14 * br})`], [1, "rgba(0,0,0,0)"]]);
-            radial(ctx, sx(S[0] + 6), sy(S[1] + 4), 60 * k, [[0, `rgba(255,240,190,${0.18 + 0.12 * (1 - br)})`], [1, "rgba(0,0,0,0)"]]);
-            ctx.globalCompositeOperation = "source-over";
-
-            // Milky Way beacon: matching hero accent dot, white ring, soft matching accent halo
-            const mx = sx(M[0]), my = sy(M[1]), pulse = reduced ? 1 : 0.9 + 0.15 * Math.sin(tSec * 2.4);
-            radial(ctx, mx, my, 16 * pulse * Math.max(1, k), [[0, "rgba(96,156,255,0.55)"], [0.5, "rgba(96,156,255,0.16)"], [1, "rgba(96,156,255,0)"]]);
-            ctx.strokeStyle = "rgba(255,255,255,0.92)"; ctx.lineWidth = Math.max(1.2, 1.5 * k); ctx.beginPath(); ctx.arc(mx, my, Math.max(7, 8.5 * k), 0, TAU); ctx.stroke();
-            ctx.fillStyle = "rgb(96,156,255)"; ctx.beginPath(); ctx.arc(mx, my, Math.max(2.8, 3.4 * k), 0, TAU); ctx.fill();
-        };
-
-        // Pin the artwork's Milky Way dot to a screen point (CSS px, relative to the canvas)
-        const layoutTo = (ax, ay) => { ox = ax - M[0] * k; oy = ay - M[1] * k; adx = 0; ady = 0; buildStatic(); };
-        const nudgeTo = (ax, ay) => { adx = ax - (ox + M[0] * k); ady = ay - (oy + M[1] * k); };
-        return { resize, draw, layoutTo, nudgeTo };
-    };
-
-
-
-    /* ---------- Full-Viewport Hero Stage: Laniakea Supercluster (reference-density map, Canvas 2D) ---------- */
-
-
     /* ---------- Laniakea hero overlay: parallax deep-space backdrop, projected 3D labels, and the "you are here" HUD ---------- */
     const createLaniakeaOverlay = (canvas, opts = {}) => {
         const ctx = canvas.getContext("2d", { alpha: true });
@@ -3303,6 +3033,8 @@ const initNavSim = (c) => {
             cv.className = "kw-crop";
             cv.width = 220;
             cv.height = 68;
+            b.__kwCropCanvas = cv;
+            b.__kwCropCtx = cv.getContext("2d");
             wrap.appendChild(cv);
             hdr.insertAdjacentElement("afterend", wrap);
         }
@@ -3313,7 +3045,7 @@ const initNavSim = (c) => {
             meta.className = "kw-meta";
             meta.setAttribute("aria-hidden", "true");
             const scaleTxt = (feat && feat.scale) || "2.0× · LOCK";
-            meta.innerHTML = `<span class="kw-meta-coord">XY 000·000</span><span class="kw-meta-scale">${scaleTxt}</span><span class="kw-meta-live">60 FPS · 0.00c</span>`;
+            meta.innerHTML = `<span class="kw-meta-coord">XY 000·000</span><span class="kw-meta-scale">${scaleTxt}</span><span class="kw-meta-live">90 FPS · 0.00c</span>`;
             b.appendChild(meta);
         }
     };
@@ -3475,9 +3207,9 @@ const initNavSim = (c) => {
                 const feat = feats[(featOffset + i) % feats.length];
                 const tgt = resolveTarget(feat, sgn, i, n, cx, cy, ring, W, H, sec);
 
-                // Anchor at the inner edge of the header bar (y = p.y + 9)
+                // Anchor at the inner edge of the header bar (y = p.y + 15)
                 const ax = sgn < 0 ? p.x + p.w : p.x;
-                const ay = p.y + 9;
+                const ay = p.y + 15; // centre of the 30px header bar
                 let tx = tgt.x, ty = tgt.y;
 
                 // Ensure target sits inward from the box edge
@@ -3565,8 +3297,10 @@ const initNavSim = (c) => {
     // Live zoom crops & dynamic leader tracking synced with the WebGL render frame (~12 fps throttled)
     let lastCropAt = 0;
     let lastLeaderAt = 0;
-    let fpsSmooth = 60;
+    let lastMetaAt = 0;
+    let fpsSmooth = 90;
     let lastFrameTs = performance.now();
+    let laniakeaCanvasCache = null;
 
     window.__ON_STAGE_FRAME__ = (stageCanvas, dpr) => {
         if (root.dataset.layout !== "callout" || document.hidden) return;
@@ -3587,6 +3321,28 @@ const initNavSim = (c) => {
             draw(activeSec, activeIdx);
         }
 
+        // 4 Hz tabular mono metadata updater (coordinates, scale, live fps and v/c)
+        if (now - lastMetaAt > 250) {
+            lastMetaAt = now;
+            const T = S && S.trans;
+            const vNum = (T && T.active) ? Math.min(0.99, 0.45 + 0.54 * Math.sin((T.u || 0) * Math.PI)) : 0.00;
+            const fpsTxt = Math.round(Math.min(144, Math.max(24, fpsSmooth))).toString().padStart(2, "0");
+            const boxes = activeSec.querySelectorAll(".kw-callout");
+            for (let i = 0; i < boxes.length; i++) {
+                const b = boxes[i];
+                const tgt = b.__kwTarget;
+                if (!tgt) continue;
+                if (!b.__kwMetaCoord) {
+                    b.__kwMetaCoord = b.querySelector(".kw-meta-coord");
+                    b.__kwMetaScale = b.querySelector(".kw-meta-scale");
+                    b.__kwMetaLive = b.querySelector(".kw-meta-live");
+                }
+                if (b.__kwMetaCoord) b.__kwMetaCoord.textContent = `XY ${Math.round(tgt.x).toString().padStart(3, "0")}·${Math.round(tgt.y).toString().padStart(3, "0")}`;
+                if (b.__kwMetaScale && tgt.scale) b.__kwMetaScale.textContent = tgt.scale;
+                if (b.__kwMetaLive) b.__kwMetaLive.textContent = `${fpsTxt} FPS · ${vNum.toFixed(2)}c`;
+            }
+        }
+
         // Throttle live 2D canvas crop blits to ~12 fps (84 ms); skip if frame rate drops below 28 fps
         if (now - lastCropAt < 84 || fpsSmooth < 28) return;
         lastCropAt = now;
@@ -3594,14 +3350,18 @@ const initNavSim = (c) => {
         const sr = activeSec.getBoundingClientRect();
         if (sr.bottom < 0 || sr.top > window.innerHeight) return;
 
-        const laniakeaCanvas = document.querySelector("canvas.laniakea-hero-canvas");
+        if (!laniakeaCanvasCache || !laniakeaCanvasCache.isConnected) {
+            laniakeaCanvasCache = document.querySelector("canvas.laniakea-hero-canvas");
+        }
+        const laniakeaCanvas = laniakeaCanvasCache;
         const boxes = activeSec.querySelectorAll(".kw-callout");
-        boxes.forEach((b) => {
-            const cv = b.querySelector("canvas.kw-crop");
+        for (let i = 0; i < boxes.length; i++) {
+            const b = boxes[i];
+            const cv = b.__kwCropCanvas || b.querySelector("canvas.kw-crop");
             const tgt = b.__kwTarget;
-            if (!cv || !tgt) return;
-            const ctx2d = cv.getContext("2d");
-            if (!ctx2d) return;
+            if (!cv || !tgt) continue;
+            const ctx2d = b.__kwCropCtx || cv.getContext("2d");
+            if (!ctx2d) continue;
 
             const vx = tgt.x + sr.left;
             const vy = tgt.y + sr.top;
@@ -3626,32 +3386,8 @@ const initNavSim = (c) => {
                 ctx2d.moveTo(mcx, mcy + 2); ctx2d.lineTo(mcx, mcy + 8);
                 ctx2d.stroke();
             } catch (e) {}
-        });
+        }
     };
-
-    // 4 Hz tabular mono metadata updater (coordinates, scale, live fps and v/c)
-    setInterval(() => {
-        if (root.dataset.layout !== "callout" || document.hidden) return;
-        const S = window.THREAD_STAGE;
-        const activeIdx = (S && S.supported && typeof S.currentIndex === "number") ? S.currentIndex : 0;
-        const T = S && S.trans;
-        const vNum = (T && T.active) ? Math.min(0.99, 0.45 + 0.54 * Math.sin((T.u || 0) * Math.PI)) : 0.00;
-        const fpsTxt = Math.round(Math.min(120, Math.max(24, fpsSmooth))).toString().padStart(2, "0");
-        const secs = allSecs();
-        const activeSec = secs[activeIdx];
-        if (!activeSec) return;
-
-        activeSec.querySelectorAll(".kw-callout").forEach((b) => {
-            const tgt = b.__kwTarget;
-            if (!tgt) return;
-            const cEl = b.querySelector(".kw-meta-coord");
-            const sEl = b.querySelector(".kw-meta-scale");
-            const lEl = b.querySelector(".kw-meta-live");
-            if (cEl) cEl.textContent = `XY ${Math.round(tgt.x).toString().padStart(3, "0")}·${Math.round(tgt.y).toString().padStart(3, "0")}`;
-            if (sEl && tgt.scale) sEl.textContent = tgt.scale;
-            if (lEl) lEl.textContent = `${fpsTxt} FPS · ${vNum.toFixed(2)}c`;
-        });
-    }, 250);
 
     // Subtle pointer parallax (<= 6px) on callout boxes, disabled under prefers-reduced-motion
     if (!reducedMotion) {

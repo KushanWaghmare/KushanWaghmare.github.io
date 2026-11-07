@@ -572,13 +572,13 @@
                 accumCount++;
             }
 
-            // Dynamic resolution scaling with governor targeting 16.6 ms frame time (60 FPS)
+            // Dynamic resolution scaling with governor targeting 11.1 ms frame time (90 FPS)
             ema += (rawDtMs - ema) * 0.10;
             if (++fc % 30 === 0) {
-                if (ema > 18.0 && scale > MIN_SCALE) {
+                if (ema > 12.2 && scale > MIN_SCALE) {
                     scale = Math.max(MIN_SCALE, scale * 0.92);
                     applyScale();
-                } else if (ema < 14.5 && scale < MAX_SCALE) {
+                } else if (ema < 9.8 && scale < MAX_SCALE) {
                     scale = Math.min(MAX_SCALE, scale * 1.06);
                     applyScale();
                 }

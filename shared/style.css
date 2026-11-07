@@ -2128,7 +2128,7 @@ html[data-layout="callout"] {
     --kw-line: rgba(var(--a, 96, 156, 255), 0.72);
 }
 
-/* Ambient radial dark vignette centred on the viewport */
+/* Ambient radial dark vignette only (no grid) */
 html[data-layout="callout"] .snap-section::after,
 html[data-layout="callout"] .hero::after,
 html[data-layout="callout"] .about-contact-section::after,
@@ -2138,6 +2138,8 @@ html[data-layout="callout"] #domain-intro[data-domain="physics"]::after {
     background-image: radial-gradient(ellipse at center, transparent 44%, rgba(var(--bg-rgb), 0.56) 100%);
     background-size: 100% 100%;
     background-position: center center;
+    -webkit-mask-image: none;
+    mask-image: none;
 }
 
 html[data-layout="callout"] #domain-physics .snap-inner::before,
@@ -2538,4 +2540,144 @@ html[data-layout="callout"] .snap-section[data-hover-box] .kw-leader-group.is-ho
 @media (prefers-reduced-motion: reduce) {
     .kw-orbit, .kw-node-halo, .kw-hdr, .kw-line { animation: none !important; }
     html[data-layout="callout"] .kw-callout { transform: none !important; }
+}
+
+/* =====================================================================
+   Callout v2: large, legible name + section titles, richer box visuals
+   (appended last so it wins over the earlier callout block)
+   ===================================================================== */
+html[data-layout="callout"] {
+    --kw-flank: clamp(280px, 25vw, 400px);
+    --kw-hdr-h: 30px;
+}
+
+/* ---- Boxes: more opaque for legibility over busy scenes, subtle scan texture ---- */
+html[data-layout="callout"] .kw-callout,
+html[data-layout="callout"] .hud-inset-card {
+    padding: calc(var(--kw-hdr-h) + 12px) 16px 14px;
+    border-color: rgba(var(--a, 96, 156, 255), 0.46);
+    background:
+        linear-gradient(180deg, rgba(var(--a, 96, 156, 255), 0.12) 0%, rgba(var(--a, 96, 156, 255), 0.02) 100%),
+        color-mix(in srgb, var(--bg) 72%, transparent);
+    box-shadow:
+        0 0 72px 28px rgba(var(--bg-rgb), 0.55),
+        0 10px 28px rgba(0, 0, 0, 0.32),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        inset 0 0 0 1px rgba(var(--a, 96, 156, 255), 0.05);
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+html[data-layout="callout"] .kw-callout:hover {
+    border-color: rgba(var(--a, 96, 156, 255), 0.85);
+    box-shadow:
+        0 0 72px 28px rgba(var(--bg-rgb), 0.55),
+        0 0 26px rgba(var(--a, 96, 156, 255), 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* ---- Header bar = the SECTION NAME: big, bold, high contrast ---- */
+html[data-layout="callout"] .kw-hdr,
+html[data-layout="callout"] .hud-inset-header {
+    height: var(--kw-hdr-h);
+    padding: 0 12px;
+    gap: 10px;
+    background: linear-gradient(90deg, rgba(var(--a, 96, 156, 255), 0.62) 0%, rgba(var(--a, 96, 156, 255), 0.26) 70%, rgba(var(--a, 96, 156, 255), 0.4) 100%);
+    border-bottom: 1px solid rgba(var(--a, 96, 156, 255), 0.7);
+    box-shadow: 0 6px 18px -8px rgba(var(--a, 96, 156, 255), 0.55);
+    color: #fff;
+    font: 700 13px/var(--kw-hdr-h) var(--mono);
+    letter-spacing: 0.16em;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+}
+html[data-layout="callout"] .kw-hdr::after {   /* one-off light sweep as the bar wipes in */
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.28) 50%, transparent 70%);
+    transform: translateX(-120%);
+    animation: kw-hdr-sweep 1.1s ease-out 0.35s forwards;
+    pointer-events: none;
+}
+@keyframes kw-hdr-sweep { to { transform: translateX(120%); } }
+html[data-layout="callout"] .kw-hdr-dot {
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    box-shadow: 0 0 10px rgba(var(--a, 96, 156, 255), 1), 0 0 2px #fff;
+}
+html[data-layout="callout"] .kw-hdr-title { font-weight: 700; }
+html[data-layout="callout"] .kw-hdr-idx {
+    font: 600 11px/var(--kw-hdr-h) var(--mono);
+    color: rgba(255, 255, 255, 0.82);
+}
+
+/* ---- MY NAME: the identity box h1 ---- */
+html[data-layout="callout"] .snap-section .kw-callout h1 {
+    font-family: var(--heading-font, var(--sans)) !important;
+    font-weight: 700 !important;
+    font-size: clamp(34px, 3.4vw, 54px) !important;
+    line-height: 1.02 !important;
+    letter-spacing: -0.035em !important;
+    color: var(--fg) !important;
+    text-shadow: 0 0 28px rgba(var(--a, 96, 156, 255), 0.4), 0 2px 12px rgba(var(--bg-rgb), 0.9) !important;
+    margin: 2px 0 8px;
+    max-width: none !important;
+}
+html[data-layout="callout"] .kw-role-sub {
+    margin-top: 8px;
+    font: 600 11.5px/1.45 var(--mono);
+    letter-spacing: 0.12em;
+    color: color-mix(in srgb, var(--fg) 86%, rgb(var(--a, 96, 156, 255)));
+}
+
+/* ---- Section titles inside boxes (h2) ---- */
+html[data-layout="callout"] .snap-section .kw-callout h2,
+html[data-layout="callout"] .snap-section .kw-callout .snap-title {
+    font-family: var(--heading-font, var(--sans)) !important;
+    font-weight: 650 !important;
+    font-size: clamp(26px, 2.5vw, 38px) !important;
+    line-height: 1.08 !important;
+    letter-spacing: -0.03em !important;
+    color: var(--fg) !important;
+    text-shadow: 0 0 22px rgba(var(--a, 96, 156, 255), 0.32) !important;
+}
+html[data-layout="callout"] .kw-callout h3 { font-size: 1.02rem; font-weight: 650; letter-spacing: -0.01em; }
+
+/* ---- Body copy, crop, metadata: larger and clearer ---- */
+html[data-layout="callout"] .kw-callout p,
+html[data-layout="callout"] .kw-callout.lead {
+    font-size: 0.92rem !important;
+    line-height: 1.58 !important;
+    color: color-mix(in srgb, var(--fg) 88%, transparent);
+}
+html[data-layout="callout"] .kw-crop-wrap { height: 58px; margin-bottom: 10px; border-color: rgba(var(--a, 96, 156, 255), 0.4); }
+html[data-layout="callout"] .kw-crop-wrap::after { font: 600 9.5px/1.2 var(--mono); padding: 4px 8px; letter-spacing: 0.12em; }
+html[data-layout="callout"] .kw-meta {
+    margin-top: 10px;
+    padding-top: 8px;
+    font: 600 10.5px/1.3 var(--mono);
+    letter-spacing: 0.07em;
+    color: color-mix(in srgb, var(--fg) 82%, rgb(var(--a, 96, 156, 255)));
+    border-top-color: rgba(var(--a, 96, 156, 255), 0.32);
+}
+html[data-layout="callout"] .kw-telem-grid { font-size: 11px; gap: 7px 12px; }
+html[data-layout="callout"] .kw-telem-grid span { font-size: 9.5px; }
+
+/* Long content (equations, pipeline) scrolls inside its box instead of overflowing the screen */
+html[data-layout="callout"] .snap-arch-grid,
+html[data-layout="callout"] .snap-math-grid {
+    max-height: 34vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--a, 96, 156, 255), 0.5) transparent;
+    overscroll-behavior: contain;
+}
+
+/* ---- Corner ticks and leader lines ---- */
+html[data-layout="callout"] .kw-callout::after { inset: -3px; }
+.kw-line { stroke-width: 1.4; filter: drop-shadow(0 0 3px rgba(var(--a, 96, 156, 255), 0.65)); }
+.kw-node { filter: drop-shadow(0 0 4px rgba(var(--a, 96, 156, 255), 0.9)); }
+
+@media (prefers-reduced-motion: reduce) {
+    html[data-layout="callout"] .kw-hdr::after { animation: none; opacity: 0; }
 }
