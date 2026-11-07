@@ -2128,18 +2128,15 @@ html[data-layout="callout"] {
     --kw-line: rgba(var(--a, 96, 156, 255), 0.72);
 }
 
-/* Ambient radial dark vignette + faint technical grid that fades to the edges */
+/* Ambient radial dark vignette centred on the viewport */
 html[data-layout="callout"] .snap-section::after,
 html[data-layout="callout"] .hero::after,
 html[data-layout="callout"] .about-contact-section::after,
 html[data-layout="callout"] #domain-physics::after,
 html[data-layout="callout"] #domain-intro[data-domain="physics"]::after {
     background-color: transparent;
-    background-image:
-        radial-gradient(ellipse at center, transparent 44%, rgba(var(--bg-rgb), 0.56) 100%),
-        linear-gradient(color-mix(in srgb, var(--fg) 4.5%, transparent) 1px, transparent 1px),
-        linear-gradient(90deg, color-mix(in srgb, var(--fg) 4.5%, transparent) 1px, transparent 1px);
-    background-size: 100% 100%, 56px 56px, 56px 56px;
+    background-image: radial-gradient(ellipse at center, transparent 44%, rgba(var(--bg-rgb), 0.56) 100%);
+    background-size: 100% 100%;
     background-position: center center;
 }
 
