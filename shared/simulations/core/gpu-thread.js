@@ -1168,6 +1168,7 @@
             const inner = sec.querySelector(".snap-inner");
             const tag = sec.querySelector(".sim-tag");
             const cue = sec.querySelector(".snap-cue");
+            const leaders = sec.querySelector(".kw-leaders");
 
             let alpha = 0.0;
             let shiftY = 0.0;
@@ -1191,6 +1192,9 @@
                 inner.style.opacity = opStr;
                 inner.style.transform = trStr;
                 inner.style.pointerEvents = alpha > 0.5 ? "auto" : "none";
+            }
+            if (leaders) {
+                leaders.style.opacity = opStr;
             }
             if (tag) tag.style.opacity = opStr;
             if (cue) {
