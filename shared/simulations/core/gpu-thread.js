@@ -52,8 +52,8 @@
     }
     const isReducedMotion = () => reducedMotionNow;
 
-    const INITIAL_N = isMobileDevice() ? 30000 : 90000;
-    const MIN_ADAPTIVE_N = isMobileDevice() ? 15000 : 36000;
+    const INITIAL_N = isMobileDevice() ? 24000 : 54000;
+    const MIN_ADAPTIVE_N = isMobileDevice() ? 12000 : 27000;
 
     /* ---------- Transit tuning (FLIGHT_V2) ----------
        FLIGHT_V2 = true  : single hero-particle flight. Hero speed is driven by an ignite / accelerate /
@@ -65,8 +65,8 @@
                             instead of swarm-morphing and loading a separate page. */
     const FLIGHT_V2 = true;
     const EXPLORE_ENTERS_SIM = false; // false: Explore flies in and SHOWS the domain's first project (page + simulation)
-    const TRAVEL_SEC = 2.4;        // Punchy 2.4s jump for adjacent sections
-    const TRAVEL_SEC_JUMP = 3.4;   // 3.4s for multi-section jumps
+    const TRAVEL_SEC = 1.35;       // Snappy 1.35s jump for adjacent sections
+    const TRAVEL_SEC_JUMP = 1.95;  // 1.95s for multi-section jumps
 
     let bufferReallocations = 0;
 
@@ -181,7 +181,7 @@
     let width = 1, height = 1;
 
     const resizeStage = () => {
-        const maxDpr = isMobileDevice() ? 1.5 : 2.0;
+        const maxDpr = isMobileDevice() ? 1.25 : 1.5;
         dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
         width = Math.max(1, window.innerWidth);
         height = Math.max(1, window.innerHeight);
@@ -307,9 +307,9 @@
         const hw = Math.max(1, pw >> 1), hh = Math.max(1, ph >> 1);
         const qw = Math.max(1, pw >> 2), qh = Math.max(1, ph >> 2);
 
-        // Optimal ray tracer resolution: 1.0x CSS resolution on desktop, 0.85x on mobile
+        // Optimal ray tracer resolution: scaled for 60+ FPS on Retina while keeping lensing smooth
         const isMob = isMobileDevice();
-        const kerrScale = isMob ? 0.85 : Math.min(1.0, dpr);
+        const kerrScale = isMob ? 0.65 : Math.min(0.85, dpr * 0.6);
         const kw = Math.max(1, Math.round(width * kerrScale));
         const kh = Math.max(1, Math.round(height * kerrScale));
 
@@ -789,10 +789,10 @@
             if (exploreMorph.simple) {
                 exploreArc.p1.set(hs.x + (he.x - hs.x) * 0.33, hs.y + (he.y - hs.y) * 0.33, hs.z + (he.z - hs.z) * 0.33);
                 exploreArc.p2.set(hs.x + (he.x - hs.x) * 0.66, hs.y + (he.y - hs.y) * 0.66, hs.z + (he.z - hs.z) * 0.66);
-                exploreMorph.duration = 0.8;
+                exploreMorph.duration = 0.5;
             } else {
-                // long hops (hub anchor -> project world) need real travel time
-                exploreMorph.duration = clamp(2.4 + chord / 90.0, 2.6, 4.4);
+                // Snappy explore hop (hub anchor -> project world)
+                exploreMorph.duration = clamp(1.25 + chord / 160.0, 1.35, 2.1);
             }
             // The explore arc reuses the flight-path evaluator and arc-length profile
             trans.arc = exploreArc;
@@ -1449,8 +1449,8 @@
         h.camStartPos.copy(camera.position);
         h.camStartTarget.copy(camera.target);
 
-        // 1.0 - 1.6s duration; 0.4s for reduced motion; 1.6s if already inside
-        h.duration = reduced ? 0.4 : (appMode === "INSIDE" ? 1.6 : 1.25);
+        // 0.85 - 1.0s duration; 0.35s for reduced motion
+        h.duration = reduced ? 0.35 : (appMode === "INSIDE" ? 1.0 : 0.85);
         h.ins0 = appMode === "INSIDE" ? 1.0 : 0.0;
         h.insT = appMode === "INSIDE" ? 1.0 : 0.0;
         h.u = 0.0;
@@ -1883,7 +1883,7 @@
         trans.toIndex = clampedTarget;
         trans.interrupted = wasMidFlight;
         trans.u = 0.0;
-        trans.duration = isReducedMotion() ? 0.80 : (jumpSpan > 1 ? (FLIGHT_V2 ? TRAVEL_SEC_JUMP : 3.60) : (FLIGHT_V2 ? TRAVEL_SEC : 3.20));
+        trans.duration = isReducedMotion() ? 0.50 : (jumpSpan > 1 ? (FLIGHT_V2 ? TRAVEL_SEC_JUMP : 2.10) : (FLIGHT_V2 ? TRAVEL_SEC : 1.75));
         trans.active = true;
         trans.phase = "IGNITE";
         navState = "INTER_FLIGHT";
@@ -1893,7 +1893,7 @@
 
     /* ---------- Gesture Handling ---------- */
     let lastGestureTime = 0;
-    const GESTURE_LOCK_MS = 460;
+    const GESTURE_LOCK_MS = 300;
 
     const triggerStep = (deltaStep) => {
         const now = performance.now();
@@ -1958,12 +1958,13 @@
         if (Math.abs(dy) >= 24) triggerStep(dir);
     }, { passive: false });
 
-    let touchStartY = null, touchStartX = null, touchConsumed = false;
+    let touchStartY = null, touchStartX = null, touchConsumed = false, touchIgnoreHoriz = false;
     window.addEventListener("touchstart", (e) => {
         if (e.touches.length !== 1) return;
         touchStartY = e.touches[0].clientY;
         touchStartX = e.touches[0].clientX;
         touchConsumed = false;
+        touchIgnoreHoriz = !!(e.target && e.target.closest && e.target.closest(".course-grid, .hero-eq, .snap-eq, .paper-eq, .eq"));
     }, { passive: true });
 
     window.addEventListener("touchmove", (e) => {
@@ -1971,7 +1972,7 @@
         const dy = touchStartY - e.touches[0].clientY;
         const dx = touchStartX - e.touches[0].clientX;
         if (Math.abs(dx) > Math.abs(dy) * 1.2) {
-            if (!touchConsumed && Math.abs(dx) >= 38) {
+            if (!touchIgnoreHoriz && !touchConsumed && Math.abs(dx) >= 38) {
                 touchConsumed = true;
                 e.preventDefault();
                 stepLocale(Math.sign(dx));
@@ -1995,6 +1996,7 @@
         touchStartY = null;
         touchStartX = null;
         touchConsumed = false;
+        touchIgnoreHoriz = false;
     }, { passive: true });
 
     let simTime = 0;
@@ -2031,7 +2033,8 @@
             try { sessionStorage.removeItem("startInside"); } catch (_) {}
         }
 
-        if (isProjectPage || pendingStartInside) {
+        const isCalloutMode = (typeof document !== "undefined" && document.documentElement && document.documentElement.dataset.layout === "callout");
+        if ((isProjectPage || pendingStartInside) && !isCalloutMode) {
             startInside = true;
             pendingStartInside = false;
         }
@@ -2802,11 +2805,11 @@
         // Adaptive particle count & post quality if frame time > 20 ms sustained (never reallocates buffer)
         // Warm-up: shader compile, texture upload and tab-return hitches must not permanently cut particle count.
         framesSinceStart++;
-        if (rawDt > 0.0205 && framesSinceStart > 120 && rawDt < 0.25) {
+        if (rawDt > 0.019 && framesSinceStart > 60 && rawDt < 0.25) {
             slowFrames++;
-            if (slowFrames > 30) {
+            if (slowFrames > 18) {
                 if (sharedBuffer.count > MIN_ADAPTIVE_N) {
-                    sharedBuffer.count = Math.max(MIN_ADAPTIVE_N, Math.floor(sharedBuffer.count * 0.88));
+                    sharedBuffer.count = Math.max(MIN_ADAPTIVE_N, Math.floor(sharedBuffer.count * 0.85));
                     geometry.setDrawRange(0, sharedBuffer.count);
                 } else {
                     postQuality = 1;
@@ -3605,7 +3608,7 @@
         if (starProg) {
             const isMob = isMobileDevice();
             const ins = (activeRenderForm && activeRenderForm.insideness) || inside.value || 0.0;
-            const targetScreenX = (isMob || ctxState.centred) ? 0.50 : (0.66 - ctxState.pointerX * 0.015);
+            const targetScreenX = isMob ? 0.50 : (0.60 - ctxState.pointerX * 0.015);
             const baseScreenX = targetScreenX * (1.0 - 0.65 * ins) + 0.50 * (0.65 * ins);
             const baseScreenY = isMob ? (0.68 * (1.0 - 0.36 * ins) + 0.50 * (0.36 * ins)) : (0.50 + ctxState.pointerY * 0.02);
             const baseScale = isMob ? 44.0 : 34.0;
@@ -3825,8 +3828,8 @@
         }
         gl.uniform1f(compositeUniforms.uInside, inside.value);
         gl.uniform3f(compositeUniforms.uInnerTint, inside.tint[0], inside.tint[1], inside.tint[2]);
-        gl.uniform1f(compositeUniforms.uVignette, 0.36 + 0.26 * inside.value);
-        gl.uniform1f(compositeUniforms.uGrain, 0.020);
+        gl.uniform1f(compositeUniforms.uVignette, 0.38 + 0.26 * inside.value);
+        gl.uniform1f(compositeUniforms.uGrain, 0.014);
         gl.uniform1f(compositeUniforms.uCaStrength, isReducedMotion() ? 0.0 : (0.002 + 0.018 * liveVs + postState.caExtra + 0.0048 * heroWeight()));
         gl.uniform1f(compositeUniforms.uShockwave, isReducedMotion() ? 0.0 : postState.shockwave);
         gl.uniform1f(compositeUniforms.uShockwaveRadius, postState.shockwaveRadius);

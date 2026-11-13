@@ -2143,7 +2143,7 @@ const initNavSim = (c) => {
         const roundRect = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
         const radial = (x, y, r, stops) => { const g = ctx.createRadialGradient(x, y, 0, x, y, r); for (const s of stops) g.addColorStop(s[0], s[1]); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); };
 
-        const resize = (w, h, ratio = 1) => { dpr = Math.min(2, ratio || 1); W = w; H = h; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); };
+        const resize = (w, h, ratio = 1) => { dpr = Math.min(w < 900 ? 1.5 : 2, ratio || 1); W = w; H = h; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); };
 
         const drawBackdrop = (t, yaw, pitch) => {
             ctx.save(); ctx.globalCompositeOperation = "lighter";
@@ -2217,6 +2217,15 @@ const initNavSim = (c) => {
             const cxp = mx + 46 * k, cyp = my - 34 * k;
             const panel = { x: Math.max(10, Math.min(W - pw - 10, cxp)), y: Math.max(48, Math.min(H - ph - 16, cyp)), w: pw, h: ph };
             const rects = [{ x: panel.x - 6, y: panel.y - 6, w: panel.w + 12, h: panel.h + 12 }, { x: mx - 44 * k, y: my - 44 * k, w: 88 * k, h: 88 * k }];
+
+            // Prevent background 2D galaxy labels from overlapping any active callout cards (using cached rects)
+            if (isCalloutLayout && window.__CALLOUT_RECTS__) {
+                const cached = window.__CALLOUT_RECTS__[st.sectionIndex || 0];
+                if (cached) {
+                    for (let bi = 0; bi < cached.length; bi++) rects.push(cached[bi]);
+                }
+            }
+
             const hit = (r) => { for (const q of rects) if (!(r.x + r.w < q.x || r.x > q.x + q.w || r.y + r.h < q.y || r.y > q.y + q.h)) return true; return false; };
 
             // ---- Laniakea Cluster & Void Labels (only drawn when Laniakea intro is visible)
@@ -2354,12 +2363,32 @@ const initNavSim = (c) => {
             ctx.strokeStyle = `rgba(180,210,255,0.22)`; ctx.lineWidth = 1.2;
             ctx.beginPath(); ctx.arc(mx, my, 31 * k * ringK, 0, TAU); ctx.stroke();
 
+            // Subtle chromatic/phosphor accent ring on target lock or hover
+            if (isHoverHero || lock > 0.12) {
+                const lockA = Math.min(1, (isHoverHero ? 0.42 : 0.26 * lock) + 0.2 * flash);
+                ctx.strokeStyle = `rgba(125,211,252,${(lockA * 0.85).toFixed(3)})`;
+                ctx.lineWidth = 0.9 * k;
+                ctx.beginPath(); ctx.arc(mx + 0.7 * k, my - 0.5 * k, 43.2 * k * ringK, -0.55, 0.65); ctx.stroke();
+                ctx.strokeStyle = `rgba(244,114,182,${(lockA * 0.55).toFixed(3)})`;
+                ctx.beginPath(); ctx.arc(mx - 0.7 * k, my + 0.5 * k, 43.2 * k * ringK, Math.PI - 0.55, Math.PI + 0.65); ctx.stroke();
+            }
+
             // Inner dense tick wheel (72 ticks with 6-tick major intervals)
             ctx.strokeStyle = `rgba(${domAcc},0.55)`; ctx.lineWidth = 1;
             for (let i = 0; i < 72; i++) {
                 const a = rot + i / 72 * TAU, r0 = 24 * k * ringK, r1 = r0 + (i % 6 === 0 ? 5.5 : 2.2) * k;
                 ctx.beginPath(); ctx.moveTo(mx + Math.cos(a) * r0, my + Math.sin(a) * r0); ctx.lineTo(mx + Math.cos(a) * r1, my + Math.sin(a) * r1); ctx.stroke();
             }
+
+            // Cardinal vernier crosshairs (inner optical alignment ticks)
+            ctx.strokeStyle = `rgba(224,242,254,0.48)`; ctx.lineWidth = Math.max(0.9, 1.0 * k);
+            const chIn = 9.5 * k, chOut = 15.5 * k;
+            ctx.beginPath();
+            ctx.moveTo(mx - chOut, my); ctx.lineTo(mx - chIn, my);
+            ctx.moveTo(mx + chIn, my); ctx.lineTo(mx + chOut, my);
+            ctx.moveTo(mx, my - chOut); ctx.lineTo(mx, my - chIn);
+            ctx.moveTo(mx, my + chIn); ctx.lineTo(mx, my + chOut);
+            ctx.stroke();
 
             // Outer segmented tactical arcs
             ctx.strokeStyle = `rgba(${domAcc},0.75)`; ctx.lineWidth = 1.8 * k;
@@ -2374,7 +2403,9 @@ const initNavSim = (c) => {
             ctx.fillStyle = `rgba(${domAcc},0.62)`; ctx.font = `600 ${Math.max(8, 8.5 * k)}px ${mono}`;
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
             for (const [deg, ang] of [["0°", -Math.PI / 2], ["90°", 0], ["180°", Math.PI / 2], ["270°", Math.PI]]) {
-                const dr = 52 * k * ringK;
+                const tr0 = 43.5 * k * ringK, tr1 = 46.2 * k * ringK, dr = 53 * k * ringK;
+                ctx.strokeStyle = `rgba(${domAcc},0.50)`; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(mx + Math.cos(ang) * tr0, my + Math.sin(ang) * tr0); ctx.lineTo(mx + Math.cos(ang) * tr1, my + Math.sin(ang) * tr1); ctx.stroke();
                 ctx.fillText(deg, mx + Math.cos(ang) * dr, my + Math.sin(ang) * dr);
             }
             window.__HUD_FOCAL__ = { x: mx, y: my, secIdx };
@@ -2399,19 +2430,28 @@ const initNavSim = (c) => {
 
             // Frameless astrophysical callout: starts with 45° leader from bracket -> bends straight horizontal -> data chevron ticker
             {
-                const pad = 4 * k;
-                // Leader geometry starts precisely from the upper-right corner bracket of reticle
-                const sx0 = mx + br * 0.85, sy0 = my - br * 0.45;
+                const flipLeft = W < 640 && mx > W * 0.52;
+                const dir = flipLeft ? -1 : 1;
+                const sx0 = mx + dir * br * 0.85, sy0 = my - br * 0.45;
                 const liftY = 22 * k; // elevation to rule level
                 const ry = sy0 - liftY; // rule Y level
-                const jx = sx0 + liftY * 1.15; // 45° dogleg corner
-                const ruleW = Math.max(220 * k, Math.min(360 * k, W - jx - 20));
-                const rx1 = jx + ruleW;
+                const jx = sx0 + dir * liftY * 1.15; // 45° dogleg corner
+                const availW = flipLeft ? (jx - 14) : (W - jx - 14);
+                const ruleW = Math.max(150 * k, Math.min(360 * k, availW));
+                const ruleSolidW = Math.min(ruleW * 0.55, (isCalloutLayout ? 96 : 120) * k);
+                const tx = flipLeft
+                    ? Math.max(12, Math.min(jx - ruleW, W - 220 * k))
+                    : (W < 640 ? Math.max(12, Math.min(jx + 6 * k, W - 220 * k)) : jx + 6 * k);
+
+                const boxX = Math.min(tx, jx, jx + dir * ruleW), boxW = Math.max(tx + 220 * k, jx, jx + dir * ruleW) - boxX;
+                const boxY = ry - 24 * k, boxH = 64 * k;
+                const calloutOverlapsText = trs.some((r) => !(boxX + boxW < r.x || boxX > r.x + r.w || boxY + boxH < r.y || boxY > r.y + r.h));
 
                 ctx.save();
+                if (calloutOverlapsText) ctx.globalAlpha *= 0.28;
 
                 // Subtle, gentle radial veil behind text (reduced opacity to prevent dark halo)
-                const vcx = jx + ruleW * 0.40, vcy = ry + 10 * k;
+                const vcx = jx + dir * ruleW * 0.40, vcy = ry + 10 * k;
                 ctx.save(); ctx.translate(vcx, vcy); ctx.scale(ruleW / (50 * k) * 0.58, 1);
                 const vg = ctx.createRadialGradient(0, 0, 0, 0, 0, 45 * k);
                 vg.addColorStop(0, "rgba(2,4,8,0.42)");
@@ -2419,7 +2459,7 @@ const initNavSim = (c) => {
                 vg.addColorStop(1, "rgba(2,4,8,0)");
                 ctx.fillStyle = vg; ctx.fillRect(-80 * k, -45 * k, 160 * k, 90 * k); ctx.restore();
 
-                // Leader: 45° angled line from reticle bracket up-right to joint
+                // Leader: 45° angled line from reticle bracket to joint
                 ctx.shadowColor = `rgba(${domAcc},0.75)`; ctx.shadowBlur = 9 * k;
                 ctx.strokeStyle = `rgb(${domAcc})`; ctx.lineWidth = Math.max(1.6, 2.0 * k);
                 ctx.beginPath();
@@ -2428,49 +2468,71 @@ const initNavSim = (c) => {
                 ctx.stroke();
 
                 // Horizontal solid rule under title
-                const ruleSolidW = (isCalloutLayout ? 96 : 120) * k;
                 ctx.beginPath();
                 ctx.moveTo(jx, ry);
-                ctx.lineTo(jx + ruleSolidW, ry);
+                ctx.lineTo(jx + dir * ruleSolidW, ry);
                 ctx.stroke();
 
                 // Joint vertex node ●
                 ctx.fillStyle = `rgb(${domAcc})`;
                 ctx.beginPath(); ctx.arc(jx, ry, 3.2 * k, 0, TAU); ctx.fill();
 
+                // Clean travelling signal pulse along the 45° dogleg + horizontal rule
+                if (!reduced) {
+                    const pulseU = (tSec * 0.55) % 1;
+                    const diagLen = Math.hypot(jx - sx0, ry - sy0);
+                    const totalLen = diagLen + ruleSolidW;
+                    const dist = pulseU * totalLen;
+                    const px = dist <= diagLen ? sx0 + (jx - sx0) * (dist / Math.max(1, diagLen)) : jx + dir * (dist - diagLen);
+                    const py = dist <= diagLen ? sy0 + (ry - sy0) * (dist / Math.max(1, diagLen)) : ry;
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = `rgba(${domAcc},0.42)`;
+                    ctx.beginPath(); ctx.arc(px, py, 3.6 * k, 0, TAU); ctx.fill();
+                    ctx.fillStyle = "rgba(255,255,255,0.92)";
+                    ctx.beginPath(); ctx.arc(px, py, 1.5 * k, 0, TAU); ctx.fill();
+                }
+
                 // Sci-fi data ticker along the rule (dash pattern + telemetry chevrons » » »)
                 ctx.shadowBlur = 0;
                 ctx.fillStyle = `rgba(${domAcc},0.85)`;
                 ctx.strokeStyle = `rgba(${domAcc},0.75)`;
                 ctx.lineWidth = 1.4 * k;
-                ctx.setLineDash([4 * k, 3 * k, 1.5 * k, 3 * k]);
-                ctx.beginPath();
-                ctx.moveTo(jx + ruleSolidW + 4 * k, ry);
-                ctx.lineTo(jx + ruleSolidW + (isCalloutLayout ? 38 : 55) * k, ry);
-                ctx.stroke();
-                ctx.setLineDash([]);
-
-                // Futuristic telemetry chevrons » » » along rule
-                const chvx0 = jx + ruleSolidW + (isCalloutLayout ? 44 : 62) * k;
-                for (let c = 0; c < 3; c++) {
-                    const cx = chvx0 + c * 7 * k;
+                const dashEnd = Math.min(ruleW, ruleSolidW + (isCalloutLayout ? 38 : 55) * k);
+                if (dashEnd > ruleSolidW + 6 * k) {
+                    ctx.setLineDash([4 * k, 3 * k, 1.5 * k, 3 * k]);
                     ctx.beginPath();
-                    ctx.moveTo(cx, ry - 3 * k); ctx.lineTo(cx + 3 * k, ry); ctx.lineTo(cx, ry + 3 * k);
+                    ctx.moveTo(jx + dir * (ruleSolidW + 4 * k), ry);
+                    ctx.lineTo(jx + dir * dashEnd, ry);
                     ctx.stroke();
+                    ctx.setLineDash([]);
                 }
-                if (!isCalloutLayout) {
-                    const chvx1 = chvx0 + 32 * k;
+
+                // Futuristic telemetry chevrons » » » along rule (with subtle sequential pulse)
+                const chvx0 = jx + dir * (ruleSolidW + (isCalloutLayout ? 44 : 62) * k);
+                if (chvx0 > 18 && chvx0 < W - 18) {
                     for (let c = 0; c < 3; c++) {
-                        const cx = chvx1 + c * 6 * k;
+                        const cx = chvx0 + dir * c * 7 * k;
+                        const chA = reduced ? 0.75 : 0.40 + 0.55 * (0.5 + 0.5 * Math.sin(tSec * 4.5 - c * 1.1));
+                        ctx.strokeStyle = `rgba(${domAcc},${chA.toFixed(2)})`;
                         ctx.beginPath();
-                        ctx.moveTo(cx, ry - 2.5 * k); ctx.lineTo(cx + 2.5 * k, ry); ctx.lineTo(cx, ry + 2.5 * k);
+                        ctx.moveTo(cx, ry - 3 * k); ctx.lineTo(cx + dir * 3 * k, ry); ctx.lineTo(cx, ry + 3 * k);
                         ctx.stroke();
+                    }
+                    if (!isCalloutLayout && !flipLeft) {
+                        const chvx1 = chvx0 + 32 * k;
+                        for (let c = 0; c < 3; c++) {
+                            const cx = chvx1 + c * 6 * k;
+                            const chA = reduced ? 0.68 : 0.35 + 0.52 * (0.5 + 0.5 * Math.sin(tSec * 4.5 - (c + 3) * 0.9));
+                            ctx.strokeStyle = `rgba(${domAcc},${chA.toFixed(2)})`;
+                            ctx.beginPath();
+                            ctx.moveTo(cx, ry - 2.5 * k); ctx.lineTo(cx + 2.5 * k, ry); ctx.lineTo(cx, ry + 2.5 * k);
+                            ctx.stroke();
+                        }
                     }
                 }
 
                 // Typography & Telemetry
                 const f1 = Math.max(12, (isCalloutLayout ? 13.0 : 14.5) * k), f2 = Math.max(9.2, (isCalloutLayout ? 10.0 : 11.0) * k), f3 = Math.max(9.0, (isCalloutLayout ? 9.6 : 10.5) * k);
-                const tx = jx + 6 * k;
                 ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
                 ctx.shadowColor = "rgba(0,0,0,1.0)"; ctx.shadowBlur = 10 * k; ctx.shadowOffsetY = 1.5 * k;
 
@@ -2534,7 +2596,7 @@ const initNavSim = (c) => {
             c = document.createElement("canvas"); c.className = "laniakea-hero-canvas"; c.setAttribute("aria-hidden", "true");
             document.body.appendChild(c);
         }
-        c.style.cssText = "position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:2;";
+        c.style.cssText = "position:fixed;inset:0;width:100%;height:100dvh;pointer-events:none;z-index:2;";
         if (c.__dispose) c.__dispose();
 
         const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -3003,7 +3065,7 @@ const initNavSim = (c) => {
         b.style.setProperty("--kw-idx", idx);
         const label = b.dataset.label || labelFor(b, idx + 1);
         b.dataset.label = label;
-        const idxStr = String(idx + 1).padStart(2, "0") + "/" + String(total).padStart(2, "0");
+        const idxStr = `[${String(idx + 1).padStart(2, "0")}/${String(total).padStart(2, "0")}]`;
 
         let hdr = b.querySelector(":scope > .kw-hdr");
         if (!hdr) {
@@ -3023,7 +3085,7 @@ const initNavSim = (c) => {
             h1.insertAdjacentElement("afterend", sub);
         }
 
-        // Live magnified crop canvas (samples #stage-canvas around this box's target)
+        // Live volumetric HUD preview canvas (samples #stage-canvas around target + active AR feeds)
         if (!b.querySelector(":scope > .kw-crop-wrap")) {
             const wrap = document.createElement("div");
             wrap.className = "kw-crop-wrap";
@@ -3031,22 +3093,121 @@ const initNavSim = (c) => {
             wrap.dataset.target = (feat && feat.name) || "LOCUS LOCK";
             const cv = document.createElement("canvas");
             cv.className = "kw-crop";
-            cv.width = 220;
-            cv.height = 68;
+            cv.width = 360;
+            cv.height = 100;
             b.__kwCropCanvas = cv;
             b.__kwCropCtx = cv.getContext("2d");
             wrap.appendChild(cv);
             hdr.insertAdjacentElement("afterend", wrap);
         }
 
-        // Tabular mono metadata line updated at 4 Hz
+        // Tabular mono metadata line updated at 4 Hz with crisp micro-symbols
         if (!b.querySelector(":scope > .kw-meta")) {
             const meta = document.createElement("div");
             meta.className = "kw-meta";
             meta.setAttribute("aria-hidden", "true");
+            const isSimOverlay = b.classList.contains("kw-sim-overlay");
             const scaleTxt = (feat && feat.scale) || "2.0× · LOCK";
-            meta.innerHTML = `<span class="kw-meta-coord">XY 000·000</span><span class="kw-meta-scale">${scaleTxt}</span><span class="kw-meta-live">90 FPS · 0.00c</span>`;
+            if (isSimOverlay) {
+                const shortScale = scaleTxt.split("·")[0].trim();
+                meta.innerHTML = `<span class="kw-meta-coord">XY 000·000</span><span class="kw-meta-scale">${shortScale}</span><span class="kw-meta-live">90 FPS</span>`;
+            } else {
+                meta.innerHTML = `<span class="kw-meta-coord">+ [XY 000·000]</span><span class="kw-meta-scale">${scaleTxt} · 42.8°</span><span class="kw-meta-live">90 FPS · 0.00c</span>`;
+            }
             b.appendChild(meta);
+        }
+    };
+
+    const DOMAIN_TELEMETRY = {
+        "hub": {
+            c1: {
+                label: "OBSERVATION_03",
+                grid: `<div><span>TARGET REGION</span><strong>VIRGO · 54 MLY</strong></div><div><span>STREAM VELOCITY</span><strong>σ_v = 480 KM/S</strong></div><div><span>PEAK DENSITY</span><strong>δρ/ρ = +3.42</strong></div><div><span>FLOW REGIME</span><strong>LORENTZ EXP</strong></div>`
+            },
+            c2: {
+                label: "TELEMETRY_04",
+                grid: `<div><span>SUPERCLUSTER</span><strong>LANIAKEA · 520 MLY</strong></div><div><span>ATTRACTOR FLOW</span><strong>v_p = 630 KM/S</strong></div><div><span>PARTICLE FIELD</span><strong>65,536 NODES</strong></div><div><span>METRIC FRAME</span><strong>SGX · J2000</strong></div>`
+            }
+        },
+        "math": {
+            c1: {
+                label: "MANIFOLD_03",
+                grid: `<div><span>TOPOLOGY</span><strong>HOPF S³→S² FIBER</strong></div><div><span>HAUSDORFF DIM</span><strong>d_H = 2.06 ± 0.01</strong></div><div><span>LYAPUNOV λ₁</span><strong>+0.9056 BIT/S</strong></div><div><span>INVARIANT MEASURE</span><strong>ERGODIC μ</strong></div>`
+            },
+            c2: {
+                label: "TELEMETRY_04",
+                grid: `<div><span>ATTRACTOR</span><strong>LORENZ 1963 · 3D</strong></div><div><span>INTEGRATOR</span><strong>SYMPLECTIC RK4</strong></div><div><span>CONVERGENCE</span><strong>10⁻⁶ TOLERANCE</strong></div><div><span>CHERN NUMBER</span><strong>c₁ = 1 · INVARIANT</strong></div>`
+            }
+        },
+        "physics": {
+            c1: {
+                label: "RELATIVISTIC_03",
+                grid: `<div><span>METRIC TENSOR</span><strong>KERR–SCHILD g_μν</strong></div><div><span>SPIN PARAMETER</span><strong>a* = 0.937 M</strong></div><div><span>FRAME DRAGGING</span><strong>ω_drag = 0.62 c/M</strong></div><div><span>PHOTON SPHERE</span><strong>r_ph = 1.42 r_s</strong></div>`
+            },
+            c2: {
+                label: "TELEMETRY_04",
+                grid: `<div><span>EVENT HORIZON</span><strong>r_+ = 1.35 r_s</strong></div><div><span>RELATIVISTIC JET</span><strong>Γ = 10.4 · LORENTZ</strong></div><div><span>DOPPLER BEAMING</span><strong>δ³ FACTOR 4.8×</strong></div><div><span>INTEGRATION</span><strong>GEODESIC RAYTRACE</strong></div>`
+            }
+        },
+        "datascience": {
+            c1: {
+                label: "SCORE_FIELD_03",
+                grid: `<div><span>DIFFUSION DRIFT</span><strong>s_θ(x, t) = ∇log p</strong></div><div><span>SCORE RESIDUAL</span><strong>‖s - s*‖² &lt; 0.012</strong></div><div><span>SPECTRAL GAP</span><strong>λ₂ - λ₁ = 0.48</strong></div><div><span>SAMPLER</span><strong>ANNEALED LANGEVIN</strong></div>`
+            },
+            c2: {
+                label: "TELEMETRY_04",
+                grid: `<div><span>STATE SPACE</span><strong>65,536 NODES</strong></div><div><span>FOKKER–PLANCK</span><strong>∂p/∂t = ∇·(D∇p - vp)</strong></div><div><span>CONVERGENCE</span><strong>TV DISTANCE &lt; 0.005</strong></div><div><span>FLOW TOPOLOGY</span><strong>STOCHASTIC DRIFT</strong></div>`
+            }
+        },
+        "quant": {
+            c1: {
+                label: "VOLATILITY_03",
+                grid: `<div><span>IMPLIED VOL</span><strong>DUPIRÉ LOCAL VOL σ</strong></div><div><span>CONVEXITY SKEW</span><strong>∂²C/∂K² &gt; 0 FREE</strong></div><div><span>HEDGE RATIO</span><strong>BLACK–SCHOLES Δ</strong></div><div><span>GAMMA PROFILE</span><strong>Γ_max = 0.142</strong></div>`
+            },
+            c2: {
+                label: "TELEMETRY_04",
+                grid: `<div><span>ORDER FLOW</span><strong>L2 DEPTH BOOK</strong></div><div><span>BID-ASK SPREAD</span><strong>0.5 BPS · QUEUE</strong></div><div><span>MICROSTRUCTURE</span><strong>HAWKES POINT PROC</strong></div><div><span>LATENCY FRAME</span><strong>SUB-MICROSECOND</strong></div>`
+            }
+        },
+        "cs": {
+            c1: {
+                label: "COHERENCE_03",
+                grid: `<div><span>QUANTUM STATE</span><strong>BLOCH VECTOR |ψ⟩</strong></div><div><span>FIDELITY F</span><strong>99.94% COHERENCE</strong></div><div><span>GATE SET</span><strong>CLIFFORD + T</strong></div><div><span>ENTANGLEMENT</span><strong>BELL STATE |Φ⁺⟩</strong></div>`
+            },
+            c2: {
+                label: "TELEMETRY_04",
+                grid: `<div><span>SIMD PIPELINE</span><strong>AVX-512 / METAL GPU</strong></div><div><span>STATEVECTOR</span><strong>2²⁰ AMPLITUDES</strong></div><div><span>REGISTER WIDTH</span><strong>512-BIT VECTOR LANES</strong></div><div><span>EXECUTION MODE</span><strong>HARDWARE-ACCEL</strong></div>`
+            }
+        },
+        "papers": {
+            c1: {
+                label: "PREPRINT_03",
+                grid: `<div><span>INDEX FRAME</span><strong>ARXIV / INSPIRE-HEP</strong></div><div><span>METHODOLOGY</span><strong>ANALYTIC DERIVATION</strong></div><div><span>PEER REVIEW</span><strong>OPEN ACCESS MONO</strong></div><div><span>CITATIONS</span><strong>FORMULATION READY</strong></div>`
+            },
+            c2: {
+                label: "TELEMETRY_04",
+                grid: `<div><span>MONOGRAPH</span><strong>IITM DS &amp; QUANT</strong></div><div><span>NUMERICS</span><strong>SYMPLECTIC SOLVER</strong></div><div><span>REPRODUCIBILITY</span><strong>FULL SOURCE CODE</strong></div><div><span>BENCHMARK</span><strong>HARDWARE VERIFIED</strong></div>`
+            }
+        },
+        "courses": {
+            c1: {
+                label: "SYLLABUS_03",
+                grid: `<div><span>INSTITUTION</span><strong>IIT MADRAS</strong></div><div><span>PROGRAMME</span><strong>BS DATA SCIENCE</strong></div><div><span>DISCIPLINE</span><strong>MATH · QUANT · CS</strong></div><div><span>CORE GPA</span><strong>TOP TIER STANDING</strong></div>`
+            },
+            c2: {
+                label: "TELEMETRY_04",
+                grid: `<div><span>DUAL DEGREE</span><strong>VBMV BS PHYSICS</strong></div><div><span>LAB TRACK</span><strong>CLASSICAL &amp; QUANTUM</strong></div><div><span>ACCREDITATION</span><strong>DEGREE TRACK</strong></div><div><span>STATUS</span><strong>ACTIVE CONCURRENT</strong></div>`
+            }
+        },
+        "contact": {
+            c1: {
+                label: "AFFILIATION_03",
+                grid: `<div><span>INSTITUTION</span><strong>IIT MADRAS</strong></div><div><span>DISCIPLINE</span><strong>DS · QUANT · CS</strong></div><div><span>DEGREE TRACK</span><strong>BS DATA SCIENCE</strong></div><div><span>ACADEMIC FOCUS</span><strong>COMPUTATIONAL SYSTEMS</strong></div>`
+            },
+            c2: {
+                label: "TELEMETRY_04",
+                grid: `<div><span>AVAILABILITY</span><strong>RESEARCH &amp; QUANT</strong></div><div><span>PRIMARY STACK</span><strong>C · PYTHON · GPU · METAL</strong></div><div><span>SECURITY/COMM</span><strong>GPG VERIFIED CHANNEL</strong></div><div><span>CHANNEL STATUS</span><strong>DIRECT LINK READY</strong></div>`
+            }
         }
     };
 
@@ -3056,113 +3217,97 @@ const initNavSim = (c) => {
         if (!blocks.length) return;
         inner.classList.add("hud-inset-grid");
 
-        // If a section only has 3 natural blocks (e.g. intro or contact), add a 4th telemetry card so all 4 corners are balanced
-        if (blocks.length === 3) {
-            const extra = document.createElement("div");
-            extra.className = "kw-extra-callout";
-            const isIntro = sec.id === "intro" || sec.dataset.sim === "hub:intro";
-            extra.innerHTML = isIntro
-                ? `<div class="kw-telem-grid"><div><span>SUPERCLUSTER</span><strong>LANIAKEA · 520 MLY</strong></div><div><span>ATTRACTOR FLOW</span><strong>v_p = 630 KM/S</strong></div><div><span>PARTICLE FIELD</span><strong>65,536 NODES</strong></div><div><span>METRIC FRAME</span><strong>SGX · J2000</strong></div></div>`
-                : `<div class="kw-telem-grid"><div><span>INSTITUTION</span><strong>IIT MADRAS</strong></div><div><span>DISCIPLINE</span><strong>DS · QUANT · CS</strong></div><div><span>AVAILABILITY</span><strong>RESEARCH & QUANT</strong></div><div><span>CHANNEL STATUS</span><strong>DIRECT LINK READY</strong></div></div>`;
-            inner.appendChild(extra);
-            blocks.push(extra);
-        }
-
-        const L = document.createElement("div"), R = document.createElement("div");
-        L.className = "kw-col l";
-        R.className = "kw-col r";
+        const isIntro = sec.id === "intro" || (sec.dataset && sec.dataset.sim === "hub:intro");
+        const rawDomain = (sec && (sec.dataset.domain || (sec.id && sec.id.replace("domain-", "")) || "hub")) || "hub";
+        const domKey = rawDomain.replace("domain-", "");
+        const telem = DOMAIN_TELEMETRY[domKey] || DOMAIN_TELEMETRY["hub"];
 
         const simKey = (sec && sec.dataset && sec.dataset.sim) || "hub:intro";
-        const feats = SECTION_FEATURES[simKey] || SECTION_FEATURES["hub:intro"];
-        const total = blocks.length;
+        const feats = SECTION_FEATURES[simKey] || SECTION_FEATURES["hub:domain-" + domKey] || SECTION_FEATURES["hub:intro"];
 
-        // Distribute evenly across the 4 corners: first half on left (upper-left, lower-left), second half on right (upper-right, lower-right)
-        const half = Math.ceil(total / 2);
-        blocks.forEach((b, i) => {
-            b.style.order = i;
-            b.classList.add("kw-callout", "hud-inset-card");
-            b.dataset.boxIdx = String(i);
-            b.dataset.label = labelFor(b, i + 1);
-            const feat = feats[i % feats.length];
-            decorateBox(b, i, total, feat);
-            if (i < half) L.appendChild(b);
-            else R.appendChild(b);
+        const L = document.createElement("div"), R = document.createElement("div");
+        L.className = "kw-col l kw-editorial-col" + (isIntro ? " kw-hero-identity" : "");
+        R.className = "kw-col r";
 
-            if (!b.__kwHover) {
-                b.__kwHover = true;
-                b.addEventListener("pointerenter", () => {
-                    sec.dataset.hoverBox = String(i);
-                    b.classList.add("is-hovered");
-                    const g = sec.querySelector(`.kw-leader-group[data-box-idx="${i}"]`);
-                    if (g) g.classList.add("is-hovered");
-                });
-                b.addEventListener("pointerleave", () => {
-                    delete sec.dataset.hoverBox;
-                    b.classList.remove("is-hovered");
-                    sec.querySelectorAll(".kw-leader-group.is-hovered").forEach((g) => g.classList.remove("is-hovered"));
-                });
-            }
+        // Move all natural content elements into the left editorial column unboxed
+        while (inner.firstChild) {
+            L.appendChild(inner.firstChild);
+        }
+
+        // On the hero intro, add a dedicated AR overlay card on the left flank showing what is currently simulating
+        if (isIntro) {
+            const simCard = document.createElement("div");
+            simCard.className = "kw-extra-callout kw-callout hud-inset-card kw-sim-overlay";
+            simCard.dataset.boxIdx = "0";
+            simCard.dataset.label = "SIMULATION_01";
+            simCard.innerHTML = `<div class="kw-telem-grid">` +
+                `<div><span>SYSTEM</span><strong>LANIAKEA</strong></div>` +
+                `<div><span>NODES</span><strong>65,536 FIELD</strong></div>` +
+                `<div><span>TOTAL MASS</span><strong>10¹⁷ M☉</strong></div>` +
+                `<div><span>FLOW</span><strong>630 KM/S</strong></div>` +
+                `</div>`;
+            const featSim = feats[1] || { name: "CENTAURUS · 170 MLY", scale: "2.4× · ATTRACTOR" };
+            decorateBox(simCard, 0, 4, featSim);
+            inner.appendChild(simCard);
+
+            simCard.addEventListener("pointerenter", () => {
+                sec.dataset.hoverBox = "0";
+                simCard.classList.add("is-hovered");
+                const g = sec.querySelector('.kw-leader-group[data-box-idx="0"]');
+                if (g) g.classList.add("is-hovered");
+            });
+            simCard.addEventListener("pointerleave", () => {
+                delete sec.dataset.hoverBox;
+                simCard.classList.remove("is-hovered");
+                sec.querySelectorAll(".kw-leader-group.is-hovered").forEach((g) => g.classList.remove("is-hovered"));
+            });
+        }
+
+        // Right flank receives the 2 AR holographic diagnostic telemetry cards
+        const card1 = document.createElement("div");
+        card1.className = "kw-extra-callout kw-callout hud-inset-card";
+        card1.dataset.boxIdx = "2";
+        card1.dataset.label = telem.c1.label;
+        card1.innerHTML = `<div class="kw-telem-grid">${telem.c1.grid}</div>`;
+        const feat1 = feats[2] || { name: "LOCUS α", scale: "2.1× · CORE LOBE" };
+        decorateBox(card1, 2, 4, feat1);
+        R.appendChild(card1);
+
+        const card2 = document.createElement("div");
+        card2.className = "kw-extra-callout kw-callout hud-inset-card";
+        card2.dataset.boxIdx = "3";
+        card2.dataset.label = telem.c2.label;
+        card2.innerHTML = `<div class="kw-telem-grid">${telem.c2.grid}</div>`;
+        const feat2 = feats[3] || { name: "LOCUS β", scale: "1.9× · FILAMENT" };
+        decorateBox(card2, 3, 4, feat2);
+        R.appendChild(card2);
+
+        [card1, card2].forEach((b, idx) => {
+            const bIdx = idx + 2;
+            b.addEventListener("pointerenter", () => {
+                sec.dataset.hoverBox = String(bIdx);
+                b.classList.add("is-hovered");
+                const g = sec.querySelector(`.kw-leader-group[data-box-idx="${bIdx}"]`);
+                if (g) g.classList.add("is-hovered");
+            });
+            b.addEventListener("pointerleave", () => {
+                delete sec.dataset.hoverBox;
+                b.classList.remove("is-hovered");
+                sec.querySelectorAll(".kw-leader-group.is-hovered").forEach((g) => g.classList.remove("is-hovered"));
+            });
         });
+
         inner.appendChild(L);
-        if (R.children.length) inner.appendChild(R);
+        inner.appendChild(R);
     };
 
-    // Smoothed hero screen centre so .kw-ring and leader targets stay locked to the real hero particle
-    const smoothHero = { x: 0, y: 0, init: false };
+    // Fixed central focal coordinate for diagnostic callout ring (unified at 60% width across all sections)
     const getHeroInSec = (sec, W, H) => {
-        const S = window.THREAD_STAGE;
-        const hs = (S && S.supported && S.heroScreen) ? S.heroScreen : (window.__HUD_FOCAL__ || null);
-        let tx = W * 0.5, ty = H * 0.5;
-        if (hs && Number.isFinite(hs.x) && Number.isFinite(hs.y)) {
-            const sr = sec.getBoundingClientRect();
-            // Convert viewport heroScreen to section-local coordinates when section is near viewport
-            if (sr.bottom > 0 && sr.top < window.innerHeight) {
-                tx = Math.max(W * 0.28, Math.min(W * 0.72, hs.x - sr.left));
-                ty = Math.max(H * 0.24, Math.min(H * 0.76, hs.y - sr.top));
-            } else {
-                tx = Math.max(W * 0.28, Math.min(W * 0.72, hs.x));
-                ty = Math.max(H * 0.24, Math.min(H * 0.76, hs.y));
-            }
-        }
-        if (!smoothHero.init) {
-            smoothHero.x = tx;
-            smoothHero.y = ty;
-            smoothHero.init = true;
-        } else {
-            smoothHero.x += (tx - smoothHero.x) * 0.22;
-            smoothHero.y += (ty - smoothHero.y) * 0.22;
-        }
-        return { cx: smoothHero.x, cy: smoothHero.y };
+        return { cx: W * 0.60, cy: H * 0.50 };
     };
 
-    // Project a feature descriptor to section-local (x, y) coordinates, with fallback to ring angle
+    // Project feature descriptor to fixed section-local (x, y) coordinates
     const resolveTarget = (feat, sgn, slotIdx, slotCount, cx, cy, ring, W, H, sec) => {
-        const sr = sec.getBoundingClientRect();
-        const inView = sr.bottom > 40 && sr.top < window.innerHeight - 40;
-        if (feat && inView) {
-            if (feat.uv && window.__LANIAKEA_MAP__ && typeof window.__LANIAKEA_MAP__.projectUV === "function") {
-                const p = window.__LANIAKEA_MAP__.projectUV(feat.uv[0], feat.uv[1], feat.uv[2] || 0.02);
-                if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
-                    const lx = p.x - sr.left, ly = p.y - sr.top;
-                    if (lx > W * 0.24 && lx < W * 0.76 && ly > 82 && ly < H - 72) {
-                        return { x: lx, y: ly, name: feat.name };
-                    }
-                }
-            }
-            if (feat.world && window.THREAD_STAGE && typeof window.THREAD_STAGE.project === "function") {
-                const S = window.THREAD_STAGE;
-                const f = S.formations && S.formations[S.currentIndex || 0];
-                const base = f && f.origin ? f.origin : { x: 0, y: 0, z: 0 };
-                // Offset world coordinates relative to active formation origin so features always track the active simulation
-                const p = S.project(base.x + feat.world[0], base.y + feat.world[1], base.z + feat.world[2]);
-                if (p && Number.isFinite(p[0]) && Number.isFinite(p[1])) {
-                    const lx = p[0] - sr.left, ly = p[1] - sr.top;
-                    if (lx > W * 0.20 && lx < W * 0.80 && ly > 72 && ly < H - 64) {
-                        return { x: lx, y: ly, name: feat.name };
-                    }
-                }
-            }
-        }
         const ang = slotCount === 1 ? 0 : (((slotIdx + 0.5) / slotCount) - 0.5) * Math.PI * 0.62;
         return {
             x: cx + sgn * ring * Math.cos(ang),
@@ -3184,6 +3329,23 @@ const initNavSim = (c) => {
             svg.setAttribute("class", "kw-leaders");
             svg.setAttribute("aria-hidden", "true");
             sec.insertBefore(svg, sec.firstChild);
+            svg.addEventListener("pointerover", (ev) => {
+                const g = ev.target.closest && ev.target.closest(".kw-leader-group");
+                if (!g) return;
+                const bIdx = g.dataset.boxIdx;
+                if (bIdx === undefined) return;
+                sec.dataset.hoverBox = bIdx;
+                g.classList.add("is-hovered");
+                const card = sec.querySelector(`.kw-callout[data-box-idx="${bIdx}"]`);
+                if (card) card.classList.add("is-hovered");
+            });
+            svg.addEventListener("pointerout", (ev) => {
+                const g = ev.target.closest && ev.target.closest(".kw-leader-group");
+                if (!g) return;
+                delete sec.dataset.hoverBox;
+                g.classList.remove("is-hovered");
+                sec.querySelectorAll(".kw-callout.is-hovered").forEach((c) => c.classList.remove("is-hovered"));
+            });
         }
 
         const { cx, cy } = getHeroInSec(sec, W, H);
@@ -3191,21 +3353,29 @@ const initNavSim = (c) => {
         let out = "";
 
         const simKey = (sec && sec.dataset && sec.dataset.sim) || "hub:intro";
-        const feats = SECTION_FEATURES[simKey] || SECTION_FEATURES["hub:intro"];
+        const rawDomain = (sec && (sec.dataset.domain || (sec.id && sec.id.replace("domain-", "")) || "hub")) || "hub";
+        const domKey = rawDomain.replace("domain-", "");
+        const feats = SECTION_FEATURES[simKey] || SECTION_FEATURES["hub:domain-" + domKey] || SECTION_FEATURES[domKey] || SECTION_FEATURES["hub:intro"];
         const hoveredIdx = sec.dataset.hoverBox;
         const segs = [];
+        const apertureRects = [];
 
         // Gather all box rects in section space to avoid routing leader lines through sibling boxes
         const allBoxes = Array.from(sec.querySelectorAll(".kw-callout")).map((el) => ({ el, r: posIn(el, sec) }));
 
-        [["l", -1, 0], ["r", 1, 2]].forEach(([side, sgn, featOffset]) => {
-            const items = Array.from(sec.querySelectorAll(`.kw-col.${side} > .kw-callout`));
+        [["l", -1, 1], ["r", 1, 2]].forEach(([side, sgn, featOffset]) => {
+            const items = (side === "l")
+                ? Array.from(sec.querySelectorAll(`.kw-col.l > .kw-callout, .snap-inner > .kw-sim-overlay, :scope > .kw-sim-overlay`))
+                : Array.from(sec.querySelectorAll(`.kw-col.r > .kw-callout`));
             const n = items.length;
             items.forEach((el, i) => {
                 const p = posIn(el, sec);
                 const boxIdx = el.dataset.boxIdx || String(featOffset + i);
                 const feat = feats[(featOffset + i) % feats.length];
                 const tgt = resolveTarget(feat, sgn, i, n, cx, cy, ring, W, H, sec);
+
+                // Target aperture dimensions (small rectangle on simulation)
+                const rw = 48, rh = 28;
 
                 // Anchor at the inner edge of the header bar (y = p.y + 15)
                 const ax = sgn < 0 ? p.x + p.w : p.x;
@@ -3216,41 +3386,91 @@ const initNavSim = (c) => {
                 if (sgn < 0 && tx <= ax + 18) tx = Math.max(ax + 28, cx - ring * 0.65);
                 if (sgn > 0 && tx >= ax - 18) tx = Math.min(ax - 28, cx + ring * 0.65);
 
-                // Route line: diagonal from box header edge (ax, ay) to elbow (ex, ey), then horizontal to target (tx, ty)
-                const dy = ty - ay;
-                const diagSpan = Math.min(Math.abs(tx - ax) * 0.52, Math.max(26, Math.abs(dy) * 0.85));
-                let ex = ax + sgn * diagSpan;
-                let ey = ty;
+                // Connect leader line to the outer edge of the small rectangle
+                const rx = ax <= tx ? (tx - rw * 0.5) : (tx + rw * 0.5);
+                const ry = ty;
+
+                // Route line: diagonal from box header edge (ax, ay) to elbow (ex, ey), then horizontal to aperture edge (rx, ry)
+                const dx = rx - ax;
+                const dy = ry - ay;
+                const diagSpan = Math.min(Math.abs(dx) * 0.48, Math.max(26, Math.abs(dy) * 0.85));
+                const stepDir = dx >= 0 ? 1 : -1;
+                let ex = ax + stepDir * diagSpan;
+                let ey = ry;
 
                 // If horizontal segment at ey would clip another box on the same flank, nudge elbow outside the box
                 for (const other of allBoxes) {
                     if (other.el === el) continue;
                     const or = other.r;
-                    const minX = Math.min(ax, tx), maxX = Math.max(ax, tx);
+                    const minX = Math.min(ax, rx), maxX = Math.max(ax, rx);
                     if (maxX > or.x - 6 && minX < or.x + or.w + 6 && ey > or.y - 8 && ey < or.y + or.h + 8) {
                         ex = sgn < 0 ? Math.max(ex, or.x + or.w + 16) : Math.min(ex, or.x - 16);
                     }
                 }
 
-                // Store target coordinates on the element for live crop sampling & 4 Hz metadata
-                el.__kwTarget = { x: tx, y: ty, name: tgt.name, scale: (feat && feat.scale) || "2.0× · LOCK" };
-                segs.push([ax, ay, ex, ey], [ex, ey, tx, ty]);
+                // Store target coordinates, bearing and aperture dimensions on the element for live crop sampling & 4 Hz metadata
+                const azDeg = Math.round(((Math.atan2(ty - cy, tx - cx) * 180 / Math.PI) + 360) % 360);
+                const elVal = Math.max(-89.9, Math.min(89.9, ((cy - ty) / Math.max(1, H * 0.5)) * 65));
+                const elStr = (elVal >= 0 ? "+" : "") + elVal.toFixed(1);
+                el.__kwTarget = { x: tx, y: ty, rw, rh, az: azDeg, el: elStr, name: tgt.name, scale: (feat && feat.scale) || "7.5× · MAG" };
+                segs.push([ax, ay, ex, ey], [ex, ey, rx, ry]);
 
                 const isHov = hoveredIdx !== undefined && String(hoveredIdx) === String(boxIdx);
                 const cls = "kw-leader-group" + (isHov ? " is-hovered" : "");
+
+                // Corner ticks + mid-edge optical ticks for small aperture rectangle
+                const cLen = 6;
+                const x0 = tx - rw * 0.5, y0 = ty - rh * 0.5;
+                const x1 = tx + rw * 0.5, y1 = ty + rh * 0.5;
+                const cornersD = `M${x0.toFixed(1)} ${(y0 + cLen).toFixed(1)} L${x0.toFixed(1)} ${y0.toFixed(1)} L${(x0 + cLen).toFixed(1)} ${y0.toFixed(1)} ` +
+                                 `M${(x1 - cLen).toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${(y0 + cLen).toFixed(1)} ` +
+                                 `M${x0.toFixed(1)} ${(y1 - cLen).toFixed(1)} L${x0.toFixed(1)} ${y1.toFixed(1)} L${(x0 + cLen).toFixed(1)} ${y1.toFixed(1)} ` +
+                                 `M${(x1 - cLen).toFixed(1)} ${y1.toFixed(1)} L${x1.toFixed(1)} ${y1.toFixed(1)} L${x1.toFixed(1)} ${(y1 - cLen).toFixed(1)}`;
+                const crossD = `M${(tx - 4).toFixed(1)} ${ty.toFixed(1)} L${(tx + 4).toFixed(1)} ${ty.toFixed(1)} M${tx.toFixed(1)} ${(ty - 4).toFixed(1)} L${tx.toFixed(1)} ${(ty + 4).toFixed(1)} ` +
+                               `M${x0.toFixed(1)} ${ty.toFixed(1)} L${(x0 + 3).toFixed(1)} ${ty.toFixed(1)} M${(x1 - 3).toFixed(1)} ${ty.toFixed(1)} L${x1.toFixed(1)} ${ty.toFixed(1)} ` +
+                               `M${tx.toFixed(1)} ${y0.toFixed(1)} L${tx.toFixed(1)} ${(y0 + 3).toFixed(1)} M${tx.toFixed(1)} ${(y1 - 3).toFixed(1)} L${tx.toFixed(1)} ${y1.toFixed(1)}`;
+                const pathD = `M${ax.toFixed(1)} ${ay.toFixed(1)} L${ex.toFixed(1)} ${ey.toFixed(1)} L${rx.toFixed(1)} ${ry.toFixed(1)}`;
+
+                const tagLabel = tgt.name || "LOCUS";
+                const tagBgW = Math.max(36, tagLabel.length * 5.6 + 8);
+                apertureRects.push({
+                    x: x0 - 12,
+                    y: y0 - 20,
+                    w: Math.max(rw, tagBgW) + 24,
+                    h: rh + 32
+                });
+
                 out += `<g class="${cls}" data-box-idx="${boxIdx}" style="--kw-idx:${boxIdx}">` +
-                       `<path class="kw-line" d="M${ax.toFixed(1)} ${ay.toFixed(1)} L${ex.toFixed(1)} ${ey.toFixed(1)} L${tx.toFixed(1)} ${ty.toFixed(1)}"/>` +
-                       `<circle class="kw-node-halo" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="2.6"/>` +
-                       `<circle class="kw-node" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="2.6"/>` +
+                       `<path class="kw-line-glow" d="${pathD}"/>` +
+                       `<path class="kw-line" d="${pathD}"/>` +
+                       `<circle class="kw-node-halo" cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="4.8"/>` +
+                       `<circle class="kw-node" cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="2.4"/>` +
+                       `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="1.3" fill="rgb(var(--a, 96, 156, 255))" opacity="0.75"/>` +
+                       `<g class="kw-aperture" data-box-idx="${boxIdx}">` +
+                       `<rect class="kw-aperture-box" x="${x0.toFixed(1)}" y="${y0.toFixed(1)}" width="${rw}" height="${rh}" rx="1"/>` +
+                       `<path class="kw-aperture-corners" d="${cornersD}"/>` +
+                       `<path class="kw-aperture-cross" d="${crossD}"/>` +
+                       `<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="1.2" fill="#ffffff" opacity="0.88"/>` +
+                       `<rect class="kw-aperture-bg" x="${(x0 - 3).toFixed(1)}" y="${(y0 - 13).toFixed(1)}" width="${tagBgW.toFixed(1)}" height="12" rx="2" fill="rgba(3, 7, 18, 0.82)"/>` +
+                       `<text class="kw-aperture-tag" x="${x0.toFixed(1)}" y="${(y0 - 4).toFixed(1)}">${tagLabel}</text>` +
+                       `<text class="kw-aperture-sub" x="${x1.toFixed(1)}" y="${(y0 - 4).toFixed(1)}" text-anchor="end">7.5×</text>` +
+                       `</g>` +
                        `</g>`;
             });
         });
 
         window.__CALLOUT_LINES__ = window.__CALLOUT_LINES__ || {};
+        window.__CALLOUT_RECTS__ = window.__CALLOUT_RECTS__ || {};
         if (typeof secIdx === "number") {
             window.__CALLOUT_LINES__[secIdx] = segs;
+            window.__CALLOUT_RECTS__[secIdx] = allBoxes.map((b) => ({
+                x: b.r.x - 16,
+                y: b.r.y - 16,
+                w: b.r.w + 32,
+                h: b.r.h + 32
+            })).concat(apertureRects);
         }
-        svg.innerHTML = out;
+        if (svg.__kwLast !== out) { svg.__kwLast = out; svg.innerHTML = out; }
     };
 
     const ro = window.ResizeObserver ? new ResizeObserver((es) => {
@@ -3294,13 +3514,34 @@ const initNavSim = (c) => {
         });
     };
 
-    // Live zoom crops & dynamic leader tracking synced with the WebGL render frame (~12 fps throttled)
+    // Live zoom crops & dynamic leader tracking synced with the WebGL render frame (staggered round-robin)
     let lastCropAt = 0;
+    let cropCursor = 0;
     let lastLeaderAt = 0;
     let lastMetaAt = 0;
     let fpsSmooth = 90;
     let lastFrameTs = performance.now();
-    let laniakeaCanvasCache = null;
+    let cachedAccentSec = null;
+    let cachedAccentRgb = "96, 156, 255";
+    let cachedAccentLight = "215, 230, 255";
+
+    const resolveSectionAccent = (sec) => {
+        if (sec && sec !== cachedAccentSec) {
+            cachedAccentSec = sec;
+            cropCursor = 0;
+            const raw = getComputedStyle(sec).getPropertyValue("--a").trim();
+            const m = raw.match(/^(\d+)\s*,\s*(\d+)\s*,\s*(\d+)$/);
+            if (m) {
+                const r = Number(m[1]), g = Number(m[2]), bl = Number(m[3]);
+                cachedAccentRgb = `${r}, ${g}, ${bl}`;
+                cachedAccentLight = `${Math.round(r + (255 - r) * 0.72)}, ${Math.round(g + (255 - g) * 0.72)}, ${Math.round(bl + (255 - bl) * 0.72)}`;
+            } else {
+                cachedAccentRgb = "96, 156, 255";
+                cachedAccentLight = "215, 230, 255";
+            }
+        }
+        return { rgb: cachedAccentRgb, lightRgb: cachedAccentLight };
+    };
 
     window.__ON_STAGE_FRAME__ = (stageCanvas, dpr) => {
         if (root.dataset.layout !== "callout" || document.hidden) return;
@@ -3316,7 +3557,7 @@ const initNavSim = (c) => {
         if (!activeSec) return;
 
         // Keep active section's ring and leader targets smoothly locked to heroScreen (~24 fps)
-        if (now - lastLeaderAt > 42) {
+        if (now - lastLeaderAt > 350) {
             lastLeaderAt = now;
             draw(activeSec, activeIdx);
         }
@@ -3337,64 +3578,250 @@ const initNavSim = (c) => {
                     b.__kwMetaScale = b.querySelector(".kw-meta-scale");
                     b.__kwMetaLive = b.querySelector(".kw-meta-live");
                 }
-                if (b.__kwMetaCoord) b.__kwMetaCoord.textContent = `XY ${Math.round(tgt.x).toString().padStart(3, "0")}·${Math.round(tgt.y).toString().padStart(3, "0")}`;
-                if (b.__kwMetaScale && tgt.scale) b.__kwMetaScale.textContent = tgt.scale;
-                if (b.__kwMetaLive) b.__kwMetaLive.textContent = `${fpsTxt} FPS · ${vNum.toFixed(2)}c`;
+                const isSimOverlay = b.classList.contains("kw-sim-overlay");
+                if (isSimOverlay) {
+                    if (b.__kwMetaCoord) b.__kwMetaCoord.textContent = `XY ${Math.round(tgt.x).toString().padStart(3, "0")}·${Math.round(tgt.y).toString().padStart(3, "0")}`;
+                    if (b.__kwMetaScale && tgt.scale) b.__kwMetaScale.textContent = tgt.scale.split("·")[0].trim();
+                    if (b.__kwMetaLive) b.__kwMetaLive.textContent = `${fpsTxt} FPS`;
+                } else {
+                    if (b.__kwMetaCoord) b.__kwMetaCoord.textContent = `+ [XY ${Math.round(tgt.x).toString().padStart(3, "0")}·${Math.round(tgt.y).toString().padStart(3, "0")}]`;
+                    if (b.__kwMetaScale && tgt.scale) b.__kwMetaScale.textContent = tgt.scale.includes("°") ? tgt.scale : `${tgt.scale} · 42.8°`;
+                    if (b.__kwMetaLive) b.__kwMetaLive.textContent = `${fpsTxt} FPS · ${vNum.toFixed(2)}c`;
+                }
             }
         }
 
-        // Throttle live 2D canvas crop blits to ~12 fps (84 ms); skip if frame rate drops below 28 fps
-        if (now - lastCropAt < 84 || fpsSmooth < 28) return;
+        // Stagger live 2D canvas crop blits round-robin (1 card per ~60 ms tick) to avoid WebGL readback stalls
+        if (now - lastCropAt < 60 || fpsSmooth < 24 || document.hidden) return;
         lastCropAt = now;
 
         const sr = activeSec.getBoundingClientRect();
         if (sr.bottom < 0 || sr.top > window.innerHeight) return;
 
-        if (!laniakeaCanvasCache || !laniakeaCanvasCache.isConnected) {
-            laniakeaCanvasCache = document.querySelector("canvas.laniakea-hero-canvas");
-        }
-        const laniakeaCanvas = laniakeaCanvasCache;
+        const { rgb, lightRgb } = resolveSectionAccent(activeSec);
         const boxes = activeSec.querySelectorAll(".kw-callout");
-        for (let i = 0; i < boxes.length; i++) {
-            const b = boxes[i];
-            const cv = b.__kwCropCanvas || b.querySelector("canvas.kw-crop");
-            const tgt = b.__kwTarget;
-            if (!cv || !tgt) continue;
-            const ctx2d = b.__kwCropCtx || cv.getContext("2d");
-            if (!ctx2d) continue;
+        if (!boxes.length) return;
+        const b = boxes[cropCursor % boxes.length];
+        cropCursor = (cropCursor + 1) % boxes.length;
 
-            const vx = tgt.x + sr.left;
-            const vy = tgt.y + sr.top;
-            const sw = 132 * dpr, sh = 42 * dpr;
-            const sx = Math.max(0, Math.min(stageCanvas.width - sw, vx * dpr - sw * 0.5));
-            const sy = Math.max(0, Math.min(stageCanvas.height - sh, vy * dpr - sh * 0.5));
+        const cv = b.__kwCropCanvas || b.querySelector("canvas.kw-crop");
+        const tgt = b.__kwTarget;
+        if (!cv || !tgt) return;
+        const ctx2d = b.__kwCropCtx || cv.getContext("2d");
+        if (!ctx2d) return;
 
-            try {
-                ctx2d.clearRect(0, 0, cv.width, cv.height);
-                ctx2d.drawImage(stageCanvas, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
-                if (activeIdx === 0 && laniakeaCanvas && laniakeaCanvas.width > 0) {
-                    ctx2d.drawImage(laniakeaCanvas, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
-                }
-                // Crosshair reticle at crop centre
-                ctx2d.strokeStyle = "rgba(255,255,255,0.28)";
-                ctx2d.lineWidth = 1;
-                const mcx = cv.width * 0.5, mcy = cv.height * 0.5;
+        const vx = tgt.x + sr.left;
+        const vy = tgt.y + sr.top;
+        const rw = tgt.rw || 48, rh = tgt.rh || 28;
+        const sw = rw * dpr, sh = rh * dpr;
+        const sx = Math.max(0, Math.min(stageCanvas.width - sw, vx * dpr - sw * 0.5));
+        const sy = Math.max(0, Math.min(stageCanvas.height - sh, vy * dpr - sh * 0.5));
+
+        try {
+            const cwTarget = Math.round(cv.clientWidth);
+            const chTarget = Math.round(cv.clientHeight);
+            if (cwTarget > 0 && chTarget > 0 && (cv.width !== cwTarget || cv.height !== chTarget)) {
+                cv.width = cwTarget;
+                cv.height = chTarget;
+                cv.__vigGrad = null;
+            }
+            const cw = cv.width, ch = cv.height;
+            if (!cw || !ch) return;
+            const isCompact = ch < 68;
+            ctx2d.clearRect(0, 0, cw, ch);
+
+            // Smooth optical magnification of the simulation particles inside the aperture rectangle
+            ctx2d.imageSmoothingEnabled = true;
+            ctx2d.imageSmoothingQuality = "medium";
+            ctx2d.globalAlpha = 0.94;
+            ctx2d.drawImage(stageCanvas, sx, sy, sw, sh, 0, 0, cw, ch);
+            ctx2d.globalAlpha = 1.0;
+
+            // Cached optical edge vignette for contrast & phosphor framing
+            if (!cv.__vigGrad) {
+                const vg = ctx2d.createRadialGradient(cw * 0.5, ch * 0.5, Math.min(cw, ch) * 0.35, cw * 0.5, ch * 0.5, Math.max(cw, ch) * 0.72);
+                vg.addColorStop(0, "rgba(2, 6, 16, 0)");
+                vg.addColorStop(1, "rgba(2, 6, 16, 0.55)");
+                cv.__vigGrad = vg;
+            }
+            ctx2d.fillStyle = cv.__vigGrad;
+            ctx2d.fillRect(0, 0, cw, ch);
+
+            const t = now * 0.0018;
+
+            // Micro-grid raster in background
+            ctx2d.strokeStyle = `rgba(${rgb}, 0.10)`;
+            ctx2d.lineWidth = 0.6;
+            ctx2d.beginPath();
+            for (let gx = 18; gx < cw; gx += 20) { ctx2d.moveTo(gx, 0); ctx2d.lineTo(gx, ch); }
+            for (let gy = 12; gy < ch; gy += 16) { ctx2d.moveTo(0, gy); ctx2d.lineTo(cw, gy); }
+            ctx2d.stroke();
+
+            // Corner ticks ┌ ┐ └ ┘ inside viewport
+            ctx2d.strokeStyle = `rgba(${rgb}, 0.85)`;
+            ctx2d.lineWidth = 1.4;
+            const csz = isCompact ? 5 : 7;
+            for (const [cx0, cy0, sx0, sy0] of [[6, 6, 1, 1], [cw - 6, 6, -1, 1], [6, ch - 6, 1, -1], [cw - 6, ch - 6, -1, -1]]) {
                 ctx2d.beginPath();
-                ctx2d.moveTo(mcx - 8, mcy); ctx2d.lineTo(mcx - 2, mcy);
-                ctx2d.moveTo(mcx + 2, mcy); ctx2d.lineTo(mcx + 8, mcy);
-                ctx2d.moveTo(mcx, mcy - 8); ctx2d.lineTo(mcx, mcy - 2);
-                ctx2d.moveTo(mcx, mcy + 2); ctx2d.lineTo(mcx, mcy + 8);
+                ctx2d.moveTo(cx0, cy0 + sy0 * csz);
+                ctx2d.lineTo(cx0, cy0);
+                ctx2d.lineTo(cx0 + sx0 * csz, cy0);
                 ctx2d.stroke();
-            } catch (e) {}
-        }
+            }
+
+            // Layout geometry with generous padding from corner brackets
+            const padL = 16;
+            const padR = 16;
+            const radarR = isCompact
+                ? Math.max(10, Math.min(14, (ch - 18) * 0.5))
+                : Math.max(14, Math.min(22, (ch - 38) * 0.44));
+            const rScale = radarR / 24;
+            const rx = cw - padR - radarR - 2;
+            const ry = isCompact ? ch * 0.5 : 28 + (ch - 38) * 0.5;
+
+            const badgeW = isCompact ? 58 : Math.min(92, Math.max(68, cw * 0.32));
+            const badgeH = isCompact ? 14 : 15;
+            const badgeX = isCompact ? (rx - radarR - 8 - badgeW) : (cw - padR - badgeW);
+            const badgeY = isCompact ? 9 : 10;
+
+            // Optical Magnification Zoom Badge
+            ctx2d.fillStyle = `rgba(${rgb}, 0.18)`;
+            ctx2d.fillRect(badgeX, badgeY, badgeW, badgeH);
+            ctx2d.strokeStyle = `rgba(${rgb}, 0.55)`;
+            ctx2d.lineWidth = 0.8;
+            ctx2d.strokeRect(badgeX, badgeY, badgeW, badgeH);
+            ctx2d.fillStyle = `rgb(${lightRgb})`;
+            ctx2d.font = isCompact ? "600 7.5px monospace" : "600 8px monospace";
+            ctx2d.fillText(badgeW >= 88 ? "● MAG 7.5× ZOOM" : "● MAG 7.5×", badgeX + 5, badgeY + (isCompact ? 9.5 : 10.5), badgeW - 8);
+
+            // Tactical Telemetry Header (padded cleanly inside top-left corner bracket)
+            const maxTopW = Math.max(40, badgeX - padL - 8);
+            const maxMidW = Math.max(40, rx - radarR - padL - 12);
+            ctx2d.fillStyle = `rgba(${rgb}, 0.95)`;
+            ctx2d.font = isCompact ? "600 7.5px monospace" : "600 8.5px monospace";
+            ctx2d.fillText("TARGET ACQUIRE · LOCK", padL, isCompact ? 16 : 20, maxTopW);
+
+            ctx2d.fillStyle = `rgba(${lightRgb}, 0.78)`;
+            ctx2d.font = isCompact ? "500 7.5px monospace" : "500 8px monospace";
+            ctx2d.fillText(`AZ ${tgt.az ?? 312}° · EL ${tgt.el ?? "+46.2"}°`, padL, isCompact ? 26 : 32, maxTopW);
+
+            // Bold Feature Name (+ micro optical scale ruler when height permits)
+            ctx2d.fillStyle = "#ffffff";
+            ctx2d.font = isCompact ? "700 9px monospace" : "700 11px monospace";
+            ctx2d.fillText(tgt.name || "RELATIVISTIC JET", padL, isCompact ? (ch - 10) : Math.min(62, ch - 24), maxMidW);
+
+            if (!isCompact) {
+                const rulerEnd = Math.min(113, rx - radarR - 14);
+                if (rulerEnd > padL + 24) {
+                    ctx2d.strokeStyle = `rgba(${rgb}, 0.42)`;
+                    ctx2d.lineWidth = 0.9;
+                    ctx2d.beginPath();
+                    ctx2d.moveTo(padL, ch - 11); ctx2d.lineTo(rulerEnd, ch - 11);
+                    for (let tx0 = padL; tx0 <= rulerEnd; tx0 += 12) {
+                        const th = ((tx0 - padL) % 36 === 0) ? 4 : 2;
+                        ctx2d.moveTo(tx0, ch - 11); ctx2d.lineTo(tx0, ch - 11 - th);
+                    }
+                    ctx2d.stroke();
+                }
+            }
+
+            // Circular Radar Reticle (true circle scaled to radarR)
+            const rot = reducedMotion ? 0.6 : t * 1.8;
+
+            // Smoother phosphor persistence radar sweep glow (4-step trailing wedge)
+            if (!reducedMotion) {
+                const sweepSpan = 0.95;
+                for (let s = 0; s < 4; s++) {
+                    const a0 = rot - sweepSpan * (1 - s / 4);
+                    const a1 = rot - sweepSpan * (1 - (s + 1) / 4);
+                    ctx2d.fillStyle = `rgba(${rgb}, ${(0.04 + s * 0.045).toFixed(3)})`;
+                    ctx2d.beginPath();
+                    ctx2d.moveTo(rx, ry);
+                    ctx2d.arc(rx, ry, radarR * 0.98, a0, a1);
+                    ctx2d.closePath();
+                    ctx2d.fill();
+                }
+            }
+
+            // Outer dashed circle + 12 radial degree ticks
+            ctx2d.strokeStyle = `rgba(${rgb}, 0.45)`;
+            ctx2d.lineWidth = 1.2;
+            ctx2d.setLineDash([3, 3]);
+            ctx2d.beginPath(); ctx2d.arc(rx, ry, radarR, 0, Math.PI * 2); ctx2d.stroke();
+            ctx2d.setLineDash([]);
+            ctx2d.strokeStyle = `rgba(${lightRgb}, 0.45)`;
+            ctx2d.lineWidth = 0.9;
+            ctx2d.beginPath();
+            for (let k0 = 0; k0 < 12; k0++) {
+                const ang = (k0 / 12) * Math.PI * 2;
+                const rIn = (k0 % 3 === 0 ? 20.5 : 22.0) * rScale;
+                const rOut = 24.5 * rScale;
+                ctx2d.moveTo(rx + Math.cos(ang) * rIn, ry + Math.sin(ang) * rIn);
+                ctx2d.lineTo(rx + Math.cos(ang) * rOut, ry + Math.sin(ang) * rOut);
+            }
+            ctx2d.stroke();
+
+            // Inner circle
+            ctx2d.strokeStyle = `rgba(${lightRgb}, 0.72)`;
+            ctx2d.lineWidth = 1;
+            ctx2d.beginPath(); ctx2d.arc(rx, ry, 14 * rScale, 0, Math.PI * 2); ctx2d.stroke();
+
+            // Rotating scanner needle + bright tip node
+            const nx = rx + Math.cos(rot) * radarR, ny = ry + Math.sin(rot) * radarR;
+            ctx2d.strokeStyle = `rgba(${rgb}, 0.95)`;
+            ctx2d.lineWidth = 1.4;
+            ctx2d.beginPath();
+            ctx2d.moveTo(rx, ry);
+            ctx2d.lineTo(nx, ny);
+            ctx2d.stroke();
+            ctx2d.fillStyle = `rgb(${lightRgb})`;
+            ctx2d.beginPath(); ctx2d.arc(nx, ny, 1.5, 0, Math.PI * 2); ctx2d.fill();
+
+            // Target bracket [ ] with subtle phosphor/chromatic accent
+            const bsz = 6 * rScale;
+            const brkOff = 9 * rScale;
+            ctx2d.strokeStyle = `rgba(${rgb}, 0.45)`;
+            ctx2d.lineWidth = 1.2;
+            for (const [bx, by] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+                const px = rx + bx * brkOff + 0.7, py = ry + by * brkOff - 0.5;
+                ctx2d.beginPath();
+                ctx2d.moveTo(px, py - by * bsz); ctx2d.lineTo(px, py); ctx2d.lineTo(px - bx * bsz, py);
+                ctx2d.stroke();
+            }
+            ctx2d.strokeStyle = "#ffffff";
+            ctx2d.lineWidth = 1.2;
+            for (const [bx, by] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+                const px = rx + bx * brkOff, py = ry + by * brkOff;
+                ctx2d.beginPath();
+                ctx2d.moveTo(px, py - by * bsz); ctx2d.lineTo(px, py); ctx2d.lineTo(px - bx * bsz, py);
+                ctx2d.stroke();
+            }
+            ctx2d.fillStyle = `rgba(${rgb}, 0.95)`;
+            ctx2d.beginPath(); ctx2d.arc(rx, ry, 1.4, 0, Math.PI * 2); ctx2d.fill();
+
+            // Delicate holographic horizontal laser scan line with soft phosphor trail
+            if (!reducedMotion) {
+                const scanY = (now * 0.05) % ch;
+                ctx2d.fillStyle = `rgba(${rgb}, 0.08)`;
+                ctx2d.fillRect(0, scanY - 5, cw, 5);
+                ctx2d.fillStyle = `rgba(${lightRgb}, 0.32)`;
+                ctx2d.fillRect(0, scanY, cw, 1.2);
+            }
+        } catch (e) {}
     };
 
     // Subtle pointer parallax (<= 6px) on callout boxes, disabled under prefers-reduced-motion
     if (!reducedMotion) {
+        let pmQueued = false, pmX = 0, pmY = 0;
         window.addEventListener("pointermove", (e) => {
             if (root.dataset.layout !== "callout") return;
-            const nx = (e.clientX / Math.max(1, window.innerWidth)) - 0.5;
-            const ny = (e.clientY / Math.max(1, window.innerHeight)) - 0.5;
+            pmX = e.clientX; pmY = e.clientY;
+            if (pmQueued) return;
+            pmQueued = true;
+            requestAnimationFrame(() => {
+            pmQueued = false;
+            const nx = (pmX / Math.max(1, window.innerWidth)) - 0.5;
+            const ny = (pmY / Math.max(1, window.innerHeight)) - 0.5;
             const S = window.THREAD_STAGE;
             const activeIdx = (S && S.supported && typeof S.currentIndex === "number") ? S.currentIndex : 0;
             const activeSec = allSecs()[activeIdx];
@@ -3403,6 +3830,7 @@ const initNavSim = (c) => {
                 const factor = (i % 2 === 0 ? 4.5 : 6.0);
                 b.style.setProperty("--px", (nx * factor).toFixed(2) + "px");
                 b.style.setProperty("--py", (ny * factor).toFixed(2) + "px");
+            });
             });
         }, { passive: true });
     }

@@ -102,9 +102,10 @@ void main() {
     vHalfSeg = 0.5 * streakLen / max(1.0, ptSize);
     vCapRad = 0.5 * baseSize / max(1.0, ptSize);
 
-    // Atmospheric distance fog + seed-driven temporal twinkle
+    // Atmospheric distance fog + near-field luminance richness + seed-driven temporal twinkle
     float fogFactor = clamp((dist - 11.0 * (1.0 - 0.5 * uInside)) / (42.0 * (1.0 - 0.4 * uInside)), 0.0, 0.72);
-    vec3 col = mix(aColour, uFogTint * 2.8, fogFactor * 0.55);
+    float nearLift = 1.0 + 0.16 * smoothstep(15.0, 3.5, dist);
+    vec3 col = mix(aColour * nearLift, uFogTint * 2.5, fogFactor * 0.48);
 
     if (isHero && uHeroBoost > 0.001) {
         vec3 heroGlow = mix(vec3(1.8, 1.65, 1.35), vec3(0.75, 1.35, 2.2), 0.38);
@@ -154,13 +155,14 @@ void main() {
     if (rNorm > 1.0) discard;
 
     float r2 = rNorm * rNorm;
-    float core = exp(-r2 * 4.6);
-    float halo = (1.0 - r2) * (1.0 - r2) * 0.40;
+    float core = exp(-r2 * 6.8);
+    float haloInv = 1.0 - r2;
+    float halo = haloInv * haloInv * haloInv * 0.30;
     float taperFade = mix(1.0, 0.16, tailT * tailT);
-    float profile = (core * 0.85 + halo) * taperFade;
+    float profile = (core * 0.90 + halo) * taperFade;
 
     if (vIsHero > 0.01) {
-        profile += exp(-r2 * 1.7) * vIsHero * 0.95 * taperFade;
+        profile += exp(-r2 * 2.0) * vIsHero * 0.95 * taperFade;
     }
 
     float alpha = clamp(profile * vAlpha, 0.0, 1.0);
@@ -169,8 +171,9 @@ void main() {
         vec3 ink = clamp(vColour * 2.2, 0.04, 0.85);
         fragColor = vec4(ink, alpha * 0.82);
     } else {
-        // Linear HDR radiance (values > 1.0 drive selective bloom)
-        vec3 rad = vColour * (0.48 + 0.82 * core) * (profile * vAlpha);
+        // Linear HDR radiance (pin-sharp hot core + controlled halo for selective bloom)
+        vec3 coreCol = mix(vColour, max(vColour, vec3(0.95)), core * 0.18);
+        vec3 rad = coreCol * (0.42 + 1.08 * core) * (profile * vAlpha);
         fragColor = vec4(rad, alpha);
     }
 }
@@ -249,7 +252,7 @@ vec3 lensedSky(vec3 d, float time) {
         if (h.x < prob) {
             vec2 starOffset = (h.yz - 0.5) * 0.70;
             float dist2 = dot(fd.xy - starOffset, fd.xy - starOffset) + fd.z * fd.z;
-            float rad = (shell == 0) ? 0.065 : 0.045;
+            float rad = (shell == 0) ? 0.056 : 0.038;
             float starProfile = exp(-dist2 / (rad * rad));
             
             float magScale = pow(h.x / prob, 3.6);
@@ -258,7 +261,7 @@ vec3 lensedSky(vec3 d, float time) {
             vec3 starColor = blackbody(starT);
             
             float twinkle = 0.88 + 0.12 * sin(time * (1.6 + 2.4 * h.z) + h.x * 40.0);
-            starAcc += starProfile * starColor * (bright * twinkle) * 0.42;
+            starAcc += starProfile * (0.85 + 0.35 * starProfile) * starColor * (bright * twinkle) * 0.42;
         }
     }
 
@@ -926,8 +929,8 @@ void main() {
         float wSum = 0.0;
         float rDist = length(centred);
         float ca = uCaStrength + uWarpStrength * 0.018;
-        for (int i = 0; i < 10; i++) {
-            float fi = float(i) / 9.0;
+        for (int i = 0; i < 6; i++) {
+            float fi = float(i) / 5.0;
             // Morris-Thorne spacetime throat pinch + frame-dragging twist
             float pinch = 1.0 - fi * uWarpStrength * (0.28 / (1.0 + rDist * 1.6));
             float twist = (fi - 0.5) * uWarpStrength * 0.16 * exp(-rDist * 2.2);
@@ -952,25 +955,17 @@ void main() {
         sceneRgb.b = texture(uSceneTex, clamp(baseUV - caVec, 0.001, 0.999)).b;
         bloomRgb = texture(uBloomTex, baseUV).rgb;
     } else {
-        // Gentle 5-tap sub-pixel smoothing + direct sample
-        vec2 px = 0.35 / max(vec2(1.0), uRes);
-        sceneRgb = texture(uSceneTex, baseUV).rgb * 0.60
-                 + texture(uSceneTex, baseUV + vec2(px.x, px.y)).rgb * 0.10
-                 + texture(uSceneTex, baseUV + vec2(-px.x, px.y)).rgb * 0.10
-                 + texture(uSceneTex, baseUV + vec2(px.x, -px.y)).rgb * 0.10
-                 + texture(uSceneTex, baseUV + vec2(-px.x, -px.y)).rgb * 0.10;
+        sceneRgb = texture(uSceneTex, baseUV).rgb;
         bloomRgb = texture(uBloomTex, baseUV).rgb;
     }
 
     // Deep pitch-black space background + HDR scene + selective bloom
-    vec3 spaceBase = vec3(0.0);
-
-    vec3 hdr = spaceBase + sceneRgb + bloomRgb * uBloomTint * uBloomStrength;
+    vec3 hdr = max(vec3(0.0), sceneRgb * 1.06 + bloomRgb * uBloomTint * (uBloomStrength * 0.92) - vec3(0.0012));
 
     // Interior atmosphere: soft inner-palette haze towards the screen edges and structure glow
     float innerHaze = uInside * smoothstep(0.05, 0.85, edgeR2 * 1.9);
     hdr += uInnerTint * innerHaze * 0.045;
-    hdr += bloomRgb * uInnerTint * (uInside * 0.40);
+    hdr += bloomRgb * uInnerTint * (uInside * 0.36);
 
     // ACES Filmic Tone Mapping + sRGB gamma encoding
     vec3 mapped = acesFilm(hdr);
@@ -984,15 +979,15 @@ void main() {
     float grainNoise = hash12(gl_FragCoord.xy + fract(uTime * 17.31) * 413.0) - 0.5;
     srgb = clamp(srgb + grainNoise * uGrain, 0.0, 1.0);
 
-    // Sci-Fi Cinematic Enhancements: Anamorphic Horizontal Lens Streak & Tactical Scanlines
-    // 1. Horizontal Anamorphic Flare from bright bloom highlights
+    // Sci-Fi Cinematic Enhancements: Lean Horizontal Anamorphic Flare & Tactical Scanlines
+    // 1. Horizontal Anamorphic Flare from bright bloom highlights (4 symmetric taps)
     vec3 anisoFlare = vec3(0.0);
-    for (float i = -4.0; i <= 4.0; i += 1.0) {
-        if (i == 0.0) continue;
-        vec2 sampleOffset = vec2(i * 0.0035 * (1.0 + uWarpStrength * 2.0), 0.0);
-        anisoFlare += texture(uBloomTex, clamp(baseUV + sampleOffset, 0.001, 0.999)).rgb * (1.0 / (abs(i) * 1.5));
-    }
-    srgb += anisoFlare * 0.18 * (0.5 + 0.5 * uInside + uWarpStrength);
+    float flareStep = 0.0045 * (1.0 + uWarpStrength * 2.0);
+    anisoFlare += texture(uBloomTex, clamp(baseUV + vec2(flareStep, 0.0), 0.001, 0.999)).rgb * 0.65;
+    anisoFlare += texture(uBloomTex, clamp(baseUV - vec2(flareStep, 0.0), 0.001, 0.999)).rgb * 0.65;
+    anisoFlare += texture(uBloomTex, clamp(baseUV + vec2(flareStep * 2.4, 0.0), 0.001, 0.999)).rgb * 0.35;
+    anisoFlare += texture(uBloomTex, clamp(baseUV - vec2(flareStep * 2.4, 0.0), 0.001, 0.999)).rgb * 0.35;
+    srgb += anisoFlare * (0.06 + 0.10 * uInside + 0.16 * uWarpStrength);
 
     // 2. High-tech tactical holographic scanlines (subtle 1.5% modulation)
     float scanline = sin(gl_FragCoord.y * 2.0) * 0.015 * (0.5 + 0.5 * uInside);
