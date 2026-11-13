@@ -8,5 +8,9 @@
     "type": "git",
     "url": "https://github.com/KushanWaghmare/KushanWaghmare.github.io.git"
   },
-  "homepage": "https://kushanwaghmare.github.io"
+  "homepage": "https://kushanwaghmare.github.io",
+  "scripts": {
+    "build": "node build-static.js",
+    "test": "node build-static.js && node -e 'const fs=require(\"fs\");for(const f of [\"index.html\",\"math.html\",\"physics.html\",\"datascience.html\",\"quant.html\",\"cs.html\",\"project.html\",\"papers.html\",\"paper.html\",\"courses.html\"]){const h=fs.readFileSync(f,\"utf8\");for(const m of h.matchAll(/(?:src|href)=\"(shared\\/[^\"?]+)/g)){if(!fs.existsSync(m[1]))throw new Error(f+\": missing \"+m[1]);}}console.log(\"All static pages & asset links verified.\");'"
+  }
 }

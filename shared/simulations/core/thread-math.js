@@ -157,13 +157,14 @@
             e[0] = e[5] = e[10] = e[15] = 1;
             return this;
         }
-        makePerspective(fovDeg, aspect, near, far) {
+        makePerspective(fovDeg, aspect, near, far, xOffset = 0.0) {
             const e = this.elements;
             const f = 1.0 / Math.tan((fovDeg * Math.PI) / 360.0);
             const nf = 1.0 / (near - far);
             e.fill(0);
             e[0] = f / Math.max(0.05, aspect);
             e[5] = f;
+            e[8] = xOffset;
             e[10] = (far + near) * nf;
             e[11] = -1.0;
             e[14] = 2.0 * far * near * nf;
@@ -242,7 +243,10 @@
             this.viewProjectionMatrix = new Matrix4();
         }
         updateMatrices() {
-            this.projectionMatrix.makePerspective(this.fov, this.aspect, this.near, this.far);
+            const isCallout = typeof document !== "undefined" && document.documentElement && document.documentElement.dataset.layout === "callout";
+            const isMob = typeof window !== "undefined" && (window.innerWidth < 1100 || (window.innerWidth < window.innerHeight * 0.95));
+            const xOffset = (isCallout && !isMob) ? -0.20 : 0.0;
+            this.projectionMatrix.makePerspective(this.fov, this.aspect, this.near, this.far, xOffset);
             this.viewMatrix.makeLookAt(this.position, this.target, this.up);
             this.viewProjectionMatrix.multiplyMatrices(this.projectionMatrix, this.viewMatrix);
             return this.viewProjectionMatrix;

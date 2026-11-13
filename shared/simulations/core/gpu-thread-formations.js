@@ -236,7 +236,7 @@
             if (!portrait) {
                 if (centred) {
                     unitPx = Math.min(1.08 * H, (W * 0.82) / A);
-                    tx = W * 0.50;
+                    tx = W * 0.60;
                     ty = H * 0.50;
                 } else {
                     unitPx = Math.min(1.0 * H, (W * 0.93) / A);
@@ -500,7 +500,7 @@
             const ry = uy * cosP - rz * sinP;
             const rz2 = uy * sinP + rz * cosP;
 
-            const scale = 0.186 * (1.0 + 0.85 * (this.insideness || 0));
+            const scale = 0.180 * (1.0 + 0.85 * (this.insideness || 0));
             out[i3]     = this.origin.x + offsetX + rx * scale;
             out[i3 + 1] = this.origin.y + ry * scale;
             out[i3 + 2] = this.origin.z + rz2 * scale;
@@ -548,7 +548,7 @@
 
             const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
             const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
-            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 3.22) * (1.0 - 0.85 * (this.insideness || 0));
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.25) * (1.0 - 0.85 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             for (let i = 0; i < N; i++) {
@@ -827,7 +827,7 @@
             const ry = ly * cosP - rz * sinP;
             const rz2 = ly * sinP + rz * cosP;
 
-            const scale = 2.55 * (1.0 + 0.95 * (this.insideness || 0));
+            const scale = 2.65 * (1.0 + 0.95 * (this.insideness || 0));
             out[i3]     = this.origin.x + offsetX + rx * scale;
             out[i3 + 1] = this.origin.y + ry * scale;
             out[i3 + 2] = this.origin.z + rz2 * scale;
@@ -857,7 +857,7 @@
             const cosA = Math.cos(this.alpha), sinA = Math.sin(this.alpha);
             const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
             const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
-            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.15) * (1.0 - 0.85 * (this.insideness || 0));
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.25) * (1.0 - 0.85 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             for (let i = 0; i < N; i++) {
@@ -987,8 +987,9 @@
             const halfW = this.width * 0.5;
             const flowOffset = t * 0.15;
 
-            const scale = 1.35 * (1.0 + 0.25 * (this.insideness || 0));
-            const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x, this.origin.y, this.origin.z) : null;
+            const scale = 1.25 * (1.0 + 0.25 * (this.insideness || 0));
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.25) * (1.0 - 0.85 * (this.insideness || 0));
+            const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             for (let i = 0; i < N; i++) {
                 const i3 = i * 3, i4 = i * 4;
@@ -1010,7 +1011,7 @@
                 const ry = ly * cosP - rz * sinP;
                 const rz2 = ly * sinP + rz * cosP;
 
-                pos[i3]     = this.origin.x + rx * scale;
+                pos[i3]     = this.origin.x + offsetX + rx * scale;
                 pos[i3 + 1] = this.origin.y + ry * scale;
                 pos[i3 + 2] = this.origin.z + rz2 * scale;
                 if (lens && lens.active && i > 0) ctx.applyLens(pos, i3, lens);
@@ -1098,7 +1099,8 @@
             const TAU = Math.PI * 2.0;
             const K = 8; // 8 harmonic frequency bins / FFT butterfly rings
             const scale = 1.25 * (1.0 + 0.25 * (this.insideness || 0));
-            const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x, this.origin.y, this.origin.z) : null;
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.25) * (1.0 - 0.85 * (this.insideness || 0));
+            const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             for (let i = 0; i < N; i++) {
                 const i3 = i * 3, i4 = i * 4;
@@ -1135,7 +1137,7 @@
                 const ry = ly * cosP - rz * sinP;
                 const rz2 = ly * sinP + rz * cosP;
 
-                pos[i3]     = this.origin.x + rx * scale;
+                pos[i3]     = this.origin.x + offsetX + rx * scale;
                 pos[i3 + 1] = this.origin.y + ry * scale;
                 pos[i3 + 2] = this.origin.z + rz2 * scale;
                 if (lens && lens.active && i > 0) ctx.applyLens(pos, i3, lens);
@@ -1380,16 +1382,16 @@
             const ins = this.insideness || 0;
             const sinObs = Math.sin(this.tilt);
             const cosObs = Math.cos(this.tilt);
-            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.35) * (1.0 - 0.35 * ins);
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.25) * (1.0 - 0.35 * ins);
 
             const isMob = (ctx && ctx.isMobile) || (typeof window !== "undefined" && window.innerWidth <= 768);
-            const targetScreenX = (isMob || (ctx && ctx.centred)) ? 0.50 : (0.66 - ptrX * 0.015);
-            const centreScreenX = (ctx && ctx.centred) ? 0.50 : 0.58;
+            const targetScreenX = isMob ? 0.50 : (0.60 - ptrX * 0.015);
+            const centreScreenX = isMob ? 0.50 : 0.60;
             this.kerrOverlay.screenX = targetScreenX * (1.0 - 0.25 * ins) + centreScreenX * (0.25 * ins);
             this.kerrOverlay.screenY = isMob ? 0.62 : (0.50 + ptrY * 0.02);
 
-            // Accretion disk & photon ring scale: enlarged when centred in callout mode
-            const baseScale = isMob ? 44.0 : ((ctx && ctx.centred) ? 42.0 : 34.0);
+            // Accretion disk & photon ring scale: unified to match Laniakea visual size
+            const baseScale = isMob ? 44.0 : 42.0;
             const insideScale = isMob ? 34.0 : 26.0;
             this.kerrOverlay.scale = (dbg && dbg.scale !== undefined && dbg.scale !== null)
                 ? dbg.scale
@@ -1479,8 +1481,8 @@
             const pitch = 0.52 + 0.16 * Math.sin(t * 0.083 + 1.0) + ptrY * 0.30;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 1.65) * (1.0 - 0.45 * (this.insideness || 0));
-            const scale = 1.18 * (1.0 + 0.25 * (this.insideness || 0));
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.25) * (1.0 - 0.45 * (this.insideness || 0));
+            const scale = 1.25 * (1.0 + 0.25 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             for (let i = 0; i < N; i++) {
@@ -1541,8 +1543,8 @@
             const pitch = 0.42 + 0.16 * Math.sin(t * 0.083 + 1.0) + ptrY * 0.30;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 1.65) * (1.0 - 0.45 * (this.insideness || 0));
-            const scale = 1.22 * (1.0 + 0.25 * (this.insideness || 0));
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.25) * (1.0 - 0.45 * (this.insideness || 0));
+            const scale = 1.25 * (1.0 + 0.25 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             for (let i = 0; i < N; i++) {
@@ -1734,7 +1736,7 @@
             const ry = ly * cosP - rz * sinP;
             const rz2 = ly * sinP + rz * cosP;
 
-            const scale = 1.15 * (1.0 + 0.85 * (this.insideness || 0));
+            const scale = 1.25 * (1.0 + 0.85 * (this.insideness || 0));
             outPos[outOffset]     = this.origin.x + offsetX + rx * scale;
             outPos[outOffset + 1] = this.origin.y + ry * scale;
             outPos[outOffset + 2] = this.origin.z + rz2 * scale;
@@ -1808,7 +1810,7 @@
             const pitch = -0.28 + 0.16 * Math.sin(t * 0.083 + 1.0) + ptrY * 0.30;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.15) * (1.0 - 0.85 * (this.insideness || 0));
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.25) * (1.0 - 0.85 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             const N = buffer.count;
@@ -2026,8 +2028,8 @@
             const pitch = 0.36 + 0.16 * Math.sin(t * 0.083 + 1.0) + ptrY * 0.30;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 1.45) * (1.0 - 0.45 * (this.insideness || 0));
-            const scale = 1.35 * (1.0 + 0.25 * (this.insideness || 0));
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.25) * (1.0 - 0.45 * (this.insideness || 0));
+            const scale = 1.25 * (1.0 + 0.25 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             // Volatility induction wave sweeping along the strike axis
@@ -2387,7 +2389,7 @@
             const ry = ly * cosP - rz * sinP;
             const rz2 = ly * sinP + rz * cosP;
 
-            const scale = 1.0 + 0.85 * (this.insideness || 0);
+            const scale = 1.25 * (1.0 + 0.85 * (this.insideness || 0));
             outPos[i3]     = this.origin.x + offsetX + rx * scale;
             outPos[i3 + 1] = this.origin.y + ry * scale;
             outPos[i3 + 2] = this.origin.z + rz2 * scale;
@@ -2433,7 +2435,7 @@
             const pitch = 0.42 + 0.16 * Math.sin(t * 0.083 + 1.0) + ptrY * 0.30;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.15) * (1.0 - 0.85 * (this.insideness || 0));
+            const offsetX = ((ctx && (ctx.isMobile || ctx.centred)) ? 0.0 : 2.25) * (1.0 - 0.85 * (this.insideness || 0));
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             const N = buffer.count;
@@ -2661,17 +2663,17 @@
             const dpr = Math.max(1, (ctx && ctx.dpr) || Math.min(window.devicePixelRatio || 1, 2));
             const mob = (ctx && ctx.isMobile) || W < 820;
             const isCentred = mob || (ctx && ctx.centred);
-            const base = mob ? Math.min(W * 0.30, H * 0.19) : H * 0.285;
+            const base = mob ? Math.min(W * 0.30, H * 0.19) : H * 0.27;
             const cellDev = Math.max(2, Math.round(base * dpr / this.pixelDensity));
             const cell = cellDev / dpr;
             this._cell = cell; this._cellDev = cellDev; this._dpr = dpr; this._mob = mob;
             this._Rc = Math.round(this.pixelDensity * (1 + 0.36 * ins));
-            const tx = (isCentred ? 0.5 : 0.62 - 0.12 * ins) * W, ty = (mob ? 0.42 : 0.5) * H;
+            const tx = (mob ? 0.5 : 0.60) * W, ty = (mob ? 0.42 : 0.5) * H;
             this._ci = Math.round(tx / cell - 0.5); this._cj = Math.round((H - ty) / cell - 0.5);
             const sx = (this._ci + 0.5) * cell, sy = H - (this._cj + 0.5) * cell;
             const cam = ctx && ctx.camera;
             if (cam && cam.position) this._dist = Math.max(1.5, Math.hypot(cam.position.x - this.origin.x - this.shift.x, cam.position.y - this.origin.y - this.shift.y, cam.position.z - this.origin.z));
-            if (!ctx || !ctx.project) { this.shift.x = isCentred ? 0.0 : 1.55 * (1 - ins); this._cx = sx; this._cy = sy; return; }
+            if (!ctx || !ctx.project) { this.shift.x = mob ? 0.0 : 2.25 * (1 - ins); this._cx = sx; this._cy = sy; return; }
             if (ctx.transActive && this._fitted) {
                 const P0 = ctx.project(this.origin.x + this.shift.x, this.origin.y + this.shift.y, this.origin.z);
                 if (P0) { this._cx = P0[0]; this._cy = P0[1]; }
