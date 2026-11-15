@@ -1182,200 +1182,333 @@
     class HyperspaceEngine {
         constructor(glCtx) {
             this.gl = glCtx;
-            this.instanceCount = 3500;
-            this.program = null;
-            this.uniforms = null;
-            this.vao = null;
+            this.instanceCount = 4500;
+            // Layer A: StarStreakInstances
+            this.starProgram = null;
+            this.starUniforms = null;
+            this.starVAO = null;
             this.quadVBO = null;
             this.cylindricalVBO = null;
-            this.colorVBO = null;
             this.speedVBO = null;
+            this.scaleVBO = null;
+            // Layer B: HyperspaceTunnelWall
+            this.tunnelProgram = null;
+            this.tunnelUniforms = null;
+            this.tunnelVAO = null;
+            this.tunnelVBO = null;
+            this.tunnelIBO = null;
+            this.tunnelIndexCount = 0;
+            this.tunnelModelMatrix = new Float32Array([
+                1, 0, 0, 0,
+                0, 0, 1, 0,
+                0, -1, 0, 0,
+                0, 0, -290, 1
+            ]);
+            // Layer C: ExitShockwaveRing
+            this.shockwaveProgram = null;
+            this.shockwaveUniforms = null;
+            this.shockwaveActive = false;
+            this.shockwaveElapsed = 0.0;
+
             this.travelDistance = 0.0;
-            this.mouseParallaxX = 0.0;
-            this.mouseParallaxY = 0.0;
+            this.tunnelTime = 0.0;
+            this.speedMultiplier = 2.0;
             this.reset();
         }
 
         reset() {
             this.active = false;
-            this.phase = "IDLE_CRUISE";
+            this.phase = "IDLE_RING_DRIFT";
             this.elapsed = 0.0;
-            this.velocity = 0.04;
+            this.velocity = 4.0;
             this.velocityNorm = 0.0;
-            this.stretchLength = 0.14;
-            this.fov = 60.0;
+            this.stretchLength = 0.08;
+            this.warpPhase = 0.0;
+            this.tunnelIntensity = 0.0;
+            this.shakeX = 0.0;
+            this.shakeY = 0.0;
             this.targetRoute = null;
             this.onMidpointSwap = null;
             this.swapped = false;
-            this.anticipationAudioPlayed = false;
-            this.ignitionAudioPlayed = false;
-            this.exitAudioPlayed = false;
+            this.stage2AudioPlayed = false;
+            this.stage3AudioPlayed = false;
+            this.stage5AudioPlayed = false;
             trans.warpStrength = 0.0;
         }
 
         _disposeGL() {
             const glCtx = this.gl;
             if (!glCtx) return;
-            if (this.vao) { glCtx.deleteVertexArray(this.vao); this.vao = null; }
+            if (this.starVAO) { glCtx.deleteVertexArray(this.starVAO); this.starVAO = null; }
             if (this.quadVBO) { glCtx.deleteBuffer(this.quadVBO); this.quadVBO = null; }
             if (this.cylindricalVBO) { glCtx.deleteBuffer(this.cylindricalVBO); this.cylindricalVBO = null; }
-            if (this.colorVBO) { glCtx.deleteBuffer(this.colorVBO); this.colorVBO = null; }
             if (this.speedVBO) { glCtx.deleteBuffer(this.speedVBO); this.speedVBO = null; }
-            if (this.program) { glCtx.deleteProgram(this.program); this.program = null; }
-            this.uniforms = null;
+            if (this.scaleVBO) { glCtx.deleteBuffer(this.scaleVBO); this.scaleVBO = null; }
+            if (this.starProgram) { glCtx.deleteProgram(this.starProgram); this.starProgram = null; }
+            this.starUniforms = null;
+
+            if (this.tunnelVAO) { glCtx.deleteVertexArray(this.tunnelVAO); this.tunnelVAO = null; }
+            if (this.tunnelVBO) { glCtx.deleteBuffer(this.tunnelVBO); this.tunnelVBO = null; }
+            if (this.tunnelIBO) { glCtx.deleteBuffer(this.tunnelIBO); this.tunnelIBO = null; }
+            if (this.tunnelProgram) { glCtx.deleteProgram(this.tunnelProgram); this.tunnelProgram = null; }
+            this.tunnelUniforms = null;
+            this.tunnelIndexCount = 0;
+
+            if (this.shockwaveProgram) { glCtx.deleteProgram(this.shockwaveProgram); this.shockwaveProgram = null; }
+            this.shockwaveUniforms = null;
         }
 
         initGeometry() {
             const glCtx = this.gl;
-            if (!glCtx || !TS || !TS.VS_HYPERSPACE_QUAD || !TS.FS_HYPERSPACE_QUAD) return false;
+            if (!glCtx || !TS || !TS.VS_STAR_STREAK || !TS.FS_STAR_STREAK) return false;
             this._disposeGL();
 
-            this.program = createProgram(TS.VS_HYPERSPACE_QUAD, TS.FS_HYPERSPACE_QUAD);
-            if (!this.program) return false;
-
-            this.uniforms = getUniforms(this.program, [
-                "uProjMatrix", "uViewMatrix", "uTravelDistance", "uStretchLength",
-                "uThickness", "uResolution", "uMouseParallax", "uVelocityNorm", "uOpacity"
+            // Layer A: StarStreakInstances (4,500 instanced quads)
+            this.starProgram = createProgram(TS.VS_STAR_STREAK, TS.FS_STAR_STREAK);
+            if (!this.starProgram) return false;
+            this.starUniforms = getUniforms(this.starProgram, [
+                "uProjMatrix", "uViewMatrix", "uTravelDistance",
+                "uStretchLength", "uThickness", "uResolution", "uWarpPhase"
             ]);
 
-            this.vao = glCtx.createVertexArray();
-            glCtx.bindVertexArray(this.vao);
+            this.starVAO = glCtx.createVertexArray();
+            glCtx.bindVertexArray(this.starVAO);
 
-            // Static quad UV buffer (triangle strip)
             this.quadVBO = glCtx.createBuffer();
             glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.quadVBO);
             glCtx.bufferData(glCtx.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), glCtx.STATIC_DRAW);
-            const locUv = glCtx.getAttribLocation(this.program, "aQuadUv");
+            const locUv = glCtx.getAttribLocation(this.starProgram, "aQuadUv");
             if (locUv >= 0) {
                 glCtx.enableVertexAttribArray(locUv);
                 glCtx.vertexAttribPointer(locUv, 2, glCtx.FLOAT, false, 0, 0);
             }
 
-            // 3,500 instanced attributes
             const count = this.instanceCount;
             const cylData = new Float32Array(count * 3);
-            const colData = new Float32Array(count * 3);
             const spdData = new Float32Array(count);
+            const sclData = new Float32Array(count);
 
             for (let i = 0; i < count; i++) {
                 const i3 = i * 3;
-                cylData[i3] = 12.0 + Math.pow(Math.random(), 1.35) * 128.0;
-                cylData[i3 + 1] = Math.random() * Math.PI * 2;
-                cylData[i3 + 2] = -Math.random() * 400.0;
-
-                const cRand = Math.random();
-                if (cRand < 0.70) {
-                    colData[i3] = 0.92; colData[i3 + 1] = 0.96; colData[i3 + 2] = 1.0;
-                } else if (cRand < 0.90) {
-                    colData[i3] = 0.22; colData[i3 + 1] = 0.74; colData[i3 + 2] = 0.97;
-                } else {
-                    colData[i3] = 0.15; colData[i3 + 1] = 0.39; colData[i3 + 2] = 0.92;
-                }
-
+                cylData[i3] = 14.0 + Math.pow(Math.random(), 1.6) * 160.0;
+                cylData[i3 + 1] = Math.random() * Math.PI * 2.0;
+                cylData[i3 + 2] = -Math.random() * 500.0;
                 spdData[i] = 0.65 + Math.random() * 0.70;
+                sclData[i] = 0.5 + Math.pow(Math.random(), 2.5) * 1.8;
             }
 
             this.cylindricalVBO = glCtx.createBuffer();
             glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.cylindricalVBO);
             glCtx.bufferData(glCtx.ARRAY_BUFFER, cylData, glCtx.STATIC_DRAW);
-            const locCyl = glCtx.getAttribLocation(this.program, "aCylindricalPos");
+            const locCyl = glCtx.getAttribLocation(this.starProgram, "aCylindricalPos");
             if (locCyl >= 0) {
                 glCtx.enableVertexAttribArray(locCyl);
                 glCtx.vertexAttribPointer(locCyl, 3, glCtx.FLOAT, false, 0, 0);
                 glCtx.vertexAttribDivisor(locCyl, 1);
             }
 
-            this.colorVBO = glCtx.createBuffer();
-            glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.colorVBO);
-            glCtx.bufferData(glCtx.ARRAY_BUFFER, colData, glCtx.STATIC_DRAW);
-            const locCol = glCtx.getAttribLocation(this.program, "aColorSeed");
-            if (locCol >= 0) {
-                glCtx.enableVertexAttribArray(locCol);
-                glCtx.vertexAttribPointer(locCol, 3, glCtx.FLOAT, false, 0, 0);
-                glCtx.vertexAttribDivisor(locCol, 1);
-            }
-
             this.speedVBO = glCtx.createBuffer();
             glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.speedVBO);
             glCtx.bufferData(glCtx.ARRAY_BUFFER, spdData, glCtx.STATIC_DRAW);
-            const locSpd = glCtx.getAttribLocation(this.program, "aSpeedOffset");
+            const locSpd = glCtx.getAttribLocation(this.starProgram, "aSpeedOffset");
             if (locSpd >= 0) {
                 glCtx.enableVertexAttribArray(locSpd);
                 glCtx.vertexAttribPointer(locSpd, 1, glCtx.FLOAT, false, 0, 0);
                 glCtx.vertexAttribDivisor(locSpd, 1);
             }
 
+            this.scaleVBO = glCtx.createBuffer();
+            glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.scaleVBO);
+            glCtx.bufferData(glCtx.ARRAY_BUFFER, sclData, glCtx.STATIC_DRAW);
+            const locScl = glCtx.getAttribLocation(this.starProgram, "aStarScale");
+            if (locScl >= 0) {
+                glCtx.enableVertexAttribArray(locScl);
+                glCtx.vertexAttribPointer(locScl, 1, glCtx.FLOAT, false, 0, 0);
+                glCtx.vertexAttribDivisor(locScl, 1);
+            }
             glCtx.bindVertexArray(null);
+
+            // Layer B: HyperspaceTunnelWall (open-ended cylinder: radius=18, height=600, 64x1 segs)
+            if (TS.VS_TUNNEL_WALL && TS.FS_TUNNEL_WALL) {
+                this.tunnelProgram = createProgram(TS.VS_TUNNEL_WALL, TS.FS_TUNNEL_WALL);
+                if (this.tunnelProgram) {
+                    this.tunnelUniforms = getUniforms(this.tunnelProgram, [
+                        "uProjMatrix", "uViewMatrix", "uModelMatrix", "uTime", "uTunnelIntensity"
+                    ]);
+                    const radialSegs = 64;
+                    const radius = 18.0;
+                    const halfH = 300.0;
+                    const verts = new Float32Array((radialSegs + 1) * 2 * 5);
+                    let vPtr = 0;
+                    for (let iy = 0; iy <= 1; iy++) {
+                        const v = iy;
+                        const y = (0.5 - v) * (halfH * 2.0);
+                        for (let ix = 0; ix <= radialSegs; ix++) {
+                            const u = ix / radialSegs;
+                            const theta = u * Math.PI * 2.0;
+                            verts[vPtr++] = radius * Math.sin(theta);
+                            verts[vPtr++] = y;
+                            verts[vPtr++] = radius * Math.cos(theta);
+                            verts[vPtr++] = u;
+                            verts[vPtr++] = v;
+                        }
+                    }
+                    const indices = new Uint16Array(radialSegs * 6);
+                    let iPtr = 0;
+                    const row = radialSegs + 1;
+                    for (let ix = 0; ix < radialSegs; ix++) {
+                        const a = ix;
+                        const b = row + ix;
+                        const c = row + ix + 1;
+                        const d = ix + 1;
+                        indices[iPtr++] = a;
+                        indices[iPtr++] = b;
+                        indices[iPtr++] = d;
+                        indices[iPtr++] = b;
+                        indices[iPtr++] = c;
+                        indices[iPtr++] = d;
+                    }
+                    this.tunnelIndexCount = indices.length;
+
+                    this.tunnelVAO = glCtx.createVertexArray();
+                    glCtx.bindVertexArray(this.tunnelVAO);
+                    this.tunnelVBO = glCtx.createBuffer();
+                    glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.tunnelVBO);
+                    glCtx.bufferData(glCtx.ARRAY_BUFFER, verts, glCtx.STATIC_DRAW);
+
+                    const locTPos = glCtx.getAttribLocation(this.tunnelProgram, "aPos");
+                    if (locTPos >= 0) {
+                        glCtx.enableVertexAttribArray(locTPos);
+                        glCtx.vertexAttribPointer(locTPos, 3, glCtx.FLOAT, false, 20, 0);
+                    }
+                    const locTUv = glCtx.getAttribLocation(this.tunnelProgram, "aUv");
+                    if (locTUv >= 0) {
+                        glCtx.enableVertexAttribArray(locTUv);
+                        glCtx.vertexAttribPointer(locTUv, 2, glCtx.FLOAT, false, 20, 12);
+                    }
+
+                    this.tunnelIBO = glCtx.createBuffer();
+                    glCtx.bindBuffer(glCtx.ELEMENT_ARRAY_BUFFER, this.tunnelIBO);
+                    glCtx.bufferData(glCtx.ELEMENT_ARRAY_BUFFER, indices, glCtx.STATIC_DRAW);
+                    glCtx.bindVertexArray(null);
+                }
+            }
+
+            // Layer C: ExitShockwaveRing (fullscreen quad pass)
+            if (TS.VS_QUAD && TS.FS_EXIT_SHOCKWAVE) {
+                this.shockwaveProgram = createProgram(TS.VS_QUAD, TS.FS_EXIT_SHOCKWAVE);
+                if (this.shockwaveProgram) {
+                    this.shockwaveUniforms = getUniforms(this.shockwaveProgram, [
+                        "uRingRadius", "uRingAlpha", "uAspect"
+                    ]);
+                }
+            }
+
             return true;
         }
 
-        trigger(targetRoute, onMidpointSwap) {
+        trigger(targetRoute, onMidpointSwap, opts) {
+            const speed = (opts && typeof opts.speedMultiplier === "number" && opts.speedMultiplier > 0)
+                ? opts.speedMultiplier
+                : 2.0;
             this.active = true;
-            this.phase = "ANTICIPATION_PULL";
+            this.speedMultiplier = speed;
+            this.phase = "STREAK_IGNITION";
             this.elapsed = 0.0;
-            this.velocity = 0.04;
+            this.velocity = 4.0;
             this.velocityNorm = 0.0;
-            this.stretchLength = 0.14;
-            this.fov = 60.0;
+            this.stretchLength = 0.08;
+            this.warpPhase = 0.0;
+            this.tunnelIntensity = 0.0;
+            this.shakeX = 0.0;
+            this.shakeY = 0.0;
+            this.shockwaveActive = false;
+            this.shockwaveElapsed = 0.0;
             this.targetRoute = targetRoute || null;
             this.onMidpointSwap = typeof onMidpointSwap === "function" ? onMidpointSwap : null;
             this.swapped = false;
-            this.anticipationAudioPlayed = false;
-            this.ignitionAudioPlayed = false;
-            this.exitAudioPlayed = false;
+            this.stage2AudioPlayed = false;
+            this.stage3AudioPlayed = false;
+            this.stage5AudioPlayed = false;
         }
 
-        update(dt, pointerX = 0.0, pointerY = 0.0) {
-            this.mouseParallaxX += (pointerX - this.mouseParallaxX) * 0.05;
-            this.mouseParallaxY += (pointerY - this.mouseParallaxY) * 0.05;
+        update(dt) {
+            this.tunnelTime += dt;
+            if (this.shockwaveActive) {
+                this.shockwaveElapsed += dt;
+                if (this.shockwaveElapsed >= 0.18) {
+                    this.shockwaveActive = false;
+                    this.shockwaveElapsed = 0.0;
+                }
+            }
 
             if (!this.active) {
-                this.phase = "IDLE_CRUISE";
-                this.velocity = 0.04;
-                this.stretchLength = 0.14;
+                this.phase = "IDLE_RING_DRIFT";
+                this.velocity = 4.0;
                 this.velocityNorm = 0.0;
-                this.fov = 60.0;
+                this.stretchLength = 0.08;
+                this.warpPhase = 0.0;
+                this.tunnelIntensity = 0.0;
+                this.shakeX = 0.0;
+                this.shakeY = 0.0;
             } else {
                 this.elapsed += dt;
+                const speed = this.speedMultiplier || 2.0;
+                const stage2Dur = 1.5 / speed;
+                const stage3Dur = 7.0 / speed;
+                const stage4Dur = 0.35 / speed;
+                const stage5Dur = 0.14 / speed;
+
+                const t2End = stage2Dur;
+                const t3End = t2End + stage3Dur;
+                const t4End = t3End + stage4Dur;
+                const t5End = t4End + stage5Dur;
                 const elapsed = this.elapsed;
 
-                if (elapsed < 0.25) {
-                    this.phase = "ANTICIPATION_PULL";
-                    if (!this.anticipationAudioPlayed) {
-                        this.anticipationAudioPlayed = true;
+                if (elapsed < t2End) {
+                    // Stage 2: STREAK_IGNITION
+                    this.phase = "STREAK_IGNITION";
+                    if (!this.stage2AudioPlayed) {
+                        this.stage2AudioPlayed = true;
                         if (typeof window !== "undefined") {
-                            window.KW?.audio?.hyperspaceAnticipation?.();
+                            window.KW?.audio?.hyperspaceTurbineCharge?.(stage2Dur);
                         }
                     }
-                    const t = clamp(elapsed / 0.25, 0.0, 1.0);
-                    this.velocity = 0.04 + (-0.03 - 0.04) * t;
-                    this.velocityNorm = 0.0;
-                    this.stretchLength = 0.14;
-                    this.fov = 60.0 + (54.0 - 60.0) * t;
-                    trans.warpStrength = 0.0;
-                } else if (elapsed < 1.10) {
-                    this.phase = "HYPER_IGNITION";
-                    if (!this.ignitionAudioPlayed) {
-                        this.ignitionAudioPlayed = true;
+                    const t = clamp(elapsed / stage2Dur, 0.0, 1.0);
+                    const ease = t * t;
+                    this.stretchLength = 0.08 + (95.0 - 0.08) * ease;
+                    this.warpPhase = t;
+                    this.velocity = 4.0 + (380.0 - 4.0) * ease;
+                    this.velocityNorm = t;
+
+                    const fadeDur = 0.35 / speed;
+                    const fadeStart = Math.max(stage2Dur * 0.75, stage2Dur - fadeDur);
+                    this.tunnelIntensity = elapsed >= fadeStart
+                        ? clamp((elapsed - fadeStart) / Math.max(1e-4, stage2Dur - fadeStart), 0.0, 1.0)
+                        : 0.0;
+                    this.shakeX = 0.0;
+                    this.shakeY = 0.0;
+                    trans.warpStrength = t;
+                } else if (elapsed < t3End) {
+                    // Stage 3: BLENDER_VORTEX_TUNNEL
+                    this.phase = "BLENDER_VORTEX_TUNNEL";
+                    const localElapsed = elapsed - t2End;
+                    if (!this.stage3AudioPlayed) {
+                        this.stage3AudioPlayed = true;
                         if (typeof window !== "undefined") {
-                            window.KW?.audio?.hyperspaceIgnition?.();
+                            window.KW?.audio?.hyperspaceTunnelRoar?.(stage3Dur);
                         }
                     }
-                    const t = clamp((elapsed - 0.25) / 0.85, 0.0, 1.0);
-                    const ease = t * t * t;
-                    this.velocity = 0.04 + (22.0 - 0.04) * ease;
-                    this.velocityNorm = ease;
-                    this.stretchLength = 0.14 + (92.0 - 0.14) * ease;
-                    this.fov = 54.0 + (96.0 - 54.0) * ease;
-                    trans.warpStrength = ease;
-                } else if (elapsed < 2.10) {
-                    this.phase = "TUNNEL_PEAK";
-                    this.velocity = 22.0;
+                    this.tunnelIntensity = 1.0;
+                    this.stretchLength = 135.0;
+                    this.warpPhase = 1.0;
+                    this.velocity = 520.0;
                     this.velocityNorm = 1.0;
-                    this.stretchLength = 115.0;
-                    this.fov = 96.0;
+                    this.shakeX = (Math.random() * 2.0 - 1.0) * 0.08;
+                    this.shakeY = (Math.random() * 2.0 - 1.0) * 0.08;
                     trans.warpStrength = 1.0;
-                    if (elapsed >= 1.60 && !this.swapped) {
+
+                    if (localElapsed >= stage3Dur * 0.5 && !this.swapped) {
                         this.swapped = true;
                         if (this.onMidpointSwap) {
                             this.onMidpointSwap();
@@ -1383,53 +1516,110 @@
                             executeHyperspaceRouteSwap(this.targetRoute);
                         }
                     }
-                } else if (elapsed < 2.90) {
-                    this.phase = "DECELERATION_SNAP";
-                    if (!this.exitAudioPlayed) {
-                        this.exitAudioPlayed = true;
+                } else if (elapsed < t4End) {
+                    // Stage 4: TUNNEL_DROPOUT
+                    this.phase = "TUNNEL_DROPOUT";
+                    const t = clamp((elapsed - t3End) / stage4Dur, 0.0, 1.0);
+                    this.tunnelIntensity = 1.0 - t;
+                    this.stretchLength = 110.0;
+                    this.warpPhase = 1.0;
+                    this.velocity = 520.0;
+                    this.velocityNorm = 1.0;
+                    this.shakeX = 0.0;
+                    this.shakeY = 0.0;
+                    trans.warpStrength = 1.0;
+                } else if (elapsed < t5End) {
+                    // Stage 5: HARD_SNAP_EXIT
+                    this.phase = "HARD_SNAP_EXIT";
+                    if (!this.stage5AudioPlayed) {
+                        this.stage5AudioPlayed = true;
+                        this.shockwaveActive = true;
+                        this.shockwaveElapsed = 0.0;
                         if (typeof window !== "undefined") {
                             window.KW?.audio?.hyperspaceExitSnap?.();
                         }
                     }
-                    const t = clamp((elapsed - 2.10) / 0.80, 0.0, 1.0);
+                    const t = clamp((elapsed - t4End) / stage5Dur, 0.0, 1.0);
                     const easeOut = 1.0 - Math.pow(1.0 - t, 5.0);
-                    this.velocity = 22.0 + (0.04 - 22.0) * easeOut;
+                    this.tunnelIntensity = 0.0;
+                    this.stretchLength = 110.0 + (0.08 - 110.0) * easeOut;
+                    this.warpPhase = 1.0 - easeOut;
+                    this.velocity = 520.0 + (2.0 - 520.0) * easeOut;
                     this.velocityNorm = 1.0 - easeOut;
-                    this.stretchLength = 115.0 + (0.14 - 115.0) * easeOut;
-                    this.fov = 96.0 + (60.0 - 96.0) * easeOut;
+                    this.shakeX = 0.0;
+                    this.shakeY = 0.0;
                     trans.warpStrength = 1.0 - easeOut;
                 } else {
                     this.reset();
                 }
             }
 
-            this.travelDistance += this.velocity * (dt * 60.0);
+            this.travelDistance += this.velocity * dt;
         }
 
         render(cam, pw, ph, dpr, isLight) {
-            if (!this.program || !this.vao || !this.uniforms) return;
             const glCtx = this.gl;
-            const u = this.uniforms;
             const projMat = (cam.projMatrix || cam.projectionMatrix).elements;
+            const viewMat = cam.viewMatrix.elements;
 
-            glCtx.enable(glCtx.BLEND);
-            glCtx.blendFunc(glCtx.SRC_ALPHA, glCtx.ONE);
-            glCtx.depthMask(false);
+            // Layer B: HyperspaceTunnelWall (interior BackSide cylinder)
+            if (this.tunnelIntensity > 0.001 && this.tunnelProgram && this.tunnelVAO && this.tunnelUniforms) {
+                const tu = this.tunnelUniforms;
+                glCtx.enable(glCtx.BLEND);
+                glCtx.blendFunc(glCtx.SRC_ALPHA, glCtx.ONE_MINUS_SRC_ALPHA);
+                glCtx.depthMask(false);
+                glCtx.disable(glCtx.CULL_FACE);
 
-            glCtx.useProgram(this.program);
-            glCtx.uniformMatrix4fv(u.uProjMatrix, false, projMat);
-            glCtx.uniformMatrix4fv(u.uViewMatrix, false, cam.viewMatrix.elements);
-            glCtx.uniform1f(u.uTravelDistance, this.travelDistance);
-            glCtx.uniform1f(u.uStretchLength, this.stretchLength);
-            glCtx.uniform1f(u.uThickness, 2.2 * (dpr || 1.0));
-            glCtx.uniform2f(u.uResolution, pw, ph);
-            glCtx.uniform2f(u.uMouseParallax, this.mouseParallaxX, this.mouseParallaxY);
-            glCtx.uniform1f(u.uVelocityNorm, this.velocityNorm);
-            glCtx.uniform1f(u.uOpacity, isLight ? 0.35 : (this.active ? 1.0 : 0.65));
+                glCtx.useProgram(this.tunnelProgram);
+                glCtx.uniformMatrix4fv(tu.uProjMatrix, false, projMat);
+                glCtx.uniformMatrix4fv(tu.uViewMatrix, false, viewMat);
+                glCtx.uniformMatrix4fv(tu.uModelMatrix, false, this.tunnelModelMatrix);
+                glCtx.uniform1f(tu.uTime, this.tunnelTime);
+                glCtx.uniform1f(tu.uTunnelIntensity, this.tunnelIntensity * (isLight ? 0.45 : 1.0));
 
-            glCtx.bindVertexArray(this.vao);
-            glCtx.drawArraysInstanced(glCtx.TRIANGLE_STRIP, 0, 4, this.instanceCount);
-            glCtx.bindVertexArray(null);
+                glCtx.bindVertexArray(this.tunnelVAO);
+                glCtx.drawElements(glCtx.TRIANGLES, this.tunnelIndexCount, glCtx.UNSIGNED_SHORT, 0);
+                glCtx.bindVertexArray(null);
+            }
+
+            // Layer A: StarStreakInstances (4,500 instanced quads)
+            if (this.starProgram && this.starVAO && this.starUniforms) {
+                const su = this.starUniforms;
+                glCtx.enable(glCtx.BLEND);
+                glCtx.blendFunc(glCtx.SRC_ALPHA, glCtx.ONE);
+                glCtx.depthMask(false);
+
+                glCtx.useProgram(this.starProgram);
+                glCtx.uniformMatrix4fv(su.uProjMatrix, false, projMat);
+                glCtx.uniformMatrix4fv(su.uViewMatrix, false, viewMat);
+                glCtx.uniform1f(su.uTravelDistance, this.travelDistance);
+                glCtx.uniform1f(su.uStretchLength, this.stretchLength);
+                glCtx.uniform1f(su.uThickness, 1.6 * (dpr || 1.0));
+                glCtx.uniform2f(su.uResolution, pw, ph);
+                glCtx.uniform1f(su.uWarpPhase, this.warpPhase);
+
+                glCtx.bindVertexArray(this.starVAO);
+                glCtx.drawArraysInstanced(glCtx.TRIANGLE_STRIP, 0, 4, this.instanceCount);
+                glCtx.bindVertexArray(null);
+            }
+
+            // Layer C: ExitShockwaveRing (180ms expanding grey-white ring)
+            if (this.shockwaveActive && this.shockwaveProgram && this.shockwaveUniforms) {
+                const wu = this.shockwaveUniforms;
+                const st = clamp(this.shockwaveElapsed / 0.18, 0.0, 1.0);
+                const ringRadius = 0.02 + (0.14 - 0.02) * (1.0 - Math.pow(1.0 - st, 2.5));
+                const ringAlpha = (1.0 - st) * (isLight ? 0.65 : 0.95);
+
+                glCtx.enable(glCtx.BLEND);
+                glCtx.blendFunc(glCtx.SRC_ALPHA, glCtx.ONE);
+                glCtx.depthMask(false);
+
+                glCtx.useProgram(this.shockwaveProgram);
+                glCtx.uniform1f(wu.uRingRadius, ringRadius);
+                glCtx.uniform1f(wu.uRingAlpha, ringAlpha);
+                glCtx.uniform1f(wu.uAspect, pw / Math.max(1, ph));
+                drawQuad();
+            }
 
             glCtx.depthMask(true);
             glCtx.blendFunc(isLight ? glCtx.SRC_ALPHA : glCtx.ONE, isLight ? glCtx.ONE_MINUS_SRC_ALPHA : glCtx.ONE);
@@ -1437,6 +1627,8 @@
 
         dispose() {
             this._disposeGL();
+            this.shockwaveActive = false;
+            this.shockwaveElapsed = 0.0;
             this.reset();
         }
     }
@@ -1444,7 +1636,7 @@
     hyperspaceEngine = new HyperspaceEngine(gl);
     hyperspaceEngine.initGeometry();
 
-    const triggerHyperspaceJump = (targetRoute, onMidpointSwap) => {
+    const triggerHyperspaceJump = (targetRoute, onMidpointSwap, opts) => {
         if (destroyed || (!targetRoute && typeof onMidpointSwap !== "function")) return false;
         const swapFn = typeof onMidpointSwap === "function"
             ? onMidpointSwap
@@ -1471,7 +1663,7 @@
             return true;
         }
 
-        hyperspaceEngine.trigger(targetRoute, swapFn);
+        hyperspaceEngine.trigger(targetRoute, swapFn, opts);
         return true;
     };
 
@@ -4205,11 +4397,8 @@
             }
         }
 
-        /* ---------- 5-Phase Instanced WebGL2 Hyperspace Engine ---------- */
-        hyperspaceEngine.update(dt, isMobileDevice() ? 0.0 : ctxState.pointerX, isMobileDevice() ? 0.0 : ctxState.pointerY);
-        if (hyperspaceEngine.active && !isReducedMotion()) {
-            camera.fov += (hyperspaceEngine.fov - 60.0);
-        }
+        /* ---------- 2-Layer + Shockwave Blender Hyperspace Engine ---------- */
+        hyperspaceEngine.update(dt);
 
         // Live hero and camera velocities (smoothed) for hop continuity and speed-driven streaks
         {
@@ -4225,7 +4414,15 @@
             inside.speedN += (clamp(camVel.length() / 14.0, 0.0, 1.0) - inside.speedN) * 0.25;
         }
 
+        const savedCamX = camera.position.x;
+        const savedCamY = camera.position.y;
+        if (hyperspaceEngine.active && !isReducedMotion()) {
+            camera.position.x += hyperspaceEngine.shakeX;
+            camera.position.y += hyperspaceEngine.shakeY;
+        }
         camera.updateMatrices();
+        camera.position.x = savedCamX;
+        camera.position.y = savedCamY;
         updateDebugHud();
 
         /* ---------- HDR Multi-Pass Render Graph on Single #stage-canvas ---------- */

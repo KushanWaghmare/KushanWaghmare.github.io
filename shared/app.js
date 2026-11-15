@@ -564,6 +564,129 @@
                     updateBankAudio(ambient.bankB, toAudio, b, t0);
                 });
             },
+            hyperspaceTurbineCharge: (dur = 0.75) => {
+                const d = Math.max(0.1, Number.isFinite(dur) ? dur : 0.75);
+                withContext((t0) => {
+                    const masterOut = getMasterBus();
+                    if (!masterOut) return;
+
+                    // Rising resonant sawtooth pitch sweep (50Hz -> 680Hz)
+                    const osc = ctx.createOscillator();
+                    const lp = ctx.createBiquadFilter();
+                    const oscGain = ctx.createGain();
+                    osc.type = "sawtooth";
+                    osc.frequency.setValueAtTime(50, t0);
+                    osc.frequency.exponentialRampToValueAtTime(680, t0 + d);
+                    lp.type = "lowpass";
+                    lp.Q.value = 5.0;
+                    lp.frequency.setValueAtTime(180, t0);
+                    lp.frequency.exponentialRampToValueAtTime(2800, t0 + d);
+                    oscGain.gain.setValueAtTime(0.0001, t0);
+                    oscGain.gain.linearRampToValueAtTime(0.16, t0 + d * 0.75);
+                    oscGain.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.04);
+                    osc.connect(lp);
+                    lp.connect(oscGain);
+                    oscGain.connect(masterOut);
+                    osc.start(t0);
+                    osc.stop(t0 + d + 0.05);
+                    osc.onended = () => {
+                        try { osc.disconnect(); lp.disconnect(); oscGain.disconnect(); } catch (e) {}
+                    };
+
+                    // Filtered noise swell
+                    const nb = noise();
+                    if (nb) {
+                        const src = ctx.createBufferSource();
+                        const bp = ctx.createBiquadFilter();
+                        const nGain = ctx.createGain();
+                        src.buffer = nb;
+                        src.loop = true;
+                        bp.type = "bandpass";
+                        bp.Q.value = 2.0;
+                        bp.frequency.setValueAtTime(140, t0);
+                        bp.frequency.exponentialRampToValueAtTime(2400, t0 + d);
+                        nGain.gain.setValueAtTime(0.0001, t0);
+                        nGain.gain.linearRampToValueAtTime(0.14, t0 + d * 0.8);
+                        nGain.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.04);
+                        src.connect(bp);
+                        bp.connect(nGain);
+                        nGain.connect(masterOut);
+                        src.start(t0);
+                        src.stop(t0 + d + 0.05);
+                        src.onended = () => {
+                            try { src.disconnect(); bp.disconnect(); nGain.disconnect(); } catch (e) {}
+                        };
+                    }
+                });
+            },
+            hyperspaceTunnelRoar: (dur = 3.5) => {
+                const d = Math.max(0.25, Number.isFinite(dur) ? dur : 3.5);
+                withContext((t0) => {
+                    const masterOut = getMasterBus();
+                    if (!masterOut) return;
+
+                    if (SOUND._roarBus) {
+                        try {
+                            SOUND._roarBus.gain.cancelScheduledValues(t0);
+                            SOUND._roarBus.gain.setValueAtTime(Math.max(SOUND._roarBus.gain.value, 0.0001), t0);
+                            SOUND._roarBus.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.04);
+                        } catch (e) {}
+                    }
+
+                    const roarBus = ctx.createGain();
+                    roarBus.gain.setValueAtTime(1.0, t0);
+                    roarBus.connect(masterOut);
+                    SOUND._roarBus = roarBus;
+
+                    // Sub-bass impact (38Hz sine drop)
+                    const sub = ctx.createOscillator();
+                    const subGain = ctx.createGain();
+                    sub.type = "sine";
+                    sub.frequency.setValueAtTime(72, t0);
+                    sub.frequency.exponentialRampToValueAtTime(38, t0 + 0.22);
+                    subGain.gain.setValueAtTime(0.0001, t0);
+                    subGain.gain.linearRampToValueAtTime(0.32, t0 + 0.025);
+                    subGain.gain.exponentialRampToValueAtTime(0.09, t0 + 0.55);
+                    subGain.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+                    sub.connect(subGain);
+                    subGain.connect(roarBus);
+                    sub.start(t0);
+                    sub.stop(t0 + d + 0.04);
+                    sub.onended = () => {
+                        try { sub.disconnect(); subGain.disconnect(); } catch (e) {}
+                    };
+
+                    // Deep, hollow low-pass filtered wind rumble (160Hz)
+                    const nb = noise();
+                    if (nb) {
+                        const src = ctx.createBufferSource();
+                        const lp = ctx.createBiquadFilter();
+                        const nGain = ctx.createGain();
+                        src.buffer = nb;
+                        src.loop = true;
+                        lp.type = "lowpass";
+                        lp.Q.value = 3.2;
+                        lp.frequency.setValueAtTime(220, t0);
+                        lp.frequency.exponentialRampToValueAtTime(160, t0 + 0.45);
+                        nGain.gain.setValueAtTime(0.0001, t0);
+                        nGain.gain.linearRampToValueAtTime(0.24, t0 + 0.18);
+                        nGain.gain.setValueAtTime(0.22, t0 + Math.max(0.2, d - 0.35));
+                        nGain.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+                        src.connect(lp);
+                        lp.connect(nGain);
+                        nGain.connect(roarBus);
+                        src.start(t0);
+                        src.stop(t0 + d + 0.04);
+                        src.onended = () => {
+                            try { src.disconnect(); lp.disconnect(); nGain.disconnect(); } catch (e) {}
+                            if (SOUND._roarBus === roarBus) {
+                                SOUND._roarBus = null;
+                                try { roarBus.disconnect(); } catch (e) {}
+                            }
+                        };
+                    }
+                });
+            },
             hyperspaceAnticipation: () => {
                 withContext((t0) => {
                     const masterOut = getMasterBus();
@@ -673,7 +796,25 @@
                     const masterOut = getMasterBus();
                     if (!masterOut) return;
 
-                    // Crisp high-pass mechanical transient click (2.4kHz, 35ms exponential decay)
+                    // Brief 80ms near-silence dip (attenuate roar/master bus briefly)
+                    if (SOUND._roarBus) {
+                        try {
+                            SOUND._roarBus.gain.cancelScheduledValues(t0);
+                            SOUND._roarBus.gain.setValueAtTime(Math.max(SOUND._roarBus.gain.value, 0.0001), t0);
+                            SOUND._roarBus.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.075);
+                        } catch (e) {}
+                    }
+                    if (masterOut.gain) {
+                        masterOut.gain.cancelScheduledValues(t0);
+                        masterOut.gain.setValueAtTime(Math.max(masterOut.gain.value || 1.0, 0.0001), t0);
+                        masterOut.gain.exponentialRampToValueAtTime(0.02, t0 + 0.012);
+                        masterOut.gain.setValueAtTime(0.02, t0 + 0.075);
+                        masterOut.gain.linearRampToValueAtTime(1.0, t0 + 0.08);
+                    }
+
+                    const tSnap = t0 + 0.08;
+
+                    // Crisp mechanical transient snap (2.4kHz high-pass burst)
                     const nb = noise();
                     if (nb) {
                         const src = ctx.createBufferSource();
@@ -681,33 +822,45 @@
                         const nGain = ctx.createGain();
                         src.buffer = nb;
                         hp.type = "highpass";
-                        hp.frequency.setValueAtTime(2400, t0);
+                        hp.frequency.setValueAtTime(2400, tSnap);
                         hp.Q.value = 1.4;
-                        nGain.gain.setValueAtTime(0.24, t0);
-                        nGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.035);
+                        nGain.gain.setValueAtTime(0.0001, tSnap);
+                        nGain.gain.linearRampToValueAtTime(0.28, tSnap + 0.003);
+                        nGain.gain.exponentialRampToValueAtTime(0.0001, tSnap + 0.045);
                         src.connect(hp);
                         hp.connect(nGain);
                         nGain.connect(masterOut);
-                        src.start(t0);
-                        src.stop(t0 + 0.05);
+                        src.start(tSnap);
+                        src.stop(tSnap + 0.06);
                         src.onended = () => {
                             try { src.disconnect(); hp.disconnect(); nGain.disconnect(); } catch (e) {}
                         };
                     }
 
-                    // Paired 48Hz sub-bass thump (130ms decay)
+                    // Massive sub-bass drop (90Hz -> 28Hz exponential pitch dive with soft-clipping WaveShaperNode saturation)
                     const sub = ctx.createOscillator();
+                    const shaper = ctx.createWaveShaper();
                     const oGain = ctx.createGain();
+                    const curve = new Float32Array(256);
+                    for (let i = 0; i < 256; i++) {
+                        const x = (i * 2) / 255 - 1;
+                        curve[i] = Math.tanh(x * 2.5);
+                    }
+                    shaper.curve = curve;
+                    shaper.oversample = "2x";
                     sub.type = "sine";
-                    sub.frequency.setValueAtTime(48, t0);
-                    oGain.gain.setValueAtTime(0.28, t0);
-                    oGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.13);
-                    sub.connect(oGain);
+                    sub.frequency.setValueAtTime(90, tSnap);
+                    sub.frequency.exponentialRampToValueAtTime(28, tSnap + 0.34);
+                    oGain.gain.setValueAtTime(0.0001, tSnap);
+                    oGain.gain.linearRampToValueAtTime(0.38, tSnap + 0.01);
+                    oGain.gain.exponentialRampToValueAtTime(0.0001, tSnap + 0.42);
+                    sub.connect(shaper);
+                    shaper.connect(oGain);
                     oGain.connect(masterOut);
-                    sub.start(t0);
-                    sub.stop(t0 + 0.145);
+                    sub.start(tSnap);
+                    sub.stop(tSnap + 0.45);
                     sub.onended = () => {
-                        try { sub.disconnect(); oGain.disconnect(); } catch (e) {}
+                        try { sub.disconnect(); shaper.disconnect(); oGain.disconnect(); } catch (e) {}
                     };
                 });
             }
