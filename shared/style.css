@@ -174,7 +174,7 @@ body::before {
     inset: 0;
     z-index: -2;
     pointer-events: none;
-    background: radial-gradient(60% 50% at 82% 0%, rgba(var(--a), 0.12), transparent 62%);
+    background: transparent;
 }
 
 h1, h2, h3, h4,
@@ -601,19 +601,6 @@ html[data-domain="physics"] .nav-live { height: 24px; margin-top: -3px; margin-b
     pointer-events: none;
     background: radial-gradient(ellipse 82% 72% at 34% 50%, rgba(var(--bg-rgb), 0.62) 0%, rgba(var(--bg-rgb), 0.26) 60%, transparent 100%);
     border-radius: 32px;
-}
-
-/* Soft organic radial vignette behind the Physics text column */
-#domain-physics .snap-inner::before,
-#domain-intro[data-domain="physics"] .snap-inner::before {
-    content: "";
-    display: block;
-    position: absolute;
-    inset: -36px -48px -36px -64px;
-    z-index: -1;
-    pointer-events: none;
-    background: radial-gradient(ellipse 75% 65% at 30% 50%, rgba(5, 8, 15, 0.78) 0%, rgba(5, 8, 15, 0.42) 55%, transparent 100%);
-    border-radius: 40px;
 }
 
 #domain-physics .snap-lead,
@@ -2608,6 +2595,7 @@ html[data-layout="callout"] .kw-col.r > .kw-callout {
     width: 100% !important;
 }
 html[data-layout="callout"] .kw-col.l:has(.course-grid) {
+    grid-column: 1 / -1;
     max-width: 100%;
     width: 100%;
 }

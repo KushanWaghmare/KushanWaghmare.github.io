@@ -38,6 +38,18 @@
         computeSpatialMatching
     } = TM;
 
+    const cleanupFns = [];
+    const listen = (target, type, fn, opts) => {
+        if (!target) return;
+        if (target.addEventListener) {
+            target.addEventListener(type, fn, opts);
+            cleanupFns.push(() => target.removeEventListener(type, fn, opts));
+        } else if (target.addListener) {
+            target.addListener(fn);
+            cleanupFns.push(() => target.removeListener && target.removeListener(fn));
+        }
+    };
+
     // UA never changes at runtime: test once, not on every call (called per frame).
     const UA_IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "");
     const isMobileDevice = () => window.innerWidth <= 768 || UA_IS_MOBILE;
@@ -47,8 +59,7 @@
     let reducedMotionNow = !!(reducedMotionMQ && reducedMotionMQ.matches);
     if (reducedMotionMQ) {
         const onRM = (e) => { reducedMotionNow = e.matches; };
-        if (reducedMotionMQ.addEventListener) reducedMotionMQ.addEventListener("change", onRM);
-        else if (reducedMotionMQ.addListener) reducedMotionMQ.addListener(onRM);
+        listen(reducedMotionMQ, "change", onRM);
     }
     const isReducedMotion = () => reducedMotionNow;
 
@@ -230,10 +241,11 @@
     };
     resizeStage();
     if (navigator.connection && navigator.connection.addEventListener) {
-        navigator.connection.addEventListener("change", resizeStage);
+        listen(navigator.connection, "change", resizeStage);
     }
     if (typeof navigator.getBattery === "function") {
         navigator.getBattery().then((bat) => {
+            if (destroyed) return;
             const updateBattery = () => {
                 const next = (!bat.charging && bat.level < 0.20);
                 if (next !== lowBattery) {
@@ -243,16 +255,17 @@
             };
             updateBattery();
             if (bat.addEventListener) {
-                bat.addEventListener("levelchange", updateBattery);
-                bat.addEventListener("chargingchange", updateBattery);
+                listen(bat, "levelchange", updateBattery);
+                listen(bat, "chargingchange", updateBattery);
             }
         }).catch(() => {});
     }
     let resizeQueued = false;
-    window.addEventListener("resize", () => {
+    let resizeRafId = 0;
+    listen(window, "resize", () => {
         if (resizeQueued) return;
         resizeQueued = true;
-        requestAnimationFrame(() => { resizeQueued = false; resizeStage(); });
+        resizeRafId = requestAnimationFrame(() => { resizeQueued = false; resizeRafId = 0; if (!destroyed) resizeStage(); });
     }, { passive: true });
 
     /* ---------- Shader Compilation, VAO/VBOs & HDR Render Targets ---------- */
@@ -420,6 +433,8 @@
         return out;
     };
 
+    let hyperspaceEngine = null;
+
     const initGLResources = () => {
         hdrSupported = !!gl.getExtension("EXT_color_buffer_float");
         gl.getExtension("OES_texture_float_linear");
@@ -452,7 +467,7 @@
             "uBaseColour", "uNebulaCol0", "uNebulaCol1", "uNebulaCol2",
             "uNebulaIntensity", "uBandIntensity", "uBandAngle",
             "uStarDensity", "uStarTwinkle", "uStarTint", "uShootingStars", "uParallax",
-            "uWarpVelocity", "uPointerOffset", "uCamDir", "uQualityTier", "uReducedMotion"
+            "uWarpVelocity", "uStretchFactor", "uVelocity", "uPointerOffset", "uCamDir", "uQualityTier", "uReducedMotion"
         ]);
         auxUniforms = getUniforms(auxProg, ["uViewProj", "uAuxOpacity", "uIsLight"]);
         kerrUniforms = getUniforms(kerrProg, [
@@ -594,6 +609,10 @@
         rtHeight = 0;
         ensurePostTargets(stageCanvas.width, stageCanvas.height);
 
+        if (hyperspaceEngine) {
+            hyperspaceEngine.initGeometry();
+        }
+
         return true;
     };
 
@@ -601,11 +620,11 @@
         emitStageProgress(0.45, "Compiling shaders");
     }
 
-    stageCanvas.addEventListener("webglcontextlost", (e) => {
+    listen(stageCanvas, "webglcontextlost", (e) => {
         e.preventDefault();
         contextLost = true;
     });
-    stageCanvas.addEventListener("webglcontextrestored", () => {
+    listen(stageCanvas, "webglcontextrestored", () => {
         contextLost = false;
         initGLResources();
     });
@@ -707,14 +726,14 @@
     let isPointerDragging = false;
     let lastDragX = 0, lastDragY = 0;
 
-    window.addEventListener("pointerdown", (e) => {
+    listen(window, "pointerdown", (e) => {
         if (e.target && e.target.closest && e.target.closest("a, button, input, .nav, .snap-pager, .card, .pill, .stage-debug-hud")) return;
         isPointerDragging = true;
         lastDragX = e.clientX;
         lastDragY = e.clientY;
     });
 
-    window.addEventListener("pointermove", (e) => {
+    listen(window, "pointermove", (e) => {
         ctxState.targetPointerX = ((e.clientX / Math.max(1, width)) - 0.5) * 2.0;
         ctxState.targetPointerY = ((e.clientY / Math.max(1, height)) - 0.5) * 2.0;
 
@@ -728,9 +747,9 @@
         }
     }, { passive: true });
 
-    window.addEventListener("pointerup", () => { isPointerDragging = false; });
-    window.addEventListener("pointercancel", () => { isPointerDragging = false; });
-    window.addEventListener("blur", () => { isPointerDragging = false; });
+    listen(window, "pointerup", () => { isPointerDragging = false; });
+    listen(window, "pointercancel", () => { isPointerDragging = false; });
+    listen(window, "blur", () => { isPointerDragging = false; });
 
     let isNavigatingExplore = false;
     let handoff = null;
@@ -905,7 +924,7 @@
         }
     };
 
-    window.addEventListener("click", (e) => {
+    listen(window, "click", (e) => {
         // Intercept navigation links and buttons for universal continuous morph
         const ctaBtn = e.target && e.target.closest && e.target.closest(".snap-cta-btn");
         const crumbLink = e.target && e.target.closest && e.target.closest(".crumbs a");
@@ -1000,7 +1019,7 @@
         }
     }, { capture: true });
 
-    window.addEventListener("keydown", (e) => {
+    listen(window, "keydown", (e) => {
         if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
         if (e.key === "ArrowRight") {
             e.preventDefault();
@@ -1146,6 +1165,320 @@
         warpStrength: 0.0
     };
 
+    /* ---------- 5-Phase Instanced WebGL2 Hyperspace Engine ---------- */
+    let mainRafId = 0;
+    let destroyed = false;
+    let reducedMotionFadeTimerId = 0;
+
+    const executeHyperspaceRouteSwap = (targetRoute) => {
+        if (!targetRoute) return;
+        if (typeof window !== "undefined" && window.KW && typeof window.KW.loadPage === "function") {
+            window.KW.loadPage(targetRoute, true);
+        } else if (typeof window !== "undefined") {
+            window.location.href = targetRoute;
+        }
+    };
+
+    class HyperspaceEngine {
+        constructor(glCtx) {
+            this.gl = glCtx;
+            this.instanceCount = 3500;
+            this.program = null;
+            this.uniforms = null;
+            this.vao = null;
+            this.quadVBO = null;
+            this.cylindricalVBO = null;
+            this.colorVBO = null;
+            this.speedVBO = null;
+            this.travelDistance = 0.0;
+            this.mouseParallaxX = 0.0;
+            this.mouseParallaxY = 0.0;
+            this.reset();
+        }
+
+        reset() {
+            this.active = false;
+            this.phase = "IDLE_CRUISE";
+            this.elapsed = 0.0;
+            this.velocity = 0.04;
+            this.velocityNorm = 0.0;
+            this.stretchLength = 0.14;
+            this.fov = 60.0;
+            this.targetRoute = null;
+            this.onMidpointSwap = null;
+            this.swapped = false;
+            this.anticipationAudioPlayed = false;
+            this.ignitionAudioPlayed = false;
+            this.exitAudioPlayed = false;
+            trans.warpStrength = 0.0;
+        }
+
+        _disposeGL() {
+            const glCtx = this.gl;
+            if (!glCtx) return;
+            if (this.vao) { glCtx.deleteVertexArray(this.vao); this.vao = null; }
+            if (this.quadVBO) { glCtx.deleteBuffer(this.quadVBO); this.quadVBO = null; }
+            if (this.cylindricalVBO) { glCtx.deleteBuffer(this.cylindricalVBO); this.cylindricalVBO = null; }
+            if (this.colorVBO) { glCtx.deleteBuffer(this.colorVBO); this.colorVBO = null; }
+            if (this.speedVBO) { glCtx.deleteBuffer(this.speedVBO); this.speedVBO = null; }
+            if (this.program) { glCtx.deleteProgram(this.program); this.program = null; }
+            this.uniforms = null;
+        }
+
+        initGeometry() {
+            const glCtx = this.gl;
+            if (!glCtx || !TS || !TS.VS_HYPERSPACE_QUAD || !TS.FS_HYPERSPACE_QUAD) return false;
+            this._disposeGL();
+
+            this.program = createProgram(TS.VS_HYPERSPACE_QUAD, TS.FS_HYPERSPACE_QUAD);
+            if (!this.program) return false;
+
+            this.uniforms = getUniforms(this.program, [
+                "uProjMatrix", "uViewMatrix", "uTravelDistance", "uStretchLength",
+                "uThickness", "uResolution", "uMouseParallax", "uVelocityNorm", "uOpacity"
+            ]);
+
+            this.vao = glCtx.createVertexArray();
+            glCtx.bindVertexArray(this.vao);
+
+            // Static quad UV buffer (triangle strip)
+            this.quadVBO = glCtx.createBuffer();
+            glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.quadVBO);
+            glCtx.bufferData(glCtx.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), glCtx.STATIC_DRAW);
+            const locUv = glCtx.getAttribLocation(this.program, "aQuadUv");
+            if (locUv >= 0) {
+                glCtx.enableVertexAttribArray(locUv);
+                glCtx.vertexAttribPointer(locUv, 2, glCtx.FLOAT, false, 0, 0);
+            }
+
+            // 3,500 instanced attributes
+            const count = this.instanceCount;
+            const cylData = new Float32Array(count * 3);
+            const colData = new Float32Array(count * 3);
+            const spdData = new Float32Array(count);
+
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                cylData[i3] = 12.0 + Math.pow(Math.random(), 1.35) * 128.0;
+                cylData[i3 + 1] = Math.random() * Math.PI * 2;
+                cylData[i3 + 2] = -Math.random() * 400.0;
+
+                const cRand = Math.random();
+                if (cRand < 0.70) {
+                    colData[i3] = 0.92; colData[i3 + 1] = 0.96; colData[i3 + 2] = 1.0;
+                } else if (cRand < 0.90) {
+                    colData[i3] = 0.22; colData[i3 + 1] = 0.74; colData[i3 + 2] = 0.97;
+                } else {
+                    colData[i3] = 0.15; colData[i3 + 1] = 0.39; colData[i3 + 2] = 0.92;
+                }
+
+                spdData[i] = 0.65 + Math.random() * 0.70;
+            }
+
+            this.cylindricalVBO = glCtx.createBuffer();
+            glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.cylindricalVBO);
+            glCtx.bufferData(glCtx.ARRAY_BUFFER, cylData, glCtx.STATIC_DRAW);
+            const locCyl = glCtx.getAttribLocation(this.program, "aCylindricalPos");
+            if (locCyl >= 0) {
+                glCtx.enableVertexAttribArray(locCyl);
+                glCtx.vertexAttribPointer(locCyl, 3, glCtx.FLOAT, false, 0, 0);
+                glCtx.vertexAttribDivisor(locCyl, 1);
+            }
+
+            this.colorVBO = glCtx.createBuffer();
+            glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.colorVBO);
+            glCtx.bufferData(glCtx.ARRAY_BUFFER, colData, glCtx.STATIC_DRAW);
+            const locCol = glCtx.getAttribLocation(this.program, "aColorSeed");
+            if (locCol >= 0) {
+                glCtx.enableVertexAttribArray(locCol);
+                glCtx.vertexAttribPointer(locCol, 3, glCtx.FLOAT, false, 0, 0);
+                glCtx.vertexAttribDivisor(locCol, 1);
+            }
+
+            this.speedVBO = glCtx.createBuffer();
+            glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.speedVBO);
+            glCtx.bufferData(glCtx.ARRAY_BUFFER, spdData, glCtx.STATIC_DRAW);
+            const locSpd = glCtx.getAttribLocation(this.program, "aSpeedOffset");
+            if (locSpd >= 0) {
+                glCtx.enableVertexAttribArray(locSpd);
+                glCtx.vertexAttribPointer(locSpd, 1, glCtx.FLOAT, false, 0, 0);
+                glCtx.vertexAttribDivisor(locSpd, 1);
+            }
+
+            glCtx.bindVertexArray(null);
+            return true;
+        }
+
+        trigger(targetRoute, onMidpointSwap) {
+            this.active = true;
+            this.phase = "ANTICIPATION_PULL";
+            this.elapsed = 0.0;
+            this.velocity = 0.04;
+            this.velocityNorm = 0.0;
+            this.stretchLength = 0.14;
+            this.fov = 60.0;
+            this.targetRoute = targetRoute || null;
+            this.onMidpointSwap = typeof onMidpointSwap === "function" ? onMidpointSwap : null;
+            this.swapped = false;
+            this.anticipationAudioPlayed = false;
+            this.ignitionAudioPlayed = false;
+            this.exitAudioPlayed = false;
+        }
+
+        update(dt, pointerX = 0.0, pointerY = 0.0) {
+            this.mouseParallaxX += (pointerX - this.mouseParallaxX) * 0.05;
+            this.mouseParallaxY += (pointerY - this.mouseParallaxY) * 0.05;
+
+            if (!this.active) {
+                this.phase = "IDLE_CRUISE";
+                this.velocity = 0.04;
+                this.stretchLength = 0.14;
+                this.velocityNorm = 0.0;
+                this.fov = 60.0;
+            } else {
+                this.elapsed += dt;
+                const elapsed = this.elapsed;
+
+                if (elapsed < 0.25) {
+                    this.phase = "ANTICIPATION_PULL";
+                    if (!this.anticipationAudioPlayed) {
+                        this.anticipationAudioPlayed = true;
+                        if (typeof window !== "undefined") {
+                            window.KW?.audio?.hyperspaceAnticipation?.();
+                        }
+                    }
+                    const t = clamp(elapsed / 0.25, 0.0, 1.0);
+                    this.velocity = 0.04 + (-0.03 - 0.04) * t;
+                    this.velocityNorm = 0.0;
+                    this.stretchLength = 0.14;
+                    this.fov = 60.0 + (54.0 - 60.0) * t;
+                    trans.warpStrength = 0.0;
+                } else if (elapsed < 1.10) {
+                    this.phase = "HYPER_IGNITION";
+                    if (!this.ignitionAudioPlayed) {
+                        this.ignitionAudioPlayed = true;
+                        if (typeof window !== "undefined") {
+                            window.KW?.audio?.hyperspaceIgnition?.();
+                        }
+                    }
+                    const t = clamp((elapsed - 0.25) / 0.85, 0.0, 1.0);
+                    const ease = t * t * t;
+                    this.velocity = 0.04 + (22.0 - 0.04) * ease;
+                    this.velocityNorm = ease;
+                    this.stretchLength = 0.14 + (92.0 - 0.14) * ease;
+                    this.fov = 54.0 + (96.0 - 54.0) * ease;
+                    trans.warpStrength = ease;
+                } else if (elapsed < 2.10) {
+                    this.phase = "TUNNEL_PEAK";
+                    this.velocity = 22.0;
+                    this.velocityNorm = 1.0;
+                    this.stretchLength = 115.0;
+                    this.fov = 96.0;
+                    trans.warpStrength = 1.0;
+                    if (elapsed >= 1.60 && !this.swapped) {
+                        this.swapped = true;
+                        if (this.onMidpointSwap) {
+                            this.onMidpointSwap();
+                        } else {
+                            executeHyperspaceRouteSwap(this.targetRoute);
+                        }
+                    }
+                } else if (elapsed < 2.90) {
+                    this.phase = "DECELERATION_SNAP";
+                    if (!this.exitAudioPlayed) {
+                        this.exitAudioPlayed = true;
+                        if (typeof window !== "undefined") {
+                            window.KW?.audio?.hyperspaceExitSnap?.();
+                        }
+                    }
+                    const t = clamp((elapsed - 2.10) / 0.80, 0.0, 1.0);
+                    const easeOut = 1.0 - Math.pow(1.0 - t, 5.0);
+                    this.velocity = 22.0 + (0.04 - 22.0) * easeOut;
+                    this.velocityNorm = 1.0 - easeOut;
+                    this.stretchLength = 115.0 + (0.14 - 115.0) * easeOut;
+                    this.fov = 96.0 + (60.0 - 96.0) * easeOut;
+                    trans.warpStrength = 1.0 - easeOut;
+                } else {
+                    this.reset();
+                }
+            }
+
+            this.travelDistance += this.velocity * (dt * 60.0);
+        }
+
+        render(cam, pw, ph, dpr, isLight) {
+            if (!this.program || !this.vao || !this.uniforms) return;
+            const glCtx = this.gl;
+            const u = this.uniforms;
+            const projMat = (cam.projMatrix || cam.projectionMatrix).elements;
+
+            glCtx.enable(glCtx.BLEND);
+            glCtx.blendFunc(glCtx.SRC_ALPHA, glCtx.ONE);
+            glCtx.depthMask(false);
+
+            glCtx.useProgram(this.program);
+            glCtx.uniformMatrix4fv(u.uProjMatrix, false, projMat);
+            glCtx.uniformMatrix4fv(u.uViewMatrix, false, cam.viewMatrix.elements);
+            glCtx.uniform1f(u.uTravelDistance, this.travelDistance);
+            glCtx.uniform1f(u.uStretchLength, this.stretchLength);
+            glCtx.uniform1f(u.uThickness, 2.2 * (dpr || 1.0));
+            glCtx.uniform2f(u.uResolution, pw, ph);
+            glCtx.uniform2f(u.uMouseParallax, this.mouseParallaxX, this.mouseParallaxY);
+            glCtx.uniform1f(u.uVelocityNorm, this.velocityNorm);
+            glCtx.uniform1f(u.uOpacity, isLight ? 0.35 : (this.active ? 1.0 : 0.65));
+
+            glCtx.bindVertexArray(this.vao);
+            glCtx.drawArraysInstanced(glCtx.TRIANGLE_STRIP, 0, 4, this.instanceCount);
+            glCtx.bindVertexArray(null);
+
+            glCtx.depthMask(true);
+            glCtx.blendFunc(isLight ? glCtx.SRC_ALPHA : glCtx.ONE, isLight ? glCtx.ONE_MINUS_SRC_ALPHA : glCtx.ONE);
+        }
+
+        dispose() {
+            this._disposeGL();
+            this.reset();
+        }
+    }
+
+    hyperspaceEngine = new HyperspaceEngine(gl);
+    hyperspaceEngine.initGeometry();
+
+    const triggerHyperspaceJump = (targetRoute, onMidpointSwap) => {
+        if (destroyed || (!targetRoute && typeof onMidpointSwap !== "function")) return false;
+        const swapFn = typeof onMidpointSwap === "function"
+            ? onMidpointSwap
+            : () => executeHyperspaceRouteSwap(targetRoute);
+
+        if (isReducedMotion()) {
+            hyperspaceEngine.reset();
+            if (reducedMotionFadeTimerId) {
+                clearTimeout(reducedMotionFadeTimerId);
+                reducedMotionFadeTimerId = 0;
+            }
+            if (stageCanvas) {
+                stageCanvas.style.transition = "opacity 250ms ease";
+                stageCanvas.style.opacity = "0";
+                reducedMotionFadeTimerId = setTimeout(() => {
+                    reducedMotionFadeTimerId = 0;
+                    if (destroyed) return;
+                    swapFn();
+                    if (stageCanvas) stageCanvas.style.opacity = "1";
+                }, 250);
+            } else {
+                swapFn();
+            }
+            return true;
+        }
+
+        hyperspaceEngine.trigger(targetRoute, swapFn);
+        return true;
+    };
+
+    if (typeof window !== "undefined") {
+        window.triggerHyperspaceJump = triggerHyperspaceJump;
+    }
+
     /* FLIGHT_V2 helpers begin */
     const PROFILE_N = 128;
     const speedCdf = new Float32Array(PROFILE_N + 1);  // time -> normalised distance travelled
@@ -1235,10 +1568,10 @@
     const LOOK = (TM && TM.LOOK) || { bloomStrength: 1.05, bloomThreshold: 1.0, trailDecay: 0.84, streakScale: 3.0, particleSizeRange: [0.85, 2.25], brightnessBudget: [0.17, 0.53], backgroundTone: [0.006, 0.012, 0.03], celestialBrightness: 0.18 };
     const DEFAULT_SPACE_CONFIG = {
         enabled: true,
-        baseColour: [0.008, 0.012, 0.035],
-        nebulaColours: [[0.08, 0.12, 0.28], [0.18, 0.10, 0.22], [0.04, 0.15, 0.25]],
-        nebulaIntensity: 0.35,
-        bandIntensity: 0.45,
+        baseColour: [0.0, 0.0, 0.0],
+        nebulaColours: [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+        nebulaIntensity: 0.0,
+        bandIntensity: 0.0,
         bandAngle: 0.55,
         starDensity: 1.0,
         starTwinkle: 0.7,
@@ -2136,9 +2469,6 @@
                 lastGestureTime = now;
                 return;
             }
-            if (trans.u > 0.35 && trans.queuedIndex === -1) {
-                trans.queuedIndex = clamp(trans.toIndex + deltaStep, 0, formations.length - 1);
-            }
             return;
         }
 
@@ -2172,7 +2502,7 @@
         return true;
     };
 
-    window.addEventListener("wheel", (e) => {
+    listen(window, "wheel", (e) => {
         if (!sections.length) return;
         if (e.ctrlKey || e.metaKey) return;
         const dy = e.deltaY;
@@ -2193,7 +2523,7 @@
         touches[0].clientY - touches[1].clientY
     );
 
-    window.addEventListener("touchstart", (e) => {
+    listen(window, "touchstart", (e) => {
         if (e.touches.length === 2) {
             // Initialise two-finger pinch zoom and cancel any single-finger swipe
             pinchStartDist = getPinchDist(e.touches);
@@ -2210,7 +2540,7 @@
         touchIgnoreHoriz = !!(e.target && e.target.closest && e.target.closest(".course-grid, .hero-eq, .snap-eq, .paper-eq, .eq"));
     }, { passive: true });
 
-    window.addEventListener("touchmove", (e) => {
+    listen(window, "touchmove", (e) => {
         if (e.touches.length === 2) {
             if (pinchStartDist === null || pinchStartDist <= 0) {
                 pinchStartDist = getPinchDist(e.touches);
@@ -2259,8 +2589,8 @@
             touchIgnoreHoriz = false;
         }
     };
-    window.addEventListener("touchend", resetTouchState, { passive: true });
-    window.addEventListener("touchcancel", resetTouchState, { passive: true });
+    listen(window, "touchend", resetTouchState, { passive: true });
+    listen(window, "touchcancel", resetTouchState, { passive: true });
 
     let simTime = 0;
 
@@ -2481,8 +2811,8 @@
                 }
             }
         };
-        window.addEventListener("popstate", handleHashOrHistory);
-        window.addEventListener("hashchange", handleHashOrHistory);
+        listen(window, "popstate", handleHashOrHistory);
+        listen(window, "hashchange", handleHashOrHistory);
     }
 
     /* ---------- ?debug Telemetry HUD & Kerr Geodesic Diagnostics ---------- */
@@ -3069,7 +3399,8 @@
     let stageReadyEmitted = false;
     let lastTelemetryTime = -250;
     const tick = (now) => {
-        requestAnimationFrame(tick);
+        if (destroyed) return;
+        mainRafId = requestAnimationFrame(tick);
         if (contextLost || document.hidden || !stageInView) {
             lastTime = now;
             wasPaused = true;
@@ -3874,6 +4205,12 @@
             }
         }
 
+        /* ---------- 5-Phase Instanced WebGL2 Hyperspace Engine ---------- */
+        hyperspaceEngine.update(dt, isMobileDevice() ? 0.0 : ctxState.pointerX, isMobileDevice() ? 0.0 : ctxState.pointerY);
+        if (hyperspaceEngine.active && !isReducedMotion()) {
+            camera.fov += (hyperspaceEngine.fov - 60.0);
+        }
+
         // Live hero and camera velocities (smoothed) for hop continuity and speed-driven streaks
         {
             const inv = 1.0 / Math.max(dt, 1e-3);
@@ -4051,18 +4388,18 @@
             // Per-section celestial starfield depth cues (modulated smoothly through postState.celestialBrightness)
             gl.uniform1f(starUniforms.uBrightness, inside.starBright * (postState.celestialBrightness !== undefined ? postState.celestialBrightness : 0.18));
             gl.uniform3f(starUniforms.uBaseColour, sp.baseColour[0], sp.baseColour[1], sp.baseColour[2]);
-            gl.uniform3f(starUniforms.uNebulaCol0, sp.nebulaColours[0][0], sp.nebulaColours[0][1], sp.nebulaColours[0][2]);
-            gl.uniform3f(starUniforms.uNebulaCol1, sp.nebulaColours[1][0], sp.nebulaColours[1][1], sp.nebulaColours[1][2]);
-            gl.uniform3f(starUniforms.uNebulaCol2, sp.nebulaColours[2][0], sp.nebulaColours[2][1], sp.nebulaColours[2][2]);
-            gl.uniform1f(starUniforms.uNebulaIntensity, spEnabled ? sp.nebulaIntensity : 0.0);
-            gl.uniform1f(starUniforms.uBandIntensity, spEnabled ? sp.bandIntensity : 0.0);
-            gl.uniform1f(starUniforms.uBandAngle, sp.bandAngle);
             gl.uniform1f(starUniforms.uStarDensity, spEnabled ? sp.starDensity : 0.0);
             gl.uniform1f(starUniforms.uStarTwinkle, sp.starTwinkle);
             gl.uniform3f(starUniforms.uStarTint, sp.starTint[0], sp.starTint[1], sp.starTint[2]);
             gl.uniform1f(starUniforms.uShootingStars, (spEnabled && sp.shootingStars && !reduced) ? 1.0 : 0.0);
             gl.uniform1f(starUniforms.uParallax, sp.parallax);
-            gl.uniform1f(starUniforms.uWarpVelocity, reduced ? 0.0 : (trans.warpStrength || 0.0));
+            gl.uniform1f(starUniforms.uWarpVelocity, reduced ? 0.0 : (hyperspaceEngine.active ? hyperspaceEngine.velocityNorm : (trans.warpStrength || 0.0)));
+            if (starUniforms.uStretchFactor) {
+                gl.uniform1f(starUniforms.uStretchFactor, reduced ? 1.0 : (1.0 + hyperspaceEngine.velocityNorm * 11.0));
+            }
+            if (starUniforms.uVelocity) {
+                gl.uniform1f(starUniforms.uVelocity, reduced ? 0.0 : hyperspaceEngine.velocityNorm);
+            }
             gl.uniform2f(starUniforms.uPointerOffset, isMob ? 0.0 : ctxState.pointerX, isMob ? 0.0 : ctxState.pointerY);
             gl.uniform3f(starUniforms.uCamDir, camDirX, camDirY, camDirZ);
             gl.uniform1i(starUniforms.uQualityTier, skyTier);
@@ -4077,6 +4414,11 @@
                 gl.bindTexture(gl.TEXTURE_2D, skyRT.tex);
                 gl.uniform1i(blitAddUniforms.uTex, 0);
                 drawQuad();
+            }
+
+            // 2a-bis. 3,500-instance WebGL2 billboarded hyperspace quads in sceneRT
+            if (!reduced) {
+                hyperspaceEngine.render(camera, pw, ph, dpr, isLight);
             }
 
             gl.enable(gl.BLEND);
@@ -4248,10 +4590,10 @@
         // Pass 4: Final ACES Filmic Tone-Mapped Composite onto #stage-canvas
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, pw, ph);
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
 
         if (isLight) {
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         } else {
@@ -4322,7 +4664,32 @@
         }
     };
 
-    requestAnimationFrame(tick);
+    const destroy = () => {
+        if (destroyed) return;
+        destroyed = true;
+        if (mainRafId) {
+            cancelAnimationFrame(mainRafId);
+            mainRafId = 0;
+        }
+        if (resizeRafId) {
+            cancelAnimationFrame(resizeRafId);
+            resizeRafId = 0;
+        }
+        if (reducedMotionFadeTimerId) {
+            clearTimeout(reducedMotionFadeTimerId);
+            reducedMotionFadeTimerId = 0;
+        }
+        hyperspaceEngine.dispose();
+        for (let i = 0; i < cleanupFns.length; i++) {
+            try { cleanupFns[i](); } catch (_) {}
+        }
+        cleanupFns.length = 0;
+        if (typeof window !== "undefined" && window.triggerHyperspaceJump === triggerHyperspaceJump) {
+            delete window.triggerHyperspaceJump;
+        }
+    };
+
+    mainRafId = requestAnimationFrame(tick);
 
     console.info(`[THREAD_STAGE] Initialised single shared particle buffer: N=${INITIAL_N}, bufferReallocations=${bufferReallocations}`);
 
@@ -4351,7 +4718,8 @@
         },
         get phase() { return trans.phase; },
         get progress() { return trans.u; },
-        get isTransitioning() { return trans.active || intraHop.active; },
+        get isTransitioning() { return trans.active || intraHop.active || hyperspaceEngine.active; },
+        get hyperspaceJump() { return hyperspaceEngine; },
         get fps() { return fps; },
         get simTime() { return simTime; },
         get intraHop() { return intraHop; },
@@ -4384,6 +4752,8 @@
         refreshSections,
         goToSection: goToDimension,
         transitionToState,
-        triggerStep
+        triggerStep,
+        triggerHyperspaceJump,
+        destroy
     };
 }));

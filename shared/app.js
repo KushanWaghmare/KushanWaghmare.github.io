@@ -563,11 +563,158 @@
                     updateBankAudio(ambient.bankA, fromAudio, 1.0 - b, t0);
                     updateBankAudio(ambient.bankB, toAudio, b, t0);
                 });
+            },
+            hyperspaceAnticipation: () => {
+                withContext((t0) => {
+                    const masterOut = getMasterBus();
+                    if (!masterOut) return;
+                    const nb = noise();
+                    if (!nb) return;
+                    const dur = 0.25;
+                    const src = ctx.createBufferSource();
+                    const lp = ctx.createBiquadFilter();
+                    const nGain = ctx.createGain();
+                    src.buffer = nb;
+                    src.loop = true;
+                    lp.type = "lowpass";
+                    lp.Q.value = 2.5;
+                    lp.frequency.setValueAtTime(110, t0);
+                    lp.frequency.exponentialRampToValueAtTime(420, t0 + dur);
+                    nGain.gain.setValueAtTime(0.0001, t0);
+                    nGain.gain.linearRampToValueAtTime(0.12, t0 + 0.06);
+                    nGain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+                    src.connect(lp);
+                    lp.connect(nGain);
+                    nGain.connect(masterOut);
+                    src.start(t0);
+                    src.stop(t0 + dur + 0.02);
+                    src.onended = () => {
+                        try { src.disconnect(); lp.disconnect(); nGain.disconnect(); } catch (e) {}
+                    };
+                });
+            },
+            hyperspaceIgnition: () => {
+                withContext((t0) => {
+                    const masterOut = getMasterBus();
+                    if (!masterOut) return;
+                    const dur = 1.2;
+
+                    // Dual detuned sawtooth oscillators (55Hz / 55.6Hz) swept up one octave through resonant low-pass (Q = 4.2)
+                    const oscA = ctx.createOscillator();
+                    const oscB = ctx.createOscillator();
+                    const lp = ctx.createBiquadFilter();
+                    const oscGain = ctx.createGain();
+                    oscA.type = "sawtooth";
+                    oscB.type = "sawtooth";
+                    oscA.frequency.setValueAtTime(55, t0);
+                    oscA.frequency.exponentialRampToValueAtTime(110, t0 + dur);
+                    oscB.frequency.setValueAtTime(55.6, t0);
+                    oscB.frequency.exponentialRampToValueAtTime(111.2, t0 + dur);
+                    lp.type = "lowpass";
+                    lp.Q.value = 4.2;
+                    lp.frequency.setValueAtTime(140, t0);
+                    lp.frequency.exponentialRampToValueAtTime(1800, t0 + dur);
+                    oscGain.gain.setValueAtTime(0.0001, t0);
+                    oscGain.gain.linearRampToValueAtTime(0.14, t0 + 0.16);
+                    oscGain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+                    oscA.connect(lp);
+                    oscB.connect(lp);
+                    lp.connect(oscGain);
+                    oscGain.connect(masterOut);
+                    oscA.start(t0);
+                    oscB.start(t0);
+                    oscA.stop(t0 + dur + 0.03);
+                    oscB.stop(t0 + dur + 0.03);
+                    oscA.onended = () => {
+                        try { oscA.disconnect(); oscB.disconnect(); lp.disconnect(); oscGain.disconnect(); } catch (e) {}
+                    };
+
+                    // Layered stereo-panned noise rush (gain: 0.16)
+                    const nb = noise();
+                    if (nb) {
+                        const src = ctx.createBufferSource();
+                        const nFilter = ctx.createBiquadFilter();
+                        const nGain = ctx.createGain();
+                        const panner = typeof ctx.createStereoPanner === "function" ? ctx.createStereoPanner() : null;
+                        src.buffer = nb;
+                        src.loop = true;
+                        nFilter.type = "bandpass";
+                        nFilter.Q.value = 1.2;
+                        nFilter.frequency.setValueAtTime(220, t0);
+                        nFilter.frequency.exponentialRampToValueAtTime(3400, t0 + dur);
+                        nGain.gain.setValueAtTime(0.0001, t0);
+                        nGain.gain.linearRampToValueAtTime(0.16, t0 + 0.22);
+                        nGain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+                        src.connect(nFilter);
+                        nFilter.connect(nGain);
+                        if (panner) {
+                            panner.pan.setValueAtTime(-0.45, t0);
+                            panner.pan.linearRampToValueAtTime(0.45, t0 + dur);
+                            nGain.connect(panner);
+                            panner.connect(masterOut);
+                        } else {
+                            nGain.connect(masterOut);
+                        }
+                        src.start(t0);
+                        src.stop(t0 + dur + 0.03);
+                        src.onended = () => {
+                            try {
+                                src.disconnect();
+                                nFilter.disconnect();
+                                nGain.disconnect();
+                                if (panner) panner.disconnect();
+                            } catch (e) {}
+                        };
+                    }
+                });
+            },
+            hyperspaceExitSnap: () => {
+                withContext((t0) => {
+                    const masterOut = getMasterBus();
+                    if (!masterOut) return;
+
+                    // Crisp high-pass mechanical transient click (2.4kHz, 35ms exponential decay)
+                    const nb = noise();
+                    if (nb) {
+                        const src = ctx.createBufferSource();
+                        const hp = ctx.createBiquadFilter();
+                        const nGain = ctx.createGain();
+                        src.buffer = nb;
+                        hp.type = "highpass";
+                        hp.frequency.setValueAtTime(2400, t0);
+                        hp.Q.value = 1.4;
+                        nGain.gain.setValueAtTime(0.24, t0);
+                        nGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.035);
+                        src.connect(hp);
+                        hp.connect(nGain);
+                        nGain.connect(masterOut);
+                        src.start(t0);
+                        src.stop(t0 + 0.05);
+                        src.onended = () => {
+                            try { src.disconnect(); hp.disconnect(); nGain.disconnect(); } catch (e) {}
+                        };
+                    }
+
+                    // Paired 48Hz sub-bass thump (130ms decay)
+                    const sub = ctx.createOscillator();
+                    const oGain = ctx.createGain();
+                    sub.type = "sine";
+                    sub.frequency.setValueAtTime(48, t0);
+                    oGain.gain.setValueAtTime(0.28, t0);
+                    oGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.13);
+                    sub.connect(oGain);
+                    oGain.connect(masterOut);
+                    sub.start(t0);
+                    sub.stop(t0 + 0.145);
+                    sub.onended = () => {
+                        try { sub.disconnect(); oGain.disconnect(); } catch (e) {}
+                    };
+                });
             }
         };
     })();
 
-    window.SOUND = KW.SOUND = SOUND;
+    window.SOUND = KW.SOUND = KW.audio = SOUND;
 
     const tags = (a) => a.map((t) => `<span class="tag">${t}</span>`).join("");
     const pad = (n) => String(n + 1).padStart(2, "0");
@@ -888,219 +1035,7 @@
             window.addEventListener("scroll", syncNavScroll, { passive: true });
         }
 
-        if (!$(".kw-stage-hud")) {
-            const hud = document.createElement("div");
-            hud.className = "kw-stage-hud";
-            hud.setAttribute("aria-label", "Stage telemetry");
-            hud.innerHTML = '<span class="kw-hud-sec">01 / 01</span><span class="kw-hud-crumb"></span><span class="kw-hud-telem" aria-hidden="true">60 FPS</span><button type="button" class="kw-how-built-btn" aria-expanded="false" title="Maths & GPU architecture">HOW BUILT</button><button type="button" class="kw-hud-capture" title="Capture composited frame as PNG">CAPTURE</button>';
-            document.body.appendChild(hud);
-
-            const builtPanel = document.createElement("div");
-            builtPanel.className = "kw-how-built-panel";
-            builtPanel.hidden = true;
-            builtPanel.setAttribute("role", "dialog");
-            builtPanel.setAttribute("aria-label", "How this was built");
-            builtPanel.innerHTML = '<div class="kw-how-built-head">HOW THIS WAS BUILT</div><p class="kw-how-built-summary"></p><a class="kw-how-built-link" href="https://github.com/KushanWaghmare/KushanWaghmare.github.io/blob/main/shared/simulations/core/gpu-thread-formations.js" target="_blank" rel="noopener noreferrer">View gpu-thread-formations.js ↗</a>';
-            document.body.appendChild(builtPanel);
-
-            const secEl = hud.querySelector(".kw-hud-sec");
-            const crumbEl = hud.querySelector(".kw-hud-crumb");
-            const telemEl = hud.querySelector(".kw-hud-telem");
-            const builtBtn = hud.querySelector(".kw-how-built-btn");
-            const builtSumEl = builtPanel.querySelector(".kw-how-built-summary");
-            const capBtn = hud.querySelector(".kw-hud-capture");
-
-            const getActiveSimSummary = () => {
-                const secs = $$(".snap-section, .hero, .about-contact-section");
-                const S = window.THREAD_STAGE;
-                const idx = (S && S.supported && typeof S.currentIndex === "number") ? S.currentIndex : (KW._secIdx || 0);
-                const active = secs[idx] || $(".snap-section.is-inview, .hero.is-inview") || secs[0];
-                const tag = active ? active.querySelector(".sim-tag") : $(".sim-tag");
-                return (tag && tag.textContent.trim()) || "Real-time GPU particle & analytical physics stage";
-            };
-
-            const setBuiltOpen = (open) => {
-                builtPanel.hidden = !open;
-                builtPanel.classList.toggle("is-open", open);
-                builtBtn.setAttribute("aria-expanded", open ? "true" : "false");
-                if (open) builtSumEl.textContent = getActiveSimSummary();
-            };
-
-            builtBtn.addEventListener("click", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setBuiltOpen(builtPanel.hidden);
-            });
-
-            document.addEventListener("click", (e) => {
-                if (!builtPanel.hidden && !builtPanel.contains(e.target) && e.target !== builtBtn) {
-                    setBuiltOpen(false);
-                }
-            });
-
-            const DOMAIN_CRUMBS = {
-                intro: "LANIAKEA",
-                math: "MATHEMATICS",
-                physics: "PHYSICS",
-                datascience: "DATA SCIENCE",
-                quant: "QUANT",
-                cs: "COMPUTING",
-                contact: "CONTACT"
-            };
-
-            let lastSecText = "";
-            let lastCrumb = "";
-            let lastTime = performance.now();
-            let fps = 60;
-            let lastFpsUpdate = 0;
-
-            const tickHud = (now) => {
-                if (!document.hidden) {
-                    const dt = now - lastTime;
-                    if (dt > 0 && dt < 250) {
-                        fps = fps * 0.9 + (1000 / dt) * 0.1;
-                    }
-                    const S = window.THREAD_STAGE;
-                    const total = KW._secTotal || document.querySelectorAll(".snap-section").length || 1;
-                    const idx = (S && S.supported && typeof S.currentIndex === "number") ? S.currentIndex : (KW._secIdx || 0);
-                    const secText = String(Math.min(idx + 1, total)).padStart(2, "0") + " / " + String(total).padStart(2, "0");
-                    if (secText !== lastSecText) {
-                        lastSecText = secText;
-                        secEl.textContent = secText;
-                        if (!builtPanel.hidden) builtSumEl.textContent = getActiveSimSummary();
-                    }
-                    const dom = D.dataset.domain || "intro";
-                    const crumb = DOMAIN_CRUMBS[dom] || dom.toUpperCase();
-                    if (crumb !== lastCrumb) {
-                        lastCrumb = crumb;
-                        crumbEl.textContent = crumb;
-                    }
-                    if (now - lastFpsUpdate >= 250) {
-                        lastFpsUpdate = now;
-                        const tel = window.__THREAD_TELEMETRY__;
-                        const fpsVal = (tel && Number.isFinite(tel.fps)) ? tel.fps : Math.round(fps);
-                        const parts = [fpsVal + " FPS"];
-                        if (tel && Number.isFinite(tel.particles)) {
-                            parts.push(tel.particles.toLocaleString("en-GB") + " PTS");
-                        }
-                        if (tel && Number.isFinite(tel.simTime)) {
-                            parts.push(tel.simTime.toFixed(1) + "s");
-                        }
-                        telemEl.textContent = parts.join(" · ");
-                    }
-                }
-                lastTime = now;
-                requestAnimationFrame(tickHud);
-            };
-            requestAnimationFrame(tickHud);
-
-            // Toggle live telemetry readout with the T key (ignoring inputs and modifiers)
-            window.addEventListener("keydown", (e) => {
-                if (e.key === "Escape" && !builtPanel.hidden) {
-                    setBuiltOpen(false);
-                    return;
-                }
-                if (e.metaKey || e.ctrlKey || e.altKey) return;
-                if (e.target && (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.target.isContentEditable)) return;
-                if (e.key === "t" || e.key === "T") {
-                    const open = hud.classList.toggle("is-telem-open");
-                    telemEl.setAttribute("aria-hidden", open ? "false" : "true");
-                }
-            });
-
-            // Back-to-top warp for footer end-state link
-            document.addEventListener("click", (e) => {
-                const topLink = e.target && e.target.closest ? e.target.closest(".kw-back-top") : null;
-                if (!topLink) return;
-                e.preventDefault();
-                const S = window.THREAD_STAGE;
-                if (S && S.supported && typeof S.goTo === "function") S.goTo(0);
-                else if (S && S.supported && typeof S.goToSection === "function") S.goToSection(0);
-                else {
-                    const prevSnap = D.style.scrollSnapType;
-                    D.style.scrollSnapType = "none";
-                    window.scrollTo({ top: 0, behavior: REDUCED ? "instant" : "smooth" });
-                    setTimeout(() => { D.style.scrollSnapType = prevSnap; }, REDUCED ? 0 : 650);
-                }
-            });
-
-            // Interactive Black-Scholes / Ornstein-Uhlenbeck mini-demo calculators
-            const normCdf = (x) => {
-                const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741, a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
-                const sign = x < 0 ? -1 : 1;
-                const z = Math.abs(x) / Math.SQRT2;
-                const t = 1 / (1 + p * z);
-                const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-z * z);
-                return 0.5 * (1 + sign * y);
-            };
-            document.addEventListener("input", (e) => {
-                const box = e.target && e.target.closest ? e.target.closest(".kw-mini-demo") : null;
-                if (!box) return;
-                const out = box.querySelector("[data-out]");
-                if (!out) return;
-                if (box.dataset.demo === "bs") {
-                    const spot = Math.max(1e-3, parseFloat(box.querySelector('[data-field="spot"]')?.value) || 100);
-                    const sig = Math.max(1e-3, parseFloat(box.querySelector('[data-field="vol"]')?.value) || 0.2);
-                    const K = 100, r = 0.05, T = 1.0, rootT = Math.sqrt(T);
-                    const d1 = (Math.log(spot / K) + (r + 0.5 * sig * sig) * T) / (sig * rootT);
-                    const d2 = d1 - sig * rootT;
-                    const delta = normCdf(d1);
-                    const call = spot * delta - K * Math.exp(-r * T) * normCdf(d2);
-                    out.textContent = `Call ${call.toFixed(2)} · Δ ${delta.toFixed(3)}`;
-                } else if (box.dataset.demo === "ou") {
-                    const x = parseFloat(box.querySelector('[data-field="spread"]')?.value) || 0;
-                    const mu = parseFloat(box.querySelector('[data-field="mean"]')?.value) || 0;
-                    const z = x - mu;
-                    const sig = z > 1.5 ? "SHORT SPREAD" : z < -1.5 ? "LONG SPREAD" : "NEUTRAL";
-                    out.textContent = `z = ${z >= 0 ? "+" : ""}${z.toFixed(2)} · ${sig}`;
-                }
-            });
-
-            capBtn.addEventListener("click", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const stage = document.getElementById("stage-canvas");
-                const overlay = document.getElementById("laniakea-overlay") || document.querySelector("canvas.laniakea-hero-canvas");
-                if (!stage && !overlay) return;
-                requestAnimationFrame(() => {
-                    const w = (stage && stage.width) || (overlay && overlay.width) || window.innerWidth;
-                    const h = (stage && stage.height) || (overlay && overlay.height) || window.innerHeight;
-                    if (!w || !h) return;
-                    const out = document.createElement("canvas");
-                    out.width = w;
-                    out.height = h;
-                    const ctx = out.getContext("2d");
-                    if (!ctx) return;
-                    ctx.fillStyle = "#060810";
-                    ctx.fillRect(0, 0, w, h);
-                    if (stage && stage.width && stage.height) {
-                        try { ctx.drawImage(stage, 0, 0, w, h); } catch (err) {}
-                    }
-                    if (overlay && overlay.width && overlay.height) {
-                        try { ctx.drawImage(overlay, 0, 0, w, h); } catch (err) {}
-                    }
-                    const saveUrl = (url, revoke) => {
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `kushan-stage-${Date.now()}.png`;
-                        document.body.appendChild(a);
-                        a.click();
-                        a.remove();
-                        if (revoke) setTimeout(() => URL.revokeObjectURL(url), 1000);
-                    };
-                    if (out.toBlob) {
-                        out.toBlob((blob) => {
-                            if (blob) saveUrl(URL.createObjectURL(blob), true);
-                        }, "image/png");
-                    } else {
-                        saveUrl(out.toDataURL("image/png"), false);
-                    }
-                    capBtn.textContent = "SAVED";
-                    setTimeout(() => { capBtn.textContent = "CAPTURE"; }, 900);
-                });
-            });
-        }
-
+        
         // Unobtrusive parameter scrubber pill for key domain simulations
         if (!$(".kw-sim-scrubber")) {
             const SCRUB_CFG = {
@@ -3171,12 +3106,13 @@ const initNavSim = (c) => {
         window.addEventListener("resize", fit, { passive: true });
 
         let rectsCache = [], rectsAt = 0;
+        let cachedSecs = document.querySelectorAll(".snap-section");
         const textRects = (now) => {
             if (now - rectsAt < 180) return rectsCache; rectsAt = now;
             const S = window.THREAD_STAGE;
             const idx = (S && S.supported) ? S.currentIndex : 0;
-            const secs = document.querySelectorAll(".snap-section");
-            const activeSec = secs[idx] || heroSec;
+            if (!cachedSecs.length) cachedSecs = document.querySelectorAll(".snap-section");
+            const activeSec = cachedSecs[idx] || heroSec;
             const els = Array.from(activeSec.querySelectorAll("h1,h2,p,.snap-overview-card,.contact-card,.card")), kx = activeSec.querySelector(".katex");
             if (kx) els.push(kx.closest('[class*="formula"],[class*="equation"],[class*="eq"]') || (kx.parentElement && kx.parentElement.parentElement) || kx);
             rectsCache = els.map((el) => { const r = el.getBoundingClientRect(); return { x: r.left - 8, y: r.top - 6, w: r.width + 16, h: r.height + 12 }; }).filter((r) => r.w > 8 && r.h > 8);
@@ -3203,8 +3139,7 @@ const initNavSim = (c) => {
             const S = window.THREAD_STAGE, T = S && S.trans;
             const hs = S && S.supported ? S.heroScreen : null;
             const activeIdx = (T && T.active) ? (T.u > 0.5 ? T.toIndex : T.fromIndex) : ((S && S.currentIndex) || 0);
-            const secs = document.querySelectorAll(".snap-section");
-            const activeSec = (secs && secs[activeIdx]) || null;
+            const activeSec = (cachedSecs && cachedSecs[activeIdx]) || null;
             const simKey = (activeSec && activeSec.dataset && activeSec.dataset.sim) || "";
             overlay.draw(now * 0.001, {
                 ox: 0, oy: 0,
@@ -3434,6 +3369,8 @@ const initNavSim = (c) => {
     };
     KW.loadPage = loadPage;
 
+    const DOMAIN_ROUTE_RE = /(?:^|\/)(?:math|physics|datascience|quant|cs)\.html$/i;
+
     document.addEventListener("click", (e) => {
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         const a = e.target.closest && e.target.closest("a[href]");
@@ -3443,6 +3380,11 @@ const initNavSim = (c) => {
         const u = new URL(raw, location.href);
         if (u.origin !== location.origin) return;
         e.preventDefault();
+        if (DOMAIN_ROUTE_RE.test(u.pathname) && u.pathname !== location.pathname && typeof window.triggerHyperspaceJump === "function") {
+            try {
+                if (window.triggerHyperspaceJump(u.href, () => loadPage(u.href, true)) !== false) return;
+            } catch (err) {}
+        }
         loadPage(u.href, true);
     });
 
@@ -3454,10 +3396,20 @@ const initNavSim = (c) => {
         }
     });
 
+    let spotRaf = 0, spotCard = null, spotX = 0, spotY = 0;
     document.addEventListener("pointermove", (e) => {
         if (e.pointerType === "touch") return;
         const c = e.target.closest && e.target.closest(".card, .paper-card, .course-card, .contact-card");
-        if (c) { const r = c.getBoundingClientRect(); c.style.setProperty("--mx", e.clientX - r.left + "px"); c.style.setProperty("--my", e.clientY - r.top + "px"); }
+        if (!c) return;
+        spotCard = c; spotX = e.clientX; spotY = e.clientY;
+        if (spotRaf) return;
+        spotRaf = requestAnimationFrame(() => {
+            spotRaf = 0;
+            if (!spotCard) return;
+            const r = spotCard.getBoundingClientRect();
+            spotCard.style.setProperty("--mx", spotX - r.left + "px");
+            spotCard.style.setProperty("--my", spotY - r.top + "px");
+        });
     }, { passive: true });
     document.addEventListener("click", (e) => {
         const btn = e.target.closest && e.target.closest(".copy-btn");
@@ -3502,6 +3454,7 @@ const initNavSim = (c) => {
             el.style.setProperty("--mag-x", "0px");
             el.style.setProperty("--mag-y", "0px");
         };
+        let magRaf = 0, magX = 0, magY = 0;
         document.addEventListener("pointermove", (e) => {
             if (e.pointerType === "touch") return;
             const el = e.target.closest && e.target.closest(MAG_SEL);
@@ -3510,11 +3463,17 @@ const initNavSim = (c) => {
                 activeMag = el || null;
             }
             if (!el) return;
-            const r = el.getBoundingClientRect();
-            const mx = Math.max(-4, Math.min(4, ((e.clientX - (r.left + r.width / 2)) / Math.max(r.width / 2, 1)) * 4));
-            const my = Math.max(-4, Math.min(4, ((e.clientY - (r.top + r.height / 2)) / Math.max(r.height / 2, 1)) * 4));
-            el.style.setProperty("--mag-x", mx.toFixed(2) + "px");
-            el.style.setProperty("--mag-y", my.toFixed(2) + "px");
+            magX = e.clientX; magY = e.clientY;
+            if (magRaf) return;
+            magRaf = requestAnimationFrame(() => {
+                magRaf = 0;
+                if (!activeMag) return;
+                const r = activeMag.getBoundingClientRect();
+                const mx = Math.max(-4, Math.min(4, ((magX - (r.left + r.width / 2)) / Math.max(r.width / 2, 1)) * 4));
+                const my = Math.max(-4, Math.min(4, ((magY - (r.top + r.height / 2)) / Math.max(r.height / 2, 1)) * 4));
+                activeMag.style.setProperty("--mag-x", mx.toFixed(2) + "px");
+                activeMag.style.setProperty("--mag-y", my.toFixed(2) + "px");
+            });
         }, { passive: true });
         document.addEventListener("pointerout", (e) => {
             if (activeMag && (!e.relatedTarget || !activeMag.contains(e.relatedTarget))) {

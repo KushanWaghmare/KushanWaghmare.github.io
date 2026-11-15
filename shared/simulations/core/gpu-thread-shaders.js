@@ -248,6 +248,7 @@ uniform vec3 uStarTint;
 uniform float uShootingStars;
 uniform float uParallax;
 uniform float uWarpVelocity;
+uniform float uStretchFactor;
 uniform vec2 uPointerOffset;
 uniform vec3 uCamDir;
 uniform int uQualityTier;
@@ -374,9 +375,16 @@ vec3 evalStarShell(
     float mag = pow(clamp(h.x / max(prob, 1e-4), 0.0, 1.0), magPow);
     float bright = mix(minBright, maxBright, mag) * energyNorm;
 
-    // Realistic blackbody temperature spread (2600 K M-dwarfs to 26000 K O/B-stars)
+    // Star colour: crisp white cores in idle cruise; shift toward electric cyan/blue luminescence during hyperspace
     float starT = mix(2600.0, 26000.0, pow(h.y, 2.2));
-    vec3 col = blackbody(starT) * uStarTint;
+    vec3 baseCol = mix(vec3(1.0), blackbody(starT), 0.22) * uStarTint;
+    vec3 col = baseCol;
+    if (warpStretch > 1.01) {
+        float shift = clamp((warpStretch - 1.0) * 0.18, 0.0, 1.0);
+        vec3 hyperCol = mix(vec3(0.231, 0.510, 0.965), vec3(0.576, 0.773, 0.992), h.z);
+        vec3 streakCol = mix(hyperCol, vec3(1.0), smoothstep(0.38, 0.92, core));
+        col = mix(baseCol, streakCol, shift);
+    }
 
     float tw = 1.0;
     if (twinkleAmt > 0.001) {
@@ -454,6 +462,54 @@ vec3 shootingStar(vec2 uv, float aspectX, float time) {
     return vec3(1.55, 1.80, 2.25) * ((core + glow) * fade);
 }
 
+// High-density peripheral cylindrical vortex light streaks rushing past outer bounds during hyperspace
+vec3 hyperspaceVortex(vec2 uv, float aspectX, float time, float warp, float stretch) {
+    if (warp <= 0.06) return vec3(0.0);
+
+    float hyper = smoothstep(0.06, 0.28, warp);
+    vec2 p = (uv - 0.5) * vec2(aspectX, 1.0);
+    float r = length(p);
+    float periph = smoothstep(0.18, 0.58, r);
+    if (periph <= 0.001) return vec3(0.0);
+
+    float theta = atan(p.y, p.x);
+    float invR = 1.0 / max(r, 0.06);
+    float speed = 2.4 + stretch * 0.35;
+
+    vec3 acc = vec3(0.0);
+    for (int layer = 0; layer < 3; layer++) {
+        float fl = float(layer);
+        float sectors = 64.0 + fl * 40.0;
+        float angCoord = (theta / 6.2831853 + 0.5) * sectors;
+        float secId = floor(angCoord);
+        float secFrac = fract(angCoord) - 0.5;
+
+        float zCoord = invR * (1.35 + fl * 0.55) - time * (speed + fl * 1.15) + fl * 17.3;
+        float zId = floor(zCoord);
+        float zFrac = fract(zCoord);
+
+        vec3 h = hash33(vec3(secId, zId, fl + 3.0));
+        float density = 0.28 + 0.24 * hyper;
+        if (h.x < density) {
+            float angJitter = (h.y - 0.5) * 0.42;
+            float angDist = abs(secFrac - angJitter);
+            float lineSharp = exp(-angDist * angDist * (34.0 + fl * 12.0));
+
+            float streakLen = clamp(0.32 + 0.045 * stretch, 0.25, 0.92);
+            float head = smoothstep(0.0, 0.14, zFrac);
+            float tail = 1.0 - smoothstep(streakLen * 0.35, streakLen, zFrac);
+            float longProf = head * tail;
+
+            vec3 hyperCol = mix(vec3(0.231, 0.510, 0.965), vec3(0.576, 0.773, 0.992), h.z);
+            vec3 streakCol = mix(hyperCol, vec3(1.0), smoothstep(0.55, 0.95, lineSharp * longProf));
+            float intensity = (0.45 + 0.85 * h.y) * (0.65 + 0.35 * hyper);
+            acc += streakCol * (lineSharp * longProf * intensity);
+        }
+    }
+
+    return acc * (periph * hyper * 1.35);
+}
+
 void main() {
     float aspectX = uRes.x / max(1.0, uRes.y);
     vec2 aspect = vec2(aspectX, 1.0);
@@ -483,52 +539,8 @@ void main() {
     vec3 upAxis = cross(rightAxis, dBase);
     vec3 radial3D = normalize(rightAxis * rad2D.x + upAxis * rad2D.y);
     float warp = clamp(abs(uWarpVelocity), 0.0, 1.0) * motion;
-
-    // 2. Milky Way band: tilted galactic plane, 3-octave FBM, warm core to cool outer dust, dark dust lanes
-    vec3 mwCol = vec3(0.0);
-    if (uBandIntensity > 0.001) {
-        float ca = cos(uBandAngle), sa = sin(uBandAngle);
-        vec3 galPole = normalize(vec3(-0.35 * ca - 0.59 * sa, 0.72, 0.59 * ca - 0.35 * sa));
-        float b = dot(dFar, galPole);
-        float bandEnv = exp(-b * b * 14.0);
-        if (bandEnv > 0.004) {
-            vec3 dBand = dFar * 3.8 + vec3(t * 0.0011, -t * 0.0007, t * 0.0009);
-            float nBand = fbm3(dBand);
-            float dust = fbm3(dBand * 2.1 + vec3(7.4, 2.1, 9.8));
-            float dustLane = 1.0 - 0.72 * smoothstep(0.42, 0.76, dust) * exp(-b * b * 46.0);
-            vec3 warmCore = vec3(0.18, 0.13, 0.09);
-            vec3 coolOuter = vec3(0.035, 0.055, 0.125);
-            vec3 bandTint = mix(coolOuter, warmCore, exp(-b * b * 34.0));
-            mwCol = bandTint * (bandEnv * (0.45 + 0.85 * nBand) * dustLane * uBandIntensity * 0.24);
-        }
-    }
-
-    // 3. Nebula clouds: domain-warped FBM, strongly desaturated at edges (Tiered)
-    vec3 nebCol = vec3(0.0);
-    if (uQualityTier >= 1 && uNebulaIntensity > 0.001) {
-        vec3 q0 = dMid * 2.3 + vec3(t * 0.0022, -t * 0.0015, 0.0);
-        vec3 warp0 = vec3(fbm2(q0), fbm2(q0 + vec3(5.2, 1.3, 2.8)), fbm2(q0 + vec3(1.7, 9.2, 4.1)));
-        float d0 = smoothstep(0.44, 0.86, fbm3(q0 + 1.30 * warp0));
-        float l0 = dot(uNebulaCol0, vec3(0.2126, 0.7152, 0.0722));
-        vec3 c0 = mix(vec3(l0 * 0.45), uNebulaCol0, smoothstep(0.0, 0.65, d0));
-        nebCol += c0 * (d0 * 0.26);
-
-        if (uQualityTier >= 2) {
-            vec3 q1 = dMid * 2.8 + vec3(-t * 0.0018, t * 0.0020, 4.2);
-            vec3 warp1 = vec3(fbm2(q1 + vec3(3.1, 6.4, 1.2)), fbm2(q1 + vec3(8.3, 2.7, 5.5)), 0.0);
-            float d1 = smoothstep(0.48, 0.88, fbm3(q1 + 1.25 * warp1));
-            float l1 = dot(uNebulaCol1, vec3(0.2126, 0.7152, 0.0722));
-            vec3 c1 = mix(vec3(l1 * 0.45), uNebulaCol1, smoothstep(0.0, 0.65, d1));
-            nebCol += c1 * (d1 * 0.22);
-
-            vec3 q2 = dNear * 1.9 + vec3(t * 0.0012, t * 0.0016, 9.1);
-            float d2 = smoothstep(0.52, 0.90, fbm3(q2 + 0.95 * warp0));
-            float l2 = dot(uNebulaCol2, vec3(0.2126, 0.7152, 0.0722));
-            vec3 c2 = mix(vec3(l2 * 0.45), uNebulaCol2, smoothstep(0.0, 0.65, d2));
-            nebCol += c2 * (d2 * 0.16);
-        }
-        nebCol *= uNebulaIntensity;
-    }
+    float stretch = mix(1.0, max(uStretchFactor, 1.0 + warp * 10.0), motion);
+    float hyperGate = smoothstep(0.06, 0.14, warp);
 
     // 4. Multi-depth starfield (Far, Mid, Near)
     float dens = clamp(uStarDensity, 0.0, 2.0);
@@ -536,29 +548,31 @@ void main() {
 
     vec3 stars = vec3(0.0);
     // Far: thousands of tiny stars with blackbody spread & power-law magnitude
-    stars += evalStarShell(dFar, 138.0, min(0.46 * dens, 0.85), 0.036, 0.06, 0.75, 4.2, 0.0, t, radial3D, 1.0 + warp * 3.5, false);
+    stars += evalStarShell(dFar, 138.0, min(0.46 * dens, 0.85), 0.036, 0.06, 0.75, 4.2, 0.0, t, radial3D, 1.0 + (stretch - 1.0) * 0.40 * hyperGate, false);
     // Mid: larger stars with gentle per-star scintillation
-    stars += evalStarShell(dMid, 62.0, min(0.24 * dens, 0.70), 0.048, 0.14, 1.35, 3.6, twAmt, t, radial3D, 1.0 + warp * 5.5, false);
+    stars += evalStarShell(dMid, 62.0, min(0.24 * dens, 0.70), 0.048, 0.14, 1.35, 3.6, twAmt, t, radial3D, 1.0 + (stretch - 1.0) * 0.70 * hyperGate, false);
     // Near: sparse bright HDR stars (>1.0 for bloom) + soft glow + Tier 2 diffraction spikes
-    stars += evalStarShell(dNear, 25.0, min(0.13 * dens, 0.45), 0.056, 0.45, 5.20, 3.2, twAmt * 0.55, t, radial3D, 1.0 + warp * 8.5, uQualityTier >= 2);
+    stars += evalStarShell(dNear, 25.0, min(0.13 * dens, 0.45), 0.056, 0.45, 5.20, 3.2, twAmt * 0.55, t, radial3D, 1.0 + (stretch - 1.0) * 1.00 * hyperGate, uQualityTier >= 2);
 
     // 5. Rare events: distant galaxy smudges, drifting cosmic dust, shooting star
     vec3 events = vec3(0.0);
     events += distantGalaxy(dFar, normalize(vec3(0.14, 0.91, 0.39)), vec3(1.0, 0.2, 0.4), vec2(52.0, 95.0), vec3(0.065, 0.058, 0.075));
     events += distantGalaxy(dFar, normalize(vec3(-0.19, 0.79, 0.58)), vec3(0.3, 1.0, -0.2), vec2(68.0, 120.0), vec3(0.045, 0.055, 0.080));
 
-    if (uQualityTier >= 1) {
-        float dustMot = smoothstep(0.76, 0.96, noise3(dNear * 18.0 + vec3(t * 0.028, -t * 0.019, t * 0.014)));
-        events += vec3(0.025, 0.030, 0.042) * dustMot;
-    }
     events += shootingStar(vUV, aspectX, t);
 
-    // Keep Milky Way and nebula ultra-subtle on pitch-black sky; boost crisp pinpoint stars
-    mwCol *= 0.18;
-    nebCol *= 0.20;
-    stars *= 2.1;
+    // Peripheral cylindrical vortex light streaks during hyperspace
+    vec3 vortex = hyperspaceVortex(vUV, aspectX, t, warp, stretch);
 
-    vec3 celestial = mwCol + nebCol + stars + events;
+    // Central Occlusion Mask (Hero Legibility): keep inner 30% radius clear/dark during hyperspace
+    float centerMask = mix(1.0, smoothstep(0.18, 0.36, length(vUV - 0.5)), smoothstep(0.08, 0.45, warp));
+
+    // Pure pitch-black deep space void with crisp pinpoint stars (no nebula/dust wash)
+    stars *= 2.4 * centerMask;
+    events *= centerMask;
+    vortex *= centerMask;
+
+    vec3 celestial = stars + events + vortex;
 
     // 7. Light theme: keep subtle/clean so light editorial text stays readable
     if (uIsLight > 0.5) {
@@ -1181,7 +1195,9 @@ vec3 sampleBloomTent(sampler2D tex, vec2 uv) {
 vec3 gradeLGG(vec3 col, vec3 lift, vec3 gamma, vec3 gain) {
     vec3 safeGain = mix(vec3(1.0), gain, step(vec3(0.001), abs(gain)));
     vec3 safeGamma = max(vec3(0.1), mix(vec3(1.0), gamma, step(vec3(0.001), abs(gamma))));
-    vec3 graded = clamp(col * safeGain + lift * (1.0 - col), 0.0, 1.0);
+    // Keep pure black deep-space void pixels untouched by shadow lift
+    float shadowMask = smoothstep(0.015, 0.20, max(col.r, max(col.g, col.b)));
+    vec3 graded = clamp(col * safeGain + lift * shadowMask * (1.0 - col), 0.0, 1.0);
     return pow(graded, 1.0 / safeGamma);
 }
 
@@ -1250,7 +1266,8 @@ void main() {
         vec3 accB = vec3(0.0);
         float wSum = 0.0;
         float rDist = length(centred);
-        float ca = uCaStrength + uWarpStrength * 0.018;
+        float caRadial = smoothstep(0.08, 0.45, rDist);
+        float ca = uCaStrength + uWarpStrength * 0.024 * caRadial;
         for (int i = 0; i < 6; i++) {
             float fi = float(i) / 5.0;
             // Morris-Thorne spacetime throat pinch + frame-dragging twist
@@ -1281,8 +1298,9 @@ void main() {
         bloomRgb = sampleBloomTent(uBloomTex, baseUV);
     }
 
-    // Deep pitch-black space background + HDR scene + selective bloom
-    vec3 hdr = max(vec3(0.0), sceneRgb * 1.06 + bloomRgb * uBloomTint * (uBloomStrength * 0.92) - vec3(0.0012));
+    // Deep pitch-black space background + HDR scene + warp-scaled selective bloom
+    float effectiveBloom = uBloomStrength * (1.0 + uWarpStrength * 0.65);
+    vec3 hdr = max(vec3(0.0), sceneRgb * 1.06 + bloomRgb * uBloomTint * (effectiveBloom * 0.92) - vec3(0.0012));
 
     // Quality-gated radial god-ray scattering towards warp centre
     if (uGodRayStrength > 0.001) {
@@ -1310,13 +1328,14 @@ void main() {
     float vig = 1.0 - uVignette * smoothstep(0.18, 0.92, edgeR2 * 1.85);
     srgb *= vig;
 
-    // 4x4 ordered Bayer dithering + Triangular-PDF (TPDF) grain to eliminate dark fog/bloom banding
+    // 4x4 ordered Bayer dithering + Triangular-PDF (TPDF) grain (masked on pitch-black #000000 background)
+    float nonBlackMask = smoothstep(0.0, 0.02, max(srgb.r, max(srgb.g, srgb.b)));
     vec2 grainSeed = gl_FragCoord.xy + fract(uTime * 17.31) * 413.0;
     float r1 = hash12(grainSeed);
     float r2 = hash12(grainSeed + vec2(37.17, 19.83));
     float tpdf = (r1 + r2) - 1.0;
     float dither = bayer4x4(gl_FragCoord.xy) * (1.0 / 255.0);
-    srgb = clamp(srgb + dither + tpdf * (uGrain * 0.5), 0.0, 1.0);
+    srgb = clamp(srgb + (dither + tpdf * (uGrain * 0.5)) * nonBlackMask, 0.0, 1.0);
 
     // Sci-Fi Cinematic Enhancements: Lean Horizontal Anamorphic Flare & Tactical Scanlines
     // 1. Horizontal Anamorphic Flare from bright bloom highlights (4 symmetric taps, gated by uAnamorphic)
@@ -1334,9 +1353,9 @@ void main() {
     float scanline = sin(gl_FragCoord.y * 2.0) * 0.015 * (0.5 + 0.5 * uInside);
     srgb = clamp(srgb - vec3(scanline), 0.0, 1.0);
 
-    // 3. Quantum edge HUD vignette glow during hyperdrive warp
+    // 3. Quantum edge HUD vignette glow during hyperdrive warp (preserves pitch-black #000000 void)
     if (uWarpStrength > 0.05) {
-        float warpGlow = edgeR2 * uWarpStrength * 0.35;
+        float warpGlow = edgeR2 * uWarpStrength * 0.35 * nonBlackMask;
         srgb += vec3(0.12, 0.35, 0.85) * warpGlow;
     }
 
@@ -1518,6 +1537,138 @@ void main() {
 }
 `;
 
+    /* 10. Instanced Quad Hyperspace Tunnel Shaders */
+    const VS_HYPERSPACE_QUAD = `#version 300 es
+precision highp float;
+
+layout(location = 0) in vec2 aQuadUv;
+layout(location = 1) in vec3 aCylindricalPos;
+layout(location = 2) in vec3 aColorSeed;
+layout(location = 3) in float aSpeedOffset;
+
+uniform mat4 uProjMatrix;
+uniform mat4 uViewMatrix;
+uniform float uTravelDistance;
+uniform float uStretchLength;
+uniform float uThickness;
+uniform vec2 uResolution;
+uniform vec2 uMouseParallax;
+
+out vec2 vUv;
+out vec3 vColorSeed;
+out float vDepth;
+out vec2 vScreenUv;
+
+void main() {
+    float r = aCylindricalPos.x;
+    float theta = aCylindricalPos.y;
+    float z = mod(aCylindricalPos.z + uTravelDistance * aSpeedOffset, 400.0) - 400.0;
+
+    float depthNorm = 1.0 - clamp(-z / 400.0, 0.0, 1.0);
+    vec2 parallaxOffset = uMouseParallax * depthNorm * 8.0;
+
+    vec3 headWorld = vec3(
+        cos(theta) * r + parallaxOffset.x,
+        sin(theta) * r + parallaxOffset.y,
+        z
+    );
+    float effectiveStretch = max(0.01, uStretchLength * aSpeedOffset);
+    vec3 tailWorld = headWorld - vec3(0.0, 0.0, effectiveStretch);
+
+    vec4 headClip = uProjMatrix * uViewMatrix * vec4(headWorld, 1.0);
+    vec4 tailClip = uProjMatrix * uViewMatrix * vec4(tailWorld, 1.0);
+
+    if (headClip.w <= 0.05 || tailClip.w <= 0.05) {
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+        vUv = aQuadUv;
+        vColorSeed = aColorSeed;
+        vDepth = 0.0;
+        vScreenUv = vec2(0.5);
+        return;
+    }
+
+    vec2 headNdc = headClip.xy / headClip.w;
+    vec2 tailNdc = tailClip.xy / tailClip.w;
+
+    float aspect = uResolution.x / max(1.0, uResolution.y);
+    vec2 deltaScreen = (tailNdc - headNdc) * vec2(aspect, 1.0);
+    float lenScreen = length(deltaScreen);
+    vec2 dir = (lenScreen > 0.0001)
+        ? (deltaScreen / lenScreen)
+        : normalize(headNdc * vec2(aspect, 1.0) + vec2(0.0001));
+    vec2 perp = vec2(-dir.y, dir.x);
+
+    float headW = max(0.001, headClip.w);
+    float taper = mix(1.0, 0.35, aQuadUv.y);
+    float perspectiveScale = clamp(18.0 / headW, 0.35, 2.2);
+    float halfWidth = uThickness * taper * perspectiveScale;
+
+    vec4 baseClip = mix(headClip, tailClip, aQuadUv.y);
+    vec2 baseNdc = baseClip.xy / baseClip.w;
+    float side = aQuadUv.x * 2.0 - 1.0;
+    vec2 offsetNdc = perp * side * halfWidth * (2.0 / max(vec2(1.0), uResolution));
+
+    vec2 finalNdc = baseNdc + offsetNdc;
+    gl_Position = vec4(finalNdc * baseClip.w, baseClip.z, baseClip.w);
+
+    vUv = aQuadUv;
+    vColorSeed = aColorSeed;
+    vDepth = -z;
+    vScreenUv = finalNdc * 0.5 + 0.5;
+}
+`;
+
+    const FS_HYPERSPACE_QUAD = `#version 300 es
+precision highp float;
+
+in vec2 vUv;
+in vec3 vColorSeed;
+in float vDepth;
+in vec2 vScreenUv;
+
+uniform float uVelocityNorm;
+uniform float uOpacity;
+
+out vec4 fragColor;
+
+void main() {
+    float centeredX = vUv.x * 2.0 - 1.0;
+    float core = exp(-pow(abs(centeredX) * 2.35, 2.0));
+    float halo = exp(-pow(abs(centeredX) * 1.45, 2.0));
+
+    float headSoftness = smoothstep(0.0, 0.08, vUv.y);
+    float tailFade = pow(clamp(1.0 - vUv.y, 0.0, 1.0), 1.6);
+
+    vec3 hotCore = vec3(0.95, 0.98, 1.0);
+    vec3 electricBlue = vec3(0.15, 0.39, 0.92);
+    vec3 cyanHalo = vec3(0.22, 0.74, 0.97);
+
+    vec3 baseHue = mix(vColorSeed, mix(electricBlue, cyanHalo, halo), 0.35 + 0.45 * uVelocityNorm);
+    vec3 streakColor = mix(baseHue, hotCore, core * (0.65 + 0.35 * uVelocityNorm));
+
+    float radialDist = length(vScreenUv - 0.5);
+    float edgeFactor = smoothstep(0.22, 0.65, radialDist) * uVelocityNorm;
+    float rShift = exp(-pow(abs(centeredX - 0.14 * edgeFactor) * 2.35, 2.0));
+    float bShift = exp(-pow(abs(centeredX + 0.14 * edgeFactor) * 2.35, 2.0));
+    vec3 edgeAberration = vec3(rShift - core, 0.0, bShift - core) * 0.45 * edgeFactor;
+
+    vec3 finalColor = max(vec3(0.0), streakColor + edgeAberration);
+
+    float farFog = smoothstep(400.0, 120.0, vDepth);
+    float nearFade = smoothstep(2.0, 14.0, vDepth);
+    float centerMask = mix(
+        smoothstep(0.06, 0.20, radialDist),
+        smoothstep(0.16, 0.34, radialDist),
+        uVelocityNorm
+    );
+
+    float alpha = core * headSoftness * tailFade * farFog * nearFade * centerMask * uOpacity;
+    if (alpha <= 0.001) discard;
+
+    fragColor = vec4(finalColor, alpha);
+}
+`;
+
     return {
         VS_SHARED_POINTS,
         FS_SHARED_POINTS,
@@ -1536,6 +1687,8 @@ void main() {
         VS_THRESHOLD_RING,
         FS_THRESHOLD_RING,
         VS_AMBIENT_DUST,
-        FS_AMBIENT_DUST
+        FS_AMBIENT_DUST,
+        VS_HYPERSPACE_QUAD,
+        FS_HYPERSPACE_QUAD
     };
 }));

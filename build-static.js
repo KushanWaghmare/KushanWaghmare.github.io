@@ -581,28 +581,28 @@ const buildHTML = ({ filename, domain, pageType, title, desc, mainContent }) => 
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&family=Space+Grotesk:wght@600;700&display=swap" />
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" />
-    <link rel="stylesheet" href="shared/style.css?v=80" />
+    <link rel="stylesheet" href="shared/style.css?v=81" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-    <script defer src="shared/data.js?v=80"></script>
+    <script defer src="shared/data.js?v=81"></script>
     <!-- Simulations: Mathematical Foundations -->
-    <script defer src="shared/simulations/math/diffusion-math.js?v=80"></script>
-    <script defer src="shared/simulations/math/mobius-math.js?v=80"></script>
-    <script defer src="shared/simulations/math/lattice-math.js?v=80"></script>
-    <script defer src="shared/simulations/math/cy-math.js?v=80"></script>
+    <script defer src="shared/simulations/math/diffusion-math.js?v=81"></script>
+    <script defer src="shared/simulations/math/mobius-math.js?v=81"></script>
+    <script defer src="shared/simulations/math/lattice-math.js?v=81"></script>
+    <script defer src="shared/simulations/math/cy-math.js?v=81"></script>
     <!-- Simulations: Quantum & Black Hole Physics -->
-    <script defer src="shared/simulations/quantum/qsim-math.js?v=80"></script>
-    <script defer src="shared/simulations/blackhole/blackhole-physics.js?v=80"></script>
+    <script defer src="shared/simulations/quantum/qsim-math.js?v=81"></script>
+    <script defer src="shared/simulations/blackhole/blackhole-physics.js?v=81"></script>
     <!-- Simulations: Slide Registry -->
-    <script defer src="shared/simulations/canvas2d/slides.js?v=80"></script>
+    <script defer src="shared/simulations/canvas2d/slides.js?v=81"></script>
     <!-- Simulations: Unified Particle Engine (Core Stage) -->
-    <script defer src="shared/simulations/core/thread-math.js?v=80"></script>
-    <script defer src="shared/simulations/core/gpu-thread-shaders.js?v=80"></script>
-    <script defer src="shared/simulations/core/gpu-thread-formations.js?v=80"></script>
-    <script defer src="shared/simulations/core/gpu-thread.js?v=80"></script>
+    <script defer src="shared/simulations/core/thread-math.js?v=81"></script>
+    <script defer src="shared/simulations/core/gpu-thread-shaders.js?v=81"></script>
+    <script defer src="shared/simulations/core/gpu-thread-formations.js?v=81"></script>
+    <script defer src="shared/simulations/core/gpu-thread.js?v=81"></script>
     <!-- App Controller -->
-    <script defer src="shared/app.js?v=80"></script>
+    <script defer src="shared/app.js?v=81"></script>
 
 </head>
 <body>

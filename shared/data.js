@@ -615,7 +615,7 @@ SITE.dimensions = [
                 godRays: 0.22,
                 anamorphic: 0.08,
                 dof: 0.35,
-                grade: { lift: [-0.004, -0.002, 0.006], gamma: [1.01, 1.00, 0.99], gain: [1.03, 1.01, 0.97] }
+                grade: { lift: [0.0, 0.0, 0.0], gamma: [1.01, 1.00, 0.99], gain: [1.03, 1.01, 0.97] }
             },
             // Typographic legibility tuning over denser bloom
             typography: { scrimOpacity: 0.82, eqGlow: 0.28 }
@@ -695,7 +695,7 @@ SITE.dimensions = [
                 godRays: 0.0,
                 anamorphic: 0.06,
                 dof: 0.25,
-                grade: { lift: [0.005, -0.004, -0.002], gamma: [1.01, 0.99, 1.00], gain: [1.02, 0.99, 1.00] }
+                grade: { lift: [0.0, 0.0, 0.0], gamma: [1.01, 0.99, 1.00], gain: [1.02, 0.99, 1.00] }
             },
             typography: { scrimOpacity: 0.72, eqGlow: 0.34 }
         },
@@ -790,7 +790,7 @@ SITE.dimensions = [
                 godRays: 0.32,
                 anamorphic: 0.14,
                 dof: 0.25,
-                grade: { lift: [-0.006, 0.002, 0.008], gamma: [0.99, 1.00, 1.01], gain: [1.02, 1.00, 1.03] }
+                grade: { lift: [0.0, 0.0, 0.0], gamma: [0.99, 1.00, 1.01], gain: [1.02, 1.00, 1.03] }
             },
             typography: { scrimOpacity: 0.82, eqGlow: 0.34 }
         },
@@ -885,7 +885,7 @@ SITE.dimensions = [
                 godRays: 0.0,
                 anamorphic: 0.06,
                 dof: 0.25,
-                grade: { lift: [0.004, 0.001, -0.006], gamma: [1.01, 1.00, 0.98], gain: [1.03, 1.01, 0.97] }
+                grade: { lift: [0.0, 0.0, 0.0], gamma: [1.01, 1.00, 0.98], gain: [1.03, 1.01, 0.97] }
             },
             typography: { scrimOpacity: 0.82, eqGlow: 0.28 }
         },
@@ -980,7 +980,7 @@ SITE.dimensions = [
                 godRays: 0.0,
                 anamorphic: 0.06,
                 dof: 0.25,
-                grade: { lift: [-0.005, 0.004, 0.001], gamma: [0.99, 1.01, 1.00], gain: [0.98, 1.02, 1.00] }
+                grade: { lift: [0.0, 0.0, 0.0], gamma: [0.99, 1.01, 1.00], gain: [0.98, 1.02, 1.00] }
             },
             typography: { scrimOpacity: 0.72, eqGlow: 0.28 }
         },
@@ -1075,7 +1075,7 @@ SITE.dimensions = [
                 godRays: 0.0,
                 anamorphic: 0.06,
                 dof: 0.25,
-                grade: { lift: [0.002, -0.004, 0.007], gamma: [1.00, 0.99, 1.01], gain: [1.00, 0.98, 1.03] }
+                grade: { lift: [0.0, 0.0, 0.0], gamma: [1.00, 0.99, 1.01], gain: [1.00, 0.98, 1.03] }
             },
             typography: { scrimOpacity: 0.72, eqGlow: 0.28 }
         },
@@ -1170,7 +1170,7 @@ SITE.dimensions = [
                 godRays: 0.0,
                 anamorphic: 0.06,
                 dof: 0.25,
-                grade: { lift: [-0.004, 0.003, 0.003], gamma: [0.99, 1.00, 1.01], gain: [0.98, 1.01, 1.02] }
+                grade: { lift: [0.0, 0.0, 0.0], gamma: [0.99, 1.00, 1.01], gain: [0.98, 1.01, 1.02] }
             },
             typography: { scrimOpacity: 0.72, eqGlow: 0.28 }
         },
