@@ -158,9 +158,32 @@
         stageCanvas = document.createElement("canvas");
         stageCanvas.id = "stage-canvas";
         stageCanvas.className = "stage-canvas";
-        stageCanvas.setAttribute("aria-hidden", "true");
         document.body.prepend(stageCanvas);
     }
+    stageCanvas.removeAttribute("aria-hidden");
+    stageCanvas.setAttribute("role", "img");
+    stageCanvas.setAttribute("aria-label", "Interactive WebGL physics and mathematics particle simulation stage");
+
+    // Pause simulation and rendering when the stage canvas scrolls out of view
+    let stageInView = true;
+    if (typeof IntersectionObserver === "function") {
+        const stageObserver = new IntersectionObserver((entries) => {
+            for (let i = 0; i < entries.length; i++) {
+                if (entries[i].target === stageCanvas) {
+                    stageInView = entries[i].isIntersecting;
+                }
+            }
+        }, { threshold: 0 });
+        stageObserver.observe(stageCanvas);
+    }
+
+    const emitStageProgress = (progress, label) => {
+        if (typeof window !== "undefined" && typeof CustomEvent === "function") {
+            window.dispatchEvent(new CustomEvent("kw:stage-progress", {
+                detail: { progress, label }
+            }));
+        }
+    };
 
     const gl = stageCanvas.getContext("webgl2", {
         alpha: true,
@@ -174,15 +197,27 @@
 
     if (!gl) {
         console.warn("[THREAD_STAGE] WebGL2 not available on #stage-canvas.");
+        if (typeof document !== "undefined" && document.documentElement) {
+            document.documentElement.classList.add("no-webgl");
+        }
         return { supported: false };
     }
 
     let dpr = 1;
     let width = 1, height = 1;
+    const MIN_ADAPTIVE_DPR = 0.85;
+    let adaptiveDprCap = Infinity;
+    let lowBattery = false;
+
+    const getTargetDpr = () => {
+        const maxDpr = isMobileDevice() ? 1.25 : 1.5;
+        const saveData = !!(navigator.connection && navigator.connection.saveData);
+        const cap = (saveData || lowBattery) ? 1.0 : maxDpr;
+        return Math.min(window.devicePixelRatio || 1, cap);
+    };
 
     const resizeStage = () => {
-        const maxDpr = isMobileDevice() ? 1.25 : 1.5;
-        dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+        dpr = Math.min(getTargetDpr(), adaptiveDprCap);
         width = Math.max(1, window.innerWidth);
         height = Math.max(1, window.innerHeight);
         const pw = Math.round(width * dpr);
@@ -194,6 +229,25 @@
         camera.aspect = width / height;
     };
     resizeStage();
+    if (navigator.connection && navigator.connection.addEventListener) {
+        navigator.connection.addEventListener("change", resizeStage);
+    }
+    if (typeof navigator.getBattery === "function") {
+        navigator.getBattery().then((bat) => {
+            const updateBattery = () => {
+                const next = (!bat.charging && bat.level < 0.20);
+                if (next !== lowBattery) {
+                    lowBattery = next;
+                    resizeStage();
+                }
+            };
+            updateBattery();
+            if (bat.addEventListener) {
+                bat.addEventListener("levelchange", updateBattery);
+                bat.addEventListener("chargingchange", updateBattery);
+            }
+        }).catch(() => {});
+    }
     let resizeQueued = false;
     window.addEventListener("resize", () => {
         if (resizeQueued) return;
@@ -253,9 +307,18 @@
     let trailRT = [null, null];
     let trailReadIdx = 0;
     let trailNeedsReset = true;
-    let sceneRT = null, kerrRT = null, bloomBrightRT = null, bloomPingRT = null, bloomPongRT = null;
-    let postQuality = 2; // 2 = dual-pass wide bloom, 1 = single-pass bloom under load
+    let sceneRT = null, skyRT = null, kerrRT = null, bloomBrightRT = null, bloomPingRT = null, bloomPongRT = null;
+    let postQuality = 2; // 2 = dual-pass wide bloom, 1 = single-pass bloom, 0 = half-res single-pass bloom
+    let skyQualityTier = 2; // 2 = high, 1 = medium, 0 = low
+    let activeParticleScale = 1.0; // 1.0 -> 0.75 -> 0.55 under sustained load
+    let rtBloomHalf = false;
+    let rtSkyHalf = false;
     let contextLost = false;
+
+    const getEffectiveSkyQualityTier = () => {
+        const saveData = !!(typeof navigator !== "undefined" && navigator.connection && navigator.connection.saveData);
+        return saveData ? 0 : skyQualityTier;
+    };
 
     const deleteRenderTarget = (rt) => {
         if (!rt) return;
@@ -293,10 +356,35 @@
     };
 
     const ensurePostTargets = (pw, ph) => {
-        if (rtWidth === pw && rtHeight === ph && sceneRT && trailRT[0]) return;
+        const isMob = isMobileDevice();
+        const wantBloomHalf = (postQuality === 0);
+        const wantSkyHalf = isMob || getEffectiveSkyQualityTier() < 2;
+        const bloomShift = wantBloomHalf ? 1 : 0;
+        const hw = Math.max(1, pw >> (1 + bloomShift)), hh = Math.max(1, ph >> (1 + bloomShift));
+        const qw = Math.max(1, pw >> (2 + bloomShift)), qh = Math.max(1, ph >> (2 + bloomShift));
+        const sw = Math.max(1, pw >> 1), sh = Math.max(1, ph >> 1);
+
+        if (rtWidth === pw && rtHeight === ph && sceneRT && trailRT[0]) {
+            if (rtBloomHalf !== wantBloomHalf) {
+                deleteRenderTarget(bloomBrightRT);
+                deleteRenderTarget(bloomPingRT);
+                deleteRenderTarget(bloomPongRT);
+                bloomBrightRT = createRenderTarget(hw, hh, hdrSupported);
+                bloomPingRT = createRenderTarget(qw, qh, hdrSupported);
+                bloomPongRT = createRenderTarget(qw, qh, hdrSupported);
+                rtBloomHalf = wantBloomHalf;
+            }
+            if (rtSkyHalf !== wantSkyHalf || (wantSkyHalf && !skyRT)) {
+                deleteRenderTarget(skyRT);
+                skyRT = wantSkyHalf ? createRenderTarget(sw, sh, hdrSupported) : null;
+                rtSkyHalf = wantSkyHalf;
+            }
+            return;
+        }
         deleteRenderTarget(trailRT[0]);
         deleteRenderTarget(trailRT[1]);
         deleteRenderTarget(sceneRT);
+        deleteRenderTarget(skyRT);
         deleteRenderTarget(kerrRT);
         deleteRenderTarget(bloomBrightRT);
         deleteRenderTarget(bloomPingRT);
@@ -304,11 +392,10 @@
 
         rtWidth = pw;
         rtHeight = ph;
-        const hw = Math.max(1, pw >> 1), hh = Math.max(1, ph >> 1);
-        const qw = Math.max(1, pw >> 2), qh = Math.max(1, ph >> 2);
+        rtBloomHalf = wantBloomHalf;
+        rtSkyHalf = wantSkyHalf;
 
         // Optimal ray tracer resolution: scaled for 60+ FPS on Retina while keeping lensing smooth
-        const isMob = isMobileDevice();
         const kerrScale = isMob ? 0.65 : Math.min(0.85, dpr * 0.6);
         const kw = Math.max(1, Math.round(width * kerrScale));
         const kh = Math.max(1, Math.round(height * kerrScale));
@@ -316,6 +403,7 @@
         trailRT[0] = createRenderTarget(pw, ph, hdrSupported);
         trailRT[1] = createRenderTarget(pw, ph, hdrSupported);
         sceneRT = createRenderTarget(pw, ph, hdrSupported);
+        skyRT = wantSkyHalf ? createRenderTarget(sw, sh, hdrSupported) : null;
         kerrRT = createRenderTarget(kw, kh, hdrSupported);
         bloomBrightRT = createRenderTarget(hw, hh, hdrSupported);
         bloomPingRT = createRenderTarget(qw, qh, hdrSupported);
@@ -357,10 +445,14 @@
         pointUniforms = getUniforms(pointProg, [
             "uViewProj", "uCamPos", "uViewport", "uDpr", "uTime",
             "uHeroBoost", "uIsLight", "uStreakScale", "uMaxStreakPx", "uTrailGain", "uFogTint",
-            "uInside", "uHeroScale", "uWorldGrow", "uTwinkle", "uPixelArt"
+            "uInside", "uHeroScale", "uWorldGrow", "uTwinkle", "uPixelArt", "uDofStrength"
         ]);
         starUniforms = getUniforms(starProg, [
-            "uRes", "uBhScreenCentre", "uBhScale", "uTilt", "uTime", "uIsLight", "uBrightness"
+            "uRes", "uBhScreenCentre", "uBhScale", "uTilt", "uTime", "uIsLight", "uBrightness",
+            "uBaseColour", "uNebulaCol0", "uNebulaCol1", "uNebulaCol2",
+            "uNebulaIntensity", "uBandIntensity", "uBandAngle",
+            "uStarDensity", "uStarTwinkle", "uStarTint", "uShootingStars", "uParallax",
+            "uWarpVelocity", "uPointerOffset", "uCamDir", "uQualityTier", "uReducedMotion"
         ]);
         auxUniforms = getUniforms(auxProg, ["uViewProj", "uAuxOpacity", "uIsLight"]);
         kerrUniforms = getUniforms(kerrProg, [
@@ -383,7 +475,8 @@
         compositeUniforms = getUniforms(compositeProg, [
             "uSceneTex", "uBloomTex", "uRes", "uTime", "uBloomStrength", "uBloomTint",
             "uVignette", "uGrain", "uCaStrength", "uWarpStrength", "uWarpCentre", "uFogTint",
-            "uShockwave", "uShockwaveRadius", "uIsLight", "uDebugMode", "uInside", "uInnerTint", "uPixelArt"
+            "uShockwave", "uShockwaveRadius", "uIsLight", "uDebugMode", "uInside", "uInnerTint", "uPixelArt",
+            "uGradeLift", "uGradeGamma", "uGradeGain", "uGodRayStrength", "uAnamorphic"
         ]);
 
         // 1. Single Shared Swarm VAO
@@ -504,7 +597,9 @@
         return true;
     };
 
-    initGLResources();
+    if (initGLResources()) {
+        emitStageProgress(0.45, "Compiling shaders");
+    }
 
     stageCanvas.addEventListener("webglcontextlost", (e) => {
         e.preventDefault();
@@ -1138,6 +1233,64 @@
 
     // Smoothed per-section post parameters (initialised from clean LOOK defaults)
     const LOOK = (TM && TM.LOOK) || { bloomStrength: 1.05, bloomThreshold: 1.0, trailDecay: 0.84, streakScale: 3.0, particleSizeRange: [0.85, 2.25], brightnessBudget: [0.17, 0.53], backgroundTone: [0.006, 0.012, 0.03], celestialBrightness: 0.18 };
+    const DEFAULT_SPACE_CONFIG = {
+        enabled: true,
+        baseColour: [0.008, 0.012, 0.035],
+        nebulaColours: [[0.08, 0.12, 0.28], [0.18, 0.10, 0.22], [0.04, 0.15, 0.25]],
+        nebulaIntensity: 0.35,
+        bandIntensity: 0.45,
+        bandAngle: 0.55,
+        starDensity: 1.0,
+        starTwinkle: 0.7,
+        starTint: [1.0, 1.0, 1.0],
+        shootingStars: true,
+        parallax: 0.8
+    };
+    const snapSpaceState = (dst, src) => {
+        dst.enabled = src.enabled !== false;
+        for (let k = 0; k < 3; k++) {
+            dst.baseColour[k] = src.baseColour[k];
+            dst.starTint[k] = src.starTint[k];
+            for (let n = 0; n < 3; n++) dst.nebulaColours[n][k] = src.nebulaColours[n][k];
+        }
+        dst.nebulaIntensity = src.nebulaIntensity;
+        dst.bandIntensity = src.bandIntensity;
+        dst.bandAngle = src.bandAngle;
+        dst.starDensity = src.starDensity;
+        dst.starTwinkle = src.starTwinkle;
+        dst.shootingStars = !!src.shootingStars;
+        dst.parallax = src.parallax;
+    };
+    const lerpSpaceState = (dst, src, a) => {
+        dst.enabled = src.enabled !== false;
+        for (let k = 0; k < 3; k++) {
+            dst.baseColour[k] += (src.baseColour[k] - dst.baseColour[k]) * a;
+            dst.starTint[k] += (src.starTint[k] - dst.starTint[k]) * a;
+            for (let n = 0; n < 3; n++) dst.nebulaColours[n][k] += (src.nebulaColours[n][k] - dst.nebulaColours[n][k]) * a;
+        }
+        dst.nebulaIntensity += (src.nebulaIntensity - dst.nebulaIntensity) * a;
+        dst.bandIntensity += (src.bandIntensity - dst.bandIntensity) * a;
+        dst.bandAngle += (src.bandAngle - dst.bandAngle) * a;
+        dst.starDensity += (src.starDensity - dst.starDensity) * a;
+        dst.starTwinkle += (src.starTwinkle - dst.starTwinkle) * a;
+        dst.shootingStars = !!src.shootingStars;
+        dst.parallax += (src.parallax - dst.parallax) * a;
+    };
+    const blendSpaceState = (dst, fromSrc, toSrc, t) => {
+        dst.enabled = (fromSrc.enabled !== false) || (toSrc.enabled !== false);
+        for (let k = 0; k < 3; k++) {
+            dst.baseColour[k] = fromSrc.baseColour[k] + (toSrc.baseColour[k] - fromSrc.baseColour[k]) * t;
+            dst.starTint[k] = fromSrc.starTint[k] + (toSrc.starTint[k] - fromSrc.starTint[k]) * t;
+            for (let n = 0; n < 3; n++) dst.nebulaColours[n][k] = fromSrc.nebulaColours[n][k] + (toSrc.nebulaColours[n][k] - fromSrc.nebulaColours[n][k]) * t;
+        }
+        dst.nebulaIntensity = fromSrc.nebulaIntensity + (toSrc.nebulaIntensity - fromSrc.nebulaIntensity) * t;
+        dst.bandIntensity = fromSrc.bandIntensity + (toSrc.bandIntensity - fromSrc.bandIntensity) * t;
+        dst.bandAngle = fromSrc.bandAngle + (toSrc.bandAngle - fromSrc.bandAngle) * t;
+        dst.starDensity = fromSrc.starDensity + (toSrc.starDensity - fromSrc.starDensity) * t;
+        dst.starTwinkle = fromSrc.starTwinkle + (toSrc.starTwinkle - fromSrc.starTwinkle) * t;
+        dst.shootingStars = t < 0.5 ? !!fromSrc.shootingStars : !!toSrc.shootingStars;
+        dst.parallax = fromSrc.parallax + (toSrc.parallax - fromSrc.parallax) * t;
+    };
     const postState = {
         bloomStrength: LOOK.bloomStrength,
         bloomThreshold: LOOK.bloomThreshold,
@@ -1149,7 +1302,33 @@
         caExtra: 0.0,
         trailDecay: LOOK.trailDecay,
         streakScale: LOOK.streakScale,
-        celestialBrightness: (LOOK && LOOK.celestialBrightness) || 0.18
+        celestialBrightness: (LOOK && LOOK.celestialBrightness) || 0.18,
+        vignette: 0.38,
+        ca: 0.002,
+        grain: 0.014,
+        godRays: 0.0,
+        anamorphic: 0.06,
+        dof: 0.25,
+        gradeLift: [0.0, 0.0, 0.0],
+        gradeGamma: [1.0, 1.0, 1.0],
+        gradeGain: [1.0, 1.0, 1.0],
+        space: {
+            enabled: DEFAULT_SPACE_CONFIG.enabled,
+            baseColour: DEFAULT_SPACE_CONFIG.baseColour.slice(),
+            nebulaColours: [
+                DEFAULT_SPACE_CONFIG.nebulaColours[0].slice(),
+                DEFAULT_SPACE_CONFIG.nebulaColours[1].slice(),
+                DEFAULT_SPACE_CONFIG.nebulaColours[2].slice()
+            ],
+            nebulaIntensity: DEFAULT_SPACE_CONFIG.nebulaIntensity,
+            bandIntensity: DEFAULT_SPACE_CONFIG.bandIntensity,
+            bandAngle: DEFAULT_SPACE_CONFIG.bandAngle,
+            starDensity: DEFAULT_SPACE_CONFIG.starDensity,
+            starTwinkle: DEFAULT_SPACE_CONFIG.starTwinkle,
+            starTint: DEFAULT_SPACE_CONFIG.starTint.slice(),
+            shootingStars: DEFAULT_SPACE_CONFIG.shootingStars,
+            parallax: DEFAULT_SPACE_CONFIG.parallax
+        }
     };
 
     const getPhaseName = (u) => {
@@ -1235,6 +1414,13 @@
         const dims = getDimensions();
         const dim = dims[dimIdx];
         const p = (dim && dim.profile) || {};
+        const postRaw = (p.post && typeof p.post === "object") ? p.post : {};
+        const gradeRaw = (postRaw.grade && typeof postRaw.grade === "object") ? postRaw.grade : {};
+        const spaceRaw = (p.space && typeof p.space === "object") ? p.space : {};
+        const spaceDisabled = spaceRaw.enabled === false;
+        const nebRaw = Array.isArray(spaceRaw.nebulaColours) ? spaceRaw.nebulaColours : [];
+        const numOr = (v, fallback) => (typeof v === "number" ? v : fallback);
+        const vec3Or = (v, fallback) => (Array.isArray(v) && v.length >= 3) ? [v[0], v[1], v[2]] : fallback.slice();
         const parsed = {
             palette: (p.palette || []).map(hexToRgb01),
             bloomStrength: (p.bloom && typeof p.bloom.strength === "number") ? p.bloom.strength : 0.88,
@@ -1246,7 +1432,49 @@
             cameraDamping: (typeof p.cameraDamping === "number") ? p.cameraDamping : 0.08,
             heroColour: (p.hero && Array.isArray(p.hero.colour)) ? p.hero.colour.slice() : [0.45, 0.75, 1.0],
             heroSize: (p.hero && typeof p.hero.size === "number") ? p.hero.size : 5.5,
-            audio: p.audio || null
+            audio: p.audio || null,
+            space: spaceDisabled ? {
+                enabled: false,
+                baseColour: DEFAULT_SPACE_CONFIG.baseColour.slice(),
+                nebulaColours: DEFAULT_SPACE_CONFIG.nebulaColours.map((c) => c.slice()),
+                nebulaIntensity: DEFAULT_SPACE_CONFIG.nebulaIntensity,
+                bandIntensity: DEFAULT_SPACE_CONFIG.bandIntensity,
+                bandAngle: DEFAULT_SPACE_CONFIG.bandAngle,
+                starDensity: DEFAULT_SPACE_CONFIG.starDensity,
+                starTwinkle: DEFAULT_SPACE_CONFIG.starTwinkle,
+                starTint: DEFAULT_SPACE_CONFIG.starTint.slice(),
+                shootingStars: DEFAULT_SPACE_CONFIG.shootingStars,
+                parallax: DEFAULT_SPACE_CONFIG.parallax
+            } : {
+                enabled: true,
+                baseColour: vec3Or(spaceRaw.baseColour, DEFAULT_SPACE_CONFIG.baseColour),
+                nebulaColours: [
+                    vec3Or(nebRaw[0], DEFAULT_SPACE_CONFIG.nebulaColours[0]),
+                    vec3Or(nebRaw[1], DEFAULT_SPACE_CONFIG.nebulaColours[1]),
+                    vec3Or(nebRaw[2], DEFAULT_SPACE_CONFIG.nebulaColours[2])
+                ],
+                nebulaIntensity: numOr(spaceRaw.nebulaIntensity, DEFAULT_SPACE_CONFIG.nebulaIntensity),
+                bandIntensity: numOr(spaceRaw.bandIntensity, DEFAULT_SPACE_CONFIG.bandIntensity),
+                bandAngle: numOr(spaceRaw.bandAngle, DEFAULT_SPACE_CONFIG.bandAngle),
+                starDensity: numOr(spaceRaw.starDensity, DEFAULT_SPACE_CONFIG.starDensity),
+                starTwinkle: numOr(spaceRaw.starTwinkle, DEFAULT_SPACE_CONFIG.starTwinkle),
+                starTint: vec3Or(spaceRaw.starTint, DEFAULT_SPACE_CONFIG.starTint),
+                shootingStars: typeof spaceRaw.shootingStars === "boolean" ? spaceRaw.shootingStars : DEFAULT_SPACE_CONFIG.shootingStars,
+                parallax: numOr(spaceRaw.parallax, DEFAULT_SPACE_CONFIG.parallax)
+            },
+            post: {
+                vignette: numOr(postRaw.vignette, 0.38),
+                ca: numOr(postRaw.ca, 0.002),
+                grain: numOr(postRaw.grain, 0.014),
+                godRays: numOr(postRaw.godRays, 0.0),
+                anamorphic: numOr(postRaw.anamorphic, 0.06),
+                dof: numOr(postRaw.dof, 0.25),
+                grade: {
+                    lift: vec3Or(gradeRaw.lift, [0.0, 0.0, 0.0]),
+                    gamma: vec3Or(gradeRaw.gamma, [1.0, 1.0, 1.0]),
+                    gain: vec3Or(gradeRaw.gain, [1.0, 1.0, 1.0])
+                }
+            }
         };
         parsedProfiles[dimIdx] = parsed;
         return parsed;
@@ -1959,7 +2187,22 @@
     }, { passive: false });
 
     let touchStartY = null, touchStartX = null, touchConsumed = false, touchIgnoreHoriz = false;
+    let pinchStartDist = null, pinchStartOffset = 0.0, pinchTargetOffset = 0.0, pinchFovOffset = 0.0;
+    const getPinchDist = (touches) => Math.hypot(
+        touches[0].clientX - touches[1].clientX,
+        touches[0].clientY - touches[1].clientY
+    );
+
     window.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 2) {
+            // Initialise two-finger pinch zoom and cancel any single-finger swipe
+            pinchStartDist = getPinchDist(e.touches);
+            pinchStartOffset = pinchTargetOffset;
+            touchStartY = null;
+            touchStartX = null;
+            touchConsumed = true;
+            return;
+        }
         if (e.touches.length !== 1) return;
         touchStartY = e.touches[0].clientY;
         touchStartX = e.touches[0].clientX;
@@ -1968,6 +2211,19 @@
     }, { passive: true });
 
     window.addEventListener("touchmove", (e) => {
+        if (e.touches.length === 2) {
+            if (pinchStartDist === null || pinchStartDist <= 0) {
+                pinchStartDist = getPinchDist(e.touches);
+                pinchStartOffset = pinchTargetOffset;
+                return;
+            }
+            const dist = getPinchDist(e.touches);
+            // Outward pinch narrows FOV (zooms in); inward pinch widens FOV (zooms out)
+            const deltaDeg = ((pinchStartDist / Math.max(dist, 1.0)) - 1.0) * 18.0;
+            pinchTargetOffset = clamp(pinchStartOffset + deltaDeg, -10.0, 12.0);
+            e.preventDefault();
+            return;
+        }
         if (touchStartY === null || e.touches.length !== 1) return;
         const dy = touchStartY - e.touches[0].clientY;
         const dx = touchStartX - e.touches[0].clientX;
@@ -1992,12 +2248,19 @@
         }
     }, { passive: false });
 
-    window.addEventListener("touchend", () => {
-        touchStartY = null;
-        touchStartX = null;
-        touchConsumed = false;
-        touchIgnoreHoriz = false;
-    }, { passive: true });
+    const resetTouchState = (e) => {
+        if (!e || !e.touches || e.touches.length < 2) {
+            pinchStartDist = null;
+        }
+        if (!e || !e.touches || e.touches.length === 0) {
+            touchStartY = null;
+            touchStartX = null;
+            touchConsumed = false;
+            touchIgnoreHoriz = false;
+        }
+    };
+    window.addEventListener("touchend", resetTouchState, { passive: true });
+    window.addEventListener("touchcancel", resetTouchState, { passive: true });
 
     let simTime = 0;
 
@@ -2165,6 +2428,18 @@
             postState.fogDensity = prof.fogDensity;
             postState.trailDecay = active.trailDecay || 0.68;
             postState.streakScale = active.streakScale || 1.25;
+            postState.vignette = prof.post.vignette;
+            postState.ca = prof.post.ca;
+            postState.grain = prof.post.grain;
+            postState.godRays = prof.post.godRays;
+            postState.anamorphic = prof.post.anamorphic;
+            postState.dof = prof.post.dof;
+            for (let k = 0; k < 3; k++) {
+                postState.gradeLift[k] = prof.post.grade.lift[k];
+                postState.gradeGamma[k] = prof.post.grade.gamma[k];
+                postState.gradeGain[k] = prof.post.grade.gain[k];
+            }
+            snapSpaceState(postState.space, prof.space);
             if (!exploreMorph.active && !active.preserveHeroColour) {
                 colours[0] = prof.heroColour[0];
                 colours[1] = prof.heroColour[1];
@@ -2183,6 +2458,7 @@
     };
 
     refreshSections();
+    emitStageProgress(0.8, "Initialising formations");
 
     if (typeof window !== "undefined") {
         const handleHashOrHistory = () => {
@@ -2585,12 +2861,12 @@
 
                 const fovTarget = (appMode === "INSIDE" && destSim && destSim.immersiveCamera) ? destSim.immersiveCamera.fov : curProf.fov;
                 const fovBreath = Math.sin(Math.PI * u) * (appMode === "INSIDE" ? 3.0 : 6.0);
-                camera.fov = fovTarget + fovBreath;
+                camera.fov = fovTarget + fovBreath + pinchFovOffset;
             } else {
                 camera.position.copy(diveBaseCamPos);
                 camera.target.copy(diveBaseCamTarget);
                 camera.up.set(0, 1, 0);
-                camera.fov = (appMode === "INSIDE" && destSim && destSim.immersiveCamera) ? destSim.immersiveCamera.fov : curProf.fov;
+                camera.fov = ((appMode === "INSIDE" && destSim && destSim.immersiveCamera) ? destSim.immersiveCamera.fov : curProf.fov) + pinchFovOffset;
             }
         } else {
             /* ===== DIVE / EXIT (Explore button enters active simulation) ===== */
@@ -2641,12 +2917,12 @@
 
                 const baseFov = h.exiting ? (curProf.fov) : ((destSim.immersiveCamera && destSim.immersiveCamera.fov) || 64.0);
                 const fovBoost = Math.sin(Math.PI * u) * 10.0;
-                camera.fov = baseFov + fovBoost;
+                camera.fov = baseFov + fovBoost + pinchFovOffset;
             } else {
                 camera.position.copy(diveBaseCamPos);
                 camera.target.copy(diveBaseCamTarget);
                 camera.up.set(0, 1, 0);
-                camera.fov = curProf.fov;
+                camera.fov = curProf.fov + pinchFovOffset;
             }
         }
 
@@ -2666,7 +2942,7 @@
         camera.target.copy(poseB);
         camera.up.set(0, 1, 0);
 
-        const targetFov = (isInside && curSim && curSim.immersiveCamera) ? curSim.immersiveCamera.fov : curProf.fov;
+        const targetFov = ((isInside && curSim && curSim.immersiveCamera) ? curSim.immersiveCamera.fov : curProf.fov) + pinchFovOffset;
         camera.fov += (targetFov - camera.fov) * pLerp;
         if (handoff) {
             // Continue from the pose the previous page's dive ended on, easing into this page's inside pose
@@ -2715,6 +2991,9 @@
     let lastTime = performance.now();
     let fps = 90;
     let slowFrames = 0;
+    let avgFrameDt = 0.0167;
+    let highDtTime = 0;
+    let lowDtTime = 0;
     let lastThemeLight = document.documentElement.dataset.theme === "light";
 
     const tmpHeroPos = new Vector3();
@@ -2785,12 +3064,21 @@
     };
 
     let framesSinceStart = 0;
+    let wasPaused = false;
+    let qualityRecoverTime = 0;
+    let stageReadyEmitted = false;
+    let lastTelemetryTime = -250;
     const tick = (now) => {
         requestAnimationFrame(tick);
-        if (contextLost || document.hidden) {
+        if (contextLost || document.hidden || !stageInView) {
             lastTime = now;
-            framesSinceStart = Math.min(framesSinceStart, 60); // re-warm after returning to tab
+            wasPaused = true;
+            framesSinceStart = Math.min(framesSinceStart, 60); // re-warm after returning to tab or view
             return;
+        }
+        if (wasPaused) {
+            wasPaused = false;
+            lastTime = now;
         }
 
         const rawDt = (now - lastTime) * 0.001;
@@ -2799,8 +3087,74 @@
         lastFrameDt = dt;
         simTime += dt;
 
+        // Subtle audio reactivity (Ponytail mode), suppressed under reduced motion
+        const audioEnergy = (!isReducedMotion() && typeof window !== "undefined" && typeof window.__AUDIO_ENERGY__ === "number") ? Math.max(0, Math.min(1, window.__AUDIO_ENERGY__)) : 0;
+
         const instFps = 1.0 / Math.max(1e-4, rawDt);
         fps = fps * 0.92 + instFps * 0.08;
+
+        // Adaptive DPR, post-processing and particle-count quality scaler
+        if (framesSinceStart > 60 && rawDt < 0.25) {
+            avgFrameDt = avgFrameDt * 0.92 + dt * 0.08;
+            if (avgFrameDt > 0.026) {
+                highDtTime += dt;
+                lowDtTime = 0;
+                qualityRecoverTime = 0;
+                if (highDtTime >= 1.5) {
+                    highDtTime = 0;
+                    if (dpr > MIN_ADAPTIVE_DPR + 0.001) {
+                        adaptiveDprCap = Math.max(MIN_ADAPTIVE_DPR, Math.round((dpr - 0.2) * 100) / 100);
+                        resizeStage();
+                    }
+                    if (avgFrameDt > 0.034) {
+                        postQuality = 0;
+                        skyQualityTier = 0;
+                        activeParticleScale = 0.55;
+                    } else if (postQuality === 2) {
+                        postQuality = 1;
+                        skyQualityTier = 1;
+                        activeParticleScale = 0.75;
+                    } else if (postQuality === 1) {
+                        postQuality = 0;
+                        skyQualityTier = 0;
+                        activeParticleScale = 0.55;
+                    }
+                }
+            } else if (avgFrameDt < 0.014) {
+                lowDtTime += dt;
+                highDtTime = 0;
+                if (lowDtTime >= 2.0) {
+                    lowDtTime = 0;
+                    const targetDpr = getTargetDpr();
+                    if (dpr < targetDpr - 0.001) {
+                        const nextCap = Math.min(targetDpr, Math.round((dpr + 0.15) * 100) / 100);
+                        adaptiveDprCap = nextCap >= targetDpr - 0.001 ? Infinity : nextCap;
+                        resizeStage();
+                    }
+                }
+                if (avgFrameDt < 0.013 && postQuality < 2) {
+                    qualityRecoverTime += dt;
+                    if (qualityRecoverTime >= 2.5) {
+                        qualityRecoverTime = 0;
+                        if (postQuality === 0) {
+                            postQuality = 1;
+                            skyQualityTier = 1;
+                            activeParticleScale = 0.75;
+                        } else if (postQuality === 1) {
+                            postQuality = 2;
+                            skyQualityTier = 2;
+                            activeParticleScale = 1.0;
+                        }
+                    }
+                } else {
+                    qualityRecoverTime = Math.max(0, qualityRecoverTime - dt * 0.5);
+                }
+            } else {
+                highDtTime = Math.max(0, highDtTime - dt * 0.5);
+                lowDtTime = Math.max(0, lowDtTime - dt * 0.5);
+                qualityRecoverTime = Math.max(0, qualityRecoverTime - dt * 0.5);
+            }
+        }
 
         // Adaptive particle count & post quality if frame time > 20 ms sustained (never reallocates buffer)
         // Warm-up: shader compile, texture upload and tab-return hitches must not permanently cut particle count.
@@ -2812,13 +3166,14 @@
                     sharedBuffer.count = Math.max(MIN_ADAPTIVE_N, Math.floor(sharedBuffer.count * 0.85));
                     geometry.setDrawRange(0, sharedBuffer.count);
                 } else {
-                    postQuality = 1;
+                    postQuality = Math.min(postQuality, 1);
+                    skyQualityTier = Math.min(skyQualityTier, 1);
+                    activeParticleScale = Math.min(activeParticleScale, 0.75);
                 }
                 slowFrames = 0;
             }
         } else {
             slowFrames = Math.max(0, slowFrames - 1);
-            if (fps > 56 && postQuality < 2) postQuality = 2;
         }
 
         ctxState.isMobile = isMobileDevice();
@@ -2830,6 +3185,7 @@
         }
         ctxState.pointerX += (ctxState.targetPointerX - ctxState.pointerX) * 0.08;
         ctxState.pointerY += (ctxState.targetPointerY - ctxState.pointerY) * 0.08;
+        pinchFovOffset = clamp(pinchFovOffset + (pinchTargetOffset - pinchFovOffset) * (1.0 - Math.exp(-12.0 * dt)), -10.0, 12.0);
 
         const N = sharedBuffer.count;
         // Snapshot previous frame positions before advancing simulation for velocity-aligned ribbons
@@ -3096,6 +3452,23 @@
                     colours[0] *= boostH; colours[1] *= boostH; colours[2] *= boostH;
                 }
                 sizes[0] = Math.max(sizes[0], 5.8) * heroPulse;
+                if (simTime < 1.3 && !isReducedMotion() && active && active.id === "hub:intro" && inside.value < 0.01) {
+                    // Subtle gather-and-release hero intro reveal before settling into Laniakea
+                    const introU = clamp(simTime / 1.3, 0.0, 1.0);
+                    const gatherPulse = Math.sin(introU * Math.PI);
+                    const converge = 0.16 * Math.pow(1.0 - introU, 2.2);
+                    const hx = positions[0], hy = positions[1], hz = positions[2];
+                    sizes[0] *= (1.0 + 0.36 * gatherPulse);
+                    heroBoost = Math.max(heroBoost, 0.5 * gatherPulse);
+                    if (converge > 0.0005) {
+                        for (let i = 1; i < N; i++) {
+                            const i3 = i * 3;
+                            positions[i3] += (hx - positions[i3]) * converge;
+                            positions[i3 + 1] += (hy - positions[i3 + 1]) * converge;
+                            positions[i3 + 2] += (hz - positions[i3 + 2]) * converge;
+                        }
+                    }
+                }
                 innerTint(dimIdx, inside.tint);
 
                 // Smoothly converge post-processing parameters to shared LOOK (or documented active.lookOverride)
@@ -3118,6 +3491,18 @@
                 postState.trailDecay += (targetTrailDec - postState.trailDecay) * pLerp;
                 postState.streakScale += (targetStreakSc - postState.streakScale) * pLerp;
                 postState.celestialBrightness += (targetCelestial - postState.celestialBrightness) * pLerp;
+                postState.vignette += (curProf.post.vignette - postState.vignette) * pLerp;
+                postState.ca += (curProf.post.ca - postState.ca) * pLerp;
+                postState.grain += (curProf.post.grain - postState.grain) * pLerp;
+                postState.godRays += (curProf.post.godRays - postState.godRays) * pLerp;
+                postState.anamorphic += (curProf.post.anamorphic - postState.anamorphic) * pLerp;
+                postState.dof += (curProf.post.dof - postState.dof) * pLerp;
+                lerpSpaceState(postState.space, curProf.space, pLerp);
+                for (let k = 0; k < 3; k++) {
+                    postState.gradeLift[k] += (curProf.post.grade.lift[k] - postState.gradeLift[k]) * pLerp;
+                    postState.gradeGamma[k] += (curProf.post.grade.gamma[k] - postState.gradeGamma[k]) * pLerp;
+                    postState.gradeGain[k] += (curProf.post.grade.gain[k] - postState.gradeGain[k]) * pLerp;
+                }
 
                 if (typeof window !== "undefined" && window.SOUND && typeof window.SOUND.setDimensionAmbient === "function") {
                     window.SOUND.setDimensionAmbient(curProf.audio, curProf.audio, 1.0);
@@ -3326,7 +3711,7 @@
 
             if (reduced) {
                 const cm = smootherstep(0.0, 1.0, u);
-                camera.fov = baseFov;
+                camera.fov = baseFov + pinchFovOffset;
                 camera.position.lerpVectors(trans.camStartPos, trans.camEndPos, cm);
                 camera.target.lerpVectors(trans.camStartTarget, trans.camEndTarget, cm);
             } else {
@@ -3387,7 +3772,7 @@
 
                 const spoolDip = Math.sin(Math.PI * clamp(u / 0.15, 0.0, 1.0)) * 4.0;
                 const warpFov = (24.0 * vS) - spoolDip;
-                camera.fov = baseFov + warpFov + fovSpike;
+                camera.fov = baseFov + warpFov + fovSpike + pinchFovOffset;
             }
 
             // DimensionProfile continuous blend driven by dimBlend
@@ -3409,6 +3794,19 @@
             const fC = (fromForm && fromForm.lookOverride && typeof fromForm.lookOverride.celestialBrightness === "number") ? fromForm.lookOverride.celestialBrightness : ((fromForm && typeof fromForm.celestialBrightness === "number") ? fromForm.celestialBrightness : ((LOOK && LOOK.celestialBrightness) || 0.18));
             const tC = (toForm && toForm.lookOverride && typeof toForm.lookOverride.celestialBrightness === "number") ? toForm.lookOverride.celestialBrightness : ((toForm && typeof toForm.celestialBrightness === "number") ? toForm.celestialBrightness : ((LOOK && LOOK.celestialBrightness) || 0.18));
             postState.celestialBrightness = fC + (tC - fC) * dimBlend;
+
+            postState.vignette = fromProf.post.vignette + (toProf.post.vignette - fromProf.post.vignette) * dimBlend;
+            postState.ca = fromProf.post.ca + (toProf.post.ca - fromProf.post.ca) * dimBlend;
+            postState.grain = fromProf.post.grain + (toProf.post.grain - fromProf.post.grain) * dimBlend;
+            postState.godRays = fromProf.post.godRays + (toProf.post.godRays - fromProf.post.godRays) * dimBlend;
+            postState.anamorphic = fromProf.post.anamorphic + (toProf.post.anamorphic - fromProf.post.anamorphic) * dimBlend;
+            postState.dof = fromProf.post.dof + (toProf.post.dof - fromProf.post.dof) * dimBlend;
+            for (let k = 0; k < 3; k++) {
+                postState.gradeLift[k] = fromProf.post.grade.lift[k] + (toProf.post.grade.lift[k] - fromProf.post.grade.lift[k]) * dimBlend;
+                postState.gradeGamma[k] = fromProf.post.grade.gamma[k] + (toProf.post.grade.gamma[k] - fromProf.post.grade.gamma[k]) * dimBlend;
+                postState.gradeGain[k] = fromProf.post.grade.gain[k] + (toProf.post.grade.gain[k] - fromProf.post.grade.gain[k]) * dimBlend;
+            }
+            blendSpaceState(postState.space, fromProf.space, toProf.space, dimBlend);
 
             const isToKerr = !!(toForm && toForm.kerrOverlay);
             trans.auxOpacity = isToKerr ? smoothstep(0.58, 0.94, u) : smoothstep(0.86, 1.00, u);
@@ -3558,12 +3956,13 @@
         gl.uniform1f(pointUniforms.uIsLight, isLight ? 1.0 : 0.0);
         gl.uniform1f(pointUniforms.uStreakScale, isReducedMotion() ? 0.0 : streakScale);
         gl.uniform1f(pointUniforms.uMaxStreakPx, maxStreakPx);
-        gl.uniform1f(pointUniforms.uTrailGain, trailGain);
+        gl.uniform1f(pointUniforms.uTrailGain, trailGain * (1.0 + audioEnergy * 0.08));
         gl.uniform3f(pointUniforms.uFogTint, postState.fogTint[0], postState.fogTint[1], postState.fogTint[2]);
         gl.uniform1f(pointUniforms.uInside, inside.value);
         gl.uniform1f(pointUniforms.uHeroScale, inside.heroScale);
         gl.uniform1f(pointUniforms.uWorldGrow, inside.worldGrow);
         gl.uniform1f(pointUniforms.uTwinkle, (activeRenderForm && activeRenderForm.disableTwinkle) ? 0.0 : 1.0);
+        gl.uniform1f(pointUniforms.uDofStrength, (!isReducedMotion() && postQuality >= 2) ? postState.dof : 0.0);
         {
             // Pixel-art sections (formation.pixelArt): eased 0..1 blend for the composite, hard switch at 0.5 for the point shader
             const pxTarget = (!isLight && activeRenderForm && activeRenderForm.pixelArt) ? 1.0 : 0.0;
@@ -3586,7 +3985,8 @@
         gl.bindBuffer(gl.ARRAY_BUFFER, sizeVBO);
         gl.bufferSubData(gl.ARRAY_BUFFER, 0, sizes.subarray(0, N));
 
-        gl.drawArrays(gl.POINTS, 0, N);
+        const drawN = Math.max(1, Math.min(N, Math.round(N * activeParticleScale)));
+        gl.drawArrays(gl.POINTS, 0, drawN);
         gl.bindVertexArray(null);
 
         trailReadIdx = trailWriteIdx;
@@ -3604,9 +4004,14 @@
             gl.blendFunc(gl.ONE, gl.ONE);
         }
 
-        // 2a. Celestial background starfield & Milky Way layer (matches Black Hole celestial sphere exactly)
+        // 2a. Celestial background starfield, nebula & Milky Way layer
         if (starProg) {
             const isMob = isMobileDevice();
+            const reduced = isReducedMotion();
+            const skyTier = getEffectiveSkyQualityTier();
+            const useSkyRT = (isMob || skyTier < 2) && skyRT && blitAddProg;
+            const skyW = useSkyRT ? skyRT.width : pw;
+            const skyH = useSkyRT ? skyRT.height : ph;
             const ins = (activeRenderForm && activeRenderForm.insideness) || inside.value || 0.0;
             const targetScreenX = isMob ? 0.50 : (0.60 - ctxState.pointerX * 0.015);
             const baseScreenX = targetScreenX * (1.0 - 0.65 * ins) + 0.50 * (0.65 * ins);
@@ -3618,17 +4023,61 @@
             const currentScreenY = baseScreenY;
             const currentScale = baseScale * (1.0 - ins) + insideScale * ins;
 
+            // Normalised camera look direction for sky parallax
+            const cdx = camera.target.x - camera.position.x;
+            const cdy = camera.target.y - camera.position.y;
+            const cdz = camera.target.z - camera.position.z;
+            const cdLen = Math.hypot(cdx, cdy, cdz);
+            const camDirX = cdLen > 1e-5 ? cdx / cdLen : 0.0;
+            const camDirY = cdLen > 1e-5 ? cdy / cdLen : 0.0;
+            const camDirZ = cdLen > 1e-5 ? cdz / cdLen : -1.0;
+
+            const sp = postState.space;
+            const spEnabled = sp.enabled !== false;
+
+            if (useSkyRT) {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, skyRT.fbo);
+                gl.viewport(0, 0, skyW, skyH);
+            }
+
             gl.disable(gl.BLEND);
             gl.useProgram(starProg);
-            gl.uniform2f(starUniforms.uRes, pw, ph);
+            gl.uniform2f(starUniforms.uRes, skyW, skyH);
             gl.uniform2f(starUniforms.uBhScreenCentre, currentScreenX, currentScreenY);
             gl.uniform1f(starUniforms.uBhScale, currentScale);
             gl.uniform1f(starUniforms.uTilt, currentTilt);
-            gl.uniform1f(starUniforms.uTime, simTime);
+            gl.uniform1f(starUniforms.uTime, reduced ? 0.0 : simTime);
             gl.uniform1f(starUniforms.uIsLight, isLight ? 1.0 : 0.0);
             // Per-section celestial starfield depth cues (modulated smoothly through postState.celestialBrightness)
             gl.uniform1f(starUniforms.uBrightness, inside.starBright * (postState.celestialBrightness !== undefined ? postState.celestialBrightness : 0.18));
+            gl.uniform3f(starUniforms.uBaseColour, sp.baseColour[0], sp.baseColour[1], sp.baseColour[2]);
+            gl.uniform3f(starUniforms.uNebulaCol0, sp.nebulaColours[0][0], sp.nebulaColours[0][1], sp.nebulaColours[0][2]);
+            gl.uniform3f(starUniforms.uNebulaCol1, sp.nebulaColours[1][0], sp.nebulaColours[1][1], sp.nebulaColours[1][2]);
+            gl.uniform3f(starUniforms.uNebulaCol2, sp.nebulaColours[2][0], sp.nebulaColours[2][1], sp.nebulaColours[2][2]);
+            gl.uniform1f(starUniforms.uNebulaIntensity, spEnabled ? sp.nebulaIntensity : 0.0);
+            gl.uniform1f(starUniforms.uBandIntensity, spEnabled ? sp.bandIntensity : 0.0);
+            gl.uniform1f(starUniforms.uBandAngle, sp.bandAngle);
+            gl.uniform1f(starUniforms.uStarDensity, spEnabled ? sp.starDensity : 0.0);
+            gl.uniform1f(starUniforms.uStarTwinkle, sp.starTwinkle);
+            gl.uniform3f(starUniforms.uStarTint, sp.starTint[0], sp.starTint[1], sp.starTint[2]);
+            gl.uniform1f(starUniforms.uShootingStars, (spEnabled && sp.shootingStars && !reduced) ? 1.0 : 0.0);
+            gl.uniform1f(starUniforms.uParallax, sp.parallax);
+            gl.uniform1f(starUniforms.uWarpVelocity, reduced ? 0.0 : (trans.warpStrength || 0.0));
+            gl.uniform2f(starUniforms.uPointerOffset, isMob ? 0.0 : ctxState.pointerX, isMob ? 0.0 : ctxState.pointerY);
+            gl.uniform3f(starUniforms.uCamDir, camDirX, camDirY, camDirZ);
+            gl.uniform1i(starUniforms.uQualityTier, skyTier);
+            gl.uniform1f(starUniforms.uReducedMotion, reduced ? 1.0 : 0.0);
             drawQuad();
+
+            if (useSkyRT) {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, sceneRT.fbo);
+                gl.viewport(0, 0, pw, ph);
+                gl.useProgram(blitAddProg);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, skyRT.tex);
+                gl.uniform1i(blitAddUniforms.uTex, 0);
+                drawQuad();
+            }
 
             gl.enable(gl.BLEND);
             if (isLight) {
@@ -3644,6 +4093,10 @@
         const debugTilt = (debugState.inc !== undefined && debugState.inc !== null) ? (debugState.inc * Math.PI / 180.0) : null;
         const debugSpin = (debugState.spin !== undefined && debugState.spin !== null) ? debugState.spin : null;
         const debugScale = (debugState.scale !== undefined && debugState.scale !== null) ? debugState.scale : null;
+        const scrubState = (typeof window !== "undefined") ? window.__SIM_SCRUB__ : null;
+        const scrubSpin = (scrubState && scrubState.physics && typeof scrubState.physics.spin === "number")
+            ? scrubState.physics.spin
+            : (scrubState && typeof scrubState.spin === "number" ? scrubState.spin : null);
 
         if (activeRenderForm && activeRenderForm.kerrOverlay && trans.auxOpacity > 0.005 && kerrProg && kerrRT) {
             // Render Kerr Black Hole ray tracer into kerrRT at optimal resolution
@@ -3653,11 +4106,12 @@
             gl.clear(gl.COLOR_BUFFER_BIT);
 
             const ko = activeRenderForm.kerrOverlay;
+            const effectiveSpin = debugSpin !== null ? debugSpin : (scrubSpin !== null ? scrubSpin : ko.spin);
             gl.useProgram(kerrProg);
             gl.uniform2f(kerrUniforms.uRes, kerrRT.width, kerrRT.height);
             gl.uniform2f(kerrUniforms.uBhScreenCentre, ko.screenX, ko.screenY);
             gl.uniform1f(kerrUniforms.uBhScale, debugScale !== null ? debugScale : ko.scale);
-            gl.uniform1f(kerrUniforms.uSpin, debugSpin !== null ? debugSpin : ko.spin);
+            gl.uniform1f(kerrUniforms.uSpin, effectiveSpin);
             gl.uniform1f(kerrUniforms.uTilt, debugTilt !== null ? debugTilt : ko.tilt);
             gl.uniform1f(kerrUniforms.uTime, simTime);
             gl.uniform1f(kerrUniforms.uAuxOpacity, trans.auxOpacity);
@@ -3815,7 +4269,7 @@
 
         gl.uniform2f(compositeUniforms.uRes, pw, ph);
         gl.uniform1f(compositeUniforms.uTime, simTime);
-        gl.uniform1f(compositeUniforms.uBloomStrength, postState.bloomStrength);
+        gl.uniform1f(compositeUniforms.uBloomStrength, postState.bloomStrength * (1.0 + audioEnergy * 0.14));
         {
             // Insideness shifts the bloom tint towards the dimension's inner palette and deepens the vignette
             const kb = 0.4 * inside.value;
@@ -3828,9 +4282,14 @@
         }
         gl.uniform1f(compositeUniforms.uInside, inside.value);
         gl.uniform3f(compositeUniforms.uInnerTint, inside.tint[0], inside.tint[1], inside.tint[2]);
-        gl.uniform1f(compositeUniforms.uVignette, 0.38 + 0.26 * inside.value);
-        gl.uniform1f(compositeUniforms.uGrain, 0.014);
-        gl.uniform1f(compositeUniforms.uCaStrength, isReducedMotion() ? 0.0 : (0.002 + 0.018 * liveVs + postState.caExtra + 0.0048 * heroWeight()));
+        gl.uniform1f(compositeUniforms.uVignette, postState.vignette + 0.26 * inside.value);
+        gl.uniform1f(compositeUniforms.uGrain, postState.grain);
+        gl.uniform1f(compositeUniforms.uCaStrength, isReducedMotion() ? 0.0 : (postState.ca + 0.018 * liveVs + postState.caExtra + 0.0048 * heroWeight()));
+        gl.uniform3f(compositeUniforms.uGradeLift, postState.gradeLift[0], postState.gradeLift[1], postState.gradeLift[2]);
+        gl.uniform3f(compositeUniforms.uGradeGamma, postState.gradeGamma[0], postState.gradeGamma[1], postState.gradeGamma[2]);
+        gl.uniform3f(compositeUniforms.uGradeGain, postState.gradeGain[0], postState.gradeGain[1], postState.gradeGain[2]);
+        gl.uniform1f(compositeUniforms.uGodRayStrength, (!isReducedMotion() && postQuality >= 2) ? postState.godRays : 0.0);
+        gl.uniform1f(compositeUniforms.uAnamorphic, (!isReducedMotion() && postQuality >= 1) ? postState.anamorphic : 0.0);
         gl.uniform1f(compositeUniforms.uShockwave, isReducedMotion() ? 0.0 : postState.shockwave);
         gl.uniform1f(compositeUniforms.uShockwaveRadius, postState.shockwaveRadius);
         gl.uniform1f(compositeUniforms.uWarpStrength, isReducedMotion() ? 0.0 : trans.warpStrength);
@@ -3842,8 +4301,24 @@
 
         drawQuad();
         gl.activeTexture(gl.TEXTURE0);
+        if (!stageReadyEmitted) {
+            stageReadyEmitted = true;
+            emitStageProgress(1.0, "Stage ready");
+            if (typeof window !== "undefined" && typeof CustomEvent === "function") {
+                window.dispatchEvent(new CustomEvent("kw:stage-ready"));
+            }
+        }
         if (typeof window !== "undefined" && typeof window.__ON_STAGE_FRAME__ === "function") {
             window.__ON_STAGE_FRAME__(stageCanvas, dpr);
+        }
+        // Throttle HUD telemetry updates to ~4 Hz so opt-in readouts add negligible overhead
+        if (typeof window !== "undefined" && now - lastTelemetryTime >= 250) {
+            lastTelemetryTime = now;
+            window.__THREAD_TELEMETRY__ = {
+                fps: Math.round(1 / Math.max(0.001, avgFrameDt)),
+                particles: drawN,
+                simTime
+            };
         }
     };
 

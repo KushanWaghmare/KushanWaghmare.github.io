@@ -606,7 +606,19 @@ SITE.dimensions = [
             cameraDamping: 0.08,
             hero: { colour: [0.38, 0.61, 1.00], size: 5.5 },
             sim: { mass: "10^17" },
-            audio: { rootFreq: 110.0, harmonicRatios: [1.0, 1.5, 2.0, 2.5], filterCutoff: 480, q: 3.2 }
+            audio: { rootFreq: 110.0, harmonicRatios: [1.0, 1.5, 2.0, 2.5], filterCutoff: 480, q: 3.2 },
+            // Filmic post-processing grade for the introductory Laniakea vista
+            post: {
+                vignette: 0.38,
+                ca: 0.0022,
+                grain: 0.014,
+                godRays: 0.22,
+                anamorphic: 0.08,
+                dof: 0.35,
+                grade: { lift: [-0.004, -0.002, 0.006], gamma: [1.01, 1.00, 0.99], gain: [1.03, 1.01, 0.97] }
+            },
+            // Typographic legibility tuning over denser bloom
+            typography: { scrimOpacity: 0.82, eqGlow: 0.28 }
         },
         sims: [
             {
@@ -674,7 +686,18 @@ SITE.dimensions = [
             cameraDamping: 0.075,
             hero: { colour: [1.00, 0.55, 0.65], size: 6.0 },
             sim: { power: 5, patches: 25 },
-            audio: { rootFreq: 130.81, harmonicRatios: [1.0, 1.25, 1.5, 1.875], filterCutoff: 550, q: 4.0 }
+            audio: { rootFreq: 130.81, harmonicRatios: [1.0, 1.25, 1.5, 1.875], filterCutoff: 550, q: 4.0 },
+            // Restrained warm-rose filmic grade for Mathematics
+            post: {
+                vignette: 0.38,
+                ca: 0.002,
+                grain: 0.014,
+                godRays: 0.0,
+                anamorphic: 0.06,
+                dof: 0.25,
+                grade: { lift: [0.005, -0.004, -0.002], gamma: [1.01, 0.99, 1.00], gain: [1.02, 0.99, 1.00] }
+            },
+            typography: { scrimOpacity: 0.72, eqGlow: 0.34 }
         },
         sims: [
             {
@@ -758,7 +781,18 @@ SITE.dimensions = [
             cameraDamping: 0.08,
             hero: { colour: [0.35, 0.90, 1.00], size: 5.8 },
             sim: { spin: 0.95, inclination: 78, mode: "physical", disk: "thin" },
-            audio: { rootFreq: 98.0, harmonicRatios: [1.0, 1.333, 1.5, 2.0], filterCutoff: 420, q: 3.5 }
+            audio: { rootFreq: 98.0, harmonicRatios: [1.0, 1.333, 1.5, 2.0], filterCutoff: 420, q: 3.5 },
+            // Richer volumetric god rays and anamorphic flare for the Kerr black hole
+            post: {
+                vignette: 0.44,
+                ca: 0.0025,
+                grain: 0.015,
+                godRays: 0.32,
+                anamorphic: 0.14,
+                dof: 0.25,
+                grade: { lift: [-0.006, 0.002, 0.008], gamma: [0.99, 1.00, 1.01], gain: [1.02, 1.00, 1.03] }
+            },
+            typography: { scrimOpacity: 0.82, eqGlow: 0.34 }
         },
         sims: [
             {
@@ -842,7 +876,18 @@ SITE.dimensions = [
             cameraDamping: 0.085,
             hero: { colour: [1.00, 0.75, 0.30], size: 5.5 },
             sim: { model: "reynolds-hk", n: 64, rVis: 68 },
-            audio: { rootFreq: 146.83, harmonicRatios: [1.0, 1.2, 1.5, 1.8], filterCutoff: 520, q: 3.6 }
+            audio: { rootFreq: 146.83, harmonicRatios: [1.0, 1.2, 1.5, 1.8], filterCutoff: 520, q: 3.6 },
+            // Restrained amber filmic grade for Data Science
+            post: {
+                vignette: 0.37,
+                ca: 0.002,
+                grain: 0.014,
+                godRays: 0.0,
+                anamorphic: 0.06,
+                dof: 0.25,
+                grade: { lift: [0.004, 0.001, -0.006], gamma: [1.01, 1.00, 0.98], gain: [1.03, 1.01, 0.97] }
+            },
+            typography: { scrimOpacity: 0.82, eqGlow: 0.28 }
         },
         sims: [
             {
@@ -926,7 +971,18 @@ SITE.dimensions = [
             cameraDamping: 0.08,
             hero: { colour: [0.30, 0.95, 0.65], size: 5.6 },
             sim: { rho: 0.30, steps: 32 },
-            audio: { rootFreq: 123.47, harmonicRatios: [1.0, 1.333, 1.5, 1.777], filterCutoff: 460, q: 3.8 }
+            audio: { rootFreq: 123.47, harmonicRatios: [1.0, 1.333, 1.5, 1.777], filterCutoff: 460, q: 3.8 },
+            // Restrained emerald filmic grade for Quant Finance
+            post: {
+                vignette: 0.38,
+                ca: 0.002,
+                grain: 0.014,
+                godRays: 0.0,
+                anamorphic: 0.06,
+                dof: 0.25,
+                grade: { lift: [-0.005, 0.004, 0.001], gamma: [0.99, 1.01, 1.00], gain: [0.98, 1.02, 1.00] }
+            },
+            typography: { scrimOpacity: 0.72, eqGlow: 0.28 }
         },
         sims: [
             {
@@ -1010,7 +1066,18 @@ SITE.dimensions = [
             cameraDamping: 0.075,
             hero: { colour: [0.75, 0.50, 1.00], size: 5.8 },
             sim: { qubits: 8, optimalK: 12 },
-            audio: { rootFreq: 164.81, harmonicRatios: [1.0, 1.25, 1.5, 2.0], filterCutoff: 580, q: 4.2 }
+            audio: { rootFreq: 164.81, harmonicRatios: [1.0, 1.25, 1.5, 2.0], filterCutoff: 580, q: 4.2 },
+            // Restrained violet filmic grade for Computer Science
+            post: {
+                vignette: 0.40,
+                ca: 0.002,
+                grain: 0.014,
+                godRays: 0.0,
+                anamorphic: 0.06,
+                dof: 0.25,
+                grade: { lift: [0.002, -0.004, 0.007], gamma: [1.00, 0.99, 1.01], gain: [1.00, 0.98, 1.03] }
+            },
+            typography: { scrimOpacity: 0.72, eqGlow: 0.28 }
         },
         sims: [
             {
@@ -1094,7 +1161,18 @@ SITE.dimensions = [
             cameraDamping: 0.08,
             hero: { colour: [0.40, 0.95, 0.80], size: 5.5 },
             sim: { mode: "figure8-choreography", n: 3 },
-            audio: { rootFreq: 82.41, harmonicRatios: [1.0, 1.5, 2.0, 2.667], filterCutoff: 400, q: 3.4 }
+            audio: { rootFreq: 82.41, harmonicRatios: [1.0, 1.5, 2.0, 2.667], filterCutoff: 400, q: 3.4 },
+            // Restrained teal filmic grade for About & Contact
+            post: {
+                vignette: 0.36,
+                ca: 0.002,
+                grain: 0.014,
+                godRays: 0.0,
+                anamorphic: 0.06,
+                dof: 0.25,
+                grade: { lift: [-0.004, 0.003, 0.003], gamma: [0.99, 1.00, 1.01], gain: [0.98, 1.01, 1.02] }
+            },
+            typography: { scrimOpacity: 0.72, eqGlow: 0.28 }
         },
         sims: [
             {

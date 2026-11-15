@@ -178,6 +178,7 @@ const contactSection = () => `
                     <span class="pill" style="opacity:0.8">GPG Verified</span>
                 </div>
             </div>
+            <div class="kw-footer-bar"><span>© Kushan Waghmare · Figure-8 Three-Body Stage</span><a href="#intro" class="pill kw-back-top">↑ Warp to Top</a></div>
         </div>`;
 
 const domainPage = (key) => {
@@ -533,16 +534,47 @@ const renderNav = (active, pageType) => {
     </header>`;
 };
 
-const buildHTML = ({ domain, pageType, title, desc, mainContent }) => `<!doctype html>
+const BASE_URL = "https://kushanwaghmare.github.io";
+const escAttr = (s) => String(s).replace(/"/g, "&quot;");
+const PERSON_LD = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Kushan Waghmare",
+    "url": BASE_URL,
+    "email": "mailto:kushanwaghmare@gmail.com",
+    "sameAs": [
+        "https://github.com/KushanWaghmare",
+        "https://orcid.org/0009-0002-1842-8921"
+    ],
+    "affiliation": [
+        { "@type": "CollegeOrUniversity", "name": "Indian Institute of Technology Madras" },
+        { "@type": "CollegeOrUniversity", "name": "Vidya Bharati Mahavidyalaya" }
+    ]
+});
+
+const buildHTML = ({ filename, domain, pageType, title, desc, mainContent }) => {
+    const pageUrl = filename === "index.html" ? `${BASE_URL}/` : `${BASE_URL}/${filename}`;
+    const safeTitle = escAttr(title);
+    const safeDesc = escAttr(desc);
+    return `<!doctype html>
 <html lang="en-GB" data-domain="${domain}" data-page="${pageType}" data-theme="dark" data-font="space">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>${title}</title>
-    <meta name="description" content="${desc}" />
+    <meta name="description" content="${safeDesc}" />
     <meta name="author" content="Kushan Waghmare" />
     <meta name="theme-color" content="#000000" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>" />
+    <link rel="canonical" href="${pageUrl}" />
+    <meta property="og:title" content="${safeTitle}" />
+    <meta property="og:description" content="${safeDesc}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="${pageUrl}" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="${safeTitle}" />
+    <meta name="twitter:description" content="${safeDesc}" />
+    <script type="application/ld+json">${PERSON_LD}</script>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <script>try{document.documentElement.dataset.theme="dark";localStorage.setItem("theme","dark");const q=new URLSearchParams(location.search);const f=q.get("font")||localStorage.getItem("kw_font")||"space";document.documentElement.dataset.font=f;if(q.get("font"))localStorage.setItem("kw_font",f);const ly=q.get("layout")||localStorage.getItem("kw-layout");document.documentElement.dataset.layout=(ly!=="classic"&&window.innerWidth>=1100)?"callout":"classic";}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.font="space";document.documentElement.dataset.layout=window.innerWidth>=1100?"callout":"classic";}</script>
     <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -580,68 +612,84 @@ const buildHTML = ({ domain, pageType, title, desc, mainContent }) => `<!doctype
 </body>
 </html>
 `;
+};
+
+const generatedPages = [];
+const writePage = (opts) => {
+    fs.writeFileSync(path.join(root, opts.filename), buildHTML(opts));
+    generatedPages.push(opts.filename);
+    console.log(`Wrote ${opts.filename}`);
+};
 
 // 1. Hub
-fs.writeFileSync(path.join(root, "index.html"), buildHTML({
+writePage({
+    filename: "index.html",
     domain: "hub",
     pageType: "hub",
     title: "Kushan Waghmare · Portfolio",
     desc: "Kushan Waghmare: Data Science and Quantitative Finance student at IIT Madras. Mathematics, physics, data science, quant finance and computer science projects.",
     mainContent: hubPage()
-}));
-console.log("Wrote index.html");
+});
 
 // 2. Domains
 for (const k of keys) {
     const d = SITE.domains[k];
-    const file = path.join(root, d.file);
-    fs.writeFileSync(file, buildHTML({
+    writePage({
+        filename: d.file,
         domain: k,
         pageType: "domain",
         title: `${d.name} · Kushan Waghmare`,
         desc: d.blurb,
         mainContent: domainPage(k)
-    }));
-    console.log(`Wrote ${d.file}`);
+    });
 }
 
 // 3. Project detail shell
-fs.writeFileSync(path.join(root, "project.html"), buildHTML({
+writePage({
+    filename: "project.html",
     domain: "hub",
     pageType: "project",
     title: "Project · Kushan Waghmare",
     desc: "Project deep-dive: architecture and mathematics.",
     mainContent: projectIndexPage()
-}));
-console.log("Wrote project.html");
+});
 
 // 4. Papers page (Overview list)
-fs.writeFileSync(path.join(root, "papers.html"), buildHTML({
+writePage({
+    filename: "papers.html",
     domain: "papers",
     pageType: "papers",
     title: "Research Papers · Kushan Waghmare",
     desc: "Preprints and research papers on non-equilibrium Langevin dynamics, high-frequency statistical arbitrage, and symplectic numerical integrators.",
     mainContent: papersPage()
-}));
-console.log("Wrote papers.html");
+});
 
 // 4b. Paper detail shell (pre-rendered with the first paper for instant paint)
-fs.writeFileSync(path.join(root, "paper.html"), buildHTML({
+writePage({
+    filename: "paper.html",
     domain: "papers",
     pageType: "paper",
     title: "Research Paper · Kushan Waghmare",
     desc: "Research paper deep-dive: abstract, mathematical formulation and analytical highlights.",
     mainContent: paperDetailPage(SITE.papers[0])
-}));
-console.log("Wrote paper.html");
+});
 
 // 5. Courses page
-fs.writeFileSync(path.join(root, "courses.html"), buildHTML({
+writePage({
+    filename: "courses.html",
     domain: "courses",
     pageType: "courses",
     title: "Academic Coursework & Curricula · Kushan Waghmare",
     desc: "Academic coursework and curricula at IIT Madras, Vidya Bharati Mahavidyalaya, and advanced specialisations in quantitative finance and computer systems.",
     mainContent: coursesPage()
-}));
-console.log("Wrote courses.html");
+});
+
+// 6. Sitemap
+const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${generatedPages.map((f) => `  <url><loc>${f === "index.html" ? `${BASE_URL}/` : `${BASE_URL}/${f}`}</loc></url>`).join("\n")}
+</urlset>
+`;
+fs.writeFileSync(path.join(root, "sitemap.xml"), sitemapXml);
+console.log(`Wrote sitemap.xml (${generatedPages.length} URLs)`);
 
