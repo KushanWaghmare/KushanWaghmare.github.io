@@ -2427,37 +2427,7 @@ const initNavSim = (c) => {
             // ---- Laniakea Cluster & Void Labels (only drawn when Laniakea intro is visible)
             if (laniakeaAlpha > 0.01 && M && M.ready && M.projectUV) {
                 const curRaw = M.cursor && M.cursor.active ? M.cursor : null, cur = curRaw ? { x: curRaw.x - ox, y: curRaw.y - oy } : null;
-                let ru = M.LG[0], rv = M.LG[1];
-                if (curRaw) { const q = M.uvFromScreen(curRaw.x, curRaw.y); if (q && q.u > -0.02 && q.u < 1.02 && q.v > -0.02 && q.v < 1.02) { ru = q.u; rv = q.v; } }
                 const fmt = (x, d) => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(d);
-                const hudX = W - 22, hudY = H - 150 * Math.min(1.1, k);
-
-                // Measure & layout bottom-right linear-theory equation HUD pill
-                const eqFs = Math.max(9.2, 10.2 * k), subFs = Math.max(8.5, 9.4 * k);
-                ctx.font = `500 ${eqFs}px ${mono}`;
-                const tVp = "v_p(r)", tOp = " = −(H₀f / 4π) ∫ ", tDm = "δ_m(r')", tKer = " · (r−r')/|r−r'|³ d³r'";
-                const chipPadX = 5 * k, chipH = 16 * k;
-                const wVp = ctx.measureText(tVp).width + chipPadX * 2;
-                const wOp = ctx.measureText(tOp).width;
-                const wDm = ctx.measureText(tDm).width + chipPadX * 2;
-                const wKer = ctx.measureText(tKer).width;
-                const eqRowW = wVp + wOp + wDm + wKer;
-                const pillPadX = 10 * k, pillPadY = 8 * k;
-                const pillW = eqRowW + pillPadX * 2, pillH = 44 * k;
-                const pillX = Math.max(12, hudX - pillW), pillY = hudY - 12 * k;
-                const row1Y = pillY + pillPadY + chipH * 0.5;
-                const vpX = pillX + pillPadX, opX = vpX + wVp, dmX = opX + wOp, kerX = dmX + wDm;
-                const vpBox = { x: vpX, y: pillY + 3 * k, w: wVp, h: chipH + 6 * k, left: vpX, top: pillY + 3 * k, right: vpX + wVp, bottom: pillY + 3 * k + chipH + 6 * k };
-                const dmBox = { x: dmX, y: pillY + 3 * k, w: wDm + wKer, h: chipH + 6 * k, left: dmX, top: pillY + 3 * k, right: dmX + wDm + wKer, bottom: pillY + 3 * k + chipH + 6 * k };
-                M._eqBoxes = { vp: vpBox, dm: dmBox };
-                rects.push({ x: pillX - 6, y: pillY - 6, w: pillW + 12, h: pillH + 12 });
-
-                if (curRaw && curRaw._katexMode) {
-                    M.mode = curRaw._katexMode;
-                } else if (cur) {
-                    const inBox = (b) => b && cur.x >= b.x && cur.x <= b.x + b.w && cur.y >= b.y && cur.y <= b.y + b.h;
-                    M.mode = inBox(vpBox) ? 2 : inBox(dmBox) ? 1 : 0;
-                }
                 const modeNow = M.mode || 0;
                 dwS += ((modeNow === 1 ? 1 : 0) - dwS) * Math.min(1, dtS * 6);
                 vwS += ((modeNow === 2 ? 1 : 0) - vwS) * Math.min(1, dtS * 6);
@@ -2538,55 +2508,6 @@ const initNavSim = (c) => {
                     }
                     ctx.restore();
                 }
-
-                // Draw bottom-right linear-theory equation HUD pill & live telemetry readout
-                ctx.save();
-                ctx.globalAlpha = laniakeaAlpha;
-                roundRect(ctx, pillX, pillY, pillW, pillH, 7 * k);
-                ctx.fillStyle = "rgba(8,13,28,0.74)";
-                ctx.fill();
-                ctx.strokeStyle = "rgba(255,255,255,0.14)";
-                ctx.lineWidth = 1;
-                ctx.stroke();
-
-                // Left interactive chip: v_p(r) (cyan highlight when mode === 2)
-                roundRect(ctx, vpX, row1Y - chipH * 0.5, wVp, chipH, 4 * k);
-                ctx.fillStyle = `rgba(80,195,255,${(0.11 + 0.25 * vwS).toFixed(3)})`;
-                ctx.fill();
-                ctx.strokeStyle = `rgba(130,220,255,${(0.32 + 0.58 * vwS).toFixed(3)})`;
-                ctx.stroke();
-
-                // Right interactive chip: δ_m(r') (amber-gold highlight when mode === 1)
-                roundRect(ctx, dmX, row1Y - chipH * 0.5, wDm, chipH, 4 * k);
-                ctx.fillStyle = `rgba(255,190,95,${(0.11 + 0.25 * dwS).toFixed(3)})`;
-                ctx.fill();
-                ctx.strokeStyle = `rgba(255,215,130,${(0.32 + 0.58 * dwS).toFixed(3)})`;
-                ctx.stroke();
-
-                ctx.font = `500 ${eqFs}px ${mono}`;
-                ctx.textBaseline = "middle";
-                ctx.textAlign = "left";
-                ctx.fillStyle = modeNow === 2 ? "rgba(195,242,255,0.98)" : "rgba(165,218,255,0.90)";
-                ctx.fillText(tVp, vpX + chipPadX, row1Y);
-                ctx.fillStyle = "rgba(215,225,245,0.75)";
-                ctx.fillText(tOp, opX, row1Y);
-                ctx.fillStyle = modeNow === 1 ? "rgba(255,238,185,0.98)" : "rgba(255,215,150,0.90)";
-                ctx.fillText(tDm, dmX + chipPadX, row1Y);
-                ctx.fillStyle = modeNow === 1 ? "rgba(255,228,175,0.90)" : "rgba(215,225,245,0.75)";
-                ctx.fillText(tKer, kerX, row1Y);
-
-                // Readout line underneath using ru, rv
-                const readY = pillY + pillH - 9.5 * k;
-                const densVal = typeof M.densityAt === "function" ? M.densityAt(ru, rv) : 0;
-                const velObj = typeof M.velocityAt === "function" ? M.velocityAt(ru, rv) : { mag: 0 };
-                const readout = `δ = ${fmt(densVal, 2)} · |v_p| = ${Math.round(velObj.mag || 0)} km/s`;
-                ctx.font = `500 ${subFs}px ${mono}`;
-                ctx.textAlign = "right";
-                ctx.fillStyle = "rgba(195,210,240,0.82)";
-                ctx.fillText(readout, pillX + pillW - pillPadX, readY);
-                ctx.restore();
-            } else if (M) {
-                M._eqBoxes = null;
             }
 
             // Shared cursor-lens overlay ring (solid 54px + dashed 1.55x ring); only active on user mouse drag/press
@@ -2613,6 +2534,171 @@ const initNavSim = (c) => {
         return { resize, draw };
     };
 
+    /* ---------- Interactive Two-Chip Section Equation HUDs (below section heading on all 7 sections) ---------- */
+    const SECTION_EQ_SPECS = {
+        "hub:intro": {
+            chip1: `<i><b>v</b><sub>p</sub></i>(<b>r</b>)`,
+            chip1Title: "Peculiar velocity infall flow",
+            op: ` = −(<i>H</i><sub>0</sub><i>f</i> / 4π) ∫ `,
+            chip2: `<i>δ<sub>m</sub></i>(<b>r</b>′)`,
+            chip2Title: "Over-density cluster nodes",
+            tail: ` · (<b>r</b> − <b>r</b>′) / |<b>r</b> − <b>r</b>′|<sup>3</sup> d<sup>3</sup><i>r</i>′`,
+            readout: `δ = −0.87 · |v_p| = 264 km/s`
+        },
+        "hub:domain-math": {
+            chip1: `<i>z</i><sub>1</sub><sup><i>n</i></sup> + <i>z</i><sub>2</sub><sup><i>n</i></sup> = 1`,
+            chip1Title: "Fermat curve branch locus & complex phase flow",
+            op: ` ,   `,
+            chip2: `<i>Ω</i> ∧ <i>Ω̄</i>`,
+            chip2Title: "Holomorphic volume form & Kähler metric",
+            tail: ` = (−1)<sup><i>n</i>(<i>n</i>−1)/2</sup> (<i>i</i>/2)<sup><i>n</i></sup> <i>κ</i> d<i>V</i>`,
+            readout: `n = 5 Quintic CY₃ · 25 branch patches · Ricci-flat Kähler`
+        },
+        "hub:domain-physics": {
+            chip1: `d<i>s</i><sup>2</sup> = −(1 − 2<i>Mr</i>/<i>Σ</i>)d<i>t</i><sup>2</sup>`,
+            chip1Title: "Kerr spacetime metric & frame-dragging geodesics",
+            op: ` − (4<i>Mar</i> sin<sup>2</sup><i>θ</i>/<i>Σ</i>)d<i>t</i>d<i>φ</i> + `,
+            chip2: `<i>F</i>(<i>r</i>) ∝ <i>g</i><sup>4</sup> <i>T</i><sub>eff</sub><sup>4</sup>`,
+            chip2Title: "Novikov–Thorne relativistic Doppler beaming flux",
+            tail: ``,
+            readout: `a/M = 0.99 Kerr · r_ISCO = 1.45 M · g⁴ Doppler beaming`
+        },
+        "hub:domain-datascience": {
+            chip1: `d<b>x</b> = [<b>f</b>(<b>x</b>,<i>t</i>) − <i>g</i>(<i>t</i>)<sup>2</sup>∇<sub><b>x</b></sub> log <i>p<sub>t</sub></i>(<b>x</b>)]d<i>t</i>`,
+            chip1Title: "Reverse-time probability flow & score drift",
+            op: ` + `,
+            chip2: `<i>g</i>(<i>t</i>) d<b>W̄</b><sub><i>t</i></sub>`,
+            chip2Title: "Reverse-time Wiener stochastic diffusion",
+            tail: ``,
+            readout: `Reverse-time VP-SDE · Score drift ∇log p_t · Manifold flow`
+        },
+        "hub:domain-quant": {
+            chip1: `<i>V</i><sub><i>i,j</i></sub><sup><i>n</i></sup> = max(<i>Φ</i>, <i>e</i><sup>−<i>rΔt</i></sup> 𝔼<sup>ℚ</sup>[<i>V</i><sup><i>n</i>+1</sup>])`,
+            chip1Title: "Risk-neutral backward-induction lattice expectation",
+            op: ` ,   `,
+            chip2: `<i>Δ<sub>k</sub></i> = ∂<i>V</i> / ∂<i>S<sub>k</sub></i>`,
+            chip2Title: "Bivariate Delta sensitivity & early-exercise seam",
+            tail: ``,
+            readout: `3D Binomial Crystal · Backward induction · Early-exercise seam`
+        },
+        "hub:domain-cs": {
+            chip1: `<i>G</i>|<i>ψ</i>⟩ = (2|<i>ψ</i>⟩⟨<i>ψ</i>| − <i>I</i>)<i>O<sub>ω</sub></i>|<i>ψ</i>⟩`,
+            chip1Title: "Grover amplitude amplification diffusion operator",
+            op: ` ,   `,
+            chip2: `QFT<sub>2<sup><i>n</i></sup></sub> |<i>x</i>, <i>a<sup>x</sup></i> mod 15⟩`,
+            chip2Title: "Shor modular exponentiation & quantum Fourier transform",
+            tail: ``,
+            readout: `8-Qubit Register (N = 256) · Grover amplification · Shor mod 15`
+        },
+        "hub:contact": {
+            chip1: `<b>r</b><sub>⊕</sub>(<i>φ,λ,t</i>) = <i>R<sub>z</sub></i>(<i>Ω</i><sub>⊕</sub><i>t</i>) <b>r̂</b>`,
+            chip1Title: "Sidereal terrestrial rotation & telemetry beacon",
+            op: ` + `,
+            chip2: `<b>r</b><sub>☾</sub>(<i>t</i>) = <i>a</i><sub>☾</sub> <i>R</i><sub>orb</sub>(<i>ω</i><sub>☾</sub><i>t</i>)`,
+            chip2Title: "Lunar orbital transit kinematics",
+            tail: ``,
+            readout: `Beacon 21.5°N, 78.5°E (India) · Sidereal rotation & lunar transit`
+        }
+    };
+
+    let introEqReadoutBound = false;
+    const initSectionEquationHuds = () => {
+        window.__SECTION_EQ_MODE__ = window.__SECTION_EQ_MODE__ || { sim: "hub:intro", mode: 0 };
+        const secs = document.querySelectorAll(".snap-section");
+        secs.forEach((sec) => {
+            const simKey = (sec.dataset && sec.dataset.sim) ||
+                (sec.id === "intro" ? "hub:intro" :
+                 sec.id === "about-contact" ? "hub:contact" :
+                 sec.id && sec.id.startsWith("domain-") ? "hub:" + sec.id : "");
+            const spec = SECTION_EQ_SPECS[simKey];
+            if (!spec) return;
+
+            // Hide legacy static .hero-eq.snap-eq inside this section so there is no duplicate equation box
+            sec.querySelectorAll(".hero-eq.snap-eq").forEach((oldEq) => {
+                oldEq.hidden = true;
+                oldEq.setAttribute("aria-hidden", "true");
+                oldEq.style.setProperty("display", "none", "important");
+            });
+
+            if (sec.querySelector(".kw-eq-hud")) return;
+
+            const anchor = (simKey === "hub:intro" || sec.id === "intro")
+                ? sec.querySelector("h1")
+                : (simKey === "hub:contact" || sec.id === "about-contact")
+                    ? (sec.querySelector(".section-head") || sec.querySelector("h2"))
+                    : (sec.querySelector("h2.snap-title") || sec.querySelector("h2") || sec.querySelector("h1"));
+            if (!anchor) return;
+
+            const hud = document.createElement("div");
+            hud.className = "kw-eq-hud";
+            hud.dataset.sim = simKey;
+            hud.innerHTML =
+                `<div class="kw-eq-row">` +
+                    `<span class="kw-eq-chip kw-eq-chip--cyan" data-mode="2" data-sim="${simKey}" role="button" tabindex="0" title="${spec.chip1Title || ""}">${spec.chip1}</span>` +
+                    `<span class="kw-eq-op">${spec.op}</span>` +
+                    `<span class="kw-eq-chip kw-eq-chip--amber" data-mode="1" data-sim="${simKey}" role="button" tabindex="0" title="${spec.chip2Title || ""}">${spec.chip2}</span>` +
+                    (spec.tail ? `<span class="kw-eq-tail">${spec.tail}</span>` : "") +
+                `</div>` +
+                `<div class="kw-eq-readout">${spec.readout}</div>`;
+
+            anchor.insertAdjacentElement("afterend", hud);
+
+            hud.querySelectorAll(".kw-eq-chip").forEach((chip) => {
+                const modeVal = Number(chip.dataset.mode) || 0;
+                const activate = () => {
+                    hud.querySelectorAll(".kw-eq-chip.is-active").forEach((c) => {
+                        if (c !== chip) c.classList.remove("is-active");
+                    });
+                    chip.classList.add("is-active");
+                    window.__SECTION_EQ_MODE__ = { sim: simKey, mode: modeVal };
+                    if (simKey === "hub:intro" && window.__LANIAKEA_MAP__) {
+                        window.__LANIAKEA_MAP__.mode = modeVal;
+                    }
+                };
+                const deactivate = () => {
+                    chip.classList.remove("is-active");
+                    window.__SECTION_EQ_MODE__ = { sim: simKey, mode: 0 };
+                    if (simKey === "hub:intro" && window.__LANIAKEA_MAP__) {
+                        window.__LANIAKEA_MAP__.mode = 0;
+                    }
+                };
+                chip.addEventListener("pointerenter", activate);
+                chip.addEventListener("pointerdown", activate);
+                chip.addEventListener("pointerleave", deactivate);
+                chip.addEventListener("pointerup", deactivate);
+                chip.addEventListener("pointercancel", deactivate);
+            });
+        });
+
+        if (!introEqReadoutBound) {
+            introEqReadoutBound = true;
+            window.addEventListener("pointermove", (e) => {
+                const M = window.__LANIAKEA_MAP__;
+                if (!M || !M.ready || typeof M.densityAt !== "function" || typeof M.velocityAt !== "function") return;
+                const readoutEl = document.querySelector('.kw-eq-hud[data-sim="hub:intro"] .kw-eq-readout, #intro .kw-eq-readout');
+                if (!readoutEl) return;
+                let ru = (M.LG && M.LG[0]) ?? 0.511, rv = (M.LG && M.LG[1]) ?? 0.562;
+                if (typeof M.uvFromScreen === "function" && Number.isFinite(e.clientX) && Number.isFinite(e.clientY)) {
+                    const q = M.uvFromScreen(e.clientX, e.clientY);
+                    if (q && q.u > -0.02 && q.u < 1.02 && q.v > -0.02 && q.v < 1.02) {
+                        ru = q.u;
+                        rv = q.v;
+                    }
+                }
+                const fmt = (x, d) => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(d);
+                const densVal = M.densityAt(ru, rv);
+                const velObj = M.velocityAt(ru, rv) || { mag: 0 };
+                const txt = `δ = ${fmt(densVal, 2)} · |v_p| = ${Math.round(velObj.mag || 0)} km/s`;
+                if (readoutEl.firstChild && readoutEl.firstChild.nodeType === 3) {
+                    if (readoutEl.firstChild.nodeValue !== txt) readoutEl.firstChild.nodeValue = txt;
+                } else if (readoutEl.textContent !== txt) {
+                    readoutEl.textContent = txt;
+                }
+            }, { passive: true });
+        }
+    };
+    KW.initSectionEquationHuds = initSectionEquationHuds;
+
     /* ---------- Full-Viewport Hero Stage & Persistent Cross-Section "YOU ARE HERE" HUD ---------- */
     const initHeroLaniakeaStage = () => {
         const heroSec = document.querySelector('.snap-section[data-sim="hub:intro"], .snap-section.hero#hub-intro, .snap-section.hero[data-domain="hub"]') || document.querySelector(".snap-section");
@@ -2636,20 +2722,23 @@ const initNavSim = (c) => {
         handle.mode = 0; handle.cursor = cur;
         const onMove = (e) => {
             cur.x = e.clientX; cur.y = e.clientY;
-            const k = e.target && e.target.closest ? e.target.closest(".katex") : null;
+            const chip = e.target && e.target.closest ? e.target.closest(".kw-eq-chip") : null;
+            const k = !chip && e.target && e.target.closest ? e.target.closest(".katex") : null;
             let mode = 0;
-            if (k) {
+            if (chip) {
+                const hud = chip.closest(".kw-eq-hud");
+                if (!hud || hud.dataset.sim === "hub:intro") {
+                    mode = Number(chip.dataset.mode) || 0;
+                }
+            } else if (window.__SECTION_EQ_MODE__ && window.__SECTION_EQ_MODE__.sim === "hub:intro" && window.__SECTION_EQ_MODE__.mode) {
+                mode = window.__SECTION_EQ_MODE__.mode;
+            } else if (k) {
                 const integ = k.querySelector(".op-symbol, .mop"), ix = integ ? integ.getBoundingClientRect().left : k.getBoundingClientRect().left + k.getBoundingClientRect().width * 0.55;
                 mode = e.clientX < ix ? 2 : 1;
-            } else if (handle._eqBoxes) {
-                const { vp, dm } = handle._eqBoxes;
-                const inBox = (b) => b && e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h;
-                if (inBox(vp)) mode = 2;
-                else if (inBox(dm)) mode = 1;
             }
-            cur._katexMode = k ? mode : 0;
+            cur._katexMode = (chip || k) ? mode : 0;
             handle.mode = mode;
-            cur.active = !k;
+            cur.active = !(chip || k);
         };
         const onDown = (e) => {
             cur.x = e.clientX; cur.y = e.clientY;
@@ -2679,7 +2768,7 @@ const initNavSim = (c) => {
             const idx = (S && S.supported) ? S.currentIndex : 0;
             if (!cachedSecs.length) cachedSecs = document.querySelectorAll(".snap-section");
             const activeSec = cachedSecs[idx] || heroSec;
-            const els = Array.from(activeSec.querySelectorAll("h1,h2,p,.snap-overview-card,.contact-card,.card")), kx = activeSec.querySelector(".katex");
+            const els = Array.from(activeSec.querySelectorAll("h1,h2,p,.kw-eq-hud,.snap-overview-card,.contact-card,.card")), kx = activeSec.querySelector(".katex");
             if (kx) els.push(kx.closest('[class*="formula"],[class*="equation"],[class*="eq"]') || (kx.parentElement && kx.parentElement.parentElement) || kx);
             rectsCache = els.map((el) => { const r = el.getBoundingClientRect(); return { x: r.left - 8, y: r.top - 6, w: r.width + 16, h: r.height + 12 }; }).filter((r) => r.w > 8 && r.h > 8);
             return rectsCache;
@@ -2864,6 +2953,7 @@ const initNavSim = (c) => {
         }
 
         setupSnapObserver();
+        initSectionEquationHuds();
         initHeroLaniakeaStage();
         observeReveals();
         if (KW._updateScrollParallax) KW._updateScrollParallax();
@@ -3020,7 +3110,7 @@ const initNavSim = (c) => {
 
     let lastHoverTime = 0;
     document.addEventListener("pointerover", (e) => {
-        const target = e.target.closest && e.target.closest(".snap-dot, .pill, .snap-cta-btn, .card, .copy-btn, .sound-btn, .nav a, .snap-cue");
+        const target = e.target.closest && e.target.closest(".snap-dot, .pill, .snap-cta-btn, .card, .copy-btn, .sound-btn, .nav a, .snap-cue, .kw-eq-chip");
         if (target) {
             const now = performance.now();
             if (now - lastHoverTime > 65) {
@@ -3075,7 +3165,7 @@ const initNavSim = (c) => {
             curEl.style.opacity = "0";
             document.body.appendChild(curEl);
 
-            const ACTIVE_SEL = 'a, button, .pill, .snap-cta-btn, .snap-dot, .card, input[type="range"]';
+            const ACTIVE_SEL = 'a, button, .pill, .snap-cta-btn, .snap-dot, .card, .kw-eq-chip, input[type="range"]';
             let tx = -100, ty = -100, cx = -100, cy = -100, curRaf = 0, seen = false;
 
             const stepCursor = () => {
@@ -3972,7 +4062,7 @@ const initNavSim = (c) => {
     }
 
     new MutationObserver((ms) => {
-        if (ms.some((m) => !(m.target.closest && (m.target.closest(".kw-leaders") || m.target.closest(".kw-meta") || m.target.closest(".kw-crop-wrap") || m.target.closest(".kw-hdr"))))) {
+        if (ms.some((m) => !(m.target.closest && (m.target.closest(".kw-leaders") || m.target.closest(".kw-meta") || m.target.closest(".kw-crop-wrap") || m.target.closest(".kw-hdr") || m.target.closest(".kw-eq-readout"))))) {
             schedule();
         }
     }).observe(document.body || root, { childList: true, subtree: true });

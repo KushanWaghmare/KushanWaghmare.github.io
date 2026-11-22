@@ -140,12 +140,15 @@
             const src3 = i * 3;
             const x0 = tgt[src3], y0 = tgt[src3 + 1], z0 = tgt[src3 + 2];
             const zx = this.priorNoise[src3], zy = this.priorNoise[src3 + 1], zz = this.priorNoise[src3 + 2];
+            const dw = this._dw || 0;
+            const vw = this._vw || 0;
 
             // Exact VP-SDE marginal: x_t = α(t) x_0 + σ(t) z, plus stochastic Langevin score curl
-            const jitScale = this.odeMode ? 0.0 : (sigmaT * 0.22);
-            const jx = Math.sin(tSim * 3.1 + i * 0.13) * jitScale;
-            const jy = Math.cos(tSim * 2.9 + i * 0.17) * jitScale;
-            const jz = Math.sin(tSim * 2.5 + i * 0.19) * jitScale;
+            const jitScale = (this.odeMode ? 0.0 : (sigmaT * 0.22)) + dw * (0.12 + 0.22 * sigmaT);
+            const tJit = tSim + (this._dwPhase || 0);
+            const jx = Math.sin(tJit * 3.1 + i * 0.13) * jitScale;
+            const jy = Math.cos(tJit * 2.9 + i * 0.17) * jitScale;
+            const jz = Math.sin(tJit * 2.5 + i * 0.19) * jitScale;
 
             const lx = alphaT * x0 + sigmaT * zx * 1.65 + jx;
             const ly = alphaT * y0 + sigmaT * zy * 1.65 + jy;
@@ -168,15 +171,27 @@
                 const radial = clamp(Math.hypot(x0, y0, z0) / 3.2, 0.0, 1.0);
                 const s4 = seeds ? seeds[i * 4 + 3] : 0.5;
                 const b = 0.17 + 0.30 * s4 * s4 + 0.12 * structureProgress;
-                const rCol = ((1.0 - structureProgress) * 0.96 + structureProgress * (0.14 + 0.25 * radial)) * b;
-                const gCol = ((1.0 - structureProgress) * 0.58 + structureProgress * (0.82 - 0.18 * radial)) * b;
-                const bCol = ((1.0 - structureProgress) * 0.22 + structureProgress * (0.76 + 0.22 * radial)) * b;
-                outCol[outOffset]     = clamp(rCol, 0.04, 0.85);
-                outCol[outOffset + 1] = clamp(gCol, 0.04, 0.85);
-                outCol[outOffset + 2] = clamp(bCol, 0.04, 0.85);
+                let rCol = ((1.0 - structureProgress) * 0.96 + structureProgress * (0.14 + 0.25 * radial)) * b;
+                let gCol = ((1.0 - structureProgress) * 0.58 + structureProgress * (0.82 - 0.18 * radial)) * b;
+                let bCol = ((1.0 - structureProgress) * 0.22 + structureProgress * (0.76 + 0.22 * radial)) * b;
+                if (vw > 1e-3) {
+                    const cyanBoost = vw * (0.35 + 0.65 * structureProgress);
+                    rCol += cyanBoost * 0.08;
+                    gCol += cyanBoost * 0.26;
+                    bCol += cyanBoost * 0.38;
+                }
+                if (dw > 1e-3) {
+                    const amberBoost = dw * (0.45 + 0.55 * tDiff);
+                    rCol += amberBoost * 0.34;
+                    gCol += amberBoost * 0.20;
+                    bCol += amberBoost * 0.04;
+                }
+                outCol[outOffset]     = clamp(rCol, 0.04, 0.95);
+                outCol[outOffset + 1] = clamp(gCol, 0.04, 0.95);
+                outCol[outOffset + 2] = clamp(bCol, 0.04, 0.95);
             }
             if (outSz && seeds) {
-                outSz[i] = 0.85 + 0.65 * (1.0 - tDiff) + 0.65 * seeds[i * 4 + 3];
+                outSz[i] = 0.85 + 0.65 * (1.0 - tDiff) + 0.65 * seeds[i * 4 + 3] + 0.35 * vw * (1.0 - tDiff) + 0.30 * dw;
             }
             if (i === 0) {
                 const scale0 = 1.15 * (1.0 + 0.85 * (this.insideness || 0));
@@ -200,7 +215,14 @@
             if (!this.initialized || !this.targets) this.init(buffer, ctx);
             const DM = root.DiffusionMath || (typeof require === "function" ? require("../math/diffusion-math.js") : null);
 
-            this.cycleTime += dt;
+            const dtSec = dt || 0.016;
+            const eqObj = (typeof window !== "undefined") && window.__SECTION_EQ_MODE__;
+            const eqMode = (eqObj && (!eqObj.sim || eqObj.sim === this.id)) ? (eqObj.mode || 0) : 0;
+            this._dw = (this._dw || 0) + (((eqMode === 1 ? 1 : 0) - (this._dw || 0)) * Math.min(1, dtSec * 6));
+            this._vw = (this._vw || 0) + (((eqMode === 2 ? 1 : 0) - (this._vw || 0)) * Math.min(1, dtSec * 6));
+            this._dwPhase = (this._dwPhase || 0) + dtSec * this._dw * 2.4;
+
+            this.cycleTime += dtSec * (1.0 + 0.85 * this._vw);
             if (this.cycleTime >= this.cycleDuration) {
                 this.cycleTime -= this.cycleDuration;
                 this.shapeIdx = (this.shapeIdx + 1) % 3;
@@ -218,6 +240,9 @@
                 tDiff = 0.01;
             } else {
                 tDiff = 0.01 + 0.99 * smoothstep(10.4, 12.0, ct);
+            }
+            if (this._vw > 1e-3) {
+                tDiff = Math.max(0.01, tDiff * (1.0 - 0.45 * this._vw));
             }
 
             const alphaT = (DM && DM.alpha) ? DM.alpha(tDiff) : Math.sqrt(1.0 - tDiff * tDiff);

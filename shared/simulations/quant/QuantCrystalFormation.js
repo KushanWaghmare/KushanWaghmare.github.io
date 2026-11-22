@@ -179,8 +179,16 @@
             this.coords3D.set(tmpCoords);
         }
 
-        update(_dt, t, buffer, ctx) {
+        update(dt, t, buffer, ctx) {
             if (!this.initialized || !this.coords3D) this.init(buffer, ctx);
+
+            const eqObj = (typeof window !== "undefined") && window.__SECTION_EQ_MODE__;
+            const eqMode = (eqObj && (!eqObj.sim || eqObj.sim === this.id)) ? (eqObj.mode || 0) : 0;
+            const kEq = Math.min(1, (dt || 0.016) * 6);
+            this._dw = (this._dw || 0) + (((eqMode === 1 ? 1 : 0) - (this._dw || 0)) * kEq);
+            this._vw = (this._vw || 0) + (((eqMode === 2 ? 1 : 0) - (this._vw || 0)) * kEq);
+            const dw = this._dw;
+            const vw = this._vw;
 
             const N = buffer.count;
             const pos = buffer.positions;
@@ -204,7 +212,9 @@
             const lens = (ctx && ctx.cursorLens) ? ctx.cursorLens(this.origin.x + offsetX, this.origin.y, this.origin.z) : null;
 
             // Volatility induction wave sweeping along the strike axis
-            const wavePhase = (t * 0.6) % (Math.PI * 2.0);
+            this._wavePhase = (this._wavePhase || 0) + (dt || 0.016) * (0.6 + 1.65 * vw);
+            const wavePhase = this._wavePhase % (Math.PI * 2.0);
+            const cyanPulse = 0.72 + 0.28 * Math.sin(t * 6.5);
 
             for (let i = 0; i < N; i++) {
                 const i3 = i * 3, i4 = i * 4;
@@ -221,11 +231,14 @@
                     // Mountain Shading & Real-Time Wave Induction
                     // ---------------------------------------------------------
                     const waveDist = Math.sin(lx * 1.2 - wavePhase);
-                    const waveGlow = Math.exp(-Math.pow(waveDist, 2) * 5.0);
+                    const waveGlow = Math.exp(-Math.pow(waveDist, 2) * (5.0 - 2.2 * vw));
 
                     // Height-dependent brightness within Laniakea budget
                     const hNorm = clamp((ly + 0.6) / 3.4, 0.0, 1.0);
                     const peakGlow = Math.pow(hNorm, 2.4);
+
+                    // Optimal-stopping early-exercise hinge seam (S₁ = S₂ ridge)
+                    const hingeSeam = Math.exp(-Math.abs(lx * 1.15 - lz * 0.35) * 3.4);
 
                     if (strata[i] > 0.5) {
                         // Level-set contour lines glow sharp silver
@@ -239,6 +252,22 @@
                         gC = 0.24 + 0.30 * peakGlow + 0.18 * waveGlow;
                         bC = 0.28 + 0.28 * peakGlow + 0.18 * waveGlow;
                         pSize = 0.85 + 0.70 * hNorm;
+                    }
+
+                    if (vw > 0.001) {
+                        const vBoost = vw * (0.35 + 0.85 * waveGlow + 0.45 * strata[i]) * cyanPulse;
+                        rC += 0.14 * vBoost;
+                        gC += 0.68 * vBoost;
+                        bC += 1.05 * vBoost;
+                        pSize += vw * (0.35 * waveGlow + 0.28 * strata[i]);
+                    }
+                    if (dw > 0.001) {
+                        const dBoost = dw * (0.30 * hNorm + 1.15 * hingeSeam);
+                        ly += dw * hingeSeam * 0.18;
+                        rC += 1.05 * dBoost;
+                        gC += 0.66 * dBoost;
+                        bC += 0.12 * dBoost;
+                        pSize += dw * 0.65 * hingeSeam;
                     }
 
                     // Hero Particle (i = 0): white-hot beacon on the peak
@@ -275,6 +304,20 @@
                         bC = 0.34 + 0.14 * seedX;
                         pSize = 1.05;
                     }
+                    if (vw > 0.001) {
+                        const waveR = Math.exp(-Math.pow(Math.sin(lx * 1.2 - wavePhase), 2) * 3.5);
+                        rC += vw * 0.12 * waveR;
+                        gC += vw * 0.58 * waveR;
+                        bC += vw * 0.92 * waveR;
+                        pSize += vw * 0.32 * waveR;
+                    }
+                    if (dw > 0.001) {
+                        const centerHinge = (ribbonIdx === 2) ? 1.0 : 0.38;
+                        rC += dw * 0.78 * centerHinge;
+                        gC += dw * 0.48 * centerHinge;
+                        bC += dw * 0.08 * centerHinge;
+                        pSize += dw * 0.45 * centerHinge;
+                    }
 
                 } else {
                     // ---------------------------------------------------------
@@ -285,7 +328,7 @@
                     // Dynamic market volume profile: high near the center (spread), taper outward
                     const distCenter = Math.abs(barIdx - 19) / 19.0;
                     const barHeight = (0.25 + 1.65 * Math.exp(-distCenter * 2.2)) * (0.85 + 0.15 * Math.sin(t * 4.0 + barIdx));
-                    ly += uFrac * barHeight;
+                    ly += uFrac * barHeight * (1.0 + 0.25 * vw);
 
                     const isTip = (uFrac > 0.92);
                     if (isTip) {
@@ -294,6 +337,15 @@
                     } else {
                         rC = 0.14; gC = 0.32; bC = 0.28;
                         pSize = 0.95;
+                    }
+                    if (vw > 0.001) {
+                        gC += vw * 0.38 * uFrac;
+                        bC += vw * 0.65 * uFrac;
+                    }
+                    if (dw > 0.001) {
+                        const spreadSeam = Math.exp(-distCenter * 4.0);
+                        rC += dw * 0.75 * spreadSeam;
+                        gC += dw * 0.46 * spreadSeam;
                     }
                 }
 

@@ -156,8 +156,11 @@
             const om = this.omega[i];
             const ut = this.ut[i];
             const tScale = this.tempScale[i];
+            const dw = this._dw || 0;
+            const vw = this._vw || 0;
+            const tOrb = t + (this._vwPhase || 0);
 
-            const phi = this.phi0[i] + om * t * 5.2;
+            const phi = this.phi0[i] + om * tOrb * 5.2;
             const cosPhi = Math.cos(phi);
             const sinPhi = Math.sin(phi);
 
@@ -181,23 +184,48 @@
             // Projected impact radius in units of M: hide any glint passing across the central shadow (b < 5.6 M)
             const bProj = Math.hypot(lx, ly);
             const shadowMask = smoothstep(5.4, 6.8, bProj);
+            const innerRing = clamp(1.0 - (r - 6.2) / 5.5, 0.0, 1.0);
+            const approaching = clamp((g - 0.92) * 1.35, 0.0, 1.4);
 
             if (outCol) {
-                const gEff = Math.pow(g, 0.58);
+                const gEff = Math.pow(g, 0.58 + 0.22 * dw);
                 const Tobs = 8200.0 * tScale * gEff;
                 this._blackbodyRGB(Tobs, outCol, i3);
-                const boost = clamp(Math.pow(g, 2.1) * (0.35 + 0.65 * tScale), 0.10, 1.25) * shadowMask;
-                outCol[i3]     = clamp(outCol[i3] * boost, 0.0, 1.0);
-                outCol[i3 + 1] = clamp(outCol[i3 + 1] * boost, 0.0, 1.0);
-                outCol[i3 + 2] = clamp(outCol[i3 + 2] * boost, 0.0, 1.0);
+                const boost = clamp(Math.pow(g, 2.1 + 1.25 * dw) * (0.35 + 0.65 * tScale) * (1.0 + 0.35 * dw * approaching), 0.10, 1.45) * shadowMask;
+                let rC = outCol[i3] * boost;
+                let gC = outCol[i3 + 1] * boost;
+                let bC = outCol[i3 + 2] * boost;
+                if (vw > 1e-3) {
+                    const cyanLift = vw * (0.16 + 0.34 * innerRing) * shadowMask;
+                    rC += cyanLift * 0.28;
+                    gC += cyanLift * 0.86;
+                    bC += cyanLift * 1.15;
+                }
+                if (dw > 1e-3) {
+                    const amberLift = dw * (0.24 * innerRing + 0.28 * approaching) * shadowMask;
+                    rC += amberLift * 1.10;
+                    gC += amberLift * 0.68;
+                    bC += amberLift * 0.14;
+                }
+                outCol[i3]     = clamp(rC, 0.0, 1.0);
+                outCol[i3 + 1] = clamp(gC, 0.0, 1.0);
+                outCol[i3 + 2] = clamp(bC, 0.0, 1.0);
             }
             if (outSz) {
-                outSz[i] = (1.15 + 0.85 * tScale * clamp(g, 0.6, 1.5)) * (0.8 + 0.4 * seeds[i4 + 3]) * shadowMask;
+                const eqSzBoost = 1.0 + 0.32 * vw * innerRing + 0.36 * dw * Math.max(innerRing, approaching);
+                outSz[i] = (1.15 + 0.85 * tScale * clamp(g, 0.6, 1.5)) * (0.8 + 0.4 * seeds[i4 + 3]) * eqSzBoost * shadowMask;
             }
         }
 
         update(_dt, t, buffer, ctx) {
             if (!this.initialized || !this.radii) this.init(buffer, ctx);
+
+            const dt = _dt || 0.016;
+            const eqObj = (typeof window !== "undefined") && window.__SECTION_EQ_MODE__;
+            const eqMode = (eqObj && (!eqObj.sim || eqObj.sim === this.id)) ? (eqObj.mode || 0) : 0;
+            this._dw = (this._dw || 0) + (((eqMode === 1 ? 1 : 0) - (this._dw || 0)) * Math.min(1, dt * 6));
+            this._vw = (this._vw || 0) + (((eqMode === 2 ? 1 : 0) - (this._vw || 0)) * Math.min(1, dt * 6));
+            this._vwPhase = (this._vwPhase || 0) + dt * this._vw * 1.45;
 
             const N = buffer.count;
             const pos = buffer.positions;

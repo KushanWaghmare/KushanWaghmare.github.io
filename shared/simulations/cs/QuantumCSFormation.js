@@ -160,16 +160,19 @@
 
             const nCountParticles = Math.floor(N * 0.72);
             const nWorkParticles = Math.floor(N * 0.84);
+            const dw = this._dw || 0;
+            const vw = this._vw || 0;
 
             let lx = 0, ly = 0, lz = 0;
             let rC = 0.25, gC = 0.85, bC = 0.65;
+            let szBoost = 0.0;
 
             if (i < nCountParticles) {
                 // 256 Counting-register amplitude columns on a 16x16 3D lattice
                 const colIdx = i % 256;
                 const gx = (colIdx & 15) - 7.5;
                 const gz = ((colIdx >> 4) & 15) - 7.5;
-                const h = this.ampHeight[colIdx];
+                const h = this.ampHeight[colIdx] * (1.0 + 0.38 * vw);
                 const jitterX = (u1 - 0.5) * 0.14;
                 const jitterZ = (u2 - 0.5) * 0.14;
 
@@ -182,18 +185,32 @@
                 rC = this.ampCols[c3] * tipBoost;
                 gC = this.ampCols[c3 + 1] * tipBoost;
                 bC = this.ampCols[c3 + 2] * tipBoost;
+                if (vw > 0.001) {
+                    const surge = vw * (0.35 + 0.85 * u3);
+                    rC += 0.38 * surge;
+                    gC += 0.78 * surge;
+                    bC += 1.05 * surge;
+                    szBoost += vw * 0.45 * u3;
+                }
             } else if (i < nWorkParticles) {
                 // 16 Modular-exponentiation work-register columns |a^x mod 15⟩
                 const wIdx = i & 15;
                 const wx = (wIdx - 7.5) * 0.42 + (u1 - 0.5) * 0.16;
                 const wz = -3.4 + (u2 - 0.5) * 0.16;
-                const wh = this.workHeight[wIdx] * 1.65;
+                const wh = this.workHeight[wIdx] * 1.65 * (1.0 + 0.48 * dw);
                 lx = wx;
                 lz = wz;
                 ly = -1.45 + u3 * wh;
                 rC = 0.12 + 0.25 * u3;
                 gC = 0.48 + 0.18 * u3;
                 bC = 0.40 + 0.16 * u3;
+                if (dw > 0.001) {
+                    const wSurge = dw * (0.45 + 0.85 * u3);
+                    rC += 1.08 * wSurge;
+                    gC += 0.68 * wSurge;
+                    bC += 0.12 * wSurge;
+                    szBoost += dw * 0.60 * u3;
+                }
             } else {
                 // 3D Parabolic Quantum Entanglement Arcs linking counting state |x⟩ to residue |a^x mod 15⟩
                 const xState = i & 255;
@@ -207,15 +224,22 @@
                 const ex = (residue - 7.5) * 0.42;
                 const ez = -3.4;
 
-                const sArc = (u1 + t * 0.28) % 1.0;
+                const sArc = (u1 + t * (0.28 + 0.35 * dw)) % 1.0;
                 lx = sx + (ex - sx) * sArc;
                 lz = sz + (ez - sz) * sArc;
-                ly = -1.1 + 4.0 * sArc * (1.0 - sArc) * (1.15 + 0.55 * this.ampHeight[xState]);
+                ly = -1.1 + 4.0 * sArc * (1.0 - sArc) * (1.15 + 0.55 * this.ampHeight[xState] + 0.42 * dw);
 
                 const c3 = xState * 3;
                 rC = this.ampCols[c3] * 0.42 + 0.08;
                 gC = this.ampCols[c3 + 1] * 0.42 + 0.08;
                 bC = this.ampCols[c3 + 2] * 0.42 + 0.08;
+                if (dw > 0.001) {
+                    const arcGlow = dw * (0.55 + 0.75 * Math.sin(sArc * Math.PI));
+                    rC += 1.05 * arcGlow;
+                    gC += 0.68 * arcGlow;
+                    bC += 0.14 * arcGlow;
+                    szBoost += dw * 0.55;
+                }
             }
 
             const rx = lx * cosY - lz * sinY;
@@ -229,12 +253,13 @@
             outPos[i3 + 2] = this.origin.z + rz2 * scale;
 
             if (outCol) {
-                outCol[i3]     = clamp(rC, 0.04, 0.85);
-                outCol[i3 + 1] = clamp(gC, 0.04, 0.85);
-                outCol[i3 + 2] = clamp(bC, 0.04, 0.85);
+                const maxCol = 0.85 + 0.95 * Math.max(dw, vw);
+                outCol[i3]     = clamp(rC, 0.04, maxCol);
+                outCol[i3 + 1] = clamp(gC, 0.04, maxCol);
+                outCol[i3 + 2] = clamp(bC, 0.04, maxCol);
             }
             if (outSz) {
-                outSz[rawIdx] = 0.85 + 1.15 * u4;
+                outSz[rawIdx] = 0.85 + 1.15 * u4 + szBoost;
             }
             if (rawIdx === 0) {
                 const colIdx0 = this.markedTarget & 255;
@@ -242,7 +267,7 @@
                 const gz0 = ((colIdx0 >> 4) & 15) - 7.5;
                 const lx0 = gx0 * 0.42;
                 const lz0 = gz0 * 0.42 + 0.6;
-                const ly0 = -1.45 + this.ampHeight[colIdx0] + 0.18;
+                const ly0 = -1.45 + this.ampHeight[colIdx0] * (1.0 + 0.38 * vw) + 0.18;
                 const rx0 = lx0 * cosY - lz0 * sinY;
                 const rz0 = lx0 * sinY + lz0 * cosY;
                 const ry0 = ly0 * cosP - rz0 * sinP;
@@ -259,8 +284,15 @@
             }
         }
 
-        update(_dt, t, buffer, ctx) {
+        update(dt, t, buffer, ctx) {
             if (!this.initialized) this.init(buffer, ctx);
+
+            const eqObj = (typeof window !== "undefined") && window.__SECTION_EQ_MODE__;
+            const eqMode = (eqObj && (!eqObj.sim || eqObj.sim === this.id)) ? (eqObj.mode || 0) : 0;
+            const kEq = Math.min(1, (dt || 0.016) * 6);
+            this._dw = (this._dw || 0) + (((eqMode === 1 ? 1 : 0) - (this._dw || 0)) * kEq);
+            this._vw = (this._vw || 0) + (((eqMode === 2 ? 1 : 0) - (this._vw || 0)) * kEq);
+
             this._updateQuantumState(t);
 
             const ptrX = (ctx && ctx.pointerX) || 0;

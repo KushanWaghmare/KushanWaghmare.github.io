@@ -206,6 +206,15 @@
             this._lastBuffer = buffer;
             if (!this.initialized || !this.coords4D) this.init(buffer, ctx);
 
+            const dt = _dt || 0.016;
+            const eqObj = (typeof window !== "undefined") && window.__SECTION_EQ_MODE__;
+            const eqMode = (eqObj && (!eqObj.sim || eqObj.sim === this.id)) ? (eqObj.mode || 0) : 0;
+            this._dw = (this._dw || 0) + (((eqMode === 1 ? 1 : 0) - (this._dw || 0)) * Math.min(1, dt * 6));
+            this._vw = (this._vw || 0) + (((eqMode === 2 ? 1 : 0) - (this._vw || 0)) * Math.min(1, dt * 6));
+            const dw = this._dw, vw = this._vw;
+            this._vwPhase = (this._vwPhase || 0) + dt * vw * 0.75;
+            const tEff = t + this._vwPhase;
+
             const N = buffer.count;
             const pos = buffer.positions;
             const col = buffer.colours;
@@ -218,9 +227,9 @@
             const ptrX = (ctx && ctx.pointerX) || 0;
             const ptrY = (ctx && ctx.pointerY) || 0;
 
-            this.alpha = 0.58 + 0.36 * Math.sin(t * 0.27);
-            this.yaw = t * 0.21 + 0.34 * Math.sin(t * 0.11) + ptrX * 0.55;
-            this.pitch = 0.36 + 0.16 * Math.sin(t * 0.083 + 1.0) + ptrY * 0.30;
+            this.alpha = 0.58 + (0.36 + 0.12 * vw) * Math.sin(tEff * 0.27);
+            this.yaw = tEff * 0.21 + 0.34 * Math.sin(tEff * 0.11) + ptrX * 0.55;
+            this.pitch = 0.36 + 0.16 * Math.sin(tEff * 0.083 + 1.0) + ptrY * 0.30;
 
             const cosA = Math.cos(this.alpha), sinA = Math.sin(this.alpha);
             const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
@@ -238,13 +247,27 @@
                 if (lens && lens.active && i > 0) ctx.applyLens(pos, i3, lens);
 
                 const isSeam = seam[i];
-                const b = 0.17 + 0.26 * seeds[i4 + 3] * seeds[i4 + 3] + (isSeam > 0.5 ? 0.14 : 0.0);
-                const shade = clamp((0.76 + 0.32 * lw) * b, 0.08, 0.72);
-                col[i3]     = clamp(bCol[i3] * shade, 0.04, 0.85);
-                col[i3 + 1] = clamp(bCol[i3 + 1] * shade, 0.04, 0.85);
-                col[i3 + 2] = clamp(bCol[i3 + 2] * shade, 0.04, 0.85);
+                const seamHit = isSeam > 0.5;
+                const b = 0.17 + 0.26 * seeds[i4 + 3] * seeds[i4 + 3] + (seamHit ? (0.14 + 0.22 * vw) : (0.12 * dw));
+                const shade = clamp((0.76 + 0.32 * lw) * b, 0.08, 0.88);
+                let rC = bCol[i3] * shade;
+                let gC = bCol[i3 + 1] * shade;
+                let bC = bCol[i3 + 2] * shade;
+                if (seamHit && vw > 1e-3) {
+                    rC += vw * 0.18;
+                    gC += vw * 0.34;
+                    bC += vw * 0.42;
+                }
+                if (!seamHit && dw > 1e-3) {
+                    rC += dw * 0.28;
+                    gC += dw * 0.18;
+                    bC += dw * 0.04;
+                }
+                col[i3]     = clamp(rC, 0.04, 0.96);
+                col[i3 + 1] = clamp(gC, 0.04, 0.96);
+                col[i3 + 2] = clamp(bC, 0.04, 0.96);
 
-                sz[i] = (isSeam > 0.5 ? 1.45 : 0.85) + 0.80 * seeds[i4 + 3];
+                sz[i] = (seamHit ? (1.45 + 0.55 * vw) : (0.85 + 0.28 * dw)) + 0.80 * seeds[i4 + 3];
                 if (i === 0) {
                     col[0] = 1.85; col[1] = 1.35; col[2] = 2.25;
                     sz[0] = 5.8;
@@ -252,6 +275,10 @@
             }
 
             if (this.auxLines4D && this.auxLineCount > 0) {
+                const lineR = 0.745 + 0.24 * dw - 0.14 * vw;
+                const lineG = 0.843 - 0.05 * dw + 0.10 * vw;
+                const lineB = 1.0 - 0.42 * dw;
+                const lineA = 0.12 + 0.24 * dw + 0.08 * vw;
                 for (let k = 0; k < this.auxLineCount; k++) {
                     const k4 = k * 4, k3 = k * 3;
                     this._project4DtoWorld(
@@ -259,6 +286,10 @@
                         cosA, sinA, cosY, sinY, cosP, sinP, offsetX,
                         this.auxPositions, k3
                     );
+                    this.auxColours[k4]     = lineR;
+                    this.auxColours[k4 + 1] = lineG;
+                    this.auxColours[k4 + 2] = lineB;
+                    this.auxColours[k4 + 3] = lineA;
                 }
             }
         }

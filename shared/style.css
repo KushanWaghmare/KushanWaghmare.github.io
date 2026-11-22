@@ -3919,3 +3919,114 @@ html[data-life-mode="simple"] .hero .snap-cue {
         opacity: 1 !important;
     }
 }
+
+/* ---------- Interactive Two-Chip Section Equation Pill (.kw-eq-hud) ---------- */
+.kw-eq-hud {
+    background: rgba(8, 13, 28, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 11px;
+    padding: 10px 14px;
+    margin: 10px 0 14px;
+    width: fit-content;
+    max-width: 100%;
+    box-sizing: border-box;
+    pointer-events: auto;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 10px 28px -8px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.kw-eq-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 2px;
+    font-family: "KaTeX_Math", "KaTeX_Main", "STIX Two Math", "Cambria Math", Georgia, serif;
+    font-size: clamp(0.92rem, 1.35vw, 1.08rem);
+    line-height: 1.45;
+    letter-spacing: 0.015em;
+    color: rgba(226, 234, 250, 0.88);
+}
+
+.kw-eq-row i {
+    font-style: italic;
+}
+
+.kw-eq-row b {
+    font-weight: 700;
+}
+
+.kw-eq-row sub,
+.kw-eq-row sup {
+    font-size: 0.74em;
+    line-height: 0;
+}
+
+.kw-eq-op {
+    white-space: pre-wrap;
+    color: rgba(215, 226, 245, 0.78);
+}
+
+.kw-eq-tail {
+    color: rgba(220, 230, 248, 0.84);
+}
+
+.kw-eq-chip {
+    display: inline-flex;
+    align-items: baseline;
+    padding: 2px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.kw-eq-chip--cyan {
+    border: 1px solid rgba(120, 215, 255, 0.42);
+    background: rgba(70, 185, 255, 0.12);
+    color: rgba(175, 228, 255, 0.94);
+}
+
+.kw-eq-chip--cyan:hover,
+.kw-eq-chip--cyan.is-active,
+.kw-eq-chip--cyan:focus-visible {
+    border-color: rgba(130, 225, 255, 0.92);
+    background: rgba(80, 195, 255, 0.24);
+    color: rgba(220, 248, 255, 1);
+    box-shadow: 0 0 14px rgba(80, 195, 255, 0.28);
+    transform: translateY(-0.5px);
+}
+
+.kw-eq-chip--amber {
+    border: 1px solid rgba(255, 205, 115, 0.42);
+    background: rgba(255, 185, 85, 0.12);
+    color: rgba(255, 222, 158, 0.94);
+}
+
+.kw-eq-chip--amber:hover,
+.kw-eq-chip--amber.is-active,
+.kw-eq-chip--amber:focus-visible {
+    border-color: rgba(255, 225, 145, 0.95);
+    background: rgba(255, 190, 95, 0.24);
+    color: rgba(255, 244, 205, 1);
+    box-shadow: 0 0 14px rgba(255, 190, 95, 0.28);
+    transform: translateY(-0.5px);
+}
+
+.kw-eq-readout {
+    font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.76rem;
+    letter-spacing: 0.03em;
+    color: rgba(190, 208, 240, 0.78);
+    margin-top: 6px;
+    text-align: right;
+}
+
+.snap-section:has(.kw-eq-hud) .hero-eq.snap-eq,
+html[data-layout="callout"] .kw-editorial-col:has(.kw-eq-hud) .hero-eq,
+html[data-layout="callout"] .kw-editorial-col:has(.kw-eq-hud) .snap-eq,
+.kw-eq-hud ~ .hero-eq.snap-eq {
+    display: none !important;
+}
+
