@@ -195,21 +195,31 @@
                 let rC = outCol[i3] * boost;
                 let gC = outCol[i3 + 1] * boost;
                 let bC = outCol[i3 + 2] * boost;
-                if (vw > 1e-3) {
-                    const cyanLift = vw * (0.16 + 0.34 * innerRing) * shadowMask;
-                    rC += cyanLift * 0.28;
-                    gC += cyanLift * 0.86;
-                    bC += cyanLift * 1.15;
+                if (vw > 0.01) {
+                    const outerDim = 1.0 - 0.62 * vw * (1.0 - innerRing);
+                    rC *= outerDim;
+                    gC *= outerDim;
+                    bC *= outerDim;
+                    const cyanLift = vw * (0.12 + 1.45 * innerRing) * shadowMask;
+                    rC += cyanLift * 0.22;
+                    gC += cyanLift * 0.95;
+                    bC += cyanLift * 1.20;
                 }
-                if (dw > 1e-3) {
-                    const amberLift = dw * (0.24 * innerRing + 0.28 * approaching) * shadowMask;
-                    rC += amberLift * 1.10;
+                if (dw > 0.01) {
+                    const receding = clamp((1.0 - g) * 2.0, 0.0, 1.0);
+                    const recDim = 1.0 - 0.58 * dw * receding;
+                    rC *= recDim;
+                    gC *= recDim;
+                    bC *= recDim;
+                    const amberLift = dw * (0.18 * innerRing + 1.25 * approaching) * shadowMask;
+                    rC += amberLift * 1.12;
                     gC += amberLift * 0.68;
-                    bC += amberLift * 0.14;
+                    bC += amberLift * 0.12;
                 }
-                outCol[i3]     = clamp(rC, 0.0, 1.0);
-                outCol[i3 + 1] = clamp(gC, 0.0, 1.0);
-                outCol[i3 + 2] = clamp(bC, 0.0, 1.0);
+                const maxCol = (vw > 0.01 || dw > 0.01) ? 2.1 : 1.0;
+                outCol[i3]     = clamp(rC, 0.0, maxCol);
+                outCol[i3 + 1] = clamp(gC, 0.0, maxCol);
+                outCol[i3 + 2] = clamp(bC, 0.0, maxCol);
             }
             if (outSz) {
                 const eqSzBoost = 1.0 + 0.32 * vw * innerRing + 0.36 * dw * Math.max(innerRing, approaching);
@@ -225,7 +235,7 @@
             const eqMode = (eqObj && (!eqObj.sim || eqObj.sim === this.id)) ? (eqObj.mode || 0) : 0;
             this._dw = (this._dw || 0) + (((eqMode === 1 ? 1 : 0) - (this._dw || 0)) * Math.min(1, dt * 6));
             this._vw = (this._vw || 0) + (((eqMode === 2 ? 1 : 0) - (this._vw || 0)) * Math.min(1, dt * 6));
-            this._vwPhase = (this._vwPhase || 0) + dt * this._vw * 1.45;
+            this._vwPhase = (this._vwPhase || 0) + dt * this._vw * 1.8;
 
             const N = buffer.count;
             const pos = buffer.positions;

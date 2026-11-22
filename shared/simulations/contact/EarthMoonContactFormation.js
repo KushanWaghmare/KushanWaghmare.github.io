@@ -267,6 +267,16 @@
             this._vw = (this._vw || 0) + (((eqMode === 2 ? 1 : 0) - (this._vw || 0)) * kEq);
             const dw = this._dw;
             const vw = this._vw;
+            const eqMax = Math.max(dw, vw);
+            if (eqMax > 0.01) {
+                this.pixelArt = false;
+                this.lookOverride.bloomStrength = 0.85 * eqMax;
+                this.lookOverride.bloomThreshold = 9.0 - 8.0 * eqMax;
+            } else {
+                this.pixelArt = true;
+                this.lookOverride.bloomStrength = 0.0;
+                this.lookOverride.bloomThreshold = 9.0;
+            }
 
             const ins = this.insideness || 0;
             this._fit(ctx, ins);
@@ -305,7 +315,7 @@
             const Rpx = Rc * cell;
             { const dots = 72;
               for (let q = 0; q < dots; q++) { const tv = this._moonRel((q / dots) * 6.2831853, this._mob, Rpx, W); put(Math.round(ci + tv[0] * Rc), Math.round(cj + tv[1] * Rc), 24); } }
-            this._moonExtra = (this._moonExtra || 0) + dts * this.moonRate * 4.2 * dw;
+            this._moonExtra = (this._moonExtra || 0) + dts * this.moonRate * 2.0 * dw;
             const theta = this.moonTheta0 + t * this.moonRate + this._moonExtra;
             const mv = this._moonRel(theta, this._mob, Rpx, W);
             const mox = mv[0], moy = mv[1], moz = mv[2];
@@ -447,7 +457,11 @@
             // hero particle 0 anchor (kept at India even when hidden so HUD labels follow it)
             { wmap((hi + 0.5) * cell, H - (hj + 0.5) * cell); const raw0 = slot ? slot[0] : 0;
               pos[raw0 * 3] = wmx; pos[raw0 * 3 + 1] = wmy; pos[raw0 * 3 + 2] = CEz;
-              col[raw0 * 3] = 1; col[raw0 * 3 + 1] = 1; col[raw0 * 3 + 2] = 1; tgt[0] = wmx; tgt[1] = wmy; tgt[2] = CEz; }
+              const hDim = dw > 0.01 ? (1.0 - 0.45 * dw) : 1.0;
+              col[raw0 * 3] = (1.0 + 0.35 * vw) * hDim;
+              col[raw0 * 3 + 1] = (1.0 + 0.80 * vw) * hDim;
+              col[raw0 * 3 + 2] = (1.0 + 0.95 * vw) * hDim;
+              tgt[0] = wmx; tgt[1] = wmy; tgt[2] = CEz; }
             const heroIdx = hj * gw + hi;
             let g = nHero, used = 0;                                                // slots 0..24 belong to the hero; one particle per lit cell after that
             const total = gw * gh;
@@ -459,29 +473,34 @@
                 const raw = slot ? slot[gi] : gi, p3 = raw * 3;
                 pos[p3] = wmx; pos[p3 + 1] = wmy; pos[p3 + 2] = CEz;
                 let rC = PAL[v * 3], gC = PAL[v * 3 + 1], bC = PAL[v * 3 + 2];
-                if (vw > 0.001) {
+                if (vw > 0.01) {
                     if (v === 13 || v === 14) {
                         const bGain = vw * vPulse;
-                        rC = rC * (1.0 - 0.55 * bGain) + 0.35 * bGain;
-                        gC = Math.min(1.0, gC + 0.65 * bGain);
-                        bC = Math.min(1.0, bC + 0.92 * bGain);
+                        rC = rC * (1.0 - 0.65 * vw) + 0.25 * bGain;
+                        gC = gC * (1.0 - 0.45 * vw) + 1.45 * bGain;
+                        bC = bC * (1.0 - 0.30 * vw) + 1.85 * bGain;
                     } else if (v === 6 || v === 15) {
                         const rGain = vw * vPulse;
-                        rC = Math.min(1.0, rC + 0.36 * rGain);
-                        gC = Math.min(1.0, gC + 0.45 * rGain);
-                        bC = Math.min(1.0, bC + 0.55 * rGain);
+                        rC = rC * (1.0 - 0.35 * vw) + 0.22 * rGain;
+                        gC += 1.02 * rGain;
+                        bC += 1.10 * rGain;
                     }
                 }
-                if (dw > 0.001) {
+                if (dw > 0.01) {
                     if (v === 10 || v === 11 || v === 18 || v === 19) {
                         const mGain = dw * dPulse;
-                        rC = Math.min(1.0, rC + 0.45 * mGain);
-                        gC = Math.min(1.0, gC * (1.0 - 0.15 * mGain) + 0.25 * mGain);
-                        bC = Math.max(0.04, bC * (1.0 - 0.55 * mGain));
+                        rC += 0.95 * mGain;
+                        gC = gC * (1.0 - 0.15 * dw) + 0.85 * mGain;
+                        bC = bC * (1.0 - 0.65 * dw) + 0.12 * mGain;
                     } else if (v === 24) {
-                        rC = Math.min(1.0, rC + 0.72 * dw);
-                        gC = Math.min(1.0, gC + 0.48 * dw);
-                        bC = Math.min(1.0, bC + 0.10 * dw);
+                        rC += 1.45 * dw;
+                        gC += 0.95 * dw;
+                        bC += 0.15 * dw;
+                    } else if (v !== 9 && v !== 20 && v !== 21) {
+                        const eDim = 1.0 - 0.45 * dw;
+                        rC *= eDim;
+                        gC *= eDim;
+                        bC *= eDim;
                     }
                 }
                 col[p3] = rC; col[p3 + 1] = gC; col[p3 + 2] = bC;

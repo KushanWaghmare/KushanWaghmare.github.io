@@ -144,7 +144,8 @@
             const vw = this._vw || 0;
 
             // Exact VP-SDE marginal: x_t = α(t) x_0 + σ(t) z, plus stochastic Langevin score curl
-            const jitScale = (this.odeMode ? 0.0 : (sigmaT * 0.22)) + dw * (0.12 + 0.22 * sigmaT);
+            const baseJit = this.odeMode ? 0.0 : (sigmaT * 0.22);
+            const jitScale = baseJit * (1.0 + 2.0 * dw) + (dw > 0.01 ? dw * 0.12 : 0.0);
             const tJit = tSim + (this._dwPhase || 0);
             const jx = Math.sin(tJit * 3.1 + i * 0.13) * jitScale;
             const jy = Math.cos(tJit * 2.9 + i * 0.17) * jitScale;
@@ -174,21 +175,23 @@
                 let rCol = ((1.0 - structureProgress) * 0.96 + structureProgress * (0.14 + 0.25 * radial)) * b;
                 let gCol = ((1.0 - structureProgress) * 0.58 + structureProgress * (0.82 - 0.18 * radial)) * b;
                 let bCol = ((1.0 - structureProgress) * 0.22 + structureProgress * (0.76 + 0.22 * radial)) * b;
-                if (vw > 1e-3) {
-                    const cyanBoost = vw * (0.35 + 0.65 * structureProgress);
-                    rCol += cyanBoost * 0.08;
-                    gCol += cyanBoost * 0.26;
-                    bCol += cyanBoost * 0.38;
+                if (vw > 0.01) {
+                    const cyanBoost = vw * (0.25 + 1.35 * structureProgress);
+                    rCol += cyanBoost * 0.24;
+                    gCol += cyanBoost * 0.92;
+                    bCol += cyanBoost * 1.15;
                 }
-                if (dw > 1e-3) {
-                    const amberBoost = dw * (0.45 + 0.55 * tDiff);
-                    rCol += amberBoost * 0.34;
-                    gCol += amberBoost * 0.20;
-                    bCol += amberBoost * 0.04;
+                if (dw > 0.01) {
+                    const flash = 0.72 + 0.28 * Math.sin(tJit * 4.5 + i * 0.31);
+                    const amberBoost = dw * (0.55 + 0.95 * tDiff) * flash;
+                    rCol += amberBoost * 1.25;
+                    gCol += amberBoost * 0.74;
+                    bCol += amberBoost * 0.12;
                 }
-                outCol[outOffset]     = clamp(rCol, 0.04, 0.95);
-                outCol[outOffset + 1] = clamp(gCol, 0.04, 0.95);
-                outCol[outOffset + 2] = clamp(bCol, 0.04, 0.95);
+                const maxCol = (vw > 0.01 || dw > 0.01) ? 2.0 : 0.95;
+                outCol[outOffset]     = clamp(rCol, 0.04, maxCol);
+                outCol[outOffset + 1] = clamp(gCol, 0.04, maxCol);
+                outCol[outOffset + 2] = clamp(bCol, 0.04, maxCol);
             }
             if (outSz && seeds) {
                 outSz[i] = 0.85 + 0.65 * (1.0 - tDiff) + 0.65 * seeds[i * 4 + 3] + 0.35 * vw * (1.0 - tDiff) + 0.30 * dw;
@@ -222,7 +225,7 @@
             this._vw = (this._vw || 0) + (((eqMode === 2 ? 1 : 0) - (this._vw || 0)) * Math.min(1, dtSec * 6));
             this._dwPhase = (this._dwPhase || 0) + dtSec * this._dw * 2.4;
 
-            this.cycleTime += dtSec * (1.0 + 0.85 * this._vw);
+            this.cycleTime += dtSec * (1.0 + 2.2 * this._vw);
             if (this.cycleTime >= this.cycleDuration) {
                 this.cycleTime -= this.cycleDuration;
                 this.shapeIdx = (this.shapeIdx + 1) % 3;

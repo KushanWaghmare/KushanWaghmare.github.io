@@ -253,21 +253,36 @@
                 let rC = bCol[i3] * shade;
                 let gC = bCol[i3 + 1] * shade;
                 let bC = bCol[i3 + 2] * shade;
-                if (seamHit && vw > 1e-3) {
-                    rC += vw * 0.18;
-                    gC += vw * 0.34;
-                    bC += vw * 0.42;
+                if (vw > 0.01) {
+                    if (seamHit) {
+                        rC += vw * 0.38;
+                        gC += vw * 1.25;
+                        bC += vw * 1.55;
+                    } else {
+                        const nonSeamDim = 1.0 - 0.65 * vw;
+                        rC *= nonSeamDim;
+                        gC *= nonSeamDim;
+                        bC *= nonSeamDim;
+                    }
                 }
-                if (!seamHit && dw > 1e-3) {
-                    rC += dw * 0.28;
-                    gC += dw * 0.18;
-                    bC += dw * 0.04;
+                if (dw > 0.01) {
+                    if (!seamHit) {
+                        rC += dw * 1.25;
+                        gC += dw * 0.78;
+                        bC += dw * 0.12;
+                    } else {
+                        const seamDim = 1.0 - 0.35 * dw;
+                        rC *= seamDim;
+                        gC *= seamDim;
+                        bC *= seamDim;
+                    }
                 }
-                col[i3]     = clamp(rC, 0.04, 0.96);
-                col[i3 + 1] = clamp(gC, 0.04, 0.96);
-                col[i3 + 2] = clamp(bC, 0.04, 0.96);
+                const maxCol = (vw > 0.01 || dw > 0.01) ? 1.9 : 0.96;
+                col[i3]     = clamp(rC, 0.04, maxCol);
+                col[i3 + 1] = clamp(gC, 0.04, maxCol);
+                col[i3 + 2] = clamp(bC, 0.04, maxCol);
 
-                sz[i] = (seamHit ? (1.45 + 0.55 * vw) : (0.85 + 0.28 * dw)) + 0.80 * seeds[i4 + 3];
+                sz[i] = (seamHit ? (1.45 + 1.1 * vw) : (0.85 + 0.28 * dw)) + 0.80 * seeds[i4 + 3];
                 if (i === 0) {
                     col[0] = 1.85; col[1] = 1.35; col[2] = 2.25;
                     sz[0] = 5.8;
@@ -278,7 +293,7 @@
                 const lineR = 0.745 + 0.24 * dw - 0.14 * vw;
                 const lineG = 0.843 - 0.05 * dw + 0.10 * vw;
                 const lineB = 1.0 - 0.42 * dw;
-                const lineA = 0.12 + 0.24 * dw + 0.08 * vw;
+                const lineA = 0.12 + 0.55 * dw + 0.08 * vw;
                 for (let k = 0; k < this.auxLineCount; k++) {
                     const k4 = k * 4, k3 = k * 3;
                     this._project4DtoWorld(

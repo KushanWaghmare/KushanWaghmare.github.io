@@ -172,7 +172,10 @@
                 const colIdx = i % 256;
                 const gx = (colIdx & 15) - 7.5;
                 const gz = ((colIdx >> 4) & 15) - 7.5;
-                const h = this.ampHeight[colIdx] * (1.0 + 0.38 * vw);
+                const isMarked = (colIdx === (this.markedTarget & 255)) ? 1.0 : 0.0;
+                const ampNorm = clamp((this.ampHeight[colIdx] - 0.35) / 1.5, 0.0, 1.0);
+                const markedWeight = Math.max(isMarked, ampNorm);
+                const h = this.ampHeight[colIdx] * (1.0 + (0.38 + 0.65 * markedWeight) * vw);
                 const jitterX = (u1 - 0.5) * 0.14;
                 const jitterZ = (u2 - 0.5) * 0.14;
 
@@ -185,12 +188,18 @@
                 rC = this.ampCols[c3] * tipBoost;
                 gC = this.ampCols[c3 + 1] * tipBoost;
                 bC = this.ampCols[c3 + 2] * tipBoost;
-                if (vw > 0.001) {
-                    const surge = vw * (0.35 + 0.85 * u3);
-                    rC += 0.38 * surge;
-                    gC += 0.78 * surge;
-                    bC += 1.05 * surge;
-                    szBoost += vw * 0.45 * u3;
+                if (vw > 0.01) {
+                    const vDim = 1.0 - 0.70 * vw * (1.0 - markedWeight);
+                    rC *= vDim; gC *= vDim; bC *= vDim;
+                    const surge = vw * markedWeight * (0.55 + 1.15 * u3);
+                    rC += 0.28 * surge;
+                    gC += 0.92 * surge;
+                    bC += 1.25 * surge;
+                    szBoost += vw * (0.25 + 0.65 * markedWeight) * u3;
+                }
+                if (dw > 0.01) {
+                    const dDim = 1.0 - 0.65 * dw;
+                    rC *= dDim; gC *= dDim; bC *= dDim;
                 }
             } else if (i < nWorkParticles) {
                 // 16 Modular-exponentiation work-register columns |a^x mod 15⟩
@@ -204,12 +213,17 @@
                 rC = 0.12 + 0.25 * u3;
                 gC = 0.48 + 0.18 * u3;
                 bC = 0.40 + 0.16 * u3;
-                if (dw > 0.001) {
-                    const wSurge = dw * (0.45 + 0.85 * u3);
-                    rC += 1.08 * wSurge;
-                    gC += 0.68 * wSurge;
-                    bC += 0.12 * wSurge;
-                    szBoost += dw * 0.60 * u3;
+                if (vw > 0.01) {
+                    const vDim = 1.0 - 0.70 * vw;
+                    rC *= vDim; gC *= vDim; bC *= vDim;
+                }
+                if (dw > 0.01) {
+                    const isPeriodSpike = this.workHeight[wIdx] > 0.5 ? 1.0 : 0.25;
+                    const wSurge = dw * isPeriodSpike * (0.65 + 1.05 * u3);
+                    rC += 1.25 * wSurge;
+                    gC += 0.78 * wSurge;
+                    bC += 0.14 * wSurge;
+                    szBoost += dw * 0.75 * isPeriodSpike * u3;
                 }
             } else {
                 // 3D Parabolic Quantum Entanglement Arcs linking counting state |x⟩ to residue |a^x mod 15⟩
@@ -233,12 +247,16 @@
                 rC = this.ampCols[c3] * 0.42 + 0.08;
                 gC = this.ampCols[c3 + 1] * 0.42 + 0.08;
                 bC = this.ampCols[c3 + 2] * 0.42 + 0.08;
-                if (dw > 0.001) {
-                    const arcGlow = dw * (0.55 + 0.75 * Math.sin(sArc * Math.PI));
-                    rC += 1.05 * arcGlow;
-                    gC += 0.68 * arcGlow;
+                if (vw > 0.01) {
+                    const vDim = 1.0 - 0.70 * vw;
+                    rC *= vDim; gC *= vDim; bC *= vDim;
+                }
+                if (dw > 0.01) {
+                    const arcGlow = dw * (0.75 + 0.95 * Math.sin(sArc * Math.PI));
+                    rC += 1.20 * arcGlow;
+                    gC += 0.74 * arcGlow;
                     bC += 0.14 * arcGlow;
-                    szBoost += dw * 0.55;
+                    szBoost += dw * 0.65;
                 }
             }
 
@@ -253,7 +271,7 @@
             outPos[i3 + 2] = this.origin.z + rz2 * scale;
 
             if (outCol) {
-                const maxCol = 0.85 + 0.95 * Math.max(dw, vw);
+                const maxCol = 0.85 + 1.25 * Math.max(dw, vw);
                 outCol[i3]     = clamp(rC, 0.04, maxCol);
                 outCol[i3 + 1] = clamp(gC, 0.04, maxCol);
                 outCol[i3 + 2] = clamp(bC, 0.04, maxCol);

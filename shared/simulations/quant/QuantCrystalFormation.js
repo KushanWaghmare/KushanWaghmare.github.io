@@ -254,20 +254,24 @@
                         pSize = 0.85 + 0.70 * hNorm;
                     }
 
-                    if (vw > 0.001) {
-                        const vBoost = vw * (0.35 + 0.85 * waveGlow + 0.45 * strata[i]) * cyanPulse;
+                    if (vw > 0.01) {
+                        const vDim = 1.0 - 0.65 * vw;
+                        rC *= vDim; gC *= vDim; bC *= vDim;
+                        const vBoost = vw * (0.10 + 1.45 * waveGlow + 1.25 * strata[i] * (1.0 - 0.4 * waveGlow)) * cyanPulse;
                         rC += 0.14 * vBoost;
-                        gC += 0.68 * vBoost;
-                        bC += 1.05 * vBoost;
-                        pSize += vw * (0.35 * waveGlow + 0.28 * strata[i]);
+                        gC += 0.85 * vBoost;
+                        bC += 1.15 * vBoost;
+                        pSize += vw * (0.45 * waveGlow + 0.35 * strata[i]);
                     }
-                    if (dw > 0.001) {
-                        const dBoost = dw * (0.30 * hNorm + 1.15 * hingeSeam);
+                    if (dw > 0.01) {
+                        const dDim = 1.0 - 0.65 * dw * (1.0 - hingeSeam);
+                        rC *= dDim; gC *= dDim; bC *= dDim;
+                        const dBoost = dw * (0.55 * hNorm + 1.25 * hingeSeam);
                         ly += dw * hingeSeam * 0.18;
-                        rC += 1.05 * dBoost;
-                        gC += 0.66 * dBoost;
+                        rC += 1.18 * dBoost;
+                        gC += 0.74 * dBoost;
                         bC += 0.12 * dBoost;
-                        pSize += dw * 0.65 * hingeSeam;
+                        pSize += dw * 0.75 * hingeSeam;
                     }
 
                     // Hero Particle (i = 0): white-hot beacon on the peak
@@ -304,19 +308,23 @@
                         bC = 0.34 + 0.14 * seedX;
                         pSize = 1.05;
                     }
-                    if (vw > 0.001) {
+                    if (vw > 0.01) {
+                        const vDimR = 1.0 - 0.65 * vw;
+                        rC *= vDimR; gC *= vDimR; bC *= vDimR;
                         const waveR = Math.exp(-Math.pow(Math.sin(lx * 1.2 - wavePhase), 2) * 3.5);
-                        rC += vw * 0.12 * waveR;
-                        gC += vw * 0.58 * waveR;
-                        bC += vw * 0.92 * waveR;
-                        pSize += vw * 0.32 * waveR;
+                        rC += vw * 0.16 * waveR * cyanPulse;
+                        gC += vw * 1.05 * waveR * cyanPulse;
+                        bC += vw * 1.55 * waveR * cyanPulse;
+                        pSize += vw * 0.42 * waveR;
                     }
-                    if (dw > 0.001) {
-                        const centerHinge = (ribbonIdx === 2) ? 1.0 : 0.38;
-                        rC += dw * 0.78 * centerHinge;
-                        gC += dw * 0.48 * centerHinge;
-                        bC += dw * 0.08 * centerHinge;
-                        pSize += dw * 0.45 * centerHinge;
+                    if (dw > 0.01) {
+                        const dDimR = 1.0 - 0.65 * dw * (ribbonIdx === 2 ? 0.0 : 1.0);
+                        rC *= dDimR; gC *= dDimR; bC *= dDimR;
+                        const centerHinge = (ribbonIdx === 2) ? 1.0 : 0.15;
+                        rC += dw * 1.55 * centerHinge;
+                        gC += dw * 0.96 * centerHinge;
+                        bC += dw * 0.14 * centerHinge;
+                        pSize += dw * 0.55 * centerHinge;
                     }
 
                 } else {
@@ -338,14 +346,19 @@
                         rC = 0.14; gC = 0.32; bC = 0.28;
                         pSize = 0.95;
                     }
-                    if (vw > 0.001) {
-                        gC += vw * 0.38 * uFrac;
-                        bC += vw * 0.65 * uFrac;
+                    if (vw > 0.01) {
+                        const vDimL = 1.0 - 0.65 * vw;
+                        rC *= vDimL; gC *= vDimL; bC *= vDimL;
+                        gC += vw * 0.82 * uFrac * cyanPulse;
+                        bC += vw * 1.35 * uFrac * cyanPulse;
                     }
-                    if (dw > 0.001) {
+                    if (dw > 0.01) {
                         const spreadSeam = Math.exp(-distCenter * 4.0);
-                        rC += dw * 0.75 * spreadSeam;
-                        gC += dw * 0.46 * spreadSeam;
+                        const dDimL = 1.0 - 0.65 * dw * (1.0 - spreadSeam);
+                        rC *= dDimL; gC *= dDimL; bC *= dDimL;
+                        rC += dw * 1.48 * spreadSeam;
+                        gC += dw * 0.92 * spreadSeam;
+                        bC += dw * 0.12 * spreadSeam;
                     }
                 }
 

@@ -2324,7 +2324,7 @@ const initNavSim = (c) => {
         const TAU = Math.PI * 2, reduced = !!opts.reducedMotion;
         const clamp01 = (x) => Math.min(1, Math.max(0, x));
         const sstep = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
-        let W = 0, H = 0, dpr = 1, dwS = 0, vwS = 0, lastT = 0;
+        let W = 0, H = 0, dpr = 1, dwS = 0, vwS = 0, secDwS = 0, secVwS = 0, lastT = 0;
         let lastSecIdx = -1, bootStart = 0;
         const labelAlphas = new Map();
         let seed = 0x5EED2026 >>> 0;
@@ -2365,6 +2365,164 @@ const initNavSim = (c) => {
             { sub: "CHENCINER–MONTGOMERY CHOREOGRAPHY", locus: "● THREE-BODY PRIMARY LOCUS", coords: "T = 6.326 · E = −1.29" }
         ];
 
+        const drawSectionEqOverlay = (simKey, tSec, cx, cy, R, vwA, dwA) => {
+            const cyan = (a) => `rgba(120,220,255,${(a * vwA).toFixed(3)})`;
+            const amber = (a) => `rgba(255,205,120,${(a * dwA).toFixed(3)})`;
+            const arrow = (x0, y0, x1, y1, col, lw = 1.2) => {
+                const ang = Math.atan2(y1 - y0, x1 - x0), hl = Math.min(8, Math.hypot(x1 - x0, y1 - y0) * 0.32);
+                ctx.strokeStyle = col; ctx.lineWidth = lw;
+                ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+                ctx.lineTo(x1 - Math.cos(ang - 0.5) * hl, y1 - Math.sin(ang - 0.5) * hl);
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x1 - Math.cos(ang + 0.5) * hl, y1 - Math.sin(ang + 0.5) * hl);
+                ctx.stroke();
+            };
+            const ticks = (r0, r1, n, rot, col, lw = 1.1) => {
+                ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath();
+                for (let i = 0; i < n; i++) {
+                    const a = rot + (i / n) * TAU;
+                    ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+                    ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+                }
+                ctx.stroke();
+            };
+            const ring = (r, col, lw = 1.1) => { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke(); };
+
+            ctx.save();
+            ctx.globalCompositeOperation = "lighter";
+            ctx.lineCap = "round";
+
+            if (simKey === "hub:domain-math") {
+                if (vwA > 0.01) {
+                    ring(R * 0.22, cyan(0.45), 1.2);
+                    for (let i = 0; i < 5; i++) {
+                        const a = (i / 5) * TAU + tSec * 0.28, a1 = a + 0.42;
+                        ctx.strokeStyle = cyan(0.32); ctx.lineWidth = 1.1; ctx.beginPath();
+                        ctx.moveTo(cx + Math.cos(a) * R * 0.24, cy + Math.sin(a) * R * 0.24);
+                        ctx.quadraticCurveTo(cx + Math.cos(a1) * R * 0.72, cy + Math.sin(a1) * R * 0.72, cx + Math.cos(a) * R * 0.96, cy + Math.sin(a) * R * 0.96);
+                        ctx.stroke();
+                        arrow(cx + Math.cos(a) * R * 0.26, cy + Math.sin(a) * R * 0.26, cx + Math.cos(a) * R * 0.92, cy + Math.sin(a) * R * 0.92, cyan(0.72), 1.3);
+                    }
+                }
+                if (dwA > 0.01) {
+                    [0.36, 0.64, 0.92].forEach((f, i) => ring(R * f * (1 + 0.02 * Math.sin(tSec * 2 + i)), amber(0.55 - i * 0.1), 1.2));
+                    ticks(R * 0.58, R * 0.70, 20, tSec * 0.12, amber(0.55), 1.1);
+                    ticks(R * 0.86, R * 0.98, 10, -tSec * 0.08, amber(0.65), 1.2);
+                }
+            } else if (simKey === "hub:domain-physics") {
+                if (vwA > 0.01) {
+                    ctx.setLineDash([4, 5]); ring(R * 0.34, cyan(0.52), 1.1); ctx.setLineDash([]);
+                    [0.34, 0.58, 0.86].forEach((f, ri) => {
+                        const n = 6 + ri * 2, spd = (1.15 - ri * 0.32) * tSec, span = 0.36 - ri * 0.08, al = 0.80 - ri * 0.20;
+                        for (let i = 0; i < n; i++) {
+                            const a = spd + (i / n) * TAU, r = R * f;
+                            arrow(cx + Math.cos(a) * r, cy + Math.sin(a) * r, cx + Math.cos(a + span) * r, cy + Math.sin(a + span) * r, cyan(al), 1.3 - ri * 0.15);
+                        }
+                    });
+                }
+                if (dwA > 0.01) {
+                    const base = Math.PI * 0.72 + 0.12 * Math.sin(tSec * 0.8);
+                    [0.44, 0.62, 0.80].forEach((f, i) => {
+                        ctx.strokeStyle = amber(0.78 - i * 0.18); ctx.lineWidth = 2.6 - i * 0.65;
+                        ctx.beginPath(); ctx.arc(cx, cy, R * f, base - 0.55, base + 0.55); ctx.stroke();
+                    });
+                    for (let i = 0; i < 12; i++) {
+                        const a = base - 0.65 + (i / 11) * 1.3;
+                        ctx.strokeStyle = amber(0.62); ctx.lineWidth = 1.1; ctx.beginPath();
+                        ctx.moveTo(cx + Math.cos(a) * R * 0.84, cy + Math.sin(a) * R * 0.84);
+                        ctx.lineTo(cx + Math.cos(a) * R * 0.99, cy + Math.sin(a) * R * 0.99); ctx.stroke();
+                    }
+                }
+            } else if (simKey === "hub:domain-datascience") {
+                if (vwA > 0.01) {
+                    [0.98, 0.64].forEach((f, ri) => {
+                        for (let i = 0; i < 12; i++) {
+                            const a = (i / 12) * TAU + ri * 0.26, ph = 0.42 + 0.58 * (0.5 + 0.5 * Math.sin(tSec * 3.2 - ri * 1.6 - i * 0.35));
+                            arrow(cx + Math.cos(a) * R * f, cy + Math.sin(a) * R * f, cx + Math.cos(a) * R * (f - 0.26), cy + Math.sin(a) * R * (f - 0.26), cyan(0.72 * ph), 1.2);
+                        }
+                    });
+                }
+                if (dwA > 0.01) {
+                    for (let i = 0; i < 2; i++) {
+                        const ph = (tSec * 0.6 + i * 0.5) % 1;
+                        ring(R * (0.24 + 0.72 * ph), amber(0.65 * (1 - ph)), 1.2);
+                    }
+                    for (let i = 0; i < 18; i++) {
+                        const a = (i / 18) * TAU + 0.08 * Math.sin(tSec * 2.4 + i * 1.7);
+                        const r = R * (0.38 + 0.48 * (0.5 + 0.5 * Math.sin(i * 3.1 + tSec * 1.9)));
+                        ctx.fillStyle = amber(0.72); ctx.beginPath(); ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 1.9, 0, TAU); ctx.fill();
+                    }
+                }
+            } else if (simKey === "hub:domain-quant") {
+                if (vwA > 0.01) {
+                    const ph = (tSec * 0.9) % 1;
+                    [0.94, 0.60].forEach((f, ri) => {
+                        const w = 0.45 + 0.55 * Math.max(0, Math.sin((ph + ri * 0.45) * Math.PI));
+                        for (let i = 0; i < 10; i++) {
+                            const a = (i / 10) * TAU + ri * 0.31;
+                            arrow(cx + Math.cos(a) * R * f, cy + Math.sin(a) * R * f, cx + Math.cos(a) * R * (f - 0.24), cy + Math.sin(a) * R * (f - 0.24), cyan(0.75 * w), 1.25);
+                        }
+                    });
+                }
+                if (dwA > 0.01) {
+                    const dx = R * 0.85, dy = -R * 0.65;
+                    ctx.strokeStyle = amber(0.28); ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(cx - dx, cy - dy); ctx.lineTo(cx + dx, cy + dy); ctx.stroke();
+                    ctx.strokeStyle = amber(0.85); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx - dx, cy - dy); ctx.lineTo(cx + dx, cy + dy); ctx.stroke();
+                    const len = Math.hypot(dx, dy), nx = -dy / len * 8, ny = dx / len * 8;
+                    ctx.strokeStyle = amber(0.68); ctx.lineWidth = 1.1; ctx.beginPath();
+                    for (let i = -4; i <= 4; i++) {
+                        const u = i / 4, px = cx + dx * u * 0.85, py = cy + dy * u * 0.85;
+                        ctx.moveTo(px - nx, py - ny); ctx.lineTo(px + nx, py + ny);
+                    }
+                    ctx.stroke();
+                }
+            } else if (simKey === "hub:domain-cs") {
+                if (vwA > 0.01) {
+                    ctx.setLineDash([3, 5]); ring(R * 0.86, cyan(0.55), 1.2); ctx.setLineDash([]);
+                    ring(R * 0.30, cyan(0.45), 1.1);
+                    const pulse = 0.5 + 0.5 * Math.sin(tSec * 2.8);
+                    for (let i = 0; i < 16; i++) {
+                        const a = (i / 16) * TAU, isTarget = i % 8 === 2;
+                        const r1 = R * (isTarget ? 0.62 + 0.36 * pulse : 0.42 + 0.08 * Math.sin(tSec * 2 + i));
+                        ctx.strokeStyle = cyan(isTarget ? 0.88 : 0.38); ctx.lineWidth = isTarget ? 2.4 : 1.1;
+                        ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * R * 0.32, cy + Math.sin(a) * R * 0.32);
+                        ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.stroke();
+                    }
+                }
+                if (dwA > 0.01) {
+                    const r = R * 0.78;
+                    for (let i = 0; i < 8; i++) {
+                        const a0 = (i / 8) * TAU, a1 = ((i + 3) % 8 / 8) * TAU, ph = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(tSec * 2.4 - i * 0.7));
+                        ctx.strokeStyle = amber(0.58 * ph); ctx.lineWidth = 1.2;
+                        ctx.beginPath(); ctx.moveTo(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r);
+                        ctx.quadraticCurveTo(cx, cy, cx + Math.cos(a1) * r, cy + Math.sin(a1) * r); ctx.stroke();
+                        ctx.fillStyle = amber(0.82); ctx.beginPath(); ctx.arc(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r, 2.3, 0, TAU); ctx.fill();
+                    }
+                }
+            } else if (simKey === "hub:contact") {
+                if (vwA > 0.01) {
+                    for (let i = 0; i < 3; i++) {
+                        const ph = (tSec * 0.55 + i / 3) % 1;
+                        ring(R * (0.12 + 0.92 * ph), cyan(0.75 * (1 - ph)), 1.3);
+                    }
+                    ticks(R * 0.16, R * 0.28, 4, tSec * 0.2, cyan(0.65), 1.1);
+                }
+                if (dwA > 0.01) {
+                    const rx = R * 0.92, ry = R * 0.48, tilt = -0.35, ang = tSec * 0.7;
+                    ctx.strokeStyle = amber(0.42); ctx.lineWidth = 1.1; ctx.setLineDash([4, 4]);
+                    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, tilt, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+                    const lx = Math.cos(ang) * rx, ly = Math.sin(ang) * ry;
+                    const mx = cx + lx * Math.cos(tilt) - ly * Math.sin(tilt);
+                    const my = cy + lx * Math.sin(tilt) + ly * Math.cos(tilt);
+                    const pulse = 1 + 0.35 * Math.sin(tSec * 3.5);
+                    ctx.strokeStyle = amber(0.62); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(mx, my, 7 * pulse, 0, TAU); ctx.stroke();
+                    ctx.fillStyle = amber(0.92); ctx.beginPath(); ctx.arc(mx, my, 3.2, 0, TAU); ctx.fill();
+                }
+            }
+
+            ctx.restore();
+        };
+
         const draw = (tSec, st = {}) => {
             ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -2377,6 +2535,16 @@ const initNavSim = (c) => {
                 ctx.save(); ctx.globalAlpha = laniakeaAlpha;
                 drawBackdrop(tSec, yaw, pitch);
                 ctx.restore();
+            }
+
+            const eqObj = (typeof window !== "undefined") && window.__SECTION_EQ_MODE__;
+            const eqMode = (eqObj && eqObj.sim === st.simKey && st.simKey !== "hub:intro") ? (eqObj.mode || 0) : 0;
+            secDwS += ((eqMode === 1 ? 1 : 0) - secDwS) * Math.min(1, dtS * 7);
+            secVwS += ((eqMode === 2 ? 1 : 0) - secVwS) * Math.min(1, dtS * 7);
+            if ((secVwS > 0.01 || secDwS > 0.01) && st.simKey && st.simKey !== "hub:intro") {
+                const cx = (st.hero && Number.isFinite(st.hero.x)) ? st.hero.x : W * 0.60;
+                const cy = (st.hero && Number.isFinite(st.hero.y)) ? st.hero.y : H * 0.50;
+                drawSectionEqOverlay(st.simKey, tSec, cx, cy, Math.min(W, H) * 0.24, secVwS, secDwS);
             }
 
             const ox = st.ox || 0, oy = st.oy || 0, launch = st.launch || 0, lock = st.lock === undefined ? 1 : st.lock;
@@ -2809,8 +2977,12 @@ const initNavSim = (c) => {
             const S = window.THREAD_STAGE, T = S && S.trans;
             const hs = S && S.supported ? S.heroScreen : null;
             const activeIdx = (T && T.active) ? (T.u > 0.5 ? T.toIndex : T.fromIndex) : ((S && S.currentIndex) || 0);
+            if (!cachedSecs.length) cachedSecs = document.querySelectorAll(".snap-section");
             const activeSec = (cachedSecs && cachedSecs[activeIdx]) || null;
-            const simKey = (activeSec && activeSec.dataset && activeSec.dataset.sim) || "";
+            const simKey = (activeSec && activeSec.dataset && activeSec.dataset.sim) ||
+                (activeSec && activeSec.id === "intro" ? "hub:intro" :
+                 activeSec && activeSec.id === "about-contact" ? "hub:contact" :
+                 activeSec && activeSec.id && activeSec.id.startsWith("domain-") ? "hub:" + activeSec.id : "");
             overlay.draw(now * 0.001, {
                 ox: 0, oy: 0,
                 laniakeaAlpha: laniakeaVisibility(),
