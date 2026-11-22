@@ -48,98 +48,6 @@
     return 'math';
   }
 
-  // ---- Tunnel-Coupled Fresnel Rim Injection (MeshStandardMaterial) ----
-
-  var RIM_COMMON_GLSL = [
-    'uniform float uTime;',
-    'uniform float uTunnelRimIntensity;',
-    'uniform float uDomainLightIntensity;',
-    'uniform vec3 uDomainAmbientColor;',
-    'varying vec3 vShipLocalPos;',
-    'float kwHash21(vec2 p) {',
-    '  p = fract(p * vec2(123.34, 456.21));',
-    '  p += dot(p, p + 45.32);',
-    '  return fract(p.x * p.y);',
-    '}',
-    'float kwValueNoise(vec2 p) {',
-    '  vec2 i = floor(p);',
-    '  vec2 f = fract(p);',
-    '  f = f * f * (3.0 - 2.0 * f);',
-    '  float a = kwHash21(i);',
-    '  float b = kwHash21(i + vec2(1.0, 0.0));',
-    '  float c = kwHash21(i + vec2(0.0, 1.0));',
-    '  float d = kwHash21(i + vec2(1.0, 1.0));',
-    '  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);',
-    '}'
-  ].join('\n');
-
-  function createHullMaterial(sharedUniforms, opts) {
-    var THREE = global.THREE;
-    var mat = new THREE.MeshStandardMaterial({
-      color: opts.color,
-      metalness: opts.metalness,
-      roughness: opts.roughness,
-      emissive: new THREE.Color(opts.emissive || 0x050a14),
-      emissiveIntensity: opts.emissiveIntensity != null ? opts.emissiveIntensity : 0.35
-    });
-
-    var rimGain = opts.rimGain != null ? opts.rimGain : 1.0;
-    mat.customProgramCacheKey = function () {
-      return opts.cacheKey;
-    };
-
-    mat.onBeforeCompile = function (shader) {
-      shader.uniforms.uTime = sharedUniforms.uTime;
-      shader.uniforms.uTunnelRimIntensity = sharedUniforms.uTunnelRimIntensity;
-      shader.uniforms.uDomainLightIntensity = sharedUniforms.uDomainLightIntensity;
-      shader.uniforms.uDomainAmbientColor = sharedUniforms.uDomainAmbientColor;
-
-      shader.vertexShader = shader.vertexShader
-        .replace(
-          '#include <common>',
-          '#include <common>\nvarying vec3 vShipLocalPos;'
-        )
-        .replace(
-          '#include <begin_vertex>',
-          '#include <begin_vertex>\nvShipLocalPos = position;'
-        );
-
-      var rimBlock = [
-        '{',
-        '  vec3 N = normalize(normal);',
-        '  vec3 V = normalize(vViewPosition);',
-        '  float ndv = max(dot(N, V), 0.0);',
-        '  float fresnel = pow(1.0 - ndv, 3.0);',
-        '  float angleNorm = fract(atan(vShipLocalPos.y, vShipLocalPos.x) / 6.28318530718 + 0.5);',
-        '  float qAngle = floor(angleNorm * 144.0);',
-        '  float scroll = vShipLocalPos.z * 2.2 + uTime * 14.0;',
-        '  float n1 = kwValueNoise(vec2(qAngle * 0.37, scroll * 0.35));',
-        '  float n2 = kwValueNoise(vec2(qAngle * 0.91 + 19.3, scroll * 0.85));',
-        '  float streak = smoothstep(0.32, 0.88, n1 * 0.65 + n2 * 0.35);',
-        '  vec3 cCobalt = vec3(0.078, 0.220, 0.580);',
-        '  vec3 cElectric = vec3(0.278, 0.620, 0.980);',
-        '  vec3 cWhiteCyan = vec3(0.949, 0.988, 1.000);',
-        '  vec3 tunnelCol = mix(cCobalt, cElectric, smoothstep(0.0, 0.55, streak));',
-        '  tunnelCol = mix(tunnelCol, cWhiteCyan, smoothstep(0.55, 1.0, streak));',
-        '  float tunnelMask = (fresnel * 1.65 + 0.14 * streak) * uTunnelRimIntensity;',
-        '  vec3 domainRim = uDomainAmbientColor * (fresnel * 1.45 + 0.07) * uDomainLightIntensity;',
-        '  float studioKey = max(dot(N, normalize(vec3(0.35, 0.85, 0.40))), 0.0) * 0.16;',
-        '  outgoingLight += (tunnelCol * tunnelMask + domainRim) * ' + rimGain.toFixed(2) + ' + diffuseColor.rgb * studioKey;',
-        '}'
-      ].join('\n');
-
-      var outputAnchor = shader.fragmentShader.indexOf('#include <output_fragment>') !== -1
-        ? '#include <output_fragment>'
-        : '#include <opaque_fragment>';
-
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\n' + RIM_COMMON_GLSL)
-        .replace(outputAnchor, rimBlock + '\n' + outputAnchor);
-    };
-
-    return mat;
-  }
-
   // ---- Dynamic Ion Thruster Plume Shader ----
 
   var PLUME_VERT = [
@@ -198,129 +106,6 @@
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     });
-  }
-
-  // ---- Procedural Geometry Builders (Nose along +Z, Thrusters at -Z) ----
-
-  function buildFuselageGeometry() {
-    var THREE = global.THREE;
-    // Octagonal beveled cross-sections from aft (-1.02) to nose (+1.48)
-    var sections = [
-      { z: -1.02, rx: 0.34, ryTop: 0.14, ryBot: 0.12, bevel: 0.58 },
-      { z: -0.45, rx: 0.42, ryTop: 0.19, ryBot: 0.14, bevel: 0.62 },
-      { z:  0.32, rx: 0.36, ryTop: 0.17, ryBot: 0.12, bevel: 0.60 },
-      { z:  0.96, rx: 0.18, ryTop: 0.09, ryBot: 0.07, bevel: 0.55 },
-      { z:  1.48, rx: 0.015, ryTop: 0.012, ryBot: 0.010, bevel: 0.50 }
-    ];
-
-    var ringVerts = 8;
-    var rings = [];
-    for (var i = 0; i < sections.length; i++) {
-      var s = sections[i];
-      var b = s.bevel;
-      rings.push([
-        [ s.rx * b,  s.ryTop,        s.z],
-        [ s.rx,      s.ryTop * 0.22, s.z],
-        [ s.rx,     -s.ryBot * 0.30, s.z],
-        [ s.rx * b, -s.ryBot,        s.z],
-        [-s.rx * b, -s.ryBot,        s.z],
-        [-s.rx,     -s.ryBot * 0.30, s.z],
-        [-s.rx,      s.ryTop * 0.22, s.z],
-        [-s.rx * b,  s.ryTop,        s.z]
-      ]);
-    }
-
-    var positions = [];
-    function pushTri(a, b, c) {
-      positions.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
-    }
-
-    for (var r = 0; r < rings.length - 1; r++) {
-      var cur = rings[r];
-      var nxt = rings[r + 1];
-      for (var k = 0; k < ringVerts; k++) {
-        var kNext = (k + 1) % ringVerts;
-        pushTri(cur[k], nxt[k], nxt[kNext]);
-        pushTri(cur[k], nxt[kNext], cur[kNext]);
-      }
-    }
-
-    // Cap aft (-Z) and nose tip (+Z)
-    var aftCenter = [0, 0, sections[0].z];
-    var noseCenter = [0, 0, sections[sections.length - 1].z];
-    var aftRing = rings[0];
-    var noseRing = rings[rings.length - 1];
-    for (var m = 0; m < ringVerts; m++) {
-      var mNext = (m + 1) % ringVerts;
-      pushTri(aftCenter, aftRing[mNext], aftRing[m]);
-      pushTri(noseCenter, noseRing[m], noseRing[mNext]);
-    }
-
-    var geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geom.computeVertexNormals();
-    return geom;
-  }
-
-  function buildDeltaWingGeometry(side) {
-    var THREE = global.THREE;
-    // Shape in XY, then rotated into XZ plane (side = +1 left / -1 right)
-    var shape = new THREE.Shape();
-    shape.moveTo(0.24 * side,  0.54);
-    shape.lineTo(1.18 * side, -0.62);
-    shape.lineTo(1.14 * side, -0.84);
-    shape.lineTo(0.44 * side, -0.78);
-    shape.lineTo(0.28 * side, -0.96);
-    shape.lineTo(0.20 * side, -0.92);
-    shape.closePath();
-
-    var geom = new THREE.ExtrudeGeometry(shape, {
-      depth: 0.036,
-      bevelEnabled: true,
-      bevelThickness: 0.018,
-      bevelSize: 0.022,
-      bevelSegments: 1
-    });
-    // Map shape Y -> +Z (forward), extrude depth -> Y (thickness)
-    geom.rotateX(-Math.PI / 2);
-    geom.translate(0, -0.018, 0);
-    // Subtle anhedral droop for aggressive silhouette
-    geom.rotateZ(side * -0.075);
-    geom.computeVertexNormals();
-    return geom;
-  }
-
-  function buildTailFinGeometry() {
-    var THREE = global.THREE;
-    // Local-origin vertical stabiliser profile (shape X -> +Z, shape Y -> +Y, depth -> X)
-    var shape = new THREE.Shape();
-    shape.moveTo(0.36, 0.0);
-    shape.lineTo(-0.24, 0.40);
-    shape.lineTo(-0.44, 0.36);
-    shape.lineTo(-0.36, -0.02);
-    shape.closePath();
-
-    var geom = new THREE.ExtrudeGeometry(shape, {
-      depth: 0.024,
-      bevelEnabled: true,
-      bevelThickness: 0.011,
-      bevelSize: 0.012,
-      bevelSegments: 1
-    });
-    // Rotate so shape X -> +Z, shape Y -> +Y, depth -> X (centered on X = 0)
-    geom.rotateY(-Math.PI / 2);
-    geom.translate(0.012, 0, 0);
-    geom.computeVertexNormals();
-    return geom;
-  }
-
-  function buildCanopyGeometry() {
-    var THREE = global.THREE;
-    var geom = new THREE.OctahedronGeometry(1.0, 1);
-    geom.scale(0.165, 0.105, 0.44);
-    geom.translate(0, 0.185, 0.36);
-    geom.computeVertexNormals();
-    return geom;
   }
 
   function buildPlumeConeGeometry(radius) {
@@ -388,7 +173,8 @@
     this._hotWhite = new THREE.Color(0xeefaff);
     this._disposed = false;
 
-    this._buildInterceptor();
+    this._buildThrusters();
+    this._loadCustomModel('spacecraft.glb');
 
     if (this.scene && typeof this.scene.add === 'function') {
       this.scene.add(this.group);
@@ -405,29 +191,9 @@
     return mat;
   };
 
-  SpacecraftController.prototype._buildInterceptor = function () {
+  SpacecraftController.prototype._buildThrusters = function () {
     var THREE = global.THREE;
     var root = this.attitudeGroup;
-
-    var hullMat = this._trackMat(createHullMaterial(this._uniforms, {
-      color: new THREE.Color(0.08, 0.10, 0.14),
-      metalness: 0.78,
-      roughness: 0.32,
-      emissive: 0x07101f,
-      emissiveIntensity: 0.38,
-      rimGain: 1.0,
-      cacheKey: 'kw-spacecraft-hull-v1'
-    }));
-
-    var canopyMat = this._trackMat(createHullMaterial(this._uniforms, {
-      color: 0x071324,
-      metalness: 0.92,
-      roughness: 0.12,
-      emissive: 0x0b2239,
-      emissiveIntensity: 0.45,
-      rimGain: 1.25,
-      cacheKey: 'kw-spacecraft-canopy-v1'
-    }));
 
     var nozzleCowlMat = this._trackMat(new THREE.MeshStandardMaterial({
       color: 0x0f172a,
@@ -435,33 +201,7 @@
       roughness: 0.28
     }));
 
-    // 1. Beveled fuselage
-    var fuselage = new THREE.Mesh(this._trackGeo(buildFuselageGeometry()), hullMat);
-    root.add(fuselage);
-
-    // 2. Swept delta wings (left +1, right -1) + subtle wingtip fins
-    var leftWing = new THREE.Mesh(this._trackGeo(buildDeltaWingGeometry(1)), hullMat);
-    var rightWing = new THREE.Mesh(this._trackGeo(buildDeltaWingGeometry(-1)), hullMat);
-    root.add(leftWing);
-    root.add(rightWing);
-
-    // 3. Twin canted vertical stabilisers (left +X canted outward -0.28 rad, right -X canted +0.28 rad)
-    var tailFinGeo = this._trackGeo(buildTailFinGeometry());
-    var leftTailFin = new THREE.Mesh(tailFinGeo, hullMat);
-    leftTailFin.position.set(0.32, 0.14, -0.58);
-    leftTailFin.rotation.z = -0.28;
-    root.add(leftTailFin);
-
-    var rightTailFin = new THREE.Mesh(tailFinGeo, hullMat);
-    rightTailFin.position.set(-0.32, 0.14, -0.58);
-    rightTailFin.rotation.z = 0.28;
-    root.add(rightTailFin);
-
-    // 4. Tinted cockpit canopy
-    var canopy = new THREE.Mesh(this._trackGeo(buildCanopyGeometry()), canopyMat);
-    root.add(canopy);
-
-    // 5. Twin recessed ion thruster nozzles + additive plumes
+    // Twin recessed ion thruster nozzles + additive plumes
     var cowlGeo = this._trackGeo(new THREE.CylinderGeometry(0.115, 0.135, 0.22, 16, 1, true));
     cowlGeo.rotateX(Math.PI / 2);
 
@@ -504,6 +244,63 @@
 
       this._plumes.push({ outer: outerPlume, inner: innerPlume });
     }
+  };
+
+  SpacecraftController.prototype._loadCustomModel = function (url) {
+    var THREE = global.THREE;
+    if (!THREE || typeof THREE.GLTFLoader !== 'function') return;
+
+    var self = this;
+    var loader = new THREE.GLTFLoader();
+    loader.load(
+      url,
+      function (gltf) {
+        var model = gltf && gltf.scene;
+        if (!model) return;
+
+        var trackMeshResources = function (rootObj, intoList) {
+          rootObj.traverse(function (obj) {
+            if (!obj.isMesh) return;
+            if (obj.geometry) intoList ? self._trackGeo(obj.geometry) : obj.geometry.dispose();
+            if (obj.material) {
+              var mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+              for (var m = 0; m < mats.length; m++) {
+                if (intoList) self._trackMat(mats[m]);
+                else mats[m].dispose();
+              }
+            }
+          });
+        };
+
+        if (self._disposed) {
+          trackMeshResources(model, false);
+          return;
+        }
+
+        // Centre and normalise to match the procedural interceptor's ~2.2-unit footprint
+        var box = new THREE.Box3().setFromObject(model);
+        var size = new THREE.Vector3();
+        var centre = new THREE.Vector3();
+        box.getSize(size);
+        box.getCenter(centre);
+        var maxDim = Math.max(size.x, size.y, size.z, 1e-4);
+        var scale = 2.2 / maxDim;
+
+        model.scale.setScalar(scale);
+        model.position.set(-centre.x * scale, -centre.y * scale, -centre.z * scale);
+        model.name = 'CustomSpacecraftGLB';
+
+        trackMeshResources(model, true);
+        self.attitudeGroup.add(model);
+        self._customModel = model;
+      },
+      undefined,
+      function (err) {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('SpacecraftController: failed to load custom GLB.', err);
+        }
+      }
+    );
   };
 
   SpacecraftController.prototype.setVisible = function (bool) {

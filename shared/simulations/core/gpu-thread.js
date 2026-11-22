@@ -344,14 +344,15 @@
         return p;
     };
 
-    let pointProg = null, starProg = null, auxProg = null, kerrProg = null, ringProg = null, ambientDustProg = null;
+    let pointProg = null, celestialProg = null, starProg = null, auxProg = null, kerrProg = null, ringProg = null, ambientDustProg = null;
     let trailDecayProg = null, blitAddProg = null, brightPassProg = null, blurProg = null, compositeProg = null;
-    let pointUniforms = {}, starUniforms = {}, auxUniforms = {}, kerrUniforms = {}, ringUniforms = {}, ambientDustUniforms = {};
+    let pointUniforms = {}, celestialUniforms = {}, starUniforms = {}, auxUniforms = {}, kerrUniforms = {}, ringUniforms = {}, ambientDustUniforms = {};
     let trailDecayUniforms = {}, blitAddUniforms = {}, brightPassUniforms = {}, blurUniforms = {}, compositeUniforms = {};
 
-    let sharedVAO = null, auxVAO = null, quadVAO = null, ringVAO = null, ambientDustVAO = null;
+    let sharedVAO = null, celestialVAO = null, auxVAO = null, quadVAO = null, ringVAO = null, ambientDustVAO = null;
     let posVBO = null, prevPosVBO = null, colVBO = null, sizeVBO = null, seedVBO = null;
-    let auxPosVBO = null, auxColVBO = null, quadVBO = null, ringVBO = null, ambientDustOffsetVBO = null, ambientDustSeedVBO = null;
+    let celestialVBO = null, auxPosVBO = null, auxColVBO = null, quadVBO = null, ringVBO = null, ambientDustOffsetVBO = null, ambientDustSeedVBO = null;
+    const CELESTIAL_STAR_COUNT = 4000;
     const AMBIENT_DUST_COUNT = 1024;
 
     const tmpThresholdPos = new Vector3();
@@ -372,6 +373,7 @@
     let rtBloomHalf = false;
     let rtSkyHalf = false;
     let contextLost = false;
+    let lkStaticVboUploaded = false;
 
     const getEffectiveSkyQualityTier = () => {
         const saveData = !!(typeof navigator !== "undefined" && navigator.connection && navigator.connection.saveData);
@@ -486,6 +488,9 @@
         gl.getExtension("OES_texture_float_linear");
 
         pointProg = createProgram(TS.VS_SHARED_POINTS, TS.FS_SHARED_POINTS);
+        if (TS.VS_CELESTIAL_SPHERE && TS.FS_CELESTIAL_SPHERE) {
+            celestialProg = createProgram(TS.VS_CELESTIAL_SPHERE, TS.FS_CELESTIAL_SPHERE);
+        }
         starProg = createProgram(TS.VS_STARFIELD, TS.FS_STARFIELD);
         auxProg = createProgram(TS.VS_AUX_SCENE, TS.FS_AUX_SCENE);
         kerrProg = createProgram(TS.VS_KERR_SCENE, TS.FS_KERR_SCENE);
@@ -506,8 +511,14 @@
         pointUniforms = getUniforms(pointProg, [
             "uViewProj", "uCamPos", "uViewport", "uDpr", "uTime",
             "uHeroBoost", "uIsLight", "uStreakScale", "uMaxStreakPx", "uTrailGain", "uFogTint",
-            "uInside", "uHeroScale", "uWorldGrow", "uTwinkle", "uPixelArt", "uDofStrength"
+            "uInside", "uHeroScale", "uWorldGrow", "uTwinkle", "uPixelArt", "uDofStrength",
+            "uLkStaticStart", "uLkRot", "uLkXform", "uLkParams", "uLkLens"
         ]);
+        if (celestialProg) {
+            celestialUniforms = getUniforms(celestialProg, [
+                "uView", "uProj", "uWarpFactor", "uBloomThreshold", "uIsLight", "uDpr"
+            ]);
+        }
         starUniforms = getUniforms(starProg, [
             "uRes", "uBhScreenCentre", "uBhScale", "uTilt", "uTime", "uIsLight", "uBrightness",
             "uBaseColour", "uNebulaCol0", "uNebulaCol1", "uNebulaCol2",
@@ -651,8 +662,64 @@
             gl.bindVertexArray(null);
         }
 
+        // 7. Static Isotropic Celestial Sphere VAO (Layer A skybox, built once at WebGL init)
+        if (celestialProg) {
+            celestialVAO = gl.createVertexArray();
+            gl.bindVertexArray(celestialVAO);
+
+            const celestialData = new Float32Array(CELESTIAL_STAR_COUNT * 7);
+            const rnd = mulberry32(0xC31E571A);
+            const R = 120.0;
+            const maxLum = Math.min(0.82, ((TM && TM.LOOK && typeof TM.LOOK.bloomThreshold === "number") ? TM.LOOK.bloomThreshold : 1.0) * 0.82);
+
+            for (let i = 0; i < CELESTIAL_STAR_COUNT; i++) {
+                // Area-preserving spherical sampling on S^2
+                const u = rnd();
+                const v = rnd();
+                const cosT = 2.0 * u - 1.0;
+                const sinT = Math.sqrt(Math.max(0.0, 1.0 - cosT * cosT));
+                const phi = 2.0 * Math.PI * v;
+
+                // Steep power-law magnitude distribution matching Layer B star look (capped below bloomThreshold)
+                const m = rnd();
+                let size, lum;
+                if (m < 0.90) {
+                    const t = Math.pow(rnd(), 2.6);
+                    size = 1.5 + 0.5 * t;
+                    lum = 0.22 + 0.34 * t;
+                } else {
+                    const t = Math.pow(rnd(), 1.8);
+                    size = 2.1 + 1.1 * t;
+                    lum = Math.min(maxLum, 0.55 + 0.27 * t);
+                }
+
+                const base = i * 7;
+                celestialData[base + 0] = R * sinT * Math.cos(phi);
+                celestialData[base + 1] = R * cosT;
+                celestialData[base + 2] = R * sinT * Math.sin(phi);
+                celestialData[base + 3] = lum;
+                celestialData[base + 4] = lum;
+                celestialData[base + 5] = lum;
+                celestialData[base + 6] = size;
+            }
+
+            const stride = 7 * 4;
+            celestialVBO = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, celestialVBO);
+            gl.bufferData(gl.ARRAY_BUFFER, celestialData, gl.STATIC_DRAW);
+            gl.enableVertexAttribArray(0);
+            gl.vertexAttribPointer(0, 3, gl.FLOAT, false, stride, 0);
+            gl.enableVertexAttribArray(1);
+            gl.vertexAttribPointer(1, 3, gl.FLOAT, false, stride, 3 * 4);
+            gl.enableVertexAttribArray(2);
+            gl.vertexAttribPointer(2, 1, gl.FLOAT, false, stride, 6 * 4);
+
+            gl.bindVertexArray(null);
+        }
+
         rtWidth = 0;
         rtHeight = 0;
+        lkStaticVboUploaded = false;
         ensurePostTargets(stageCanvas.width, stageCanvas.height);
 
         return true;
@@ -689,6 +756,7 @@
         return [(nx * 0.5 + 0.5) * window.innerWidth, (1.0 - (ny * 0.5 + 0.5)) * window.innerHeight];
     };
     ctxState.transActive = false;
+    ctxState.lkGpuSupported = true;
     ctxState.camera = camera; // lets formations (Earth & Moon) size sprites from the live camera distance / fov
 
     // Shared cursor-lens state & allocation-free Jacobian solve (LENS_PX = 54)
@@ -718,10 +786,11 @@
         lensState.wz = oz;
         const pxPerUnit = 0.5 * (Math.hypot(ax, ay) + Math.hypot(bx, by));
         if (pxPerUnit <= 1e-6) return lensState;
-        const thE = LENS_PX / pxPerUnit;
+        const str = typeof cur.strength === "number" ? cur.strength : (cur.down ? 2.2 : 0.38);
+        const thE = (LENS_PX * (0.78 + 0.58 * str)) / pxPerUnit;
         lensState.thE = thE;
         lensState.thE2 = thE * thE;
-        lensState.k = typeof cur.strength === "number" ? cur.strength : (cur.down ? 1.0 : 0.38);
+        lensState.k = str;
         lensState.x = cur.x;
         lensState.y = cur.y;
         lensState.active = true;
@@ -846,6 +915,11 @@
         }
         // 1. Guard against overlapping transitions: if mid-flight, snapshot current interpolated state as new source
         const N = sharedBuffer.count;
+        ctxState.transActive = true;
+        const curFormForMorph = formations[currentIndex];
+        if (!trans.active && !exploreMorph.active && curFormForMorph && curFormForMorph.gpuState && curFormForMorph.gpuState.active) {
+            curFormForMorph.update(0.016, simTime, sharedBuffer, ctxState);
+        }
         fromPositions.subarray(0, N * 3).set(positions.subarray(0, N * 3));
         fromColours.subarray(0, N * 3).set(colours.subarray(0, N * 3));
         fromSizes.subarray(0, N).set(sizes.subarray(0, N));
@@ -2043,8 +2117,11 @@
             if (!active.initialized) {
                 active.init(sharedBuffer, ctxState);
             }
+            ctxState.transActive = false;
             active.update(0.016, simTime, sharedBuffer, ctxState);
-            prevPositions.set(positions);
+            const dynEnd = (active.gpuState && active.gpuState.active) ? active.gpuState.staticStart * 3 : positions.length;
+            prevPositions.subarray(0, dynEnd).set(positions.subarray(0, dynEnd));
+            lkStaticVboUploaded = false;
             const prof = getProfile(currentDimIndex);
             idlePose(currentDimIndex, 0, "VIEW", poseA, poseB);
             camera.position.copy(poseA);
@@ -2167,6 +2244,11 @@
 
         const N = sharedBuffer.count;
         const wasMidFlight = trans.active;
+        ctxState.transActive = true;
+        const curFormForTrans = formations[currentIndex];
+        if (!wasMidFlight && !exploreMorph.active && curFormForTrans && curFormForTrans.gpuState && curFormForTrans.gpuState.active) {
+            curFormForTrans.update(0.016, simTime, sharedBuffer, ctxState);
+        }
 
         fromPositions.set(positions);
         fromColours.set(colours);
@@ -2528,8 +2610,11 @@
                 );
             }
             if (!exploreMorph.active) {
+                ctxState.transActive = false;
                 active.update(0.016, 0.016, sharedBuffer, ctxState);
-                prevPositions.set(positions);
+                const dynEnd = (active.gpuState && active.gpuState.active) ? active.gpuState.staticStart * 3 : positions.length;
+                prevPositions.subarray(0, dynEnd).set(positions.subarray(0, dynEnd));
+                lkStaticVboUploaded = false;
             }
             const prof = getProfile(currentDimIndex);
             if (!exploreMorph.active) {
@@ -3328,8 +3413,13 @@
         pinchFovOffset = clamp(pinchFovOffset + (pinchTargetOffset - pinchFovOffset) * (1.0 - Math.exp(-12.0 * dt)), -10.0, 12.0);
 
         const N = sharedBuffer.count;
+        ctxState.transActive = trans.active || exploreMorph.active;
         // Snapshot previous frame positions before advancing simulation for velocity-aligned ribbons
-        prevPositions.subarray(0, N * 3).set(positions.subarray(0, N * 3));
+        const activeForSnap = !ctxState.transActive ? formations[currentIndex] : null;
+        const snapN = (activeForSnap && activeForSnap.gpuState && activeForSnap.gpuState.active)
+            ? Math.max(1, Math.min(N, activeForSnap.gpuState.staticStart))
+            : N;
+        prevPositions.subarray(0, snapN * 3).set(positions.subarray(0, snapN * 3));
 
         let heroBoost = 0.0;
 
@@ -3601,7 +3691,8 @@
                     sizes[0] *= (1.0 + 0.36 * gatherPulse);
                     heroBoost = Math.max(heroBoost, 0.5 * gatherPulse);
                     if (converge > 0.0005) {
-                        for (let i = 1; i < N; i++) {
+                        const convN = (active.gpuState && active.gpuState.active) ? Math.min(N, active.gpuState.staticStart) : N;
+                        for (let i = 1; i < convN; i++) {
                             const i3 = i * 3;
                             positions[i3] += (hx - positions[i3]) * converge;
                             positions[i3 + 1] += (hy - positions[i3 + 1]) * converge;
@@ -4114,19 +4205,36 @@
             gl.uniform1f(pointUniforms.uPixelArt, ctxState.pixelMix > 0.5 ? 1.0 : 0.0);
         }
 
+        const lkGpu = (!trans.active && !exploreMorph.active && activeRenderForm && activeRenderForm.gpuState && activeRenderForm.gpuState.active) ? activeRenderForm.gpuState : null;
+        if (lkGpu) {
+            gl.uniform1i(pointUniforms.uLkStaticStart, lkGpu.staticStart);
+            gl.uniform4f(pointUniforms.uLkRot, lkGpu.cy, lkGpu.sy, lkGpu.cp, lkGpu.sp);
+            gl.uniform4f(pointUniforms.uLkXform, lkGpu.ox, lkGpu.oy, lkGpu.oz, lkGpu.scale);
+            gl.uniform4f(pointUniforms.uLkParams, lkGpu.dw, lkGpu.warp, lkGpu.centredScale, 0.0);
+            const L = lkGpu.lens && lkGpu.lens.active ? lkGpu.lens : null;
+            gl.uniform4f(pointUniforms.uLkLens, L ? L.wx : 0.0, L ? L.wy : 0.0, L ? L.thE2 : 0.0, L ? L.k : 0.0);
+        } else {
+            gl.uniform1i(pointUniforms.uLkStaticStart, 0);
+        }
+
         gl.bindVertexArray(sharedVAO);
 
+        const upN = (lkGpu && lkStaticVboUploaded && typeof activeRenderForm.gpuUploadCount === "number")
+            ? Math.max(1, Math.min(N, activeRenderForm.gpuUploadCount))
+            : N;
+        lkStaticVboUploaded = Boolean(lkGpu);
+
         gl.bindBuffer(gl.ARRAY_BUFFER, posVBO);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, positions.subarray(0, N * 3));
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, positions.subarray(0, upN * 3));
 
         gl.bindBuffer(gl.ARRAY_BUFFER, prevPosVBO);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, prevPositions.subarray(0, N * 3));
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, prevPositions.subarray(0, upN * 3));
 
         gl.bindBuffer(gl.ARRAY_BUFFER, colVBO);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, colours.subarray(0, N * 3));
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, colours.subarray(0, upN * 3));
 
         gl.bindBuffer(gl.ARRAY_BUFFER, sizeVBO);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, sizes.subarray(0, N));
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, sizes.subarray(0, upN));
 
         const drawN = Math.max(1, Math.min(N, Math.round(N * activeParticleScale)));
         gl.drawArrays(gl.POINTS, 0, drawN);
@@ -4147,10 +4255,28 @@
             gl.blendFunc(gl.ONE, gl.ONE);
         }
 
-        // 2a. Celestial background starfield, nebula & Milky Way layer (skipped when new hyperspace stars are active)
+        // 2a. Layer A: Static isotropic celestial sphere (always rendered onto sceneRT at rest and during warp)
         const hj = typeof window !== "undefined" ? window.hyperspaceJourney : null;
-        const useHyperspaceStars = !!(hj && typeof hj.isHubActive === "function" && hj.isHubActive() && hj.engine && hj.engine.starMesh);
-        if (starProg && !useHyperspaceStars) {
+        const warpFactor = isReducedMotion()
+            ? 0.0
+            : clamp(Math.max(trans.warpStrength || 0.0, (hj && typeof hj.warpFactor === "number") ? hj.warpFactor : 0.0), 0.0, 1.0);
+
+        if (celestialProg && celestialVAO) {
+            const celestialBloomThreshold = (activeRenderForm && activeRenderForm.bloomThreshold) || LOOK.bloomThreshold || 1.0;
+            gl.useProgram(celestialProg);
+            gl.uniformMatrix4fv(celestialUniforms.uView, false, camera.viewMatrix.elements);
+            gl.uniformMatrix4fv(celestialUniforms.uProj, false, camera.projectionMatrix.elements);
+            gl.uniform1f(celestialUniforms.uWarpFactor, warpFactor);
+            gl.uniform1f(celestialUniforms.uBloomThreshold, celestialBloomThreshold);
+            gl.uniform1f(celestialUniforms.uIsLight, isLight ? 1.0 : 0.0);
+            gl.uniform1f(celestialUniforms.uDpr, dpr);
+            gl.bindVertexArray(celestialVAO);
+            gl.drawArrays(gl.POINTS, 0, CELESTIAL_STAR_COUNT);
+            gl.bindVertexArray(null);
+        }
+
+        // 2a-ii. Layer B: Velocity-gated warp streak volume (strictly CPU-culled at rest & during hub HyperspaceEngine jumps)
+        if (starProg && warpFactor >= 0.001 && !(hj && hj.isTransitioning)) {
             const isMob = isMobileDevice();
             const reduced = isReducedMotion();
             const skyTier = getEffectiveSkyQualityTier();
@@ -4177,15 +4303,12 @@
             const camDirY = cdLen > 1e-5 ? cdy / cdLen : 0.0;
             const camDirZ = cdLen > 1e-5 ? cdz / cdLen : -1.0;
 
-            const sp = postState.space;
-            const spEnabled = sp.enabled !== false;
-
             if (useSkyRT) {
                 gl.bindFramebuffer(gl.FRAMEBUFFER, skyRT.fbo);
                 gl.viewport(0, 0, skyW, skyH);
+                gl.disable(gl.BLEND);
             }
 
-            gl.disable(gl.BLEND);
             gl.useProgram(starProg);
             gl.uniform2f(starUniforms.uRes, skyW, skyH);
             gl.uniform2f(starUniforms.uBhScreenCentre, currentScreenX, currentScreenY);
@@ -4201,7 +4324,7 @@
             gl.uniform3f(starUniforms.uStarTint, 1.0, 1.0, 1.0);
             gl.uniform1f(starUniforms.uShootingStars, (DEFAULT_SPACE_CONFIG.shootingStars && !reduced) ? 1.0 : 0.0);
             gl.uniform1f(starUniforms.uParallax, DEFAULT_SPACE_CONFIG.parallax);
-            gl.uniform1f(starUniforms.uWarpVelocity, reduced ? 0.0 : (trans.warpStrength || 0.0));
+            gl.uniform1f(starUniforms.uWarpVelocity, warpFactor);
             gl.uniform2f(starUniforms.uPointerOffset, isMob ? 0.0 : ctxState.pointerX, isMob ? 0.0 : ctxState.pointerY);
             gl.uniform3f(starUniforms.uCamDir, camDirX, camDirY, camDirZ);
             gl.uniform1i(starUniforms.uQualityTier, skyTier);
@@ -4211,18 +4334,17 @@
             if (useSkyRT) {
                 gl.bindFramebuffer(gl.FRAMEBUFFER, sceneRT.fbo);
                 gl.viewport(0, 0, pw, ph);
+                gl.enable(gl.BLEND);
+                if (isLight) {
+                    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                } else {
+                    gl.blendFunc(gl.ONE, gl.ONE);
+                }
                 gl.useProgram(blitAddProg);
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, skyRT.tex);
                 gl.uniform1i(blitAddUniforms.uTex, 0);
                 drawQuad();
-            }
-
-            gl.enable(gl.BLEND);
-            if (isLight) {
-                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-            } else {
-                gl.blendFunc(gl.ONE, gl.ONE);
             }
         }
 
@@ -4475,6 +4597,11 @@
             try { cleanupFns[i](); } catch (_) {}
         }
         cleanupFns.length = 0;
+        if (gl && !contextLost) {
+            if (celestialVAO) { gl.deleteVertexArray(celestialVAO); celestialVAO = null; }
+            if (celestialVBO) { gl.deleteBuffer(celestialVBO); celestialVBO = null; }
+            if (celestialProg) { gl.deleteProgram(celestialProg); celestialProg = null; }
+        }
     };
 
     mainRafId = requestAnimationFrame(tick);

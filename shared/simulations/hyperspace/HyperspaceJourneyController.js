@@ -174,8 +174,8 @@
         var tunnelIntensity = 0.0;
         var shockwaveProgress = 0.0;
         var postSnapThinning = 0.0;
-        var starDriftSpeed = 1.0;
-        var starOpacity = 1.0;
+        var starDriftSpeed = 0.0;
+        var starOpacity = 0.0;
         var thrusterPower = 0.0;
         var tunnelRimIntensity = 0.0;
         var domainLightIntensity = 0.0;
@@ -228,18 +228,18 @@
         }
 
         if (t < TIMELINE.DEPARTURE_END) {
-            // 0.0s - 1.8s: Phase 1 Dynamic Alignment Arc (FOV=60, thruster=0)
+            // 0.0s - 1.8s: Phase 1 Dynamic Alignment Arc (FOV=60, thruster=0, Layer B culled)
             phase = "departure";
             var u0 = t / TIMELINE.DEPARTURE_END;
             fov = 60.0;
             stretchLength = 0.0;
             tunnelIntensity = 0.0;
-            starDriftSpeed = 1.0;
-            starOpacity = 1.0;
+            starDriftSpeed = 0.0;
+            starOpacity = 0.0;
             thrusterPower = 0.0;
             tunnelRimIntensity = 0.0;
             domainLightIntensity = 1.0 - smoothstep(0.0, 0.85, u0);
-            uiOpacity = 1.0 - smoothstep(0.0, 0.80, u0);
+            uiOpacity = 1.0 - smoothstep(0.0, 0.50, u0);
         } else if (t < TIMELINE.SPOOL_END) {
             // 1.8s - 2.5s: Phase 2 Engine Spool (FOV 60 -> 52 cubic ease-in-out)
             phase = "spool";
@@ -247,10 +247,10 @@
             var s1 = smoothstep(0.0, 1.0, u1);
             fov = lerp(60.0, 52.0, s1);
             thrusterPower = lerp(0.0, 0.75, s1);
-            starDriftSpeed = lerp(1.0, 2.0, s1);
+            starDriftSpeed = lerp(0.0, 2.0, s1);
             stretchLength = 0.0;
             tunnelIntensity = 0.0;
-            starOpacity = 1.0;
+            starOpacity = lerp(0.0, 0.5, s1);
             uiOpacity = 0.0;
         } else if (t < TIMELINE.IGNITION_END) {
             // 2.5s - 3.5s: Phase 3 Laser Rod Ignition (FOV 52 -> 78, stretch rods active against #000000)
@@ -263,7 +263,7 @@
             starDriftSpeed = lerp(2.0, 16.0, u2 * u2);
             vibrationAmp = 0.032 * s2;
             tunnelIntensity = 0.0;
-            starOpacity = 1.0;
+            starOpacity = lerp(0.5, 1.0, smoothstep(0.0, 0.45, u2));
             uiOpacity = 0.0;
         } else if (t < TIMELINE.TUNNEL_END) {
             // 3.5s - 6.5s: Phase 4 Layer B Tunnel (uTunnelIntensity 0->1, FOV->94, swap at 5.0s)
@@ -308,6 +308,7 @@
                 stretchLength = 40.0;
                 postSnapThinning = 0.0;
                 starDriftSpeed = 12.0;
+                starOpacity = 1.0;
                 tunnelRimIntensity = 1.0;
             } else {
                 var uFovSnap = clamp((t - TIMELINE.SNAP_AT) / 0.14, 0.0, 1.0);
@@ -318,6 +319,7 @@
                 postSnapThinning = 1.0;
                 lurchZ = -14.0 * lurchEnv;
                 starDriftSpeed = 0.45;
+                starOpacity = lerp(1.0, 0.55, smoothstep(0.25, 1.0, uSnap));
                 tunnelRimIntensity = 1.0;
             }
         } else {
@@ -329,8 +331,8 @@
             tunnelIntensity = 0.0;
             shockwaveProgress = 0.0;
             postSnapThinning = 1.0;
-            starDriftSpeed = 0.35;
-            starOpacity = 1.0;
+            starDriftSpeed = lerp(0.35, 0.0, smoothstep(0.0, 0.75, u6));
+            starOpacity = lerp(0.55, 0.0, smoothstep(0.0, 0.75, u6));
             tunnelRimIntensity = 1.0 - smoothstep(0.0, 0.85, u6);
             domainLightIntensity = smoothstep(0.05, 0.92, u6);
             uiOpacity = smoothstep(TIMELINE.UI_FADE_START, TIMELINE.UI_FADE_END, t);
@@ -341,6 +343,13 @@
         shockwaveProgress = (t >= TIMELINE.SNAP_AT && t <= TIMELINE.SHOCKWAVE_END)
             ? clamp((t - TIMELINE.SNAP_AT) / (TIMELINE.SHOCKWAVE_END - TIMELINE.SNAP_AT), 0.0, 1.0)
             : 0.0;
+
+        // Smooth warp factor [0, 1] for Layer A dimming & blueshift in gpu-thread.js
+        var warpFactor = clamp(Math.max(tunnelIntensity, Math.min(1.0, stretchLength / 40.0)), 0.0, 1.0);
+        if (t >= TIMELINE.SNAP_AT) {
+            var postSnapWarp = 1.0 - smoothstep(TIMELINE.SNAP_AT, TIMELINE.HANDOFF_START, t);
+            warpFactor = clamp(Math.max(warpFactor, postSnapWarp), 0.0, 1.0);
+        }
 
         var res = out || {};
         res.t = t;
@@ -354,6 +363,7 @@
         res.postSnapThinning = postSnapThinning;
         res.starDriftSpeed = starDriftSpeed;
         res.starOpacity = starOpacity;
+        res.warpFactor = warpFactor;
         res.thrusterPower = thrusterPower;
         res.tunnelRimIntensity = tunnelRimIntensity;
         res.domainLightIntensity = domainLightIntensity;
@@ -379,6 +389,7 @@
         this._reducedTimerB = 0;
 
         this.isTransitioning = false;
+        this.warpFactor = 0.0;
         this.currentIndex = 0;
         this.targetIndex = 0;
         this.fromIndex = 0;
@@ -387,6 +398,7 @@
         this._fastForwarded = false;
         this._onComplete = null;
         this._customSwapFn = null;
+        this._lastUiOpacity = 1.0;
 
         this._departurePos = { x: 0.0, y: -4.5, z: -14.0 };
         this._departureVel = { x: 0.0, y: 2.2, z: 1.5 };
@@ -416,8 +428,8 @@
             midSwap: 0.0,
             shockwaveProgress: 0.0,
             postSnapThinning: 0.0,
-            starDriftSpeed: 1.0,
-            starOpacity: 1.0,
+            starDriftSpeed: 0.0,
+            starOpacity: 0.0,
             parallax: this._parallax,
             resolution: this._resolution
         };
@@ -643,11 +655,20 @@
     };
 
     HyperspaceJourneyController.prototype._setUiOpacity = function (uiOp) {
+        this._lastUiOpacity = uiOp === null ? 1.0 : clamp(uiOp, 0, 1);
         if (typeof document === "undefined") return;
         var mainEl = document.getElementById("main");
         if (mainEl) {
-            mainEl.style.opacity = uiOp === null ? "" : String(clamp(uiOp, 0, 1));
+            mainEl.style.opacity = uiOp === null ? "" : String(this._lastUiOpacity);
         }
+    };
+
+    HyperspaceJourneyController.prototype.getUiOpacity = function () {
+        if (!this.isTransitioning) return 1.0;
+        if (this._reducedTimerA || this._reducedTimerB) {
+            return clamp(this._lastUiOpacity, 0.0, 1.0);
+        }
+        return clamp(evaluateTimeline(this.jumpTime).uiOpacity, 0.0, 1.0);
     };
 
     HyperspaceJourneyController.prototype._setSimIngress = function (zOffset, scale, opacity) {
@@ -702,6 +723,7 @@
         if (this._disposed) return;
         if (!this.isHubActive()) {
             this.isTransitioning = false;
+            this.warpFactor = 0.0;
             this._setOverlayVisibility(false, false, false);
             this._setUiOpacity(null);
             this._setSimIngress(0.0, 1.0, 1.0);
@@ -721,14 +743,18 @@
         }
         this.currentIndex = idx;
         this.targetIndex = idx;
+        if (!this.isTransitioning) {
+            this.warpFactor = 0.0;
+        }
         this._setSimIngress(0.0, 1.0, 1.0);
 
         if (idx === 0) {
-            // Page 0 (Laniakea): 4,000-star Layer A visible; spacecraft, tunnel & shockwave hidden
-            this._setOverlayVisibility(true, true, false);
+            // Page 0 (Laniakea): Layer B culled at rest; spacecraft, tunnel & shockwave hidden
+            this._setOverlayVisibility(true, false, false);
             this._ensureLoop();
         } else {
-            this._setOverlayVisibility(true, true, true);
+            // Sections 1..6: Layer B culled at rest; spacecraft orbits
+            this._setOverlayVisibility(true, false, true);
             this._ensureLoop();
         }
     };
@@ -813,6 +839,7 @@
     HyperspaceJourneyController.prototype._runReducedMotionSwap = function (targetIdx) {
         var self = this;
         this.isTransitioning = true;
+        this.warpFactor = 0.0;
         if (this._reducedTimerA) clearTimeout(this._reducedTimerA);
         if (this._reducedTimerB) clearTimeout(this._reducedTimerB);
 
@@ -891,6 +918,7 @@
 
     HyperspaceJourneyController.prototype._finishJump = function () {
         this.isTransitioning = false;
+        this.warpFactor = 0.0;
         this.currentIndex = this.targetIndex;
         this.jumpTime = 0.0;
 
@@ -910,18 +938,19 @@
         }
 
         if (this.currentIndex === 0) {
-            // Returned to Page 0 (Laniakea): keep 4,000-star Layer A visible; spacecraft/tunnel/shockwave hidden
-            this._setOverlayVisibility(true, true, false);
+            // Returned to Page 0 (Laniakea): Layer B culled at rest; spacecraft/tunnel/shockwave hidden
+            this._setOverlayVisibility(true, false, false);
             this._ensureLoop();
         } else {
-            // Docked in destination sector: persist exact 4,000-star annular field + orbiting spacecraft
-            this._setOverlayVisibility(true, true, true);
+            // Docked in destination sector: Layer B culled at rest; keep orbiting spacecraft
+            this._setOverlayVisibility(true, false, true);
             this._ensureLoop();
         }
 
         var cb = this._onComplete;
         this._onComplete = null;
         this._customSwapFn = null;
+        this._lastUiOpacity = 1.0;
         if (typeof cb === "function") {
             try { cb(this.currentIndex); } catch (e) {}
         }
@@ -951,6 +980,7 @@
             this._timelineOpts.fromPage0 = this.fromIndex === 0;
             this._timelineOpts.toPage0 = this.targetIndex === 0;
             var st = evaluateTimeline(this.jumpTime, this._timelineOpts, this._timelineOut);
+            this.warpFactor = st.warpFactor;
 
             // Exact midpoint DOM & simulation hot-swap at t = 5.0s
             if (st.shouldSwap && !this._midpointSwapped) {
@@ -1092,7 +1122,8 @@
             return;
         }
 
-        // Idle / Orbital Docking Loop (Layer A 4,000-star field active on all hub pages; spacecraft orbits on sections 1..6)
+        // Idle / Orbital Docking Loop (Layer B cylindrical warp volume strictly culled at rest; spacecraft orbits on sections 1..6)
+        this.warpFactor = 0.0;
         if (this.engine) {
             var idleEng = this._engineState;
             idleEng.time = this._orbitTime;
@@ -1102,8 +1133,8 @@
             idleEng.midSwap = 0.0;
             idleEng.shockwaveProgress = 0.0;
             idleEng.postSnapThinning = 0.0;
-            idleEng.starDriftSpeed = this._isReducedMotion() ? 0.0 : 8.0;
-            idleEng.starOpacity = 1.0;
+            idleEng.starDriftSpeed = 0.0;
+            idleEng.starOpacity = 0.0;
             this.engine.update(dt, idleEng);
         }
 
@@ -1137,6 +1168,7 @@
         if (this._disposed) return;
         this._disposed = true;
         this.isTransitioning = false;
+        this.warpFactor = 0.0;
         this._stopLoop();
 
         if (this._reducedTimerA) { clearTimeout(this._reducedTimerA); this._reducedTimerA = 0; }
@@ -1167,6 +1199,7 @@
 
         this._onComplete = null;
         this._customSwapFn = null;
+        this._lastUiOpacity = 1.0;
         this._reducedMQ = null;
         this.engine = null;
         this.spacecraft = null;

@@ -34,6 +34,11 @@ uniform float uWorldGrow;  // swarm size multiplier (structures look huge when p
 uniform float uTwinkle;     // 1 = seed-driven twinkle, 0 = steady light
 uniform float uPixelArt;    // 1 = pixel-art mode: hard squares on a global pixel grid, flat colours (formation.pixelArt)
 uniform float uDofStrength; // subtle optical depth-of-field blur for distant particles
+uniform int uLkStaticStart;
+uniform vec4 uLkRot;    // (cy, sy, cp, sp)
+uniform vec4 uLkXform;  // (ox, oy, oz, scale)
+uniform vec4 uLkParams; // (dw, warp, centredScale, 0.0)
+uniform vec4 uLkLens;   // (wx, wy, thE2, k) — thE2 <= 0.0 when inactive
 
 out vec3 vColour;
 out float vAlpha;
@@ -44,17 +49,68 @@ out float vCapRad;
 out float vDofBlur;
 
 void main() {
-    vec4 clipCurr = uViewProj * vec4(aPosition, 1.0);
-    vec4 clipPrev = uViewProj * vec4(aPrevPosition, 1.0);
+    vec3 worldPos = aPosition;
+    vec3 worldPrev = aPrevPosition;
+    vec3 inColour = aColour;
+    float inSize = aSize;
 
-    float dist = max(1.1, length(aPosition - uCamPos));
+    if (uLkStaticStart > 0 && gl_VertexID >= uLkStaticStart) {
+        vec3 loc = aPosition;
+        vec2 flowVec = aPrevPosition.xy;
+        float dd = aPrevPosition.z;
+        float dep = 1.0 + 0.55 * clamp(loc.z, -0.6, 0.6);
+        float tw = 0.88 + 0.12 * sin(uTime * (0.8 + aSeed.z * 2.2) + aSeed.x * 6.283);
+        float dw = uLkParams.x;
+        float warp = clamp(uLkParams.y, 0.0, 1.0);
+        float hv = (dw > 0.001) ? ((1.0 - dw) + dw * (0.16 + 2.0 * min(1.0, dd * 2.2))) : 1.0;
+        float m = dep * tw * hv * uLkParams.z;
+        inColour = aColour * m;
+        inSize = aSize * (0.85 + 0.3 * dep) * (0.8 + 0.2 * hv);
+
+        float s = uLkXform.w;
+        vec3 scaled = loc * s;
+        float x1 = scaled.x * uLkRot.x + scaled.z * uLkRot.y;
+        float z1 = -scaled.x * uLkRot.y + scaled.z * uLkRot.x;
+        float y2 = scaled.y * uLkRot.z - z1 * uLkRot.w;
+        float z2 = scaled.y * uLkRot.w + z1 * uLkRot.z;
+        worldPos = uLkXform.xyz + vec3(x1, y2, z2);
+
+        if (uLkLens.z > 0.0) {
+            vec2 rVec = worldPos.xy - uLkLens.xy;
+            float r2 = dot(rVec, rVec);
+            float lk = min(1.3, (uLkLens.z * uLkLens.w * 0.95) / (r2 + uLkLens.z * 0.25));
+            worldPos.xy += rVec * lk;
+        }
+
+        // Hijack flow elongation (slen) into radial hyperspace streaks as warp climbs
+        float wMix = smoothstep(0.02, 0.55, warp);
+        float flowLen = length(flowVec);
+        vec2 radDir = normalize(loc.xy + vec2(1e-6));
+        float radLen = max(flowLen, (0.005 + 0.016 * dd)) * (1.0 + 3.5 * warp);
+        vec2 effFlow = mix(flowVec, radDir * radLen, wMix);
+        if (length(effFlow) > 1e-6) {
+            vec2 ef = effFlow * s;
+            float zr = -ef.x * uLkRot.y;
+            float xr = ef.x * uLkRot.x;
+            float yr = ef.y * uLkRot.z - zr * uLkRot.w;
+            float zz = ef.y * uLkRot.w + zr * uLkRot.z;
+            worldPrev = worldPos - vec3(xr, yr, zz);
+        } else {
+            worldPrev = worldPos;
+        }
+    }
+
+    vec4 clipCurr = uViewProj * vec4(worldPos, 1.0);
+    vec4 clipPrev = uViewProj * vec4(worldPrev, 1.0);
+
+    float dist = max(1.1, length(worldPos - uCamPos));
     float perspectiveScale = (uViewport.y * 0.0108) / dist;
 
     bool isHero = (gl_VertexID == 0);
     float heroScale = isHero ? (1.0 + uHeroBoost * 3.2) * uHeroScale : uWorldGrow;
     float seedVar = 0.80 + 0.42 * aSeed.x;
 
-    if (aSize <= 0.0001 || aPosition.z < -2500.0) {
+    if (inSize <= 0.0001 || worldPos.z < -2500.0) {
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
         gl_PointSize = 0.0;
         vAlpha = 0.0;
@@ -62,7 +118,7 @@ void main() {
         return;
     }
 
-    float baseSize = clamp(aSize * seedVar * perspectiveScale * uDpr * heroScale, 1.35 * uDpr, 44.0 * uDpr);
+    float baseSize = clamp(inSize * seedVar * perspectiveScale * uDpr * heroScale, 1.35 * uDpr, 44.0 * uDpr);
 
     // Subtle optical depth of field: gently widen distant non-hero particles
     float dofBlur = 0.0;
@@ -71,9 +127,9 @@ void main() {
         baseSize *= (1.0 + dofBlur * 0.45);
     }
 
-    // Pixel-art mode: aSize is the cell size in CSS px; snap the particle to the global device-pixel grid
+    // Pixel-art mode: inSize is the cell size in CSS px; snap the particle to the global device-pixel grid
     if (uPixelArt > 0.5 && clipCurr.w > 0.0) {
-        baseSize = max(1.0, floor(aSize * uDpr + 0.5));
+        baseSize = max(1.0, floor(inSize * uDpr + 0.5));
         vec2 vpPx = max(vec2(1.0), uViewport * uDpr);
         vec2 ndcPx = clipCurr.xy / clipCurr.w;
         vec2 ppx = (ndcPx * 0.5 + 0.5) * vpPx;
@@ -83,7 +139,7 @@ void main() {
 
     // Velocity-aligned ribbon stretch with 3 parallax depth layers (near, mid, far)
     float layerFactor = isHero ? 1.85 : ((dist < 7.5) ? 1.35 : ((dist < 17.0) ? 1.0 : 0.68));
-    float worldStep = length(aPosition - aPrevPosition);
+    float worldStep = length(worldPos - worldPrev);
     // Allow hero particle to streak up to 350 world units during hyperdrive punch
     float maxStep = isHero ? 350.0 : 95.0;
     float streakLen = 0.0;
@@ -115,12 +171,12 @@ void main() {
     // Atmospheric distance fog + near-field luminance richness + seed-driven temporal twinkle
     float fogFactor = clamp((dist - 11.0 * (1.0 - 0.5 * uInside)) / (42.0 * (1.0 - 0.4 * uInside)), 0.0, 0.72);
     float nearLift = 1.0 + 0.16 * smoothstep(15.0, 3.5, dist);
-    vec3 col = mix(aColour * nearLift, uFogTint * 2.5, fogFactor * 0.48);
+    vec3 col = mix(inColour * nearLift, uFogTint * 2.5, fogFactor * 0.48);
 
     // Subtle relativistic Doppler colour shift (blue-shift approaching, red-shift receding), luminance-preserving
     if (worldStep > 0.0005 && worldStep < maxStep && uPixelArt < 0.5 && uIsLight < 0.5) {
-        vec3 toCam = normalize(uCamPos - aPosition);
-        float vRadial = dot(aPosition - aPrevPosition, toCam);
+        vec3 toCam = normalize(uCamPos - worldPos);
+        float vRadial = dot(worldPos - worldPrev, toCam);
         float beta = clamp(vRadial * 3.2, -1.0, 1.0);
         vec3 shiftTint = beta >= 0.0
             ? mix(vec3(1.0), vec3(0.84, 0.96, 1.15), beta)
@@ -148,7 +204,7 @@ void main() {
     vIsHero = isHero ? uHeroBoost : 0.0;
     vDofBlur = dofBlur;
 
-    if (uPixelArt > 0.5) { vColour = aColour; vAlpha = 1.0; vIsHero = 0.0; vDofBlur = 0.0; }
+    if (uPixelArt > 0.5) { vColour = inColour; vAlpha = 1.0; vIsHero = 0.0; vDofBlur = 0.0; }
 }
 `;
 
@@ -208,7 +264,69 @@ void main() {
 }
 `;
 
-    /* 3. Cinematic Deep-Space Starfield, Milky Way & Volumetric Nebula Background Layer */
+    /* 2b. Layer A: Static Isotropic Celestial Sphere Skybox (rotation-only, zero parallax, sub-bloom) */
+    const VS_CELESTIAL_SPHERE = `#version 300 es
+precision highp float;
+
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec3 aColour;
+layout(location = 2) in float aSize;
+
+uniform mat4 uView;
+uniform mat4 uProj;
+uniform float uDpr;
+
+out vec3 vColour;
+
+void main() {
+    vec3 rotPos = mat3(uView) * aPos;
+    vec4 clip = uProj * vec4(rotPos, 1.0);
+    clip.z = clip.w * 0.999;
+    gl_Position = clip;
+    gl_PointSize = clamp(aSize * uDpr, 1.0, 6.0);
+    vColour = aColour;
+}
+`;
+
+    const FS_CELESTIAL_SPHERE = `#version 300 es
+precision highp float;
+
+in vec3 vColour;
+
+uniform float uWarpFactor;
+uniform float uBloomThreshold;
+uniform float uIsLight;
+
+out vec4 fragColor;
+
+void main() {
+    vec2 p = gl_PointCoord * 2.0 - 1.0;
+    float d2 = dot(p, p);
+    if (d2 > 1.0) discard;
+
+    // Match Layer B (HyperspaceEngine) pinpoint star profile: white core + #60a5fa blue halo
+    float core = exp(-d2 * 7.5);
+    float halo = exp(-d2 * 2.8);
+    vec3 starCol = mix(vec3(0.376, 0.647, 0.980), vec3(1.0, 1.0, 1.0), smoothstep(0.15, 0.65, core));
+
+    float warp = clamp(uWarpFactor, 0.0, 1.0);
+    float dim = mix(1.0, 0.35, warp);
+    vec3 col = starCol * vColour * dim;
+
+    if (uIsLight > 0.5) {
+        float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+        float inkAlpha = clamp(lum * halo * 0.32, 0.0, 0.24);
+        fragColor = vec4(vec3(0.08, 0.10, 0.16), inkAlpha);
+        return;
+    }
+
+    vec3 rgb = max(vec3(0.0), col * halo);
+    rgb = min(rgb, vec3(max(0.0, uBloomThreshold) * 0.90));
+    fragColor = vec4(rgb, halo);
+}
+`;
+
+    /* 3. Layer B: Velocity-Gated Deep-Space Warp Streaks & Cylindrical Vortex Layer */
     const VS_STARFIELD = `#version 300 es
 precision highp float;
 
@@ -510,9 +628,16 @@ vec3 hyperspaceVortex(vec2 uv, float aspectX, float time, float warp, float stre
 }
 
 void main() {
+    float motion = 1.0 - step(0.5, uReducedMotion);
+    float warp = clamp(abs(uWarpVelocity), 0.0, 1.0) * motion;
+    if (warp <= 0.05) {
+        fragColor = vec4(0.0);
+        return;
+    }
+    float warpAlpha = smoothstep(0.05, 0.35, warp);
+
     float aspectX = uRes.x / max(1.0, uRes.y);
     vec2 aspect = vec2(aspectX, 1.0);
-    float motion = 1.0 - step(0.5, uReducedMotion);
     float t = uTime * motion;
 
     // 1. Pitch-black deep-space background (#000000)
@@ -537,7 +662,6 @@ void main() {
     vec3 rightAxis = normalize(cross(dBase, vec3(0.0, 1.0, 0.0)));
     vec3 upAxis = cross(rightAxis, dBase);
     vec3 radial3D = normalize(rightAxis * rad2D.x + upAxis * rad2D.y);
-    float warp = clamp(abs(uWarpVelocity), 0.0, 1.0) * motion;
     float stretch = mix(1.0, 1.0 + warp * 10.0, motion);
     float hyperGate = smoothstep(0.06, 0.14, warp);
 
@@ -575,15 +699,15 @@ void main() {
 
     // 7. Light theme: keep subtle/clean so light editorial text stays readable
     if (uIsLight > 0.5) {
-        float lum = dot(celestial, vec3(0.299, 0.587, 0.114));
+        float lum = dot(celestial, vec3(0.299, 0.587, 0.114)) * warpAlpha;
         fragColor = vec4(vec3(0.08, 0.10, 0.16) * lum, clamp(lum * 0.22, 0.0, 0.07));
         return;
     }
 
     // Triangular blue-noise dithering to prevent dark-gradient banding
     float triDither = (ign(gl_FragCoord.xy) - ign(gl_FragCoord.xy + vec2(17.0, 31.0))) * (1.2 / 255.0);
-    vec3 hdrOut = max(vec3(0.0), baseGrad + celestial * uBrightness + triDither);
-    fragColor = vec4(hdrOut, 1.0);
+    vec3 hdrOut = max(vec3(0.0), (baseGrad + celestial * uBrightness + triDither) * warpAlpha);
+    fragColor = vec4(hdrOut, warpAlpha);
 }
 `;
 
@@ -1539,6 +1663,8 @@ void main() {
     return {
         VS_SHARED_POINTS,
         FS_SHARED_POINTS,
+        VS_CELESTIAL_SPHERE,
+        FS_CELESTIAL_SPHERE,
         VS_STARFIELD,
         FS_STARFIELD,
         VS_AUX_SCENE,

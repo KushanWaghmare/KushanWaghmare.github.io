@@ -549,22 +549,13 @@
                     }
                 });
             },
-            setDimensionAmbient: (fromAudio, toAudio, blend) => {
-                if (!enabled) {
-                    if (ambient) {
-                        const t0 = (ctx && ctx.currentTime) || 0;
-                        ambient.bankA.gain.gain.setTargetAtTime(0.0, t0, 0.04);
-                        ambient.bankB.gain.gain.setTargetAtTime(0.0, t0, 0.04);
-                    }
-                    return;
+            setDimensionAmbient: () => {
+                // Keep idle state silent so enabling audio never produces a continuous speaker hum
+                if (ambient && ctx) {
+                    const t0 = ctx.currentTime || 0;
+                    ambient.bankA.gain.gain.setTargetAtTime(0.0, t0, 0.04);
+                    ambient.bankB.gain.gain.setTargetAtTime(0.0, t0, 0.04);
                 }
-                withContext((t0) => {
-                    ensureAmbient();
-                    if (!ambient) return;
-                    const b = Math.max(0.0, Math.min(1.0, blend || 0.0));
-                    updateBankAudio(ambient.bankA, fromAudio, 1.0 - b, t0);
-                    updateBankAudio(ambient.bankB, toAudio, b, t0);
-                });
             }
         };
     })();
@@ -2380,7 +2371,9 @@ const initNavSim = (c) => {
             const dtS = lastT ? Math.min(0.05, tSec - lastT) : 0.016; lastT = tSec;
             const M = window.__LANIAKEA_MAP__, yaw = (M && M.yaw) || 0, pitch = (M && M.pitch) || 0;
             const laniakeaAlpha = st.laniakeaAlpha === undefined ? 1 : st.laniakeaAlpha;
-            if (laniakeaAlpha > 0.01) {
+            if (laniakeaAlpha <= 0.01) {
+                labelAlphas.clear();
+            } else {
                 ctx.save(); ctx.globalAlpha = laniakeaAlpha;
                 drawBackdrop(tSec, yaw, pitch);
                 ctx.restore();
@@ -2433,20 +2426,48 @@ const initNavSim = (c) => {
 
             // ---- Laniakea Cluster & Void Labels (only drawn when Laniakea intro is visible)
             if (laniakeaAlpha > 0.01 && M && M.ready && M.projectUV) {
-                const modeNow = M.mode || 0; dwS += ((modeNow === 1 ? 1 : 0) - dwS) * Math.min(1, dtS * 6); vwS += ((modeNow === 2 ? 1 : 0) - vwS) * Math.min(1, dtS * 6);
                 const curRaw = M.cursor && M.cursor.active ? M.cursor : null, cur = curRaw ? { x: curRaw.x - ox, y: curRaw.y - oy } : null;
                 let ru = M.LG[0], rv = M.LG[1];
                 if (curRaw) { const q = M.uvFromScreen(curRaw.x, curRaw.y); if (q && q.u > -0.02 && q.u < 1.02 && q.v > -0.02 && q.v < 1.02) { ru = q.u; rv = q.v; } }
                 const fmt = (x, d) => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(d);
                 const hudX = W - 22, hudY = H - 150 * Math.min(1.1, k);
-                rects.push({ x: hudX - 250 * k, y: hudY - 14, w: 252 * k, h: 62 * k });
+
+                // Measure & layout bottom-right linear-theory equation HUD pill
+                const eqFs = Math.max(9.2, 10.2 * k), subFs = Math.max(8.5, 9.4 * k);
+                ctx.font = `500 ${eqFs}px ${mono}`;
+                const tVp = "v_p(r)", tOp = " = −(H₀f / 4π) ∫ ", tDm = "δ_m(r')", tKer = " · (r−r')/|r−r'|³ d³r'";
+                const chipPadX = 5 * k, chipH = 16 * k;
+                const wVp = ctx.measureText(tVp).width + chipPadX * 2;
+                const wOp = ctx.measureText(tOp).width;
+                const wDm = ctx.measureText(tDm).width + chipPadX * 2;
+                const wKer = ctx.measureText(tKer).width;
+                const eqRowW = wVp + wOp + wDm + wKer;
+                const pillPadX = 10 * k, pillPadY = 8 * k;
+                const pillW = eqRowW + pillPadX * 2, pillH = 44 * k;
+                const pillX = Math.max(12, hudX - pillW), pillY = hudY - 12 * k;
+                const row1Y = pillY + pillPadY + chipH * 0.5;
+                const vpX = pillX + pillPadX, opX = vpX + wVp, dmX = opX + wOp, kerX = dmX + wDm;
+                const vpBox = { x: vpX, y: pillY + 3 * k, w: wVp, h: chipH + 6 * k, left: vpX, top: pillY + 3 * k, right: vpX + wVp, bottom: pillY + 3 * k + chipH + 6 * k };
+                const dmBox = { x: dmX, y: pillY + 3 * k, w: wDm + wKer, h: chipH + 6 * k, left: dmX, top: pillY + 3 * k, right: dmX + wDm + wKer, bottom: pillY + 3 * k + chipH + 6 * k };
+                M._eqBoxes = { vp: vpBox, dm: dmBox };
+                rects.push({ x: pillX - 6, y: pillY - 6, w: pillW + 12, h: pillH + 12 });
+
+                if (curRaw && curRaw._katexMode) {
+                    M.mode = curRaw._katexMode;
+                } else if (cur) {
+                    const inBox = (b) => b && cur.x >= b.x && cur.x <= b.x + b.w && cur.y >= b.y && cur.y <= b.y + b.h;
+                    M.mode = inBox(vpBox) ? 2 : inBox(dmBox) ? 1 : 0;
+                }
+                const modeNow = M.mode || 0;
+                dwS += ((modeNow === 1 ? 1 : 0) - dwS) * Math.min(1, dtS * 6);
+                vwS += ((modeNow === 2 ? 1 : 0) - vwS) * Math.min(1, dtS * 6);
 
                 const fs = Math.max(9.5, Math.min(15, L * 0.0128)); ctx.textBaseline = "middle";
                 const MAJOR = new Set(["Virgo Cluster", "Centaurus Cluster", "Hydra Cluster", "Fornax Cluster", "Pavo Cluster", "Pegasus Cluster", "Antlia Cluster", "Cancer Cluster"]);
                 const NODES = ["Virgo Cluster", "Centaurus Cluster", "Hydra Cluster"], byName = {}; M.labels.forEach((l) => { byName[l[1]] = l; });
                 const rank = (l) => l[0] === "super" ? 0 : l[0] === "grp" ? (MAJOR.has(l[1]) ? 1 : 2) : l[0] === "void" ? 3 : 9;
                 const order = M.labels.map((l, i) => i).sort((a, b) => rank(M.labels[a]) - rank(M.labels[b]));
-                const revealR = Math.max(90, 0.17 * L);
+                const revealR = 180;
                 const fadeRate = reduced ? 1 : Math.min(1, dtS * 9);
                 ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = 5;
                 for (const idx of order) {
@@ -2458,7 +2479,7 @@ const initNavSim = (c) => {
                         x = p.x - ox; y = p.y - oy;
                         if (x >= -40 && x <= W + 40 && y >= (isCalloutLayout ? 78 : 10) && y <= H - (isCalloutLayout ? 68 : 10)) {
                             let vis = 1;
-                            if (kind === "grp" && !MAJOR.has(name)) vis = cur ? sstep(revealR, revealR * 0.5, Math.hypot(x - cur.x, y - cur.y)) : 0;
+                            if (kind === "grp" || kind === "void") vis = cur ? sstep(revealR, 65, Math.hypot(x - cur.x, y - cur.y)) : 0;
                             if (vis >= 0.03) {
                                 const depth = clamp01((p.z + 0.32) / 0.64);
                                 f = fs * (0.94 + 0.12 * depth) * (kind === "grp" && !MAJOR.has(name) ? 0.94 : 1);
@@ -2517,20 +2538,69 @@ const initNavSim = (c) => {
                     }
                     ctx.restore();
                 }
+
+                // Draw bottom-right linear-theory equation HUD pill & live telemetry readout
+                ctx.save();
+                ctx.globalAlpha = laniakeaAlpha;
+                roundRect(ctx, pillX, pillY, pillW, pillH, 7 * k);
+                ctx.fillStyle = "rgba(8,13,28,0.74)";
+                ctx.fill();
+                ctx.strokeStyle = "rgba(255,255,255,0.14)";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Left interactive chip: v_p(r) (cyan highlight when mode === 2)
+                roundRect(ctx, vpX, row1Y - chipH * 0.5, wVp, chipH, 4 * k);
+                ctx.fillStyle = `rgba(80,195,255,${(0.11 + 0.25 * vwS).toFixed(3)})`;
+                ctx.fill();
+                ctx.strokeStyle = `rgba(130,220,255,${(0.32 + 0.58 * vwS).toFixed(3)})`;
+                ctx.stroke();
+
+                // Right interactive chip: δ_m(r') (amber-gold highlight when mode === 1)
+                roundRect(ctx, dmX, row1Y - chipH * 0.5, wDm, chipH, 4 * k);
+                ctx.fillStyle = `rgba(255,190,95,${(0.11 + 0.25 * dwS).toFixed(3)})`;
+                ctx.fill();
+                ctx.strokeStyle = `rgba(255,215,130,${(0.32 + 0.58 * dwS).toFixed(3)})`;
+                ctx.stroke();
+
+                ctx.font = `500 ${eqFs}px ${mono}`;
+                ctx.textBaseline = "middle";
+                ctx.textAlign = "left";
+                ctx.fillStyle = modeNow === 2 ? "rgba(195,242,255,0.98)" : "rgba(165,218,255,0.90)";
+                ctx.fillText(tVp, vpX + chipPadX, row1Y);
+                ctx.fillStyle = "rgba(215,225,245,0.75)";
+                ctx.fillText(tOp, opX, row1Y);
+                ctx.fillStyle = modeNow === 1 ? "rgba(255,238,185,0.98)" : "rgba(255,215,150,0.90)";
+                ctx.fillText(tDm, dmX + chipPadX, row1Y);
+                ctx.fillStyle = modeNow === 1 ? "rgba(255,228,175,0.90)" : "rgba(215,225,245,0.75)";
+                ctx.fillText(tKer, kerX, row1Y);
+
+                // Readout line underneath using ru, rv
+                const readY = pillY + pillH - 9.5 * k;
+                const densVal = typeof M.densityAt === "function" ? M.densityAt(ru, rv) : 0;
+                const velObj = typeof M.velocityAt === "function" ? M.velocityAt(ru, rv) : { mag: 0 };
+                const readout = `δ = ${fmt(densVal, 2)} · |v_p| = ${Math.round(velObj.mag || 0)} km/s`;
+                ctx.font = `500 ${subFs}px ${mono}`;
+                ctx.textAlign = "right";
+                ctx.fillStyle = "rgba(195,210,240,0.82)";
+                ctx.fillText(readout, pillX + pillW - pillPadX, readY);
+                ctx.restore();
+            } else if (M) {
+                M._eqBoxes = null;
             }
 
             // Shared cursor-lens overlay ring (solid 54px + dashed 1.55x ring); only active on user mouse drag/press
             const C = (typeof window !== "undefined") && (window.__CURSOR__ || (M && M.cursor));
             if (C && C.active && C.down && (!isCalloutLayout || (C.x > 110 && C.x < W - 110 && C.y > 96 && C.y < H - 80))) {
-                const lx = C.x - ox, ly = C.y - oy, r = 54;
-                const str = typeof C.strength === "number" ? C.strength : (C.down ? 1.0 : 0.38);
+                const str = typeof C.strength === "number" ? C.strength : (C.down ? 2.2 : 0.38);
+                const lx = C.x - ox, ly = C.y - oy, r = 54 * (0.78 + 0.58 * str);
                 ctx.save(); ctx.globalCompositeOperation = "lighter";
-                ctx.strokeStyle = `rgba(190,215,255,${(0.10 + 0.30 * str).toFixed(3)})`;
+                ctx.strokeStyle = `rgba(190,215,255,${Math.min(0.85, 0.10 + 0.30 * str).toFixed(3)})`;
                 ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.arc(lx, ly, r, 0, TAU); ctx.stroke();
                 ctx.setLineDash([2, 5]); ctx.beginPath(); ctx.arc(lx, ly, r * 1.55, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
                 if (isCalloutLayout) {
-                    ctx.fillStyle = `rgba(190,215,255,${(0.32 + 0.25 * str).toFixed(3)})`;
+                    ctx.fillStyle = `rgba(190,215,255,${Math.min(0.95, 0.32 + 0.25 * str).toFixed(3)})`;
                     ctx.font = `500 8px ${mono}`;
                     ctx.textAlign = "center";
                     ctx.fillText("LENS · θ_E", lx, ly - r - 6);
@@ -2571,7 +2641,13 @@ const initNavSim = (c) => {
             if (k) {
                 const integ = k.querySelector(".op-symbol, .mop"), ix = integ ? integ.getBoundingClientRect().left : k.getBoundingClientRect().left + k.getBoundingClientRect().width * 0.55;
                 mode = e.clientX < ix ? 2 : 1;
+            } else if (handle._eqBoxes) {
+                const { vp, dm } = handle._eqBoxes;
+                const inBox = (b) => b && e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h;
+                if (inBox(vp)) mode = 2;
+                else if (inBox(dm)) mode = 1;
             }
+            cur._katexMode = k ? mode : 0;
             handle.mode = mode;
             cur.active = !k && e.pointerType !== "touch";
         };
@@ -2587,7 +2663,7 @@ const initNavSim = (c) => {
             }
         };
         const onUp = () => { cur.down = false; };
-        const onLeave = () => { cur.active = false; cur.down = false; handle.mode = 0; };
+        const onLeave = () => { cur.active = false; cur.down = false; cur._katexMode = 0; handle.mode = 0; };
         window.addEventListener("pointermove", onMove, { passive: true }); window.addEventListener("pointerdown", onDown, { passive: true });
         window.addEventListener("pointerup", onUp, { passive: true }); document.documentElement.addEventListener("pointerleave", onLeave);
         window.addEventListener("resize", fit, { passive: true });
@@ -2607,6 +2683,20 @@ const initNavSim = (c) => {
         };
 
         const laniakeaVisibility = () => {
+            const hs = window.hyperspaceJourney;
+            if (hs && hs.isTransitioning) {
+                const tl = window.HyperspaceJourneyController && window.HyperspaceJourneyController.TIMELINE;
+                const uiFadeStart = (tl && tl.UI_FADE_START) || 9.5;
+                if (hs.fromIndex === 0 && hs.targetIndex !== 0) {
+                    const u = Math.max(0, Math.min(1, hs.jumpTime / 0.65));
+                    return 1 - u * u * (3 - 2 * u);
+                }
+                if (hs.targetIndex === 0 && hs.fromIndex !== 0) {
+                    const op = typeof hs.getUiOpacity === "function" ? hs.getUiOpacity() : 0;
+                    return hs.jumpTime >= uiFadeStart ? Math.max(0, Math.min(1, op)) : 0;
+                }
+                return 0;
+            }
             const S = window.THREAD_STAGE; if (!S || !S.supported) return 1;
             const T = S.trans;
             if (T && T.active) {
@@ -2621,8 +2711,9 @@ const initNavSim = (c) => {
         const loop = (now) => {
             raf = requestAnimationFrame(loop);
             if (document.hidden) return;
-            const targetStr = cur.down ? 1.0 : 0.38;
-            cur.strength = cur.strength !== undefined ? cur.strength + (targetStr - cur.strength) * 0.12 : targetStr;
+            const targetStr = cur.down ? 2.2 : 0.38;
+            const rate = cur.down ? 0.065 : 0.22;
+            cur.strength = cur.strength !== undefined ? cur.strength + (targetStr - cur.strength) * rate : targetStr;
             const S = window.THREAD_STAGE, T = S && S.trans;
             const hs = S && S.supported ? S.heroScreen : null;
             const activeIdx = (T && T.active) ? (T.u > 0.5 ? T.toIndex : T.fromIndex) : ((S && S.currentIndex) || 0);

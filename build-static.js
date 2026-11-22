@@ -601,9 +601,17 @@ const buildHTML = ({ filename, domain, pageType, title, desc, mainContent }) => 
     <script defer src="shared/simulations/core/thread-math.js?v=${STYLE_VER}"></script>
     <script defer src="shared/simulations/core/gpu-thread-shaders.js?v=${STYLE_VER}"></script>
     <script defer src="shared/simulations/core/gpu-thread-formations.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/laniakea/LaniakeaFormation.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/math/MathFormations.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/physics/PhysicsFormations.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/datascience/DataScienceFormation.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/quant/QuantCrystalFormation.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/cs/QuantumCSFormation.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/contact/EarthMoonContactFormation.js?v=${STYLE_VER}"></script>
     <script defer src="shared/simulations/core/gpu-thread.js?v=${STYLE_VER}"></script>
     <!-- Hyperspace & Spacecraft Overlay Engine -->
     <script defer src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
     <script defer src="shared/simulations/hyperspace/HyperspaceEngine.js?v=${STYLE_VER}"></script>
     <script defer src="shared/simulations/hyperspace/SpacecraftController.js?v=${STYLE_VER}"></script>
     <script defer src="shared/simulations/hyperspace/HyperspaceAudio.js?v=${STYLE_VER}"></script>
