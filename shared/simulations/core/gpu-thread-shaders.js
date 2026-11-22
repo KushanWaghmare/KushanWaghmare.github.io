@@ -248,7 +248,6 @@ uniform vec3 uStarTint;
 uniform float uShootingStars;
 uniform float uParallax;
 uniform float uWarpVelocity;
-uniform float uStretchFactor;
 uniform vec2 uPointerOffset;
 uniform vec3 uCamDir;
 uniform int uQualityTier;
@@ -539,7 +538,7 @@ void main() {
     vec3 upAxis = cross(rightAxis, dBase);
     vec3 radial3D = normalize(rightAxis * rad2D.x + upAxis * rad2D.y);
     float warp = clamp(abs(uWarpVelocity), 0.0, 1.0) * motion;
-    float stretch = mix(1.0, max(uStretchFactor, 1.0 + warp * 10.0), motion);
+    float stretch = mix(1.0, 1.0 + warp * 10.0, motion);
     float hyperGate = smoothstep(0.06, 0.14, warp);
 
     // 4. Multi-depth starfield (Far, Mid, Near)
@@ -1537,253 +1536,6 @@ void main() {
 }
 `;
 
-    /* 10. Blender 3-Layer Hyperspace Jump Shaders:
-           Layer B (Tunnel Wall), Layer A (3D Star Streaks), Layer C (Exit Shockwave Ring) */
-    const VS_TUNNEL_WALL = `#version 300 es
-precision highp float;
-
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec2 aUv;
-
-uniform mat4 uProjMatrix;
-uniform mat4 uViewMatrix;
-uniform mat4 uModelMatrix;
-
-out vec2 vUv;
-out float vDepth;
-out vec2 vScreenNDC;
-
-void main() {
-    vec4 worldPos = uModelMatrix * vec4(aPos, 1.0);
-    vec4 clipPos = uProjMatrix * uViewMatrix * worldPos;
-    gl_Position = clipPos;
-    vUv = aUv;
-    vDepth = -worldPos.z;
-    vScreenNDC = clipPos.xy / max(clipPos.w, 0.001);
-}
-`;
-
-    const FS_TUNNEL_WALL = `#version 300 es
-precision highp float;
-
-in vec2 vUv;
-in float vDepth;
-in vec2 vScreenNDC;
-
-uniform float uTime;
-uniform float uTunnelIntensity;
-
-out vec4 fragColor;
-
-float hash(vec2 p) {
-    p = fract(p * vec2(123.34, 456.21));
-    p += dot(p, p + 45.32);
-    return fract(p.x * p.y);
-}
-
-float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    float a = hash(i);
-    float b = hash(i + vec2(1.0, 0.0));
-    float c = hash(i + vec2(0.0, 1.0));
-    float d = hash(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-}
-
-void main() {
-    if (uTunnelIntensity <= 0.001) discard;
-
-    float angle = vUv.x * 96.0;
-    float zScroll = vUv.y * 6.0 - uTime * 14.0;
-
-    float band1 = noise(vec2(angle * 0.5, zScroll * 0.45));
-    float band2 = noise(vec2(angle * 1.25 + 17.3, zScroll * 0.9 - uTime * 4.0));
-    float fineStreaks = pow(noise(vec2(angle * 3.2, zScroll * 1.6 - uTime * 8.0)), 2.5);
-
-    vec3 deepCobalt = vec3(0.08, 0.22, 0.58);
-    vec3 electricBlue = vec3(0.28, 0.62, 0.98);
-    vec3 blazingWhite = vec3(0.95, 0.99, 1.00);
-
-    float energy = clamp(band1 * 0.55 + band2 * 0.45, 0.0, 1.0);
-    vec3 tunnelColor = mix(deepCobalt, electricBlue, smoothstep(0.25, 0.75, energy));
-    tunnelColor = mix(tunnelColor, blazingWhite, smoothstep(0.55, 0.95, fineStreaks + energy * 0.35));
-
-    float radialDist = length(vScreenNDC);
-    float centralPupil = smoothstep(0.05, 0.22, radialDist);
-    float depthAttenuation = smoothstep(580.0, 140.0, vDepth);
-    vec3 pupilEdgeTint = vec3(0.02, 0.06, 0.18);
-
-    vec3 litColor = tunnelColor * (0.35 + 0.65 * depthAttenuation);
-    vec3 finalColor = mix(pupilEdgeTint, litColor, centralPupil);
-
-    float alpha = uTunnelIntensity * smoothstep(0.03, 0.14, radialDist);
-    fragColor = vec4(finalColor * (1.0 + uTunnelIntensity * 0.35), alpha);
-}
-`;
-
-    const VS_STAR_STREAK = `#version 300 es
-precision highp float;
-
-layout(location = 0) in vec2 aQuadUv;
-layout(location = 1) in vec3 aCylindricalPos;
-layout(location = 2) in float aSpeedOffset;
-layout(location = 3) in float aStarScale;
-
-uniform mat4 uProjMatrix;
-uniform mat4 uViewMatrix;
-uniform float uTravelDistance;
-uniform float uStretchLength;
-uniform float uThickness;
-uniform vec2 uResolution;
-
-out vec2 vQuadUv;
-out float vWorldZ;
-out vec2 vScreenNDC;
-
-void main() {
-    float r = aCylindricalPos.x;
-    float theta = aCylindricalPos.y;
-    float z = mod(aCylindricalPos.z + uTravelDistance * aSpeedOffset, 500.0) - 500.0;
-
-    vec3 headWorld = vec3(cos(theta) * r, sin(theta) * r, z);
-    vec4 headClip = uProjMatrix * uViewMatrix * vec4(headWorld, 1.0);
-
-    if (uStretchLength < 0.25) {
-        if (headClip.w <= 0.05) {
-            gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-            vQuadUv = aQuadUv;
-            vWorldZ = 0.0;
-            vScreenNDC = vec2(0.0);
-            return;
-        }
-        vec2 headNdc = headClip.xy / headClip.w;
-        float perspectiveScale = clamp(35.0 / max(1.0, headClip.w), 0.35, 2.5);
-        float halfSizePx = max(1.2, uThickness * 1.5 * aStarScale * perspectiveScale);
-        vec2 centered = aQuadUv * 2.0 - 1.0;
-        vec2 offsetNdc = centered * halfSizePx * (2.0 / max(vec2(1.0), uResolution));
-        vec2 finalNdc = headNdc + offsetNdc;
-
-        gl_Position = vec4(finalNdc * headClip.w, headClip.z, headClip.w);
-        vQuadUv = aQuadUv;
-        vWorldZ = z;
-        vScreenNDC = finalNdc;
-        return;
-    }
-
-    float effectiveStretch = uStretchLength * aSpeedOffset;
-    vec3 tailWorld = headWorld - vec3(0.0, 0.0, effectiveStretch);
-    vec4 tailClip = uProjMatrix * uViewMatrix * vec4(tailWorld, 1.0);
-
-    if (headClip.w <= 0.05 || tailClip.w <= 0.05) {
-        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-        vQuadUv = aQuadUv;
-        vWorldZ = 0.0;
-        vScreenNDC = vec2(0.0);
-        return;
-    }
-
-    vec2 headNdc = headClip.xy / headClip.w;
-    vec2 tailNdc = tailClip.xy / tailClip.w;
-
-    float aspect = uResolution.x / max(1.0, uResolution.y);
-    vec2 deltaScreen = (tailNdc - headNdc) * vec2(aspect, 1.0);
-    float lenScreen = length(deltaScreen);
-    vec2 dir = (lenScreen > 0.0001)
-        ? (deltaScreen / lenScreen)
-        : normalize(headNdc * vec2(aspect, 1.0) + vec2(0.0001));
-    vec2 perp = vec2(-dir.y, dir.x);
-
-    float perspectiveScale = clamp(35.0 / max(1.0, headClip.w), 0.35, 2.2);
-    float halfWidth = uThickness * aStarScale * perspectiveScale;
-
-    vec4 baseClip = mix(headClip, tailClip, aQuadUv.y);
-    vec2 baseNdc = baseClip.xy / baseClip.w;
-    float side = aQuadUv.x * 2.0 - 1.0;
-    vec2 offsetNdc = perp * side * halfWidth * (2.0 / max(vec2(1.0), uResolution));
-
-    vec2 finalNdc = baseNdc + offsetNdc;
-    gl_Position = vec4(finalNdc * baseClip.w, baseClip.z, baseClip.w);
-
-    vQuadUv = aQuadUv;
-    vWorldZ = mix(headWorld.z, tailWorld.z, aQuadUv.y);
-    vScreenNDC = finalNdc;
-}
-`;
-
-    const FS_STAR_STREAK = `#version 300 es
-precision highp float;
-
-in vec2 vQuadUv;
-in float vWorldZ;
-in vec2 vScreenNDC;
-
-uniform float uWarpPhase;
-
-out vec4 fragColor;
-
-void main() {
-    float dPin = length(vQuadUv - 0.5) * 2.0;
-    float pinpointMask = exp(-dPin * dPin * 3.8) * smoothstep(1.0, 0.35, dPin);
-
-    float centeredX = vQuadUv.x * 2.0 - 1.0;
-    float rodCore = exp(-centeredX * centeredX * 6.5);
-    float rodHalo = exp(-centeredX * centeredX * 1.8);
-    float rodCaps = smoothstep(0.0, 0.08, vQuadUv.y) * smoothstep(1.0, 0.72, vQuadUv.y);
-
-    float phase = clamp(uWarpPhase, 0.0, 1.0);
-    float rodMask = max(rodCore, rodHalo * 0.55) * rodCaps;
-    float streakMask = mix(pinpointMask, rodMask, phase);
-
-    vec3 whiteCore = vec3(1.0);
-    vec3 cyanEdge = vec3(0.35, 0.72, 1.0);
-    float coreMix = mix(smoothstep(0.35, 0.9, pinpointMask), rodCore, phase);
-    vec3 streakColor = mix(cyanEdge, whiteCore, coreMix);
-    vec3 finalColor = mix(vec3(0.96, 0.98, 1.0), streakColor, phase);
-
-    float radialDist = length(vScreenNDC);
-    float pupilMask = mix(1.0, smoothstep(0.05, 0.16, radialDist), smoothstep(0.0, 0.25, phase));
-    float depthFade = smoothstep(-500.0, -320.0, vWorldZ) * smoothstep(0.0, -12.0, vWorldZ);
-
-    float alpha = streakMask * pupilMask * depthFade;
-    if (alpha <= 0.002) discard;
-
-    fragColor = vec4(finalColor, alpha);
-}
-`;
-
-    const FS_EXIT_SHOCKWAVE = `#version 300 es
-precision highp float;
-
-in vec2 vUV;
-
-uniform float uRingRadius;
-uniform float uRingAlpha;
-uniform float uAspect;
-
-out vec4 fragColor;
-
-void main() {
-    if (uRingAlpha <= 0.001) discard;
-
-    vec2 centered = (vUV - 0.5) * vec2(uAspect, 1.0);
-    float dist = length(centered);
-
-    float ringDist = abs(dist - uRingRadius);
-    float ringWidth = 0.006 + uRingRadius * 0.08;
-    float ring = exp(-pow(ringDist / ringWidth, 2.0));
-    float innerRim = smoothstep(ringWidth * 2.2, 0.0, ringDist);
-
-    float mask = clamp(ring * 0.85 + innerRim * 0.35, 0.0, 1.0);
-    float alpha = mask * uRingAlpha;
-    if (alpha <= 0.001) discard;
-
-    vec3 ringColor = vec3(0.86, 0.90, 0.95);
-    fragColor = vec4(ringColor, alpha);
-}
-`;
-
     return {
         VS_SHARED_POINTS,
         FS_SHARED_POINTS,
@@ -1803,11 +1555,6 @@ void main() {
         VS_THRESHOLD_RING,
         FS_THRESHOLD_RING,
         VS_AMBIENT_DUST,
-        FS_AMBIENT_DUST,
-        VS_TUNNEL_WALL,
-        FS_TUNNEL_WALL,
-        VS_STAR_STREAK,
-        FS_STAR_STREAK,
-        FS_EXIT_SHOCKWAVE
+        FS_AMBIENT_DUST
     };
 }));

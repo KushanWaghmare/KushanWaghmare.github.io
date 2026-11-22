@@ -74,7 +74,7 @@
        FLIGHT_V2 = false : previous behaviour.
        EXPLORE_ENTERS_SIM : "Explore ... section" dives into the active simulation (INSIDE mode) on the hub
                             instead of swarm-morphing and loading a separate page. */
-    const FLIGHT_V2 = true;
+    const FLIGHT_V2 = false;
     const EXPLORE_ENTERS_SIM = false; // false: Explore flies in and SHOWS the domain's first project (page + simulation)
     const TRAVEL_SEC = 1.35;       // Snappy 1.35s jump for adjacent sections
     const TRAVEL_SEC_JUMP = 1.95;  // 1.95s for multi-section jumps
@@ -188,12 +188,57 @@
         stageObserver.observe(stageCanvas);
     }
 
-    const emitStageProgress = (progress, label) => {
-        if (typeof window !== "undefined" && typeof CustomEvent === "function") {
-            window.dispatchEvent(new CustomEvent("kw:stage-progress", {
-                detail: { progress, label }
-            }));
+    const simIngress = { zOffset: 0.0, scale: 1.0, opacity: 1.0 };
+    const ingressVP = new Float32Array(16);
+
+    const setSimIngress = (zOffset = 0.0, scale = 1.0, opacity = 1.0) => {
+        const z = Number.isFinite(zOffset) ? zOffset : 0.0;
+        const s = Number.isFinite(scale) ? Math.max(0.01, scale) : 1.0;
+        const op = Number.isFinite(opacity) ? clamp(opacity, 0.0, 1.0) : 1.0;
+        if (op <= 0.001 && simIngress.opacity > 0.001) {
+            trailNeedsReset = true;
         }
+        simIngress.zOffset = z;
+        simIngress.scale = s;
+        simIngress.opacity = op;
+        if (stageCanvas) {
+            stageCanvas.style.opacity = (Math.abs(op - 1.0) < 1e-4 && Math.abs(z) < 1e-4 && Math.abs(s - 1.0) < 1e-4)
+                ? ""
+                : String(op);
+        }
+    };
+
+    const getSimIngress = () => ({
+        zOffset: simIngress.zOffset,
+        scale: simIngress.scale,
+        opacity: simIngress.opacity
+    });
+
+    const getEffectiveViewProj = (origin) => {
+        const vp = camera.viewProjectionMatrix.elements;
+        const s = simIngress.scale;
+        const z = simIngress.zOffset;
+        if (Math.abs(z) < 1e-5 && Math.abs(s - 1.0) < 1e-5) {
+            return vp;
+        }
+        const ox = origin ? origin.x : 0.0;
+        const oy = origin ? origin.y : 0.0;
+        const oz = origin ? origin.z : 0.0;
+        const tx = ox * (1.0 - s);
+        const ty = oy * (1.0 - s);
+        const tz = oz * (1.0 - s) + z;
+        // Column-major: ingressVP = VP * M_ingress
+        for (let row = 0; row < 4; row++) {
+            const m0 = vp[row];
+            const m1 = vp[4 + row];
+            const m2 = vp[8 + row];
+            const m3 = vp[12 + row];
+            ingressVP[row] = m0 * s;
+            ingressVP[4 + row] = m1 * s;
+            ingressVP[8 + row] = m2 * s;
+            ingressVP[12 + row] = m0 * tx + m1 * ty + m2 * tz + m3;
+        }
+        return ingressVP;
     };
 
     const gl = stageCanvas.getContext("webgl2", {
@@ -433,7 +478,8 @@
         return out;
     };
 
-    let hyperspaceEngine = null;
+    let mainRafId = 0;
+    let destroyed = false;
 
     const initGLResources = () => {
         hdrSupported = !!gl.getExtension("EXT_color_buffer_float");
@@ -467,7 +513,7 @@
             "uBaseColour", "uNebulaCol0", "uNebulaCol1", "uNebulaCol2",
             "uNebulaIntensity", "uBandIntensity", "uBandAngle",
             "uStarDensity", "uStarTwinkle", "uStarTint", "uShootingStars", "uParallax",
-            "uWarpVelocity", "uStretchFactor", "uVelocity", "uPointerOffset", "uCamDir", "uQualityTier", "uReducedMotion"
+            "uWarpVelocity", "uPointerOffset", "uCamDir", "uQualityTier", "uReducedMotion"
         ]);
         auxUniforms = getUniforms(auxProg, ["uViewProj", "uAuxOpacity", "uIsLight"]);
         kerrUniforms = getUniforms(kerrProg, [
@@ -609,16 +655,10 @@
         rtHeight = 0;
         ensurePostTargets(stageCanvas.width, stageCanvas.height);
 
-        if (hyperspaceEngine) {
-            hyperspaceEngine.initGeometry();
-        }
-
         return true;
     };
 
-    if (initGLResources()) {
-        emitStageProgress(0.45, "Compiling shaders");
-    }
+    initGLResources();
 
     listen(stageCanvas, "webglcontextlost", (e) => {
         e.preventDefault();
@@ -795,6 +835,15 @@
 
     /* Centralized Universal Transition Orchestrator */
     const transitionToState = (target, opts = {}) => {
+        const url = opts.targetUrl || (typeof target === "string" && target.endsWith(".html") ? target : "");
+        if (url) {
+            if (typeof window !== "undefined" && window.KW && typeof window.KW.loadPage === "function") {
+                window.KW.loadPage(url, true);
+            } else if (typeof window !== "undefined") {
+                window.location.href = url;
+            }
+            return;
+        }
         // 1. Guard against overlapping transitions: if mid-flight, snapshot current interpolated state as new source
         const N = sharedBuffer.count;
         fromPositions.subarray(0, N * 3).set(positions.subarray(0, N * 3));
@@ -1164,512 +1213,6 @@
         auxOpacity: 1.0,
         warpStrength: 0.0
     };
-
-    /* ---------- 5-Phase Instanced WebGL2 Hyperspace Engine ---------- */
-    let mainRafId = 0;
-    let destroyed = false;
-    let reducedMotionFadeTimerId = 0;
-
-    const executeHyperspaceRouteSwap = (targetRoute) => {
-        if (!targetRoute) return;
-        if (typeof window !== "undefined" && window.KW && typeof window.KW.loadPage === "function") {
-            window.KW.loadPage(targetRoute, true);
-        } else if (typeof window !== "undefined") {
-            window.location.href = targetRoute;
-        }
-    };
-
-    class HyperspaceEngine {
-        constructor(glCtx) {
-            this.gl = glCtx;
-            this.instanceCount = 4500;
-            // Layer A: StarStreakInstances
-            this.starProgram = null;
-            this.starUniforms = null;
-            this.starVAO = null;
-            this.quadVBO = null;
-            this.cylindricalVBO = null;
-            this.speedVBO = null;
-            this.scaleVBO = null;
-            // Layer B: HyperspaceTunnelWall
-            this.tunnelProgram = null;
-            this.tunnelUniforms = null;
-            this.tunnelVAO = null;
-            this.tunnelVBO = null;
-            this.tunnelIBO = null;
-            this.tunnelIndexCount = 0;
-            this.tunnelModelMatrix = new Float32Array([
-                1, 0, 0, 0,
-                0, 0, 1, 0,
-                0, -1, 0, 0,
-                0, 0, -290, 1
-            ]);
-            // Layer C: ExitShockwaveRing
-            this.shockwaveProgram = null;
-            this.shockwaveUniforms = null;
-            this.shockwaveActive = false;
-            this.shockwaveElapsed = 0.0;
-
-            this.travelDistance = 0.0;
-            this.tunnelTime = 0.0;
-            this.speedMultiplier = 2.0;
-            this.reset();
-        }
-
-        reset() {
-            this.active = false;
-            this.phase = "IDLE_RING_DRIFT";
-            this.elapsed = 0.0;
-            this.velocity = 4.0;
-            this.velocityNorm = 0.0;
-            this.stretchLength = 0.08;
-            this.warpPhase = 0.0;
-            this.tunnelIntensity = 0.0;
-            this.shakeX = 0.0;
-            this.shakeY = 0.0;
-            this.targetRoute = null;
-            this.onMidpointSwap = null;
-            this.swapped = false;
-            this.stage2AudioPlayed = false;
-            this.stage3AudioPlayed = false;
-            this.stage5AudioPlayed = false;
-            trans.warpStrength = 0.0;
-        }
-
-        _disposeGL() {
-            const glCtx = this.gl;
-            if (!glCtx) return;
-            if (this.starVAO) { glCtx.deleteVertexArray(this.starVAO); this.starVAO = null; }
-            if (this.quadVBO) { glCtx.deleteBuffer(this.quadVBO); this.quadVBO = null; }
-            if (this.cylindricalVBO) { glCtx.deleteBuffer(this.cylindricalVBO); this.cylindricalVBO = null; }
-            if (this.speedVBO) { glCtx.deleteBuffer(this.speedVBO); this.speedVBO = null; }
-            if (this.scaleVBO) { glCtx.deleteBuffer(this.scaleVBO); this.scaleVBO = null; }
-            if (this.starProgram) { glCtx.deleteProgram(this.starProgram); this.starProgram = null; }
-            this.starUniforms = null;
-
-            if (this.tunnelVAO) { glCtx.deleteVertexArray(this.tunnelVAO); this.tunnelVAO = null; }
-            if (this.tunnelVBO) { glCtx.deleteBuffer(this.tunnelVBO); this.tunnelVBO = null; }
-            if (this.tunnelIBO) { glCtx.deleteBuffer(this.tunnelIBO); this.tunnelIBO = null; }
-            if (this.tunnelProgram) { glCtx.deleteProgram(this.tunnelProgram); this.tunnelProgram = null; }
-            this.tunnelUniforms = null;
-            this.tunnelIndexCount = 0;
-
-            if (this.shockwaveProgram) { glCtx.deleteProgram(this.shockwaveProgram); this.shockwaveProgram = null; }
-            this.shockwaveUniforms = null;
-        }
-
-        initGeometry() {
-            const glCtx = this.gl;
-            if (!glCtx || !TS || !TS.VS_STAR_STREAK || !TS.FS_STAR_STREAK) return false;
-            this._disposeGL();
-
-            // Layer A: StarStreakInstances (4,500 instanced quads)
-            this.starProgram = createProgram(TS.VS_STAR_STREAK, TS.FS_STAR_STREAK);
-            if (!this.starProgram) return false;
-            this.starUniforms = getUniforms(this.starProgram, [
-                "uProjMatrix", "uViewMatrix", "uTravelDistance",
-                "uStretchLength", "uThickness", "uResolution", "uWarpPhase"
-            ]);
-
-            this.starVAO = glCtx.createVertexArray();
-            glCtx.bindVertexArray(this.starVAO);
-
-            this.quadVBO = glCtx.createBuffer();
-            glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.quadVBO);
-            glCtx.bufferData(glCtx.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), glCtx.STATIC_DRAW);
-            const locUv = glCtx.getAttribLocation(this.starProgram, "aQuadUv");
-            if (locUv >= 0) {
-                glCtx.enableVertexAttribArray(locUv);
-                glCtx.vertexAttribPointer(locUv, 2, glCtx.FLOAT, false, 0, 0);
-            }
-
-            const count = this.instanceCount;
-            const cylData = new Float32Array(count * 3);
-            const spdData = new Float32Array(count);
-            const sclData = new Float32Array(count);
-
-            for (let i = 0; i < count; i++) {
-                const i3 = i * 3;
-                cylData[i3] = 14.0 + Math.pow(Math.random(), 1.6) * 160.0;
-                cylData[i3 + 1] = Math.random() * Math.PI * 2.0;
-                cylData[i3 + 2] = -Math.random() * 500.0;
-                spdData[i] = 0.65 + Math.random() * 0.70;
-                sclData[i] = 0.5 + Math.pow(Math.random(), 2.5) * 1.8;
-            }
-
-            this.cylindricalVBO = glCtx.createBuffer();
-            glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.cylindricalVBO);
-            glCtx.bufferData(glCtx.ARRAY_BUFFER, cylData, glCtx.STATIC_DRAW);
-            const locCyl = glCtx.getAttribLocation(this.starProgram, "aCylindricalPos");
-            if (locCyl >= 0) {
-                glCtx.enableVertexAttribArray(locCyl);
-                glCtx.vertexAttribPointer(locCyl, 3, glCtx.FLOAT, false, 0, 0);
-                glCtx.vertexAttribDivisor(locCyl, 1);
-            }
-
-            this.speedVBO = glCtx.createBuffer();
-            glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.speedVBO);
-            glCtx.bufferData(glCtx.ARRAY_BUFFER, spdData, glCtx.STATIC_DRAW);
-            const locSpd = glCtx.getAttribLocation(this.starProgram, "aSpeedOffset");
-            if (locSpd >= 0) {
-                glCtx.enableVertexAttribArray(locSpd);
-                glCtx.vertexAttribPointer(locSpd, 1, glCtx.FLOAT, false, 0, 0);
-                glCtx.vertexAttribDivisor(locSpd, 1);
-            }
-
-            this.scaleVBO = glCtx.createBuffer();
-            glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.scaleVBO);
-            glCtx.bufferData(glCtx.ARRAY_BUFFER, sclData, glCtx.STATIC_DRAW);
-            const locScl = glCtx.getAttribLocation(this.starProgram, "aStarScale");
-            if (locScl >= 0) {
-                glCtx.enableVertexAttribArray(locScl);
-                glCtx.vertexAttribPointer(locScl, 1, glCtx.FLOAT, false, 0, 0);
-                glCtx.vertexAttribDivisor(locScl, 1);
-            }
-            glCtx.bindVertexArray(null);
-
-            // Layer B: HyperspaceTunnelWall (open-ended cylinder: radius=18, height=600, 64x1 segs)
-            if (TS.VS_TUNNEL_WALL && TS.FS_TUNNEL_WALL) {
-                this.tunnelProgram = createProgram(TS.VS_TUNNEL_WALL, TS.FS_TUNNEL_WALL);
-                if (this.tunnelProgram) {
-                    this.tunnelUniforms = getUniforms(this.tunnelProgram, [
-                        "uProjMatrix", "uViewMatrix", "uModelMatrix", "uTime", "uTunnelIntensity"
-                    ]);
-                    const radialSegs = 64;
-                    const radius = 18.0;
-                    const halfH = 300.0;
-                    const verts = new Float32Array((radialSegs + 1) * 2 * 5);
-                    let vPtr = 0;
-                    for (let iy = 0; iy <= 1; iy++) {
-                        const v = iy;
-                        const y = (0.5 - v) * (halfH * 2.0);
-                        for (let ix = 0; ix <= radialSegs; ix++) {
-                            const u = ix / radialSegs;
-                            const theta = u * Math.PI * 2.0;
-                            verts[vPtr++] = radius * Math.sin(theta);
-                            verts[vPtr++] = y;
-                            verts[vPtr++] = radius * Math.cos(theta);
-                            verts[vPtr++] = u;
-                            verts[vPtr++] = v;
-                        }
-                    }
-                    const indices = new Uint16Array(radialSegs * 6);
-                    let iPtr = 0;
-                    const row = radialSegs + 1;
-                    for (let ix = 0; ix < radialSegs; ix++) {
-                        const a = ix;
-                        const b = row + ix;
-                        const c = row + ix + 1;
-                        const d = ix + 1;
-                        indices[iPtr++] = a;
-                        indices[iPtr++] = b;
-                        indices[iPtr++] = d;
-                        indices[iPtr++] = b;
-                        indices[iPtr++] = c;
-                        indices[iPtr++] = d;
-                    }
-                    this.tunnelIndexCount = indices.length;
-
-                    this.tunnelVAO = glCtx.createVertexArray();
-                    glCtx.bindVertexArray(this.tunnelVAO);
-                    this.tunnelVBO = glCtx.createBuffer();
-                    glCtx.bindBuffer(glCtx.ARRAY_BUFFER, this.tunnelVBO);
-                    glCtx.bufferData(glCtx.ARRAY_BUFFER, verts, glCtx.STATIC_DRAW);
-
-                    const locTPos = glCtx.getAttribLocation(this.tunnelProgram, "aPos");
-                    if (locTPos >= 0) {
-                        glCtx.enableVertexAttribArray(locTPos);
-                        glCtx.vertexAttribPointer(locTPos, 3, glCtx.FLOAT, false, 20, 0);
-                    }
-                    const locTUv = glCtx.getAttribLocation(this.tunnelProgram, "aUv");
-                    if (locTUv >= 0) {
-                        glCtx.enableVertexAttribArray(locTUv);
-                        glCtx.vertexAttribPointer(locTUv, 2, glCtx.FLOAT, false, 20, 12);
-                    }
-
-                    this.tunnelIBO = glCtx.createBuffer();
-                    glCtx.bindBuffer(glCtx.ELEMENT_ARRAY_BUFFER, this.tunnelIBO);
-                    glCtx.bufferData(glCtx.ELEMENT_ARRAY_BUFFER, indices, glCtx.STATIC_DRAW);
-                    glCtx.bindVertexArray(null);
-                }
-            }
-
-            // Layer C: ExitShockwaveRing (fullscreen quad pass)
-            if (TS.VS_QUAD && TS.FS_EXIT_SHOCKWAVE) {
-                this.shockwaveProgram = createProgram(TS.VS_QUAD, TS.FS_EXIT_SHOCKWAVE);
-                if (this.shockwaveProgram) {
-                    this.shockwaveUniforms = getUniforms(this.shockwaveProgram, [
-                        "uRingRadius", "uRingAlpha", "uAspect"
-                    ]);
-                }
-            }
-
-            return true;
-        }
-
-        trigger(targetRoute, onMidpointSwap, opts) {
-            const speed = (opts && typeof opts.speedMultiplier === "number" && opts.speedMultiplier > 0)
-                ? opts.speedMultiplier
-                : 2.0;
-            this.active = true;
-            this.speedMultiplier = speed;
-            this.phase = "STREAK_IGNITION";
-            this.elapsed = 0.0;
-            this.velocity = 4.0;
-            this.velocityNorm = 0.0;
-            this.stretchLength = 0.08;
-            this.warpPhase = 0.0;
-            this.tunnelIntensity = 0.0;
-            this.shakeX = 0.0;
-            this.shakeY = 0.0;
-            this.shockwaveActive = false;
-            this.shockwaveElapsed = 0.0;
-            this.targetRoute = targetRoute || null;
-            this.onMidpointSwap = typeof onMidpointSwap === "function" ? onMidpointSwap : null;
-            this.swapped = false;
-            this.stage2AudioPlayed = false;
-            this.stage3AudioPlayed = false;
-            this.stage5AudioPlayed = false;
-        }
-
-        update(dt) {
-            this.tunnelTime += dt;
-            if (this.shockwaveActive) {
-                this.shockwaveElapsed += dt;
-                if (this.shockwaveElapsed >= 0.18) {
-                    this.shockwaveActive = false;
-                    this.shockwaveElapsed = 0.0;
-                }
-            }
-
-            if (!this.active) {
-                this.phase = "IDLE_RING_DRIFT";
-                this.velocity = 4.0;
-                this.velocityNorm = 0.0;
-                this.stretchLength = 0.08;
-                this.warpPhase = 0.0;
-                this.tunnelIntensity = 0.0;
-                this.shakeX = 0.0;
-                this.shakeY = 0.0;
-            } else {
-                this.elapsed += dt;
-                const speed = this.speedMultiplier || 2.0;
-                const stage2Dur = 1.5 / speed;
-                const stage3Dur = 7.0 / speed;
-                const stage4Dur = 0.35 / speed;
-                const stage5Dur = 0.14 / speed;
-
-                const t2End = stage2Dur;
-                const t3End = t2End + stage3Dur;
-                const t4End = t3End + stage4Dur;
-                const t5End = t4End + stage5Dur;
-                const elapsed = this.elapsed;
-
-                if (elapsed < t2End) {
-                    // Stage 2: STREAK_IGNITION
-                    this.phase = "STREAK_IGNITION";
-                    if (!this.stage2AudioPlayed) {
-                        this.stage2AudioPlayed = true;
-                        if (typeof window !== "undefined") {
-                            window.KW?.audio?.hyperspaceTurbineCharge?.(stage2Dur);
-                        }
-                    }
-                    const t = clamp(elapsed / stage2Dur, 0.0, 1.0);
-                    const ease = t * t;
-                    this.stretchLength = 0.08 + (95.0 - 0.08) * ease;
-                    this.warpPhase = t;
-                    this.velocity = 4.0 + (380.0 - 4.0) * ease;
-                    this.velocityNorm = t;
-
-                    const fadeDur = 0.35 / speed;
-                    const fadeStart = Math.max(stage2Dur * 0.75, stage2Dur - fadeDur);
-                    this.tunnelIntensity = elapsed >= fadeStart
-                        ? clamp((elapsed - fadeStart) / Math.max(1e-4, stage2Dur - fadeStart), 0.0, 1.0)
-                        : 0.0;
-                    this.shakeX = 0.0;
-                    this.shakeY = 0.0;
-                    trans.warpStrength = t;
-                } else if (elapsed < t3End) {
-                    // Stage 3: BLENDER_VORTEX_TUNNEL
-                    this.phase = "BLENDER_VORTEX_TUNNEL";
-                    const localElapsed = elapsed - t2End;
-                    if (!this.stage3AudioPlayed) {
-                        this.stage3AudioPlayed = true;
-                        if (typeof window !== "undefined") {
-                            window.KW?.audio?.hyperspaceTunnelRoar?.(stage3Dur);
-                        }
-                    }
-                    this.tunnelIntensity = 1.0;
-                    this.stretchLength = 135.0;
-                    this.warpPhase = 1.0;
-                    this.velocity = 520.0;
-                    this.velocityNorm = 1.0;
-                    this.shakeX = (Math.random() * 2.0 - 1.0) * 0.08;
-                    this.shakeY = (Math.random() * 2.0 - 1.0) * 0.08;
-                    trans.warpStrength = 1.0;
-
-                    if (localElapsed >= stage3Dur * 0.5 && !this.swapped) {
-                        this.swapped = true;
-                        if (this.onMidpointSwap) {
-                            this.onMidpointSwap();
-                        } else {
-                            executeHyperspaceRouteSwap(this.targetRoute);
-                        }
-                    }
-                } else if (elapsed < t4End) {
-                    // Stage 4: TUNNEL_DROPOUT
-                    this.phase = "TUNNEL_DROPOUT";
-                    const t = clamp((elapsed - t3End) / stage4Dur, 0.0, 1.0);
-                    this.tunnelIntensity = 1.0 - t;
-                    this.stretchLength = 110.0;
-                    this.warpPhase = 1.0;
-                    this.velocity = 520.0;
-                    this.velocityNorm = 1.0;
-                    this.shakeX = 0.0;
-                    this.shakeY = 0.0;
-                    trans.warpStrength = 1.0;
-                } else if (elapsed < t5End) {
-                    // Stage 5: HARD_SNAP_EXIT
-                    this.phase = "HARD_SNAP_EXIT";
-                    if (!this.stage5AudioPlayed) {
-                        this.stage5AudioPlayed = true;
-                        this.shockwaveActive = true;
-                        this.shockwaveElapsed = 0.0;
-                        if (typeof window !== "undefined") {
-                            window.KW?.audio?.hyperspaceExitSnap?.();
-                        }
-                    }
-                    const t = clamp((elapsed - t4End) / stage5Dur, 0.0, 1.0);
-                    const easeOut = 1.0 - Math.pow(1.0 - t, 5.0);
-                    this.tunnelIntensity = 0.0;
-                    this.stretchLength = 110.0 + (0.08 - 110.0) * easeOut;
-                    this.warpPhase = 1.0 - easeOut;
-                    this.velocity = 520.0 + (2.0 - 520.0) * easeOut;
-                    this.velocityNorm = 1.0 - easeOut;
-                    this.shakeX = 0.0;
-                    this.shakeY = 0.0;
-                    trans.warpStrength = 1.0 - easeOut;
-                } else {
-                    this.reset();
-                }
-            }
-
-            this.travelDistance += this.velocity * dt;
-        }
-
-        render(cam, pw, ph, dpr, isLight) {
-            const glCtx = this.gl;
-            const projMat = (cam.projMatrix || cam.projectionMatrix).elements;
-            const viewMat = cam.viewMatrix.elements;
-
-            // Layer B: HyperspaceTunnelWall (interior BackSide cylinder)
-            if (this.tunnelIntensity > 0.001 && this.tunnelProgram && this.tunnelVAO && this.tunnelUniforms) {
-                const tu = this.tunnelUniforms;
-                glCtx.enable(glCtx.BLEND);
-                glCtx.blendFunc(glCtx.SRC_ALPHA, glCtx.ONE_MINUS_SRC_ALPHA);
-                glCtx.depthMask(false);
-                glCtx.disable(glCtx.CULL_FACE);
-
-                glCtx.useProgram(this.tunnelProgram);
-                glCtx.uniformMatrix4fv(tu.uProjMatrix, false, projMat);
-                glCtx.uniformMatrix4fv(tu.uViewMatrix, false, viewMat);
-                glCtx.uniformMatrix4fv(tu.uModelMatrix, false, this.tunnelModelMatrix);
-                glCtx.uniform1f(tu.uTime, this.tunnelTime);
-                glCtx.uniform1f(tu.uTunnelIntensity, this.tunnelIntensity * (isLight ? 0.45 : 1.0));
-
-                glCtx.bindVertexArray(this.tunnelVAO);
-                glCtx.drawElements(glCtx.TRIANGLES, this.tunnelIndexCount, glCtx.UNSIGNED_SHORT, 0);
-                glCtx.bindVertexArray(null);
-            }
-
-            // Layer A: StarStreakInstances (4,500 instanced quads)
-            if (this.starProgram && this.starVAO && this.starUniforms) {
-                const su = this.starUniforms;
-                glCtx.enable(glCtx.BLEND);
-                glCtx.blendFunc(glCtx.SRC_ALPHA, glCtx.ONE);
-                glCtx.depthMask(false);
-
-                glCtx.useProgram(this.starProgram);
-                glCtx.uniformMatrix4fv(su.uProjMatrix, false, projMat);
-                glCtx.uniformMatrix4fv(su.uViewMatrix, false, viewMat);
-                glCtx.uniform1f(su.uTravelDistance, this.travelDistance);
-                glCtx.uniform1f(su.uStretchLength, this.stretchLength);
-                glCtx.uniform1f(su.uThickness, 1.6 * (dpr || 1.0));
-                glCtx.uniform2f(su.uResolution, pw, ph);
-                glCtx.uniform1f(su.uWarpPhase, this.warpPhase);
-
-                glCtx.bindVertexArray(this.starVAO);
-                glCtx.drawArraysInstanced(glCtx.TRIANGLE_STRIP, 0, 4, this.instanceCount);
-                glCtx.bindVertexArray(null);
-            }
-
-            // Layer C: ExitShockwaveRing (180ms expanding grey-white ring)
-            if (this.shockwaveActive && this.shockwaveProgram && this.shockwaveUniforms) {
-                const wu = this.shockwaveUniforms;
-                const st = clamp(this.shockwaveElapsed / 0.18, 0.0, 1.0);
-                const ringRadius = 0.02 + (0.14 - 0.02) * (1.0 - Math.pow(1.0 - st, 2.5));
-                const ringAlpha = (1.0 - st) * (isLight ? 0.65 : 0.95);
-
-                glCtx.enable(glCtx.BLEND);
-                glCtx.blendFunc(glCtx.SRC_ALPHA, glCtx.ONE);
-                glCtx.depthMask(false);
-
-                glCtx.useProgram(this.shockwaveProgram);
-                glCtx.uniform1f(wu.uRingRadius, ringRadius);
-                glCtx.uniform1f(wu.uRingAlpha, ringAlpha);
-                glCtx.uniform1f(wu.uAspect, pw / Math.max(1, ph));
-                drawQuad();
-            }
-
-            glCtx.depthMask(true);
-            glCtx.blendFunc(isLight ? glCtx.SRC_ALPHA : glCtx.ONE, isLight ? glCtx.ONE_MINUS_SRC_ALPHA : glCtx.ONE);
-        }
-
-        dispose() {
-            this._disposeGL();
-            this.shockwaveActive = false;
-            this.shockwaveElapsed = 0.0;
-            this.reset();
-        }
-    }
-
-    hyperspaceEngine = new HyperspaceEngine(gl);
-    hyperspaceEngine.initGeometry();
-
-    const triggerHyperspaceJump = (targetRoute, onMidpointSwap, opts) => {
-        if (destroyed || (!targetRoute && typeof onMidpointSwap !== "function")) return false;
-        const swapFn = typeof onMidpointSwap === "function"
-            ? onMidpointSwap
-            : () => executeHyperspaceRouteSwap(targetRoute);
-
-        if (isReducedMotion()) {
-            hyperspaceEngine.reset();
-            if (reducedMotionFadeTimerId) {
-                clearTimeout(reducedMotionFadeTimerId);
-                reducedMotionFadeTimerId = 0;
-            }
-            if (stageCanvas) {
-                stageCanvas.style.transition = "opacity 250ms ease";
-                stageCanvas.style.opacity = "0";
-                reducedMotionFadeTimerId = setTimeout(() => {
-                    reducedMotionFadeTimerId = 0;
-                    if (destroyed) return;
-                    swapFn();
-                    if (stageCanvas) stageCanvas.style.opacity = "1";
-                }, 250);
-            } else {
-                swapFn();
-            }
-            return true;
-        }
-
-        hyperspaceEngine.trigger(targetRoute, swapFn, opts);
-        return true;
-    };
-
-    if (typeof window !== "undefined") {
-        window.triggerHyperspaceJump = triggerHyperspaceJump;
-    }
 
     /* FLIGHT_V2 helpers begin */
     const PROFILE_N = 128;
@@ -2480,6 +2023,76 @@
         }
     };
 
+    const snapToSection = (targetIdx) => {
+        const maxIdx = Math.max(0, formations.length - 1);
+        const clampedTarget = clamp(targetIdx | 0, 0, maxIdx);
+        trans.active = false;
+        trans.queuedIndex = -1;
+        intraHop.active = false;
+        intraHop.queuedLocaleIndex = -1;
+        inside.isInside = false;
+        pendingEnter = -1;
+        appMode = "VIEW";
+        navState = "IDLE";
+        currentIndex = clampedTarget;
+        currentDimIndex = clampedTarget;
+        currentLocaleIndex = 0;
+        currentSimIndex = 0;
+        const active = formations[currentIndex];
+        if (active) {
+            if (!active.initialized) {
+                active.init(sharedBuffer, ctxState);
+            }
+            active.update(0.016, simTime, sharedBuffer, ctxState);
+            prevPositions.set(positions);
+            const prof = getProfile(currentDimIndex);
+            idlePose(currentDimIndex, 0, "VIEW", poseA, poseB);
+            camera.position.copy(poseA);
+            camera.target.copy(poseB);
+            camera.fov = prof.fov;
+            camera.near = 0.1;
+            camera.far = 600.0;
+            postState.bloomStrength = prof.bloomStrength;
+            postState.bloomThreshold = prof.bloomThreshold;
+            postState.bloomTint[0] = prof.bloomTint[0];
+            postState.bloomTint[1] = prof.bloomTint[1];
+            postState.bloomTint[2] = prof.bloomTint[2];
+            postState.fogTint[0] = prof.fogColour[0];
+            postState.fogTint[1] = prof.fogColour[1];
+            postState.fogTint[2] = prof.fogColour[2];
+            postState.fogDensity = prof.fogDensity;
+            postState.trailDecay = active.trailDecay || 0.68;
+            postState.streakScale = active.streakScale || 1.25;
+            postState.vignette = prof.post.vignette;
+            postState.ca = prof.post.ca;
+            postState.grain = prof.post.grain;
+            postState.godRays = prof.post.godRays;
+            postState.anamorphic = prof.post.anamorphic;
+            postState.dof = prof.post.dof;
+            for (let k = 0; k < 3; k++) {
+                postState.gradeLift[k] = prof.post.grade.lift[k];
+                postState.gradeGamma[k] = prof.post.grade.gamma[k];
+                postState.gradeGain[k] = prof.post.grade.gain[k];
+            }
+            snapSpaceState(postState.space, prof.space);
+            if (!active.preserveHeroColour) {
+                colours[0] = prof.heroColour[0];
+                colours[1] = prof.heroColour[1];
+                colours[2] = prof.heroColour[2];
+                sizes[0] = prof.heroSize;
+            }
+        }
+        trailNeedsReset = true;
+        applyDomSectionVisibility(currentIndex, currentIndex, 1.0, false);
+        updateThemeAndDots(currentIndex);
+        updateIntraIndicator(currentDimIndex, 0);
+        updateLocaleContent(currentDimIndex, 0);
+        updateUrlHash(currentDimIndex, null, true);
+        if (sections[currentIndex] && typeof sections[currentIndex].scrollIntoView === "function") {
+            sections[currentIndex].scrollIntoView({ behavior: "instant" });
+        }
+    };
+
     const goToDimension = (targetIdx, targetLocaleIdx = 0, enterInside = false) => {
         const maxIdx = Math.max(0, formations.length - 1);
         const clampedTarget = clamp(targetIdx | 0, 0, maxIdx);
@@ -2649,6 +2262,11 @@
     const GESTURE_LOCK_MS = 300;
 
     const triggerStep = (deltaStep) => {
+        const hj = typeof window !== "undefined" ? window.hyperspaceJourney : null;
+        if (isHubPage() && hj && typeof hj.isHubActive === "function" && hj.isHubActive()) {
+            hj.step(deltaStep);
+            return;
+        }
         const now = performance.now();
         if (exploreMorph.active) {
             if (exploreMorph.t < 0.25) return;
@@ -2980,7 +2598,6 @@
     };
 
     refreshSections();
-    emitStageProgress(0.8, "Initialising formations");
 
     if (typeof window !== "undefined") {
         const handleHashOrHistory = () => {
@@ -4397,9 +4014,6 @@
             }
         }
 
-        /* ---------- 2-Layer + Shockwave Blender Hyperspace Engine ---------- */
-        hyperspaceEngine.update(dt);
-
         // Live hero and camera velocities (smoothed) for hop continuity and speed-driven streaks
         {
             const inv = 1.0 / Math.max(dt, 1e-3);
@@ -4414,15 +4028,7 @@
             inside.speedN += (clamp(camVel.length() / 14.0, 0.0, 1.0) - inside.speedN) * 0.25;
         }
 
-        const savedCamX = camera.position.x;
-        const savedCamY = camera.position.y;
-        if (hyperspaceEngine.active && !isReducedMotion()) {
-            camera.position.x += hyperspaceEngine.shakeX;
-            camera.position.y += hyperspaceEngine.shakeY;
-        }
         camera.updateMatrices();
-        camera.position.x = savedCamX;
-        camera.position.y = savedCamY;
         updateDebugHud();
 
         /* ---------- HDR Multi-Pass Render Graph on Single #stage-canvas ---------- */
@@ -4480,8 +4086,11 @@
         const maxStreakPx = isFlying ? (32.0 + 64.0 * liveVs) : 20.0;
         const streakScale = isFlying ? (1.2 + 2.2 * liveVs) : postState.streakScale;
 
+        const activeOrigin = activeRenderForm && activeRenderForm.origin ? activeRenderForm.origin : null;
+        const effVP = getEffectiveViewProj(activeOrigin);
+
         gl.useProgram(pointProg);
-        gl.uniformMatrix4fv(pointUniforms.uViewProj, false, camera.viewProjectionMatrix.elements);
+        gl.uniformMatrix4fv(pointUniforms.uViewProj, false, effVP);
         gl.uniform3f(pointUniforms.uCamPos, camera.position.x, camera.position.y, camera.position.z);
         gl.uniform2f(pointUniforms.uViewport, width, height);
         gl.uniform1f(pointUniforms.uDpr, dpr);
@@ -4490,7 +4099,7 @@
         gl.uniform1f(pointUniforms.uIsLight, isLight ? 1.0 : 0.0);
         gl.uniform1f(pointUniforms.uStreakScale, isReducedMotion() ? 0.0 : streakScale);
         gl.uniform1f(pointUniforms.uMaxStreakPx, maxStreakPx);
-        gl.uniform1f(pointUniforms.uTrailGain, trailGain * (1.0 + audioEnergy * 0.08));
+        gl.uniform1f(pointUniforms.uTrailGain, trailGain * (1.0 + audioEnergy * 0.08) * simIngress.opacity);
         gl.uniform3f(pointUniforms.uFogTint, postState.fogTint[0], postState.fogTint[1], postState.fogTint[2]);
         gl.uniform1f(pointUniforms.uInside, inside.value);
         gl.uniform1f(pointUniforms.uHeroScale, inside.heroScale);
@@ -4538,8 +4147,10 @@
             gl.blendFunc(gl.ONE, gl.ONE);
         }
 
-        // 2a. Celestial background starfield, nebula & Milky Way layer
-        if (starProg) {
+        // 2a. Celestial background starfield, nebula & Milky Way layer (skipped when new hyperspace stars are active)
+        const hj = typeof window !== "undefined" ? window.hyperspaceJourney : null;
+        const useHyperspaceStars = !!(hj && typeof hj.isHubActive === "function" && hj.isHubActive() && hj.engine && hj.engine.starMesh);
+        if (starProg && !useHyperspaceStars) {
             const isMob = isMobileDevice();
             const reduced = isReducedMotion();
             const skyTier = getEffectiveSkyQualityTier();
@@ -4582,21 +4193,15 @@
             gl.uniform1f(starUniforms.uTilt, currentTilt);
             gl.uniform1f(starUniforms.uTime, reduced ? 0.0 : simTime);
             gl.uniform1f(starUniforms.uIsLight, isLight ? 1.0 : 0.0);
-            // Per-section celestial starfield depth cues (modulated smoothly through postState.celestialBrightness)
-            gl.uniform1f(starUniforms.uBrightness, inside.starBright * (postState.celestialBrightness !== undefined ? postState.celestialBrightness : 0.18));
-            gl.uniform3f(starUniforms.uBaseColour, sp.baseColour[0], sp.baseColour[1], sp.baseColour[2]);
-            gl.uniform1f(starUniforms.uStarDensity, spEnabled ? sp.starDensity : 0.0);
-            gl.uniform1f(starUniforms.uStarTwinkle, sp.starTwinkle);
-            gl.uniform3f(starUniforms.uStarTint, sp.starTint[0], sp.starTint[1], sp.starTint[2]);
-            gl.uniform1f(starUniforms.uShootingStars, (spEnabled && sp.shootingStars && !reduced) ? 1.0 : 0.0);
-            gl.uniform1f(starUniforms.uParallax, sp.parallax);
-            gl.uniform1f(starUniforms.uWarpVelocity, reduced ? 0.0 : (hyperspaceEngine.active ? hyperspaceEngine.velocityNorm : (trans.warpStrength || 0.0)));
-            if (starUniforms.uStretchFactor) {
-                gl.uniform1f(starUniforms.uStretchFactor, reduced ? 1.0 : (1.0 + hyperspaceEngine.velocityNorm * 11.0));
-            }
-            if (starUniforms.uVelocity) {
-                gl.uniform1f(starUniforms.uVelocity, reduced ? 0.0 : hyperspaceEngine.velocityNorm);
-            }
+            // Unified start-screen pitch-black starfield across all pages and sections
+            gl.uniform1f(starUniforms.uBrightness, inside.starBright * 0.18);
+            gl.uniform3f(starUniforms.uBaseColour, 0.0, 0.0, 0.0);
+            gl.uniform1f(starUniforms.uStarDensity, DEFAULT_SPACE_CONFIG.starDensity);
+            gl.uniform1f(starUniforms.uStarTwinkle, DEFAULT_SPACE_CONFIG.starTwinkle);
+            gl.uniform3f(starUniforms.uStarTint, 1.0, 1.0, 1.0);
+            gl.uniform1f(starUniforms.uShootingStars, (DEFAULT_SPACE_CONFIG.shootingStars && !reduced) ? 1.0 : 0.0);
+            gl.uniform1f(starUniforms.uParallax, DEFAULT_SPACE_CONFIG.parallax);
+            gl.uniform1f(starUniforms.uWarpVelocity, reduced ? 0.0 : (trans.warpStrength || 0.0));
             gl.uniform2f(starUniforms.uPointerOffset, isMob ? 0.0 : ctxState.pointerX, isMob ? 0.0 : ctxState.pointerY);
             gl.uniform3f(starUniforms.uCamDir, camDirX, camDirY, camDirZ);
             gl.uniform1i(starUniforms.uQualityTier, skyTier);
@@ -4611,11 +4216,6 @@
                 gl.bindTexture(gl.TEXTURE_2D, skyRT.tex);
                 gl.uniform1i(blitAddUniforms.uTex, 0);
                 drawQuad();
-            }
-
-            // 2a-bis. 3,500-instance WebGL2 billboarded hyperspace quads in sceneRT
-            if (!reduced) {
-                hyperspaceEngine.render(camera, pw, ph, dpr, isLight);
             }
 
             gl.enable(gl.BLEND);
@@ -4673,8 +4273,8 @@
         // 2c. Optional same-scene auxiliary line/surface overlay
         if (activeRenderForm && activeRenderForm.auxLineCount > 0 && trans.auxOpacity > 0.005 && auxProg) {
             gl.useProgram(auxProg);
-            gl.uniformMatrix4fv(auxUniforms.uViewProj, false, camera.viewProjectionMatrix.elements);
-            gl.uniform1f(auxUniforms.uAuxOpacity, trans.auxOpacity);
+            gl.uniformMatrix4fv(auxUniforms.uViewProj, false, effVP);
+            gl.uniform1f(auxUniforms.uAuxOpacity, trans.auxOpacity * simIngress.opacity);
             gl.uniform1f(auxUniforms.uIsLight, isLight ? 1.0 : 0.0);
 
             gl.bindVertexArray(auxVAO);
@@ -4842,7 +4442,6 @@
         gl.activeTexture(gl.TEXTURE0);
         if (!stageReadyEmitted) {
             stageReadyEmitted = true;
-            emitStageProgress(1.0, "Stage ready");
             if (typeof window !== "undefined" && typeof CustomEvent === "function") {
                 window.dispatchEvent(new CustomEvent("kw:stage-ready"));
             }
@@ -4872,18 +4471,10 @@
             cancelAnimationFrame(resizeRafId);
             resizeRafId = 0;
         }
-        if (reducedMotionFadeTimerId) {
-            clearTimeout(reducedMotionFadeTimerId);
-            reducedMotionFadeTimerId = 0;
-        }
-        hyperspaceEngine.dispose();
         for (let i = 0; i < cleanupFns.length; i++) {
             try { cleanupFns[i](); } catch (_) {}
         }
         cleanupFns.length = 0;
-        if (typeof window !== "undefined" && window.triggerHyperspaceJump === triggerHyperspaceJump) {
-            delete window.triggerHyperspaceJump;
-        }
     };
 
     mainRafId = requestAnimationFrame(tick);
@@ -4915,8 +4506,10 @@
         },
         get phase() { return trans.phase; },
         get progress() { return trans.u; },
-        get isTransitioning() { return trans.active || intraHop.active || hyperspaceEngine.active; },
-        get hyperspaceJump() { return hyperspaceEngine; },
+        get isTransitioning() {
+            const hj = typeof window !== "undefined" ? window.hyperspaceJourney : null;
+            return trans.active || intraHop.active || !!(hj && hj.isTransitioning);
+        },
         get fps() { return fps; },
         get simTime() { return simTime; },
         get intraHop() { return intraHop; },
@@ -4948,9 +4541,11 @@
         stepLocale,
         refreshSections,
         goToSection: goToDimension,
+        snapToSection,
+        setSimIngress,
+        getSimIngress,
         transitionToState,
         triggerStep,
-        triggerHyperspaceJump,
         destroy
     };
 }));

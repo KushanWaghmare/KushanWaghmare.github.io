@@ -11,7 +11,7 @@
     const TAU = Math.PI * 2;
     const rgba = (c, a) => (c ? `rgba(${c[0]},${c[1]},${c[2]},${a})` : `rgba(255,255,255,${a})`);
     const randn = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(TAU * Math.random());
-    const KW = (window.KW = { REDUCED, mouse: { cx: -1e4, cy: -1e4 }, col: {} });
+    const KW = Object.assign(window.KW || (window.KW = {}), { REDUCED, mouse: { cx: -1e4, cy: -1e4 }, col: {} });
     KW.refresh = () => {
         const rgb = (n) => getComputedStyle(D).getPropertyValue(n).trim().split(",").map(Number);
         KW.col = { a: rgb("--a"), pal: keys.map((k) => rgb("--rgb-" + k)), light: false };
@@ -331,6 +331,8 @@
 
         return {
             isEnabled: () => enabled,
+            isMuted: () => !enabled,
+            getContext: () => ctx,
             getEnergy: () => window.__AUDIO_ENERGY__ || 0,
             toggle: () => {
                 if (!enabled) {
@@ -563,306 +565,6 @@
                     updateBankAudio(ambient.bankA, fromAudio, 1.0 - b, t0);
                     updateBankAudio(ambient.bankB, toAudio, b, t0);
                 });
-            },
-            hyperspaceTurbineCharge: (dur = 0.75) => {
-                const d = Math.max(0.1, Number.isFinite(dur) ? dur : 0.75);
-                withContext((t0) => {
-                    const masterOut = getMasterBus();
-                    if (!masterOut) return;
-
-                    // Rising resonant sawtooth pitch sweep (50Hz -> 680Hz)
-                    const osc = ctx.createOscillator();
-                    const lp = ctx.createBiquadFilter();
-                    const oscGain = ctx.createGain();
-                    osc.type = "sawtooth";
-                    osc.frequency.setValueAtTime(50, t0);
-                    osc.frequency.exponentialRampToValueAtTime(680, t0 + d);
-                    lp.type = "lowpass";
-                    lp.Q.value = 5.0;
-                    lp.frequency.setValueAtTime(180, t0);
-                    lp.frequency.exponentialRampToValueAtTime(2800, t0 + d);
-                    oscGain.gain.setValueAtTime(0.0001, t0);
-                    oscGain.gain.linearRampToValueAtTime(0.16, t0 + d * 0.75);
-                    oscGain.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.04);
-                    osc.connect(lp);
-                    lp.connect(oscGain);
-                    oscGain.connect(masterOut);
-                    osc.start(t0);
-                    osc.stop(t0 + d + 0.05);
-                    osc.onended = () => {
-                        try { osc.disconnect(); lp.disconnect(); oscGain.disconnect(); } catch (e) {}
-                    };
-
-                    // Filtered noise swell
-                    const nb = noise();
-                    if (nb) {
-                        const src = ctx.createBufferSource();
-                        const bp = ctx.createBiquadFilter();
-                        const nGain = ctx.createGain();
-                        src.buffer = nb;
-                        src.loop = true;
-                        bp.type = "bandpass";
-                        bp.Q.value = 2.0;
-                        bp.frequency.setValueAtTime(140, t0);
-                        bp.frequency.exponentialRampToValueAtTime(2400, t0 + d);
-                        nGain.gain.setValueAtTime(0.0001, t0);
-                        nGain.gain.linearRampToValueAtTime(0.14, t0 + d * 0.8);
-                        nGain.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.04);
-                        src.connect(bp);
-                        bp.connect(nGain);
-                        nGain.connect(masterOut);
-                        src.start(t0);
-                        src.stop(t0 + d + 0.05);
-                        src.onended = () => {
-                            try { src.disconnect(); bp.disconnect(); nGain.disconnect(); } catch (e) {}
-                        };
-                    }
-                });
-            },
-            hyperspaceTunnelRoar: (dur = 3.5) => {
-                const d = Math.max(0.25, Number.isFinite(dur) ? dur : 3.5);
-                withContext((t0) => {
-                    const masterOut = getMasterBus();
-                    if (!masterOut) return;
-
-                    if (SOUND._roarBus) {
-                        try {
-                            SOUND._roarBus.gain.cancelScheduledValues(t0);
-                            SOUND._roarBus.gain.setValueAtTime(Math.max(SOUND._roarBus.gain.value, 0.0001), t0);
-                            SOUND._roarBus.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.04);
-                        } catch (e) {}
-                    }
-
-                    const roarBus = ctx.createGain();
-                    roarBus.gain.setValueAtTime(1.0, t0);
-                    roarBus.connect(masterOut);
-                    SOUND._roarBus = roarBus;
-
-                    // Sub-bass impact (38Hz sine drop)
-                    const sub = ctx.createOscillator();
-                    const subGain = ctx.createGain();
-                    sub.type = "sine";
-                    sub.frequency.setValueAtTime(72, t0);
-                    sub.frequency.exponentialRampToValueAtTime(38, t0 + 0.22);
-                    subGain.gain.setValueAtTime(0.0001, t0);
-                    subGain.gain.linearRampToValueAtTime(0.32, t0 + 0.025);
-                    subGain.gain.exponentialRampToValueAtTime(0.09, t0 + 0.55);
-                    subGain.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
-                    sub.connect(subGain);
-                    subGain.connect(roarBus);
-                    sub.start(t0);
-                    sub.stop(t0 + d + 0.04);
-                    sub.onended = () => {
-                        try { sub.disconnect(); subGain.disconnect(); } catch (e) {}
-                    };
-
-                    // Deep, hollow low-pass filtered wind rumble (160Hz)
-                    const nb = noise();
-                    if (nb) {
-                        const src = ctx.createBufferSource();
-                        const lp = ctx.createBiquadFilter();
-                        const nGain = ctx.createGain();
-                        src.buffer = nb;
-                        src.loop = true;
-                        lp.type = "lowpass";
-                        lp.Q.value = 3.2;
-                        lp.frequency.setValueAtTime(220, t0);
-                        lp.frequency.exponentialRampToValueAtTime(160, t0 + 0.45);
-                        nGain.gain.setValueAtTime(0.0001, t0);
-                        nGain.gain.linearRampToValueAtTime(0.24, t0 + 0.18);
-                        nGain.gain.setValueAtTime(0.22, t0 + Math.max(0.2, d - 0.35));
-                        nGain.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
-                        src.connect(lp);
-                        lp.connect(nGain);
-                        nGain.connect(roarBus);
-                        src.start(t0);
-                        src.stop(t0 + d + 0.04);
-                        src.onended = () => {
-                            try { src.disconnect(); lp.disconnect(); nGain.disconnect(); } catch (e) {}
-                            if (SOUND._roarBus === roarBus) {
-                                SOUND._roarBus = null;
-                                try { roarBus.disconnect(); } catch (e) {}
-                            }
-                        };
-                    }
-                });
-            },
-            hyperspaceAnticipation: () => {
-                withContext((t0) => {
-                    const masterOut = getMasterBus();
-                    if (!masterOut) return;
-                    const nb = noise();
-                    if (!nb) return;
-                    const dur = 0.25;
-                    const src = ctx.createBufferSource();
-                    const lp = ctx.createBiquadFilter();
-                    const nGain = ctx.createGain();
-                    src.buffer = nb;
-                    src.loop = true;
-                    lp.type = "lowpass";
-                    lp.Q.value = 2.5;
-                    lp.frequency.setValueAtTime(110, t0);
-                    lp.frequency.exponentialRampToValueAtTime(420, t0 + dur);
-                    nGain.gain.setValueAtTime(0.0001, t0);
-                    nGain.gain.linearRampToValueAtTime(0.12, t0 + 0.06);
-                    nGain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-                    src.connect(lp);
-                    lp.connect(nGain);
-                    nGain.connect(masterOut);
-                    src.start(t0);
-                    src.stop(t0 + dur + 0.02);
-                    src.onended = () => {
-                        try { src.disconnect(); lp.disconnect(); nGain.disconnect(); } catch (e) {}
-                    };
-                });
-            },
-            hyperspaceIgnition: () => {
-                withContext((t0) => {
-                    const masterOut = getMasterBus();
-                    if (!masterOut) return;
-                    const dur = 1.2;
-
-                    // Dual detuned sawtooth oscillators (55Hz / 55.6Hz) swept up one octave through resonant low-pass (Q = 4.2)
-                    const oscA = ctx.createOscillator();
-                    const oscB = ctx.createOscillator();
-                    const lp = ctx.createBiquadFilter();
-                    const oscGain = ctx.createGain();
-                    oscA.type = "sawtooth";
-                    oscB.type = "sawtooth";
-                    oscA.frequency.setValueAtTime(55, t0);
-                    oscA.frequency.exponentialRampToValueAtTime(110, t0 + dur);
-                    oscB.frequency.setValueAtTime(55.6, t0);
-                    oscB.frequency.exponentialRampToValueAtTime(111.2, t0 + dur);
-                    lp.type = "lowpass";
-                    lp.Q.value = 4.2;
-                    lp.frequency.setValueAtTime(140, t0);
-                    lp.frequency.exponentialRampToValueAtTime(1800, t0 + dur);
-                    oscGain.gain.setValueAtTime(0.0001, t0);
-                    oscGain.gain.linearRampToValueAtTime(0.14, t0 + 0.16);
-                    oscGain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-                    oscA.connect(lp);
-                    oscB.connect(lp);
-                    lp.connect(oscGain);
-                    oscGain.connect(masterOut);
-                    oscA.start(t0);
-                    oscB.start(t0);
-                    oscA.stop(t0 + dur + 0.03);
-                    oscB.stop(t0 + dur + 0.03);
-                    oscA.onended = () => {
-                        try { oscA.disconnect(); oscB.disconnect(); lp.disconnect(); oscGain.disconnect(); } catch (e) {}
-                    };
-
-                    // Layered stereo-panned noise rush (gain: 0.16)
-                    const nb = noise();
-                    if (nb) {
-                        const src = ctx.createBufferSource();
-                        const nFilter = ctx.createBiquadFilter();
-                        const nGain = ctx.createGain();
-                        const panner = typeof ctx.createStereoPanner === "function" ? ctx.createStereoPanner() : null;
-                        src.buffer = nb;
-                        src.loop = true;
-                        nFilter.type = "bandpass";
-                        nFilter.Q.value = 1.2;
-                        nFilter.frequency.setValueAtTime(220, t0);
-                        nFilter.frequency.exponentialRampToValueAtTime(3400, t0 + dur);
-                        nGain.gain.setValueAtTime(0.0001, t0);
-                        nGain.gain.linearRampToValueAtTime(0.16, t0 + 0.22);
-                        nGain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-                        src.connect(nFilter);
-                        nFilter.connect(nGain);
-                        if (panner) {
-                            panner.pan.setValueAtTime(-0.45, t0);
-                            panner.pan.linearRampToValueAtTime(0.45, t0 + dur);
-                            nGain.connect(panner);
-                            panner.connect(masterOut);
-                        } else {
-                            nGain.connect(masterOut);
-                        }
-                        src.start(t0);
-                        src.stop(t0 + dur + 0.03);
-                        src.onended = () => {
-                            try {
-                                src.disconnect();
-                                nFilter.disconnect();
-                                nGain.disconnect();
-                                if (panner) panner.disconnect();
-                            } catch (e) {}
-                        };
-                    }
-                });
-            },
-            hyperspaceExitSnap: () => {
-                withContext((t0) => {
-                    const masterOut = getMasterBus();
-                    if (!masterOut) return;
-
-                    // Brief 80ms near-silence dip (attenuate roar/master bus briefly)
-                    if (SOUND._roarBus) {
-                        try {
-                            SOUND._roarBus.gain.cancelScheduledValues(t0);
-                            SOUND._roarBus.gain.setValueAtTime(Math.max(SOUND._roarBus.gain.value, 0.0001), t0);
-                            SOUND._roarBus.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.075);
-                        } catch (e) {}
-                    }
-                    if (masterOut.gain) {
-                        masterOut.gain.cancelScheduledValues(t0);
-                        masterOut.gain.setValueAtTime(Math.max(masterOut.gain.value || 1.0, 0.0001), t0);
-                        masterOut.gain.exponentialRampToValueAtTime(0.02, t0 + 0.012);
-                        masterOut.gain.setValueAtTime(0.02, t0 + 0.075);
-                        masterOut.gain.linearRampToValueAtTime(1.0, t0 + 0.08);
-                    }
-
-                    const tSnap = t0 + 0.08;
-
-                    // Crisp mechanical transient snap (2.4kHz high-pass burst)
-                    const nb = noise();
-                    if (nb) {
-                        const src = ctx.createBufferSource();
-                        const hp = ctx.createBiquadFilter();
-                        const nGain = ctx.createGain();
-                        src.buffer = nb;
-                        hp.type = "highpass";
-                        hp.frequency.setValueAtTime(2400, tSnap);
-                        hp.Q.value = 1.4;
-                        nGain.gain.setValueAtTime(0.0001, tSnap);
-                        nGain.gain.linearRampToValueAtTime(0.28, tSnap + 0.003);
-                        nGain.gain.exponentialRampToValueAtTime(0.0001, tSnap + 0.045);
-                        src.connect(hp);
-                        hp.connect(nGain);
-                        nGain.connect(masterOut);
-                        src.start(tSnap);
-                        src.stop(tSnap + 0.06);
-                        src.onended = () => {
-                            try { src.disconnect(); hp.disconnect(); nGain.disconnect(); } catch (e) {}
-                        };
-                    }
-
-                    // Massive sub-bass drop (90Hz -> 28Hz exponential pitch dive with soft-clipping WaveShaperNode saturation)
-                    const sub = ctx.createOscillator();
-                    const shaper = ctx.createWaveShaper();
-                    const oGain = ctx.createGain();
-                    const curve = new Float32Array(256);
-                    for (let i = 0; i < 256; i++) {
-                        const x = (i * 2) / 255 - 1;
-                        curve[i] = Math.tanh(x * 2.5);
-                    }
-                    shaper.curve = curve;
-                    shaper.oversample = "2x";
-                    sub.type = "sine";
-                    sub.frequency.setValueAtTime(90, tSnap);
-                    sub.frequency.exponentialRampToValueAtTime(28, tSnap + 0.34);
-                    oGain.gain.setValueAtTime(0.0001, tSnap);
-                    oGain.gain.linearRampToValueAtTime(0.38, tSnap + 0.01);
-                    oGain.gain.exponentialRampToValueAtTime(0.0001, tSnap + 0.42);
-                    sub.connect(shaper);
-                    shaper.connect(oGain);
-                    oGain.connect(masterOut);
-                    sub.start(tSnap);
-                    sub.stop(tSnap + 0.45);
-                    sub.onended = () => {
-                        try { sub.disconnect(); shaper.disconnect(); oGain.disconnect(); } catch (e) {}
-                    };
-                });
             }
         };
     })();
@@ -1089,47 +791,8 @@
         </section>`;
     };
 
-    /* ---------- chrome: preloader, sound controls & HUD ---------- */
+    /* ---------- chrome: sound controls & HUD ---------- */
     const chrome = () => {
-        // Lightweight branded preloader, skipped under reduced motion or if stage is already ready
-        if (!REDUCED && !(window.THREAD_STAGE && window.THREAD_STAGE.ready) && !$("#kw-preloader")) {
-            const preloader = document.createElement("div");
-            preloader.id = "kw-preloader";
-            preloader.setAttribute("aria-hidden", "true");
-            preloader.innerHTML = '<div class="kw-preloader-inner"><div class="kw-preloader-mark">KW<span>/</span></div><div class="kw-preloader-bar"><div class="kw-preloader-fill"></div></div><div class="kw-preloader-label">Initialising stage…</div></div>';
-            document.body.appendChild(preloader);
-
-            const fillEl = preloader.querySelector(".kw-preloader-fill");
-            const labelEl = preloader.querySelector(".kw-preloader-label");
-            let done = false;
-
-            const finishPreloader = () => {
-                if (done) return;
-                done = true;
-                window.removeEventListener("kw:stage-progress", onProgress);
-                window.removeEventListener("kw:stage-ready", finishPreloader);
-                clearTimeout(fallbackTimer);
-                if (fillEl) fillEl.style.width = "100%";
-                preloader.classList.add("is-ready");
-                setTimeout(() => preloader.remove(), 520);
-            };
-
-            const onProgress = (e) => {
-                const d = (e && e.detail) || {};
-                if (fillEl && typeof d.progress === "number" && Number.isFinite(d.progress)) {
-                    const norm = d.progress > 1 && d.progress <= 100 ? d.progress / 100 : d.progress;
-                    fillEl.style.width = Math.max(0, Math.min(1, norm)) * 100 + "%";
-                }
-                if (labelEl && d.label) {
-                    labelEl.textContent = String(d.label);
-                }
-            };
-
-            window.addEventListener("kw:stage-progress", onProgress);
-            window.addEventListener("kw:stage-ready", finishPreloader, { once: true });
-            const fallbackTimer = setTimeout(finishPreloader, 2200);
-        }
-
         const soundBtn = $(".sound-btn");
         if (soundBtn) {
             let promptEl = null;
@@ -1187,71 +850,6 @@
             syncNavScroll();
             window.addEventListener("scroll", syncNavScroll, { passive: true });
         }
-
-        
-        // Unobtrusive parameter scrubber pill for key domain simulations
-        if (!$(".kw-sim-scrubber")) {
-            const SCRUB_CFG = {
-                physics:     { key: "spin",  label: "a/M", min: 0.10, max: 0.99, step: 0.01, def: 0.95, fmt: (v) => v.toFixed(2) },
-                datascience: { key: "scale", label: "SDE", min: 0.40, max: 1.60, step: 0.05, def: 1.00, fmt: (v) => v.toFixed(2) },
-                quant:       { key: "rho",   label: "ρ",   min: -0.90, max: 0.90, step: 0.05, def: 0.65, fmt: (v) => (v >= 0 ? "+" : "") + v.toFixed(2) },
-                cs:          { key: "k",     label: "k",   min: 1,    max: 16,   step: 1,    def: 4,    fmt: (v) => String(Math.round(v)) }
-            };
-            const scrub = document.createElement("div");
-            scrub.className = "kw-sim-scrubber";
-            scrub.hidden = true;
-            scrub.style.display = "none";
-            scrub.innerHTML = '<span class="kw-scrub-label"></span><input type="range" class="kw-scrub-input" aria-label="Simulation parameter"><span class="kw-scrub-val"></span>';
-            document.body.appendChild(scrub);
-
-            const lblEl = scrub.querySelector(".kw-scrub-label");
-            const rngEl = scrub.querySelector(".kw-scrub-input");
-            const valEl = scrub.querySelector(".kw-scrub-val");
-
-            const syncScrubber = () => {
-                const dom = D.dataset.domain || "intro";
-                const cfg = (dom !== "hub" && dom !== "intro" && dom !== "contact" && Object.prototype.hasOwnProperty.call(SCRUB_CFG, dom))
-                    ? SCRUB_CFG[dom]
-                    : null;
-                if (!cfg) {
-                    scrub.hidden = true;
-                    scrub.style.display = "none";
-                    return;
-                }
-                scrub.hidden = false;
-                scrub.style.display = "";
-                lblEl.textContent = cfg.label;
-                rngEl.min = String(cfg.min);
-                rngEl.max = String(cfg.max);
-                rngEl.step = String(cfg.step);
-                rngEl.setAttribute("aria-label", cfg.label);
-                const store = window.__SIM_SCRUB__ || {};
-                const cur = typeof store[cfg.key] === "number" ? store[cfg.key] : cfg.def;
-                rngEl.value = String(cur);
-                valEl.textContent = cfg.fmt(cur);
-            };
-
-            rngEl.addEventListener("input", () => {
-                const dom = D.dataset.domain || "intro";
-                const cfg = SCRUB_CFG[dom];
-                if (!cfg) return;
-                const val = parseFloat(rngEl.value);
-                if (!Number.isFinite(val)) return;
-                valEl.textContent = cfg.fmt(val);
-                window.__SIM_SCRUB__ = window.__SIM_SCRUB__ || {};
-                window.__SIM_SCRUB__[cfg.key] = val;
-                window.__SIM_SCRUB__.domain = dom;
-                if (dom === "physics") {
-                    window.__KERR_DEBUG__ = window.__KERR_DEBUG__ || {};
-                    window.__KERR_DEBUG__.spin = val;
-                }
-            });
-
-            KW.syncScrubber = syncScrubber;
-            syncScrubber();
-            window.addEventListener("themechange", syncScrubber);
-            new MutationObserver(syncScrubber).observe(D, { attributes: true, attributeFilter: ["data-domain"] });
-        }
     };
 
     /* ---------- motion: native scroll-triggered reveals and progress ---------- */
@@ -1301,6 +899,10 @@
             if (idx < 0 || idx >= sections.length) return;
             curIdx = idx;
             KW._secIdx = curIdx;
+            if (D.dataset.page === "hub" && window.hyperspaceJourney && typeof window.hyperspaceJourney.jumpToSection === "function") {
+                window.hyperspaceJourney.jumpToSection(idx);
+                return;
+            }
             if (window.THREAD_STAGE && typeof window.THREAD_STAGE.goToSection === "function") {
                 window.THREAD_STAGE.goToSection(idx);
                 return;
@@ -1373,6 +975,8 @@
                         KW._secIdx = idx;
                         // Sync native scroll and anchor navigation with the 3D stage transition
                         if (entry.intersectionRatio >= 0.55) {
+                            const hj = window.hyperspaceJourney;
+                            if (hj && hj.isTransitioning) return;
                             const S = window.THREAD_STAGE;
                             const midTransition = S && S.trans && S.trans.active && (S.trans.toIndex === idx || S.trans.queuedIndex === idx);
                             if (S && S.supported && typeof S.goToSection === "function" && S.currentIndex !== idx && !midTransition) {
@@ -1386,7 +990,6 @@
                         KW.refresh();
                         window.dispatchEvent(new Event("themechange"));
                     }
-                    if (KW.syncScrubber) KW.syncScrubber();
                     dots.forEach((dot) => {
                         const href = dot.getAttribute("href");
                         dot.classList.toggle("active", href === "#" + id);
@@ -2935,275 +2538,6 @@ const initNavSim = (c) => {
                 ctx.restore();
             }
 
-            // ---- PERSISTENT "YOU ARE HERE" RETICLE & CALLOUT ACROSS ALL SECTIONS (0..6)
-            const secIdx = st.sectionIndex || 0;
-            if (secIdx !== lastSecIdx) {
-                lastSecIdx = secIdx;
-                bootStart = tSec;
-            }
-            const bootT = reduced ? 1 : clamp01((tSec - bootStart) / 0.42);
-            const bootE = 1 - Math.pow(1 - bootT, 3);
-            const meta = SECTION_HERO_META[secIdx] || SECTION_HERO_META[0];
-            const inTransit = launch > 0.03 && launch < 0.96;
-            const flash = Math.sin(launch * Math.PI);
-            const DOMAIN_ACCENTS = [
-                "96,156,255",   // 0: hub (intro)
-                "255,92,112",   // 1: math
-                "34,211,238",   // 2: physics
-                "245,166,35",   // 3: datascience
-                "32,201,145",   // 4: quant
-                "172,132,255",  // 5: cs
-                "36,200,182"    // 6: contact
-            ];
-            const domAcc = DOMAIN_ACCENTS[secIdx] || DOMAIN_ACCENTS[0];
-            const heroAcc = domAcc; // Hero particle colour always matches domain accent
-            const hk = k * (W < 640 ? 0.60 : 0.70);
-            const isContact = st.simKey === "hub:contact" || secIdx === 6;
-            const isHoverHero = C && C.active && Math.hypot(C.x - mx, C.y - my) < 32 * hk;
-
-            ctx.save(); ctx.lineCap = isContact ? "butt" : "round";
-            ctx.globalAlpha = bootE;
-            if (!reduced) {
-                for (let i = 0; i < 2; i++) {
-                    const ph2 = ((tSec + i * 1.4) % 2.8) / 2.8;
-                    ctx.strokeStyle = `rgba(${heroAcc},${(0.52 * (1 - ph2)).toFixed(3)})`;
-                    ctx.lineWidth = 1.1;
-                    ctx.beginPath(); ctx.arc(mx, my, (9 + 38 * ph2) * hk, 0, TAU); ctx.stroke();
-                }
-            }
-            ctx.globalCompositeOperation = "lighter";
-            const glowR = (isHoverHero ? 42 : 28) * hk;
-            radial(mx, my, glowR, [[0, `rgba(${heroAcc},${(isHoverHero ? 0.85 : 0.55) + 0.25 * flash})`], [0.45, `rgba(${domAcc},${isHoverHero ? 0.35 : 0.16})`], [1, `rgba(${domAcc},0)`]]);
-            ctx.globalCompositeOperation = "source-over";
-
-            // Rotating tick ring + dashed range ring (tinted to active domain)
-            const rot = reduced ? 0 : tSec * (0.25 + 1.8 * flash), ringK = (0.85 + 0.15 * lock) * (0.78 + 0.22 * bootE);
-
-            // Multi-layered sci-fi reticle rings with chromatic fringes
-            ctx.strokeStyle = `rgba(${domAcc},0.35)`; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.arc(mx, my, 42 * hk * ringK, 0, TAU); ctx.stroke();
-            ctx.strokeStyle = `rgba(180,210,255,0.22)`; ctx.lineWidth = 1.0;
-            ctx.beginPath(); ctx.arc(mx, my, 31 * hk * ringK, 0, TAU); ctx.stroke();
-
-            // Subtle chromatic/phosphor accent ring on target lock or hover
-            if (isHoverHero || lock > 0.12) {
-                const lockA = Math.min(1, (isHoverHero ? 0.42 : 0.26 * lock) + 0.2 * flash);
-                ctx.strokeStyle = `rgba(125,211,252,${(lockA * 0.85).toFixed(3)})`;
-                ctx.lineWidth = 0.9 * hk;
-                ctx.beginPath(); ctx.arc(mx + 0.7 * hk, my - 0.5 * hk, 43.2 * hk * ringK, -0.55, 0.65); ctx.stroke();
-                ctx.strokeStyle = `rgba(244,114,182,${(lockA * 0.55).toFixed(3)})`;
-                ctx.beginPath(); ctx.arc(mx - 0.7 * hk, my + 0.5 * hk, 43.2 * hk * ringK, Math.PI - 0.55, Math.PI + 0.65); ctx.stroke();
-            }
-
-            // Inner dense tick wheel (72 ticks with 6-tick major intervals)
-            ctx.strokeStyle = `rgba(${domAcc},0.55)`; ctx.lineWidth = 0.9;
-            for (let i = 0; i < 72; i++) {
-                const a = rot + i / 72 * TAU, r0 = 24 * hk * ringK, r1 = r0 + (i % 6 === 0 ? 5.5 : 2.2) * hk;
-                ctx.beginPath(); ctx.moveTo(mx + Math.cos(a) * r0, my + Math.sin(a) * r0); ctx.lineTo(mx + Math.cos(a) * r1, my + Math.sin(a) * r1); ctx.stroke();
-            }
-
-            // Cardinal vernier crosshairs (inner optical alignment ticks)
-            ctx.strokeStyle = `rgba(224,242,254,0.48)`; ctx.lineWidth = Math.max(0.8, 1.0 * hk);
-            const chIn = 9.5 * hk, chOut = 15.5 * hk;
-            ctx.beginPath();
-            ctx.moveTo(mx - chOut, my); ctx.lineTo(mx - chIn, my);
-            ctx.moveTo(mx + chIn, my); ctx.lineTo(mx + chOut, my);
-            ctx.moveTo(mx, my - chOut); ctx.lineTo(mx, my - chIn);
-            ctx.moveTo(mx, my + chIn); ctx.lineTo(mx, my + chOut);
-            ctx.stroke();
-
-            // Outer segmented tactical arcs
-            ctx.strokeStyle = `rgba(${domAcc},0.75)`; ctx.lineWidth = Math.max(1.0, 1.8 * hk);
-            for (let i = 0; i < 3; i++) {
-                const aStart = -rot * 0.8 + (i * TAU / 3) + 0.15;
-                ctx.beginPath(); ctx.arc(mx, my, 40 * hk * ringK, aStart, aStart + 1.2); ctx.stroke();
-            }
-
-            // High-tech dashed range ring + angular degree ticks (0°, 90°, 180°, 270°)
-            ctx.setLineDash([3 * hk, 4 * hk]); ctx.strokeStyle = `rgba(${domAcc},0.45)`; ctx.lineDashOffset = -rot * 32;
-            ctx.beginPath(); ctx.arc(mx, my, 36 * hk * ringK, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
-            ctx.fillStyle = `rgba(${domAcc},0.62)`; ctx.font = `600 ${Math.max(6, 8.5 * hk)}px ${mono}`;
-            ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            for (const [deg, ang] of [["0°", -Math.PI / 2], ["90°", 0], ["180°", Math.PI / 2], ["270°", Math.PI]]) {
-                const tr0 = 43.5 * hk * ringK, tr1 = 46.2 * hk * ringK, dr = 53 * hk * ringK;
-                ctx.strokeStyle = `rgba(${domAcc},0.50)`; ctx.lineWidth = 0.9;
-                ctx.beginPath(); ctx.moveTo(mx + Math.cos(ang) * tr0, my + Math.sin(ang) * tr0); ctx.lineTo(mx + Math.cos(ang) * tr1, my + Math.sin(ang) * tr1); ctx.stroke();
-                ctx.fillText(deg, mx + Math.cos(ang) * dr, my + Math.sin(ang) * dr);
-            }
-            window.__HUD_FOCAL__ = { x: mx, y: my, secIdx };
-
-            // Lock-on brackets (90° pixel-stepped box ticks on Contact section, clean high-tech corner brackets elsewhere)
-            const br = (17 + 2 * (reduced ? 0 : Math.sin(tSec * 2.2)) + 12 * flash) * hk, bl = 7 * hk;
-            ctx.strokeStyle = isContact ? `rgba(${domAcc},0.95)` : "rgba(255,255,255,0.95)"; ctx.lineWidth = Math.max(1.0, 1.6 * hk);
-            for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-                const x = mx + sx * br, y = my + sy * br;
-                ctx.beginPath();
-                if (isContact) {
-                    ctx.rect(x - sx * bl * 0.5 - 1.5, y - sy * bl * 0.5 - 1.5, bl, bl);
-                } else {
-                    ctx.moveTo(x - sx * bl, y); ctx.lineTo(x, y); ctx.lineTo(x, y - sy * bl);
-                }
-                ctx.stroke();
-            }
-            ctx.strokeStyle = `rgba(${domAcc},0.95)`; ctx.lineWidth = Math.max(1.0, 1.4 * hk);
-            ctx.beginPath(); ctx.arc(mx, my, 8 * hk, 0, TAU); ctx.stroke();
-            ctx.fillStyle = `rgb(${heroAcc})`; ctx.beginPath(); ctx.arc(mx, my, 3.8 * hk, 0, TAU); ctx.fill();
-            ctx.fillStyle = "rgba(255,255,255,0.98)"; ctx.beginPath(); ctx.arc(mx - 0.8 * hk, my - 0.9 * hk, 1.2 * hk, 0, TAU); ctx.fill();
-
-            // Frameless astrophysical callout: starts with 45° leader from bracket -> bends straight horizontal -> data chevron ticker
-            {
-                const flipLeft = W < 640 && mx > W * 0.52;
-                const dir = flipLeft ? -1 : 1;
-                const sx0 = mx + dir * br * 0.85, sy0 = my - br * 0.45;
-                const liftY = 22 * hk; // elevation to rule level
-                const ry = sy0 - liftY; // rule Y level
-                const jx = sx0 + dir * liftY * 1.15; // 45° dogleg corner
-                const availW = flipLeft ? (jx - 14) : (W - jx - 14);
-                const ruleW = Math.max(150 * hk, Math.min(360 * hk, availW));
-                const ruleSolidW = Math.min(ruleW * 0.55, (isCalloutLayout ? 96 : 120) * hk);
-                const tx = flipLeft
-                    ? Math.max(12, Math.min(jx - ruleW, W - 220 * hk))
-                    : (W < 640 ? Math.max(12, Math.min(jx + 6 * hk, W - 220 * hk)) : jx + 6 * hk);
-
-                const boxX = Math.min(tx, jx, jx + dir * ruleW), boxW = Math.max(tx + 220 * hk, jx, jx + dir * ruleW) - boxX;
-                const boxY = ry - 24 * hk, boxH = 64 * hk;
-                const calloutOverlapsText = trs.some((r) => !(boxX + boxW < r.x || boxX > r.x + r.w || boxY + boxH < r.y || boxY > r.y + r.h));
-
-                ctx.save();
-                if (calloutOverlapsText) ctx.globalAlpha *= 0.28;
-
-                // Subtle, gentle radial veil behind text (reduced opacity to prevent dark halo)
-                const vcx = jx + dir * ruleW * 0.40, vcy = ry + 10 * hk;
-                ctx.save(); ctx.translate(vcx, vcy); ctx.scale(ruleW / (50 * hk) * 0.58, 1);
-                const vg = ctx.createRadialGradient(0, 0, 0, 0, 0, 45 * hk);
-                vg.addColorStop(0, "rgba(2,4,8,0.42)");
-                vg.addColorStop(0.55, "rgba(2,4,8,0.40)");
-                vg.addColorStop(1, "rgba(2,4,8,0)");
-                ctx.fillStyle = vg; ctx.fillRect(-80 * hk, -45 * hk, 160 * hk, 90 * hk); ctx.restore();
-
-                // Leader: 45° angled line from reticle bracket to joint
-                ctx.shadowColor = `rgba(${domAcc},0.75)`; ctx.shadowBlur = 9 * hk;
-                ctx.strokeStyle = `rgb(${domAcc})`; ctx.lineWidth = Math.max(1.1, 2.0 * hk);
-                ctx.beginPath();
-                ctx.moveTo(sx0, sy0);
-                ctx.lineTo(jx, ry);
-                ctx.stroke();
-
-                // Horizontal solid rule under title
-                ctx.beginPath();
-                ctx.moveTo(jx, ry);
-                ctx.lineTo(jx + dir * ruleSolidW, ry);
-                ctx.stroke();
-
-                // Joint vertex node ●
-                ctx.fillStyle = `rgb(${domAcc})`;
-                ctx.beginPath(); ctx.arc(jx, ry, 3.2 * hk, 0, TAU); ctx.fill();
-
-                // Clean travelling signal pulse along the 45° dogleg + horizontal rule
-                if (!reduced) {
-                    const pulseU = (tSec * 0.55) % 1;
-                    const diagLen = Math.hypot(jx - sx0, ry - sy0);
-                    const totalLen = diagLen + ruleSolidW;
-                    const dist = pulseU * totalLen;
-                    const px = dist <= diagLen ? sx0 + (jx - sx0) * (dist / Math.max(1, diagLen)) : jx + dir * (dist - diagLen);
-                    const py = dist <= diagLen ? sy0 + (ry - sy0) * (dist / Math.max(1, diagLen)) : ry;
-                    ctx.shadowBlur = 0;
-                    ctx.fillStyle = `rgba(${domAcc},0.42)`;
-                    ctx.beginPath(); ctx.arc(px, py, 3.6 * hk, 0, TAU); ctx.fill();
-                    ctx.fillStyle = "rgba(255,255,255,0.92)";
-                    ctx.beginPath(); ctx.arc(px, py, 1.5 * hk, 0, TAU); ctx.fill();
-                }
-
-                // Sci-fi data ticker along the rule (dash pattern + telemetry chevrons » » »)
-                ctx.shadowBlur = 0;
-                ctx.fillStyle = `rgba(${domAcc},0.85)`;
-                ctx.strokeStyle = `rgba(${domAcc},0.75)`;
-                ctx.lineWidth = 1.4 * hk;
-                const dashEnd = Math.min(ruleW, ruleSolidW + (isCalloutLayout ? 38 : 55) * hk);
-                if (dashEnd > ruleSolidW + 6 * hk) {
-                    ctx.setLineDash([4 * hk, 3 * hk, 1.5 * hk, 3 * hk]);
-                    ctx.beginPath();
-                    ctx.moveTo(jx + dir * (ruleSolidW + 4 * hk), ry);
-                    ctx.lineTo(jx + dir * dashEnd, ry);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }
-
-                // Futuristic telemetry chevrons » » » along rule (with subtle sequential pulse)
-                const chvx0 = jx + dir * (ruleSolidW + (isCalloutLayout ? 44 : 62) * hk);
-                if (chvx0 > 18 && chvx0 < W - 18) {
-                    for (let c = 0; c < 3; c++) {
-                        const cx = chvx0 + dir * c * 7 * hk;
-                        const chA = reduced ? 0.75 : 0.40 + 0.55 * (0.5 + 0.5 * Math.sin(tSec * 4.5 - c * 1.1));
-                        ctx.strokeStyle = `rgba(${domAcc},${chA.toFixed(2)})`;
-                        ctx.beginPath();
-                        ctx.moveTo(cx, ry - 3 * hk); ctx.lineTo(cx + dir * 3 * hk, ry); ctx.lineTo(cx, ry + 3 * hk);
-                        ctx.stroke();
-                    }
-                    if (!isCalloutLayout && !flipLeft) {
-                        const chvx1 = chvx0 + 32 * hk;
-                        for (let c = 0; c < 3; c++) {
-                            const cx = chvx1 + c * 6 * hk;
-                            const chA = reduced ? 0.68 : 0.35 + 0.52 * (0.5 + 0.5 * Math.sin(tSec * 4.5 - (c + 3) * 0.9));
-                            ctx.strokeStyle = `rgba(${domAcc},${chA.toFixed(2)})`;
-                            ctx.beginPath();
-                            ctx.moveTo(cx, ry - 2.5 * hk); ctx.lineTo(cx + 2.5 * hk, ry); ctx.lineTo(cx, ry + 2.5 * hk);
-                            ctx.stroke();
-                        }
-                    }
-                }
-
-                // Typography & Telemetry
-                const f1 = Math.max(8.5, (isCalloutLayout ? 13.0 : 14.5) * hk), f2 = Math.max(7.0, (isCalloutLayout ? 10.0 : 11.0) * hk), f3 = Math.max(6.8, (isCalloutLayout ? 9.6 : 10.5) * hk);
-                ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-                ctx.shadowColor = "rgba(0,0,0,1.0)"; ctx.shadowBlur = 10 * hk; ctx.shadowOffsetY = 1.5 * hk;
-
-                // Line 1 (Above rule): Bold "YOU ARE HERE", vertical pill separator ▯, and cyan coordinates "RA 12h · -27°"
-                const title = inTransit ? "WARPING SPACETIME" : "YOU ARE HERE";
-                ctx.fillStyle = "#ffffff"; ctx.font = `800 ${f1}px ${fam}`;
-                const titleW = ctx.measureText(title).width;
-                ctx.fillText(title, tx, ry - 7 * hk);
-
-                // Vertical pill badge ▯
-                const pillX = tx + titleW + 8 * hk, pillY = ry - 17 * hk, pillH = 11 * hk, pillW = 3.5 * hk;
-                ctx.strokeStyle = `rgb(${domAcc})`; ctx.lineWidth = 1.0;
-                ctx.strokeRect(pillX, pillY, pillW, pillH);
-
-                // Coordinates in electric accent
-                const coordsLabel = inTransit ? `[00:${Math.round(launch * 60).toString().padStart(2, "0")}.0]` : (meta.coords || "RA 12h · -27°");
-                ctx.fillStyle = `rgb(${domAcc})`; ctx.font = `700 ${f3}px ${mono}`;
-                ctx.fillText(coordsLabel, pillX + pillW + 8 * hk, ry - 7 * hk);
-
-                // Line 2 (Directly below rule): "LOCAL GROUP · MILKY WAY" in crisp off-white/muted blue
-                ctx.fillStyle = "rgba(225,236,255,0.96)"; ctx.font = `600 ${f2}px ${mono}`;
-                ctx.fillText(inTransit ? "EINSTEIN–ROSEN WORMHOLE BRIDGE" : meta.sub, tx, ry + 15 * hk);
-
-                // Line 3: Double neon status beacons ●● + "HERO PARTICLE LAUNCH POINT" + live telemetry "v = 0.00c | γ = 1.00"
-                const vS = typeof st.vS === "number" ? st.vS : Math.sin(launch * Math.PI);
-                const vNum = inTransit ? Math.min(0.999, 0.45 + 0.54 * vS) : 0.00;
-                const gamma = (1 / Math.sqrt(Math.max(0.001, 1 - vNum * vNum))).toFixed(2);
-
-                // Double cyan beacon dots ● ●
-                const dotY = ry + 32 * hk - 3.5 * hk;
-                ctx.fillStyle = `rgb(${domAcc})`;
-                ctx.beginPath(); ctx.arc(tx + 2.5 * hk, dotY, 2.6 * hk, 0, TAU); ctx.fill();
-                ctx.beginPath(); ctx.arc(tx + 9.5 * hk, dotY, 2.6 * hk, 0, TAU); ctx.fill();
-
-                // Locus name in vibrant domain accent
-                ctx.font = `700 ${f2}px ${mono}`;
-                const rawLocus = inTransit ? "WARP STAGE ACTIVE" : meta.locus.replace(/^●\s*/, "");
-                const locusLabel = (isCalloutLayout && !inTransit && rawLocus === "HERO PARTICLE LAUNCH POINT") ? "LAUNCH ORIGIN" : rawLocus;
-                ctx.fillText(locusLabel, tx + 18 * hk, ry + 32 * hk);
-
-                // Telemetry separated with right offset: "v = 0.00c | γ = 1.00"
-                const locusW = ctx.measureText(locusLabel).width;
-                const telemText = inTransit
-                    ? `v = ${vNum.toFixed(2)}c | γ = ${gamma}`
-                    : `v = ${vNum.toFixed(2)}c | γ = ${gamma}`;
-                ctx.fillText(telemText, tx + 18 * hk + locusW + (isCalloutLayout ? 10 : 18) * hk, ry + 32 * hk);
-
-                ctx.restore();
-            }
             ctx.restore();
         };
         return { resize, draw };
@@ -3428,6 +2762,12 @@ const initNavSim = (c) => {
         if (window.THREAD_STAGE && typeof window.THREAD_STAGE.refreshSections === "function") {
             window.THREAD_STAGE.refreshSections();
         }
+        if (!window.hyperspaceJourney && typeof window.HyperspaceJourneyController === "function") {
+            window.hyperspaceJourney = KW.hyperspaceJourney = new window.HyperspaceJourneyController();
+        }
+        if (window.hyperspaceJourney && typeof window.hyperspaceJourney.syncToCurrentPage === "function") {
+            window.hyperspaceJourney.syncToCurrentPage();
+        }
 
         setupSnapObserver();
         initHeroLaniakeaStage();
@@ -3508,6 +2848,7 @@ const initNavSim = (c) => {
 
             if (push) history.pushState(null, "", urlStr);
             const targetUrl = new URL(urlStr, location.origin);
+            lastNavPathname = targetUrl.pathname;
             if (targetUrl.hash) {
                 const targetEl = document.querySelector(targetUrl.hash);
                 if (targetEl) targetEl.scrollIntoView({ behavior: "instant" });
@@ -3525,6 +2866,8 @@ const initNavSim = (c) => {
     const DOMAIN_ROUTE_RE = /(?:^|\/)(?:math|physics|datascience|quant|cs)\.html$/i;
 
     document.addEventListener("click", (e) => {
+        // Allow native navigation for local file previews to avoid fetch CORS errors
+        if (location.protocol === "file:") return;
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         const a = e.target.closest && e.target.closest("a[href]");
         if (!a || a.target === "_blank") return;
@@ -3533,11 +2876,6 @@ const initNavSim = (c) => {
         const u = new URL(raw, location.href);
         if (u.origin !== location.origin) return;
         e.preventDefault();
-        if (DOMAIN_ROUTE_RE.test(u.pathname) && u.pathname !== location.pathname && typeof window.triggerHyperspaceJump === "function") {
-            try {
-                if (window.triggerHyperspaceJump(u.href, () => loadPage(u.href, true)) !== false) return;
-            } catch (err) {}
-        }
         loadPage(u.href, true);
     });
 
@@ -4171,8 +3509,13 @@ const initNavSim = (c) => {
         secs.forEach((s) => requestAnimationFrame(() => draw(s, list.indexOf(s))));
     }) : null;
 
+    let pmCacheSecs = null, pmCacheSec = null, pmCacheBoxes = null;
+
     const process = () => {
         const list = allSecs();
+        pmCacheSecs = list;
+        pmCacheSec = null;
+        pmCacheBoxes = null;
         list.forEach((sec, idx) => {
             const inner = sec.querySelector(":scope > .snap-inner");
             if (!inner) return;
@@ -4516,13 +3859,20 @@ const initNavSim = (c) => {
             const ny = (pmY / Math.max(1, window.innerHeight)) - 0.5;
             const S = window.THREAD_STAGE;
             const activeIdx = (S && S.supported && typeof S.currentIndex === "number") ? S.currentIndex : 0;
-            const activeSec = allSecs()[activeIdx];
+            const secs = (pmCacheSecs && pmCacheSecs.length && pmCacheSecs[0].isConnected) ? pmCacheSecs : (pmCacheSecs = allSecs());
+            const activeSec = secs[activeIdx];
             if (!activeSec) return;
-            activeSec.querySelectorAll(".kw-callout").forEach((b, i) => {
+            // Cache active section's callout nodes to avoid repeated DOM walks on pointermove
+            if (activeSec !== pmCacheSec || !pmCacheBoxes) {
+                pmCacheSec = activeSec;
+                pmCacheBoxes = activeSec.querySelectorAll(".kw-callout");
+            }
+            for (let i = 0; i < pmCacheBoxes.length; i++) {
+                const b = pmCacheBoxes[i];
                 const factor = (i % 2 === 0 ? 4.5 : 6.0);
                 b.style.setProperty("--px", (nx * factor).toFixed(2) + "px");
                 b.style.setProperty("--py", (ny * factor).toFixed(2) + "px");
-            });
+            }
             });
         }, { passive: true });
     }

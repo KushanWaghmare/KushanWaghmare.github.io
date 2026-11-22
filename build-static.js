@@ -535,6 +535,7 @@ const renderNav = (active, pageType) => {
 };
 
 const BASE_URL = "https://kushanwaghmare.github.io";
+const STYLE_VER = 82;
 const escAttr = (s) => String(s).replace(/"/g, "&quot;");
 const PERSON_LD = JSON.stringify({
     "@context": "https://schema.org",
@@ -581,28 +582,34 @@ const buildHTML = ({ filename, domain, pageType, title, desc, mainContent }) => 
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&family=Space+Grotesk:wght@600;700&display=swap" />
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" />
-    <link rel="stylesheet" href="shared/style.css?v=81" />
+    <link rel="stylesheet" href="shared/style.css?v=${STYLE_VER}" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-    <script defer src="shared/data.js?v=81"></script>
+    <script defer src="shared/data.js?v=${STYLE_VER}"></script>
     <!-- Simulations: Mathematical Foundations -->
-    <script defer src="shared/simulations/math/diffusion-math.js?v=81"></script>
-    <script defer src="shared/simulations/math/mobius-math.js?v=81"></script>
-    <script defer src="shared/simulations/math/lattice-math.js?v=81"></script>
-    <script defer src="shared/simulations/math/cy-math.js?v=81"></script>
+    <script defer src="shared/simulations/math/diffusion-math.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/math/mobius-math.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/math/lattice-math.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/math/cy-math.js?v=${STYLE_VER}"></script>
     <!-- Simulations: Quantum & Black Hole Physics -->
-    <script defer src="shared/simulations/quantum/qsim-math.js?v=81"></script>
-    <script defer src="shared/simulations/blackhole/blackhole-physics.js?v=81"></script>
+    <script defer src="shared/simulations/quantum/qsim-math.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/blackhole/blackhole-physics.js?v=${STYLE_VER}"></script>
     <!-- Simulations: Slide Registry -->
-    <script defer src="shared/simulations/canvas2d/slides.js?v=81"></script>
+    <script defer src="shared/simulations/canvas2d/slides.js?v=${STYLE_VER}"></script>
     <!-- Simulations: Unified Particle Engine (Core Stage) -->
-    <script defer src="shared/simulations/core/thread-math.js?v=81"></script>
-    <script defer src="shared/simulations/core/gpu-thread-shaders.js?v=81"></script>
-    <script defer src="shared/simulations/core/gpu-thread-formations.js?v=81"></script>
-    <script defer src="shared/simulations/core/gpu-thread.js?v=81"></script>
+    <script defer src="shared/simulations/core/thread-math.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/core/gpu-thread-shaders.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/core/gpu-thread-formations.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/core/gpu-thread.js?v=${STYLE_VER}"></script>
+    <!-- Hyperspace & Spacecraft Overlay Engine -->
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+    <script defer src="shared/simulations/hyperspace/HyperspaceEngine.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/hyperspace/SpacecraftController.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/hyperspace/HyperspaceAudio.js?v=${STYLE_VER}"></script>
+    <script defer src="shared/simulations/hyperspace/HyperspaceJourneyController.js?v=${STYLE_VER}"></script>
     <!-- App Controller -->
-    <script defer src="shared/app.js?v=81"></script>
+    <script defer src="shared/app.js?v=${STYLE_VER}"></script>
 
 </head>
 <body>
@@ -684,7 +691,56 @@ writePage({
     mainContent: coursesPage()
 });
 
-// 6. Sitemap
+// 6. 404 page (excluded from sitemap, uses shared STYLE_VER)
+const build404HTML = () => `<!doctype html>
+<html lang="en-GB" data-domain="hub" data-page="404" data-theme="dark" data-font="space">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>404 · Page Not Found · Kushan Waghmare</title>
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&family=Space+Grotesk:wght@600;700&display=swap" />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" />
+    <link rel="stylesheet" href="shared/style.css?v=${STYLE_VER}" />
+</head>
+<body>
+    <header class="nav glass">
+        <div class="nav-brand-group">
+            <a class="brand" href="index.html" aria-label="Home">KW<b>/</b><span>portfolio</span></a>
+        </div>
+        <nav class="links" aria-label="Navigation">
+            <a href="index.html"><span class="full">← Hub</span><span class="short">←</span></a>
+            <a href="papers.html"><span class="full">Papers</span><span class="short">Papers</span></a>
+            <a href="courses.html"><span class="full">Courses</span><span class="short">Courses</span></a>
+        </nav>
+    </header>
+    <main id="main">
+        <section class="snap-section hero" style="--a:var(--rgb-hub);background:radial-gradient(ellipse 70% 55% at 50% 45%, rgba(var(--rgb-hub),0.14), transparent 70%)">
+            <div class="snap-inner">
+                <div class="crumbs" data-hero><a href="index.html">Home</a> / <span>404</span></div>
+                <h1 data-hero>404 · Beyond the Horizon</h1>
+                <p class="lead snap-lead" data-hero>The coordinates you requested do not exist in this manifold. Return to the portfolio hub to explore mathematics, physics, data science, quant finance and computer science.</p>
+                <div class="snap-actions" data-hero>
+                    <a href="index.html" class="snap-cta-btn glass" style="--a:var(--rgb-hub)">
+                        <span>Return to Portfolio Hub</span>
+                        <span class="arr">→</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
+`;
+fs.writeFileSync(path.join(root, "404.html"), build404HTML());
+console.log("Wrote 404.html");
+
+// 7. Sitemap
 const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${generatedPages.map((f) => `  <url><loc>${f === "index.html" ? `${BASE_URL}/` : `${BASE_URL}/${f}`}</loc></url>`).join("\n")}
