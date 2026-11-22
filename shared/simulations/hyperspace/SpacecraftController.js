@@ -252,9 +252,16 @@
 
     var self = this;
     var loader = new THREE.GLTFLoader();
+    var dracoLoader = null;
+    if (typeof THREE.DRACOLoader === 'function') {
+      dracoLoader = new THREE.DRACOLoader();
+      dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/libs/draco/gltf/');
+      loader.setDRACOLoader(dracoLoader);
+    }
     loader.load(
       url,
       function (gltf) {
+        if (dracoLoader) { dracoLoader.dispose(); dracoLoader = null; }
         var model = gltf && gltf.scene;
         if (!model) return;
 
@@ -296,6 +303,7 @@
       },
       undefined,
       function (err) {
+        if (dracoLoader) { dracoLoader.dispose(); dracoLoader = null; }
         if (typeof console !== 'undefined' && console.warn) {
           console.warn('SpacecraftController: failed to load custom GLB.', err);
         }

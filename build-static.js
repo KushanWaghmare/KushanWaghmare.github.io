@@ -612,6 +612,7 @@ const buildHTML = ({ filename, domain, pageType, title, desc, mainContent }) => 
     <!-- Hyperspace & Spacecraft Overlay Engine -->
     <script defer src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/DRACOLoader.js"></script>
     <script defer src="shared/simulations/hyperspace/HyperspaceEngine.js?v=${STYLE_VER}"></script>
     <script defer src="shared/simulations/hyperspace/SpacecraftController.js?v=${STYLE_VER}"></script>
     <script defer src="shared/simulations/hyperspace/HyperspaceAudio.js?v=${STYLE_VER}"></script>
