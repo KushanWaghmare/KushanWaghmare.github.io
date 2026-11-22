@@ -530,8 +530,9 @@
             return;
         }
 
+        var maxDpr = (window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "")) ? 1.25 : 2;
         this.renderer.setClearColor(0x000000, 0);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxDpr));
         this.renderer.setSize(window.innerWidth, window.innerHeight, false);
 
         this.scene = new THREE.Scene();
@@ -589,7 +590,8 @@
             var h = Math.max(1, window.innerHeight);
             self.camera.aspect = w / h;
             self.camera.updateProjectionMatrix();
-            self.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            var maxDpr = (w <= 768 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "")) ? 1.25 : 2;
+            self.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxDpr));
             self.renderer.setSize(w, h, false);
         }, { passive: true });
 
@@ -1159,7 +1161,7 @@
             this.spacecraft.update(dt, idleCraft);
         }
 
-        if (this.renderer && this.scene && this.camera) {
+        if (this.currentIndex > 0 && this.renderer && this.scene && this.camera) {
             this.renderer.render(this.scene, this.camera);
         }
     };

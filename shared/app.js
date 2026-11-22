@@ -2469,7 +2469,7 @@ const initNavSim = (c) => {
                 const order = M.labels.map((l, i) => i).sort((a, b) => rank(M.labels[a]) - rank(M.labels[b]));
                 const revealR = 180;
                 const fadeRate = reduced ? 1 : Math.min(1, dtS * 9);
-                ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = 5;
+                ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = W < 760 ? 0 : 5;
                 for (const idx of order) {
                     const l = M.labels[idx], kind = l[0], name = l[1], suf = l[2], u0 = l[3], v = l[4], u1 = l[5];
                     if (kind === "lg") continue;
@@ -2649,23 +2649,26 @@ const initNavSim = (c) => {
             }
             cur._katexMode = k ? mode : 0;
             handle.mode = mode;
-            cur.active = !k && e.pointerType !== "touch";
+            cur.active = !k;
         };
         const onDown = (e) => {
-            if (e.pointerType !== "touch") {
-                cur.down = true;
-                const S = window.THREAD_STAGE, hs = S && S.supported ? S.heroScreen : null;
-                if (hs && Math.hypot(e.clientX - hs.x, e.clientY - hs.y) < 36) {
-                    const secs = document.querySelectorAll(".snap-section");
-                    const nextIdx = ((S.currentIndex || 0) + 1) % Math.max(1, secs.length);
-                    if (typeof S.goToSection === "function") S.goToSection(nextIdx);
-                }
+            cur.x = e.clientX; cur.y = e.clientY;
+            cur.down = true;
+            if (e.pointerType === "touch") onMove(e);
+            const S = window.THREAD_STAGE, hs = S && S.supported ? S.heroScreen : null;
+            if (hs && Math.hypot(e.clientX - hs.x, e.clientY - hs.y) < 36) {
+                const secs = document.querySelectorAll(".snap-section");
+                const nextIdx = ((S.currentIndex || 0) + 1) % Math.max(1, secs.length);
+                if (typeof S.goToSection === "function") S.goToSection(nextIdx);
             }
         };
-        const onUp = () => { cur.down = false; };
+        const onUp = (e) => {
+            cur.down = false;
+            if (e && e.pointerType === "touch") { cur.active = false; cur._katexMode = 0; handle.mode = 0; }
+        };
         const onLeave = () => { cur.active = false; cur.down = false; cur._katexMode = 0; handle.mode = 0; };
         window.addEventListener("pointermove", onMove, { passive: true }); window.addEventListener("pointerdown", onDown, { passive: true });
-        window.addEventListener("pointerup", onUp, { passive: true }); document.documentElement.addEventListener("pointerleave", onLeave);
+        window.addEventListener("pointerup", onUp, { passive: true }); window.addEventListener("pointercancel", onUp, { passive: true }); document.documentElement.addEventListener("pointerleave", onLeave);
         window.addEventListener("resize", fit, { passive: true });
 
         let rectsCache = [], rectsAt = 0;
@@ -2732,7 +2735,7 @@ const initNavSim = (c) => {
             });
         };
         raf = requestAnimationFrame(loop);
-        c.__dispose = () => { cancelAnimationFrame(raf); window.removeEventListener("resize", fit); window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerdown", onDown); window.removeEventListener("pointerup", onUp); document.documentElement.removeEventListener("pointerleave", onLeave); };
+        c.__dispose = () => { cancelAnimationFrame(raf); window.removeEventListener("resize", fit); window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerdown", onDown); window.removeEventListener("pointerup", onUp); window.removeEventListener("pointercancel", onUp); document.documentElement.removeEventListener("pointerleave", onLeave); };
     };
 
     const initPage = () => {

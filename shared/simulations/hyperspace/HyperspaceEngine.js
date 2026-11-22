@@ -397,7 +397,8 @@
     this.starGeometry.setAttribute('aCylindricalPos', new THREE.InstancedBufferAttribute(cylindricalPos, 3));
     this.starGeometry.setAttribute('aSpeedOffset', new THREE.InstancedBufferAttribute(speedOffsets, 1));
     this.starGeometry.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seeds, 1));
-    this.starGeometry.instanceCount = count;
+    var isMob = typeof window !== 'undefined' && (window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad|iPod/i.test((typeof navigator !== 'undefined' && navigator.userAgent) || ''));
+    this.starGeometry.instanceCount = isMob ? Math.min(count, 2000) : count;
 
     this.starUniforms = {
       uTravelZ: { value: 0.0 },

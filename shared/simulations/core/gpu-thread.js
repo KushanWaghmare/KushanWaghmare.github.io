@@ -352,7 +352,7 @@
     let sharedVAO = null, celestialVAO = null, auxVAO = null, quadVAO = null, ringVAO = null, ambientDustVAO = null;
     let posVBO = null, prevPosVBO = null, colVBO = null, sizeVBO = null, seedVBO = null;
     let celestialVBO = null, auxPosVBO = null, auxColVBO = null, quadVBO = null, ringVBO = null, ambientDustOffsetVBO = null, ambientDustSeedVBO = null;
-    const CELESTIAL_STAR_COUNT = 4000;
+    const CELESTIAL_STAR_COUNT = isMobileDevice() ? 2000 : 4000;
     const AMBIENT_DUST_COUNT = 1024;
 
     const tmpThresholdPos = new Vector3();
