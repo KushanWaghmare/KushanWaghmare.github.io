@@ -2547,19 +2547,9 @@ const initNavSim = (c) => {
                 drawSectionEqOverlay(st.simKey, tSec, cx, cy, Math.min(W, H) * 0.24, secVwS, secDwS);
             }
 
-            const ox = st.ox || 0, oy = st.oy || 0, launch = st.launch || 0, lock = st.lock === undefined ? 1 : st.lock;
+            const ox = st.ox || 0, oy = st.oy || 0;
             const unitPx = (M && M.unitPx) || Math.min(W, H), aspect = (M && M.aspect) || 1.316;
             const L = unitPx * aspect, k = Math.max(0.85, Math.min(1.35, L / 900));
-
-            // Resolve Hero Particle screen coordinates across ALL sections
-            let mx = null, my = null;
-            if (st.hero && Number.isFinite(st.hero.x) && Number.isFinite(st.hero.y)) {
-                mx = st.hero.x; my = st.hero.y;
-            } else if (M && M.ready && M.projectUV) {
-                const lgp = M.projectUV(M.LG[0], M.LG[1], 0);
-                if (lgp) { mx = lgp.x - ox; my = lgp.y - oy; }
-            }
-            if (mx === null || my === null) return;
 
             const trs = st.textRects || [];
             const rectDist = (a, b) => Math.hypot(Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w), 0), Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h), 0));
@@ -2574,13 +2564,7 @@ const initNavSim = (c) => {
             };
             const isCalloutLayout = document.documentElement.dataset.layout === "callout";
             const leaderSegs = (isCalloutLayout && window.__CALLOUT_LINES__ && window.__CALLOUT_LINES__[st.sectionIndex || 0]) || [];
-
-            // ---- HUD geometry (frameless callout anchored to the right of hero particle)
-            const pw = Math.min(W - 16, (isCalloutLayout ? 205 : 260) * k), ph = 52 * k;
-            let side = 1; // Always branch rightwards from the hero particle
-            const cxp = mx + 46 * k, cyp = my - 34 * k;
-            const panel = { x: Math.max(10, Math.min(W - pw - 10, cxp)), y: Math.max(48, Math.min(H - ph - 16, cyp)), w: pw, h: ph };
-            const rects = [{ x: panel.x - 6, y: panel.y - 6, w: panel.w + 12, h: panel.h + 12 }, { x: mx - 44 * k, y: my - 44 * k, w: 88 * k, h: 88 * k }];
+            const rects = [];
 
             // Prevent background 2D galaxy labels from overlapping any active callout cards (using cached rects)
             if (isCalloutLayout && window.__CALLOUT_RECTS__) {
@@ -2912,12 +2896,6 @@ const initNavSim = (c) => {
             cur.x = e.clientX; cur.y = e.clientY;
             cur.down = true;
             if (e.pointerType === "touch") onMove(e);
-            const S = window.THREAD_STAGE, hs = S && S.supported ? S.heroScreen : null;
-            if (hs && Math.hypot(e.clientX - hs.x, e.clientY - hs.y) < 36) {
-                const secs = document.querySelectorAll(".snap-section");
-                const nextIdx = ((S.currentIndex || 0) + 1) % Math.max(1, secs.length);
-                if (typeof S.goToSection === "function") S.goToSection(nextIdx);
-            }
         };
         const onUp = (e) => {
             cur.down = false;

@@ -510,8 +510,8 @@
 
         pointUniforms = getUniforms(pointProg, [
             "uViewProj", "uCamPos", "uViewport", "uDpr", "uTime",
-            "uHeroBoost", "uIsLight", "uStreakScale", "uMaxStreakPx", "uTrailGain", "uFogTint",
-            "uInside", "uHeroScale", "uWorldGrow", "uTwinkle", "uPixelArt", "uDofStrength",
+            "uIsLight", "uStreakScale", "uMaxStreakPx", "uTrailGain", "uFogTint",
+            "uInside", "uWorldGrow", "uTwinkle", "uPixelArt", "uDofStrength",
             "uLkStaticStart", "uLkRot", "uLkXform", "uLkParams", "uLkLens"
         ]);
         if (celestialProg) {
@@ -4158,17 +4158,7 @@
             gl.blendFunc(gl.ONE, gl.ONE);
         }
 
-        // Project Hero Particle coordinates into NDC space to anchor hyperdrive warp tunnel
         let heroScreenX = 0.5, heroScreenY = 0.5;
-        {
-            const e = camera.viewProjectionMatrix.elements;
-            const hx = positions[0], hy = positions[1], hz = positions[2];
-            const wClip = e[3] * hx + e[7] * hy + e[11] * hz + e[15];
-            if (wClip > 0.1) {
-                heroScreenX = clamp((e[0] * hx + e[4] * hy + e[8]  * hz + e[12]) / wClip * 0.5 + 0.5, 0.05, 0.95);
-                heroScreenY = clamp((e[1] * hx + e[5] * hy + e[9]  * hz + e[13]) / wClip * 0.5 + 0.5, 0.05, 0.95);
-            }
-        }
 
         const trailGain = isLight ? 0.85 : clamp(1.0 - effDecay * 0.56, 0.36, 1.0);
         const isFlying = trans.active || (exploreMorph.active && !exploreMorph.simple);
@@ -4186,14 +4176,12 @@
         gl.uniform2f(pointUniforms.uViewport, width, height);
         gl.uniform1f(pointUniforms.uDpr, dpr);
         gl.uniform1f(pointUniforms.uTime, simTime);
-        gl.uniform1f(pointUniforms.uHeroBoost, isFlying ? (1.0 + 3.0 * liveVs) : heroBoost);
         gl.uniform1f(pointUniforms.uIsLight, isLight ? 1.0 : 0.0);
         gl.uniform1f(pointUniforms.uStreakScale, isReducedMotion() ? 0.0 : streakScale);
         gl.uniform1f(pointUniforms.uMaxStreakPx, maxStreakPx);
         gl.uniform1f(pointUniforms.uTrailGain, trailGain * (1.0 + audioEnergy * 0.08) * simIngress.opacity);
         gl.uniform3f(pointUniforms.uFogTint, postState.fogTint[0], postState.fogTint[1], postState.fogTint[2]);
         gl.uniform1f(pointUniforms.uInside, inside.value);
-        gl.uniform1f(pointUniforms.uHeroScale, inside.heroScale);
         gl.uniform1f(pointUniforms.uWorldGrow, inside.worldGrow);
         gl.uniform1f(pointUniforms.uTwinkle, (activeRenderForm && activeRenderForm.disableTwinkle) ? 0.0 : 1.0);
         gl.uniform1f(pointUniforms.uDofStrength, (!isReducedMotion() && postQuality >= 2) ? postState.dof : 0.0);
@@ -4648,17 +4636,7 @@
         exitSimulation,
         goToSim,
         stepSim,
-        get heroPosition() { return new Vector3(positions[0], positions[1], positions[2]); },
-        // Screen-space (CSS px, viewport-relative) position of hero particle 0; used to pin the 2D hero artwork to the flight origin
-        get heroScreen() {
-            const e = camera.viewProjectionMatrix.elements;
-            const x = positions[0], y = positions[1], z = positions[2];
-            const w = e[3] * x + e[7] * y + e[11] * z + e[15];
-            if (!(w > 1e-6)) return null;
-            const nx = (e[0] * x + e[4] * y + e[8] * z + e[12]) / w;
-            const ny = (e[1] * x + e[5] * y + e[9] * z + e[13]) / w;
-            return { x: (nx * 0.5 + 0.5) * window.innerWidth, y: (1.0 - (ny * 0.5 + 0.5)) * window.innerHeight };
-        },
+        get heroScreen() { return null; },
         get currentIndex() { return currentIndex; },
         get formations() { return formations; },
         get trans() { return trans; },

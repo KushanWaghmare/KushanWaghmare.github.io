@@ -22,14 +22,12 @@ uniform vec3 uCamPos;
 uniform vec2 uViewport;
 uniform float uDpr;
 uniform float uTime;
-uniform float uHeroBoost;
 uniform float uIsLight;
 uniform float uStreakScale;
 uniform float uMaxStreakPx;
 uniform float uTrailGain;
 uniform vec3 uFogTint;
 uniform float uInside;     // insideness: 0 = outside the dimension, 1 = deep inside
-uniform float uHeroScale;  // hero screen-size multiplier (shrinks as local world scale grows)
 uniform float uWorldGrow;  // swarm size multiplier (structures look huge when passed)
 uniform float uTwinkle;     // 1 = seed-driven twinkle, 0 = steady light
 uniform float uPixelArt;    // 1 = pixel-art mode: hard squares on a global pixel grid, flat colours (formation.pixelArt)
@@ -42,7 +40,6 @@ uniform vec4 uLkLens;   // (wx, wy, thE2, k) — thE2 <= 0.0 when inactive
 
 out vec3 vColour;
 out float vAlpha;
-out float vIsHero;
 out vec2 vUvDir;
 out float vHalfSeg;
 out float vCapRad;
@@ -106,8 +103,6 @@ void main() {
     float dist = max(1.1, length(worldPos - uCamPos));
     float perspectiveScale = (uViewport.y * 0.0108) / dist;
 
-    bool isHero = (gl_VertexID == 0);
-    float heroScale = isHero ? (1.0 + uHeroBoost * 3.2) * uHeroScale : uWorldGrow;
     float seedVar = 0.80 + 0.42 * aSeed.x;
 
     if (inSize <= 0.0001 || worldPos.z < -2500.0) {
@@ -118,11 +113,11 @@ void main() {
         return;
     }
 
-    float baseSize = clamp(inSize * seedVar * perspectiveScale * uDpr * heroScale, 1.35 * uDpr, 44.0 * uDpr);
+    float baseSize = clamp(inSize * seedVar * perspectiveScale * uDpr * uWorldGrow, 1.35 * uDpr, 44.0 * uDpr);
 
-    // Subtle optical depth of field: gently widen distant non-hero particles
+    // Subtle optical depth of field: gently widen distant particles
     float dofBlur = 0.0;
-    if (uDofStrength > 0.001 && uPixelArt < 0.5 && !isHero) {
+    if (uDofStrength > 0.001 && uPixelArt < 0.5) {
         dofBlur = smoothstep(14.0, 42.0, dist) * clamp(uDofStrength, 0.0, 2.0);
         baseSize *= (1.0 + dofBlur * 0.45);
     }
@@ -138,10 +133,9 @@ void main() {
     }
 
     // Velocity-aligned ribbon stretch with 3 parallax depth layers (near, mid, far)
-    float layerFactor = isHero ? 1.85 : ((dist < 7.5) ? 1.35 : ((dist < 17.0) ? 1.0 : 0.68));
+    float layerFactor = (dist < 7.5) ? 1.35 : ((dist < 17.0) ? 1.0 : 0.68);
     float worldStep = length(worldPos - worldPrev);
-    // Allow hero particle to streak up to 350 world units during hyperdrive punch
-    float maxStep = isHero ? 350.0 : 95.0;
+    float maxStep = 95.0;
     float streakLen = 0.0;
     vec2 dirNdc = vec2(1.0, 0.0);
 
@@ -152,8 +146,7 @@ void main() {
         float rawLen = length(rawDeltaPx);
         if (rawLen > 0.25) {
             dirNdc = rawDeltaPx / rawLen;
-            float maxHeroPx = min(96.0 * uDpr, 240.0 - baseSize);
-            streakLen = min(rawLen, isHero ? maxHeroPx : (uMaxStreakPx * uDpr));
+            streakLen = min(rawLen, uMaxStreakPx * uDpr);
         }
     }
 
@@ -187,24 +180,13 @@ void main() {
         col = mix(col, shifted * (colLum / shiftedLum), 0.35);
     }
 
-    if (isHero && uHeroBoost > 0.001) {
-        vec3 heroGlow = mix(vec3(1.8, 1.65, 1.35), vec3(0.75, 1.35, 2.2), 0.38);
-        col = mix(col, heroGlow, clamp(uHeroBoost * 0.9, 0.0, 1.0)) * (1.0 + uHeroBoost * 1.4);
-    }
-
-    float depthAlpha = clamp(19.0 / (dist + 6.5), 0.16, 1.0) * (1.0 - fogFactor * 0.45);
-    float twWave = 0.70 * sin(uTime * (1.5 + 2.4 * aSeed.z) + aSeed.w * 6.2831853)
-                 + 0.30 * sin(uTime * (3.3 + 4.1 * aSeed.y) + aSeed.x * 6.2831853);
-    float twinkle = mix(1.0, 0.86 + 0.14 * twWave, uTwinkle);
-
     // Conserve energy when stretched into a long streak so thin fast streaks stay crisp, not blown out
     float energyNorm = clamp(baseSize / max(1.0, baseSize + streakLen * 0.35), 0.28, 1.0);
-    vAlpha = depthAlpha * twinkle * energyNorm * uTrailGain * (isHero ? (1.0 + uHeroBoost * 0.8) : 1.0);
+    vAlpha = depthAlpha * twinkle * energyNorm * uTrailGain;
     vColour = col;
-    vIsHero = isHero ? uHeroBoost : 0.0;
     vDofBlur = dofBlur;
 
-    if (uPixelArt > 0.5) { vColour = inColour; vAlpha = 1.0; vIsHero = 0.0; vDofBlur = 0.0; }
+    if (uPixelArt > 0.5) { vColour = inColour; vAlpha = 1.0; vDofBlur = 0.0; }
 }
 `;
 
@@ -214,7 +196,6 @@ precision highp float;
 
 in vec3 vColour;
 in float vAlpha;
-in float vIsHero;
 in vec2 vUvDir;
 in float vHalfSeg;
 in float vCapRad;
@@ -245,10 +226,6 @@ void main() {
     float halo = haloInv * haloInv * haloInv * 0.30;
     float taperFade = mix(1.0, 0.16, tailT * tailT);
     float profile = (core * 0.90 + halo) * taperFade;
-
-    if (vIsHero > 0.01) {
-        profile += exp(-r2 * 2.0) * vIsHero * 0.95 * taperFade;
-    }
 
     float alpha = clamp(profile * vAlpha, 0.0, 1.0);
 
